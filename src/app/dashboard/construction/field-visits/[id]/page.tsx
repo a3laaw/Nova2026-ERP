@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -8,13 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
-  Loader2, ArrowRight, MapPin, 
-  HardHat, Target, Users, 
-  Truck, CheckCircle2, ShieldCheck,
-  Camera, Info, DollarSign, Printer,
-  LayoutGrid, ExternalLink,
-  ShieldAlert, Edit3, Save, X, Copy,
-  MessageSquare, UserCircle
+  Loader2, ArrowRight, HardHat, Target, Users, 
+  Truck, CheckCircle2, ShieldCheck, Printer,
+  LayoutGrid, Save, MessageSquare, ShieldAlert
 } from "lucide-react";
 import { useFirestore, useDoc } from '@/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -26,9 +21,7 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
 import { paths } from '@/firebase/multi-tenant';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 
 export default function FieldVisitDetailsPage() {
   const visitId = useParams().id as string;
@@ -75,7 +68,7 @@ export default function FieldVisitDetailsPage() {
       toast({ title: isRtl ? "تم تسجيل ردود المسؤول بنجاح" : "Engineer Responses Saved" });
       setIsReviewing(false);
     } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+      toast({ variant: "destructive", title: t('common.error') });
     } finally {
       setSaving(false);
     }
@@ -83,19 +76,13 @@ export default function FieldVisitDetailsPage() {
 
   const handleVerify = async () => {
     if (!db || !companyId || !user || !visit) return;
-    
-    if (editItems.some(i => i.executionStatus === 'pending')) {
-       toast({ variant: "destructive", title: isRtl ? "تنبيه" : "Alert", description: isRtl ? "يجب الرد على كافة البنود قبل الاعتماد." : "Response required for all items." });
-       return;
-    }
-
     setVerifying(true);
     try {
       const service = new BOQExecutionService(db, companyId, permissions);
       await service.verifyExecutionForBilling(visit.id, user.uid, globalUser?.fullName || 'Admin');
       toast({ title: isRtl ? "تم اعتماد الإنجاز" : "Progress Verified" });
     } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+      toast({ variant: "destructive", title: t('common.error') });
     } finally {
       setVerifying(false);
     }
@@ -105,10 +92,10 @@ export default function FieldVisitDetailsPage() {
   if (!visit) return <div className="p-20 text-center font-bold">404 - Not Found</div>;
 
   return (
-    <div className="space-y-4 w-full px-4 md:px-6 animate-in fade-in duration-500" dir={dir}>
+    <div className="space-y-4 w-full animate-in fade-in duration-500" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4 print:hidden">
         <div className="flex items-center gap-3">
-           <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-9 w-9 rounded-md border text-slate-400">
+           <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-9 w-9 rounded-md border border-slate-200 text-slate-400">
              <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
            </Button>
            <div className="text-start">
@@ -125,18 +112,18 @@ export default function FieldVisitDetailsPage() {
              </Button>
            )}
            {!isReviewing ? (
-             <Button onClick={() => setIsReviewing(true)} variant="outline" size="sm" className="h-9 px-4 font-bold">
+             <Button onClick={() => setIsReviewing(true)} variant="outline" size="sm" className="h-9 px-4 font-bold border-slate-200">
                <MessageSquare className="h-3.5 w-3.5 me-2" /> {isRtl ? 'رد المسؤول' : 'Response'}
              </Button>
            ) : (
              <div className="flex gap-2">
-               <Button onClick={() => setIsReviewing(false)} variant="outline" size="sm" className="h-9 font-bold">إلغاء</Button>
+               <Button onClick={() => setIsReviewing(false)} variant="outline" size="sm" className="h-9 font-bold border-slate-200">إلغاء</Button>
                <Button onClick={handleSaveResponse} disabled={saving} size="sm" className="h-9 px-4 font-bold">
                  {saving ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />} {isRtl ? 'حفظ الردود' : 'Save'}
                </Button>
              </div>
            )}
-           <Button variant="outline" size="sm" onClick={() => window.print()} className="h-9 px-4 font-bold">
+           <Button variant="outline" size="sm" onClick={() => window.print()} className="h-9 px-4 font-bold border-slate-200">
               <Printer className="h-3.5 w-3.5" />
            </Button>
         </div>
@@ -159,7 +146,7 @@ export default function FieldVisitDetailsPage() {
                <h3 className="font-bold text-base flex items-center gap-2 text-slate-800">
                   <LayoutGrid className="h-4 w-4 text-primary" /> {isRtl ? 'تحليل الإنجاز الفني' : 'Technical Progress'}
                </h3>
-               <div className="border rounded-lg overflow-hidden bg-white shadow-sm">
+               <Card className="rounded-lg border shadow-sm bg-white overflow-hidden">
                   <Table>
                      <TableHeader className="bg-slate-50">
                         <TableRow className="border-0">
@@ -182,7 +169,7 @@ export default function FieldVisitDetailsPage() {
                                  {isReviewing ? (
                                     <div className="flex gap-2">
                                        <Select value={item.executionStatus || 'pending'} onValueChange={v => handleUpdateResponse(i, 'executionStatus', v)}>
-                                          <SelectTrigger className="h-7 text-[10px] font-bold"><SelectValue /></SelectTrigger>
+                                          <SelectTrigger className="h-8 text-[10px] font-bold rounded-md"><SelectValue /></SelectTrigger>
                                           <SelectContent>
                                              <SelectItem value="pending">بانتظار المراجعة</SelectItem>
                                              <SelectItem value="completed" className="text-emerald-600">إنجاز كامل</SelectItem>
@@ -193,7 +180,7 @@ export default function FieldVisitDetailsPage() {
                                     </div>
                                  ) : (
                                     <Badge className={cn(
-                                       "text-[8px] font-bold border-0 uppercase h-5",
+                                       "text-[8px] font-bold border-0 uppercase h-5 rounded-md",
                                        item.executionStatus === 'completed' ? "bg-emerald-500 text-white" :
                                        item.executionStatus === 'partial' ? "bg-amber-500 text-white" :
                                        "bg-slate-100 text-slate-400"
@@ -206,7 +193,7 @@ export default function FieldVisitDetailsPage() {
                         ))}
                      </TableBody>
                   </Table>
-               </div>
+               </Card>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -214,7 +201,7 @@ export default function FieldVisitDetailsPage() {
                   <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><Users className="h-3.5 w-3.5 text-primary" /> Labor</h4>
                   <div className="space-y-1.5">
                      {visit.laborDetails?.map((l: any, i: number) => (
-                        <div key={i} className="flex justify-between items-center text-xs p-2 bg-slate-50 rounded-md border border-slate-100">
+                        <div key={i} className="flex justify-between items-center text-xs p-2.5 bg-slate-50 rounded-lg border border-slate-100">
                            <span className="font-bold text-slate-700">{l.trade}</span>
                            <span className="font-bold text-slate-400">{l.count} Staff</span>
                         </div>
@@ -225,7 +212,7 @@ export default function FieldVisitDetailsPage() {
                   <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><Truck className="h-3.5 w-3.5 text-primary" /> Equipment</h4>
                   <div className="space-y-1.5">
                      {visit.equipmentUsed?.map((e: any, i: number) => (
-                        <div key={i} className="flex justify-between items-center text-xs p-2 bg-slate-50 rounded-md border border-slate-100">
+                        <div key={i} className="flex justify-between items-center text-xs p-2.5 bg-slate-50 rounded-lg border border-slate-100">
                            <span className="font-bold text-slate-700">{e.name}</span>
                            <span className="font-bold text-primary">{e.hoursUsed} hrs</span>
                         </div>

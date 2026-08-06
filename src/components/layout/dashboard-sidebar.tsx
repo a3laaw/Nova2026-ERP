@@ -1,6 +1,6 @@
 /**
- * @fileOverview القائمة الجانبية (Sidebar) بتصميم الكبسولات البرتقالية كاملة الاستدارة.
- * تم نقل مجموعات العمل إلى قسم المقاولات.
+ * @fileOverview القائمة الجانبية (Sidebar) بتصميم الكبسولات البرتقالية المدمجة.
+ * تم إصلاح خطأ الـ Unique Keys عبر استخدام الروابط كمعرفات.
  */
 
 "use client"
@@ -48,96 +48,96 @@ export function DashboardSidebar() {
     const isHrManager = hrAccess.can && hrAccess.scope !== 'own';
 
     return [
-      { title: t('dashboard'), icon: LayoutDashboard, url: "/dashboard", resource: 'dashboard' },
+      { title: t('common.dashboard'), icon: LayoutDashboard, url: "/dashboard", resource: 'dashboard' },
       { 
-        title: t('crm'), 
+        title: t('common.crm'), 
         icon: Users, 
         url: "/dashboard/crm", 
         resource: 'crm',
         subItems: [
-          { title: t('leads'), url: "/dashboard/crm", icon: Users },
-          { title: t('clients'), url: "/dashboard/clients", icon: UserCircle },
+          { title: t('common.leads'), url: "/dashboard/crm", icon: Users },
+          { title: t('common.clients'), url: "/dashboard/clients", icon: UserCircle },
           { title: isRtl ? 'المواعيد والزيارات' : 'Appointments', url: "/dashboard/appointments", icon: CalendarDays },
           { title: isRtl ? 'حجز القاعات والاجتماعات' : 'Halls & Meetings', url: "/dashboard/meetings", icon: Landmark },
           { title: isRtl ? 'سجل تفاعل العملاء' : 'Visits Dossier', url: "/dashboard/projects/reports/client-visits", icon: MapPinned },
         ]
       },
       { 
-        title: t('projects'), 
+        title: t('common.projects'), 
         icon: HardHat, 
         url: "/dashboard/projects", 
         resource: 'projects',
         subItems: [
-          { title: t('activeProjects'), url: "/dashboard/projects", icon: Layers },
-          { title: t('boqExplorer'), url: "/dashboard/projects/boqs", icon: FileSpreadsheet },
-          { title: t('reports'), url: "/dashboard/reports", icon: FileText },
+          { title: t('dashboard.stats.activeProjects'), url: "/dashboard/projects", icon: Layers },
+          { title: t('projects.boqExplorer'), url: "/dashboard/projects/boqs", icon: FileSpreadsheet },
+          { title: t('common.reports'), url: "/dashboard/reports", icon: FileText },
         ]
       },
       { 
-        title: t('construction'), 
+        title: t('common.construction'), 
         icon: Hammer, 
         url: "/dashboard/construction/bookings", 
         resource: 'projects',
         subItems: [
-          { title: t('fieldRadar'), url: "/dashboard/construction/bookings", icon: MapPin },
-          { title: isRtl ? 'مجموعات العمل (أطقم)' : 'Work Groups', url: "/dashboard/construction/groups", icon: Users },
-          { title: isRtl ? 'سجل المعدات والآليات' : 'Equipment Registry', url: "/dashboard/equipment", icon: Truck },
-          { title: isRtl ? 'زيارات المواقع المنفذة' : 'Site Reports', url: "/dashboard/construction/field-visits", icon: FileText },
+          { title: t('construction.radar'), url: "/dashboard/construction/bookings", icon: MapPin },
+          { title: t('construction.groups'), url: "/dashboard/construction/groups", icon: Users },
+          { title: t('construction.equipment'), url: "/dashboard/equipment", icon: Truck },
+          { title: t('construction.reports'), url: "/dashboard/construction/field-visits", icon: FileText },
         ]
       },
       { 
-        title: t('procurement'), 
+        title: t('common.procurement'), 
         icon: ShoppingCart, 
         url: "/dashboard/procurement", 
         resource: 'procurement',
         subItems: [
-          { title: t('suppliers'), url: "/dashboard/procurement/suppliers", icon: Truck },
-          { title: t('contracts'), url: "/dashboard/procurement/contracts", icon: Gavel },
-          { title: t('quoteAnalysis'), url: "/dashboard/ai", icon: FileSearch },
+          { title: isRtl ? 'الموردين' : 'Suppliers', url: "/dashboard/procurement/suppliers", icon: Truck },
+          { title: isRtl ? 'العقود' : 'Contracts', url: "/dashboard/procurement/contracts", icon: Gavel },
+          { title: isRtl ? 'تحليل العروض' : 'Quotes', url: "/dashboard/ai", icon: FileSearch },
         ]
       },
       { 
-        title: isHrManager ? t('hr') : (isRtl ? 'شؤوني الوظيفية' : 'Personal Workspace'), 
+        title: isHrManager ? t('common.hr') : (isRtl ? 'شؤوني الوظيفية' : 'Personal Workspace'), 
         icon: UserCircle, 
         url: "/dashboard/hr", 
         resource: 'hr',
         subItems: [
-          { title: t('myProfile'), url: globalUser?.employeeId ? `/dashboard/hr/reports/dossier/${globalUser.employeeId}` : '/dashboard/hr', icon: ShieldCheck },
-          { title: t('staffRecords'), url: "/dashboard/hr/employees", icon: Users, hideIfOwnScope: true },
-          { title: t('leaves'), url: "/dashboard/hr/leaves", icon: Calendar },
-          { title: t('payroll'), url: "/dashboard/hr/payroll", icon: Calculator, requiredAction: 'approve', hideIfOwnScope: true },
+          { title: isRtl ? 'ملفي الشخصي' : 'My Profile', url: globalUser?.employeeId ? `/dashboard/hr/reports/dossier/${globalUser.employeeId}` : '/dashboard/hr', icon: ShieldCheck },
+          { title: t('hr.staff'), url: "/dashboard/hr/employees", icon: Users, hideIfOwnScope: true },
+          { title: t('hr.leaves'), url: "/dashboard/hr/leaves", icon: Calendar },
+          { title: t('hr.payroll'), url: "/dashboard/hr/payroll", icon: Calculator, requiredAction: 'approve', hideIfOwnScope: true },
         ]
       },
       { 
-        title: t('accounting'), 
+        title: t('common.accounting'), 
         icon: Calculator, 
         url: "/dashboard/accounting", 
         resource: 'accounting',
         subItems: [
-          { title: t('reconciliation'), url: "/dashboard/accounting", icon: Sparkles },
+          { title: isRtl ? 'المطابقة البنكية' : 'Reconciliation', url: "/dashboard/accounting", icon: Sparkles },
         ]
       },
       { 
-        title: t('inventory'), 
+        title: t('common.inventory'), 
         icon: Package, 
         url: "/dashboard/inventory", 
         resource: 'inventory',
         subItems: [
-          { title: t('warehouses'), url: "/dashboard/inventory", icon: Building2 },
+          { title: isRtl ? 'المخازن' : 'Warehouses', url: "/dashboard/inventory", icon: Building2 },
         ]
       },
       { 
-        title: t('settings'), 
+        title: t('common.settings'), 
         icon: Settings2, 
         url: "/dashboard/settings", 
         resource: 'settings',
         subItems: [
-          { title: t('users'), url: "/dashboard/settings/users", icon: Users },
-          { title: t('companyIdentity'), url: "/dashboard/settings/company", icon: Building2 },
-          { title: t('checklists'), url: "/dashboard/settings/checklists", icon: Database },
-          { title: t('rolesRef'), url: "/dashboard/settings/roles", icon: ShieldCheck },
-          { title: t('workHours'), url: "/dashboard/settings/work-hours", icon: Clock },
-          { title: t('profile'), url: "/dashboard/settings/profile", icon: UserCircle },
+          { title: isRtl ? 'المستخدمين' : 'Users', url: "/dashboard/settings/users", icon: Users },
+          { title: isRtl ? 'هوية الشركة' : 'Identity', url: "/dashboard/settings/company", icon: Building2 },
+          { title: isRtl ? 'الدستور التشغيلي' : 'Lists', url: "/dashboard/settings/checklists", icon: Database },
+          { title: isRtl ? 'صلاحيات الأدوار' : 'Roles', url: "/dashboard/settings/roles", icon: ShieldCheck },
+          { title: isRtl ? 'مواعيد العمل' : 'Work Hours', url: "/dashboard/settings/work-hours", icon: Clock },
+          { title: isRtl ? 'الملف الشخصي' : 'Profile', url: "/dashboard/settings/profile", icon: UserCircle },
         ]
       }
     ];
@@ -179,8 +179,8 @@ export function DashboardSidebar() {
             </div>
           </div>
         ) : (
-          <div className="mx-auto h-12 w-9 rounded-full bg-gradient-to-br from-[#FFB000] to-[#e87c24] flex items-center justify-center text-white shadow-xl transition-all">
-             <Sparkles className="h-6 w-6" />
+          <div className="mx-auto h-9 w-9 rounded-lg bg-gradient-to-br from-[#FFB000] to-[#e87c24] flex items-center justify-center text-white shadow-sm transition-all">
+             <Sparkles className="h-4 w-4" />
           </div>
         )}
       </SidebarHeader>
@@ -190,7 +190,7 @@ export function DashboardSidebar() {
           <SidebarGroupContent>
             <SidebarMenu className="gap-4">
               {visibleItems.map((item) => (
-                <NavItemRenderer key={item.title} item={item} isCollapsed={isCollapsed} isRtl={isRtl} pathname={pathname} />
+                <NavItemRenderer key={item.url} item={item} isCollapsed={isCollapsed} isRtl={isRtl} pathname={pathname} />
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -255,7 +255,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
                       <div className="p-3 space-y-1.5 bg-white max-h-[60vh] overflow-y-auto scrollbar-hide">
                         {item.subItems.map((sub: any) => (
                           <Link 
-                            key={sub.title} 
+                            key={sub.url} 
                             href={sub.url}
                             className={cn(
                               "flex items-center justify-between h-11 px-4 rounded-xl text-[11px] font-black transition-all shadow-sm border border-slate-100 bg-white group/sub",
@@ -313,7 +313,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
             <div className="mt-3 space-y-3 px-1 animate-in slide-in-from-top-2 duration-300">
               {item.subItems.map((sub: any) => (
                 <Link 
-                  key={sub.title} 
+                  key={sub.url} 
                   href={sub.url}
                   className={cn(
                     "flex items-center justify-between h-11 px-5 transition-all duration-300 text-[11px] font-black rounded-2xl border border-orange-100/30 shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98]",

@@ -24,30 +24,25 @@ export default function NewEquipmentPage() {
 
   const handleSave = (formData: any) => {
     if (!db || !companyId || !user) return;
-    
     setLoading(true);
     const equipmentService = new EquipmentService(db, companyId);
-    
-    // Pattern 1: إطلاق العملية دون انتظار (Non-blocking)
-    // نعتمد على التوجيه المباشر؛ وفي حال حدوث خطأ سيتكفل Error Emitter بعرضه
     equipmentService.createEquipment(formData, user.uid);
-    
-    toast({ title: isRtl ? "تم إرسال طلب الإضافة" : "Add request sent" });
+    toast({ title: t('common.saved') });
     router.push('/dashboard/equipment');
   };
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto pb-20 animate-in fade-in duration-700" dir={dir}>
-      <div className="flex items-center gap-6 border-b pb-8 border-slate-100 text-start">
-        <Button variant="ghost" onClick={() => router.push('/dashboard/equipment')} className="h-12 w-12 p-0 rounded-2xl bg-white border-2 text-slate-400 shadow-sm">
-           <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
+    <div className="space-y-6 w-full animate-in fade-in duration-700" dir={dir}>
+      <div className="flex items-center gap-4 border-b pb-4 border-slate-100 text-start">
+        <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-9 w-9 rounded-md border border-slate-200 text-slate-400">
+           <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
         </Button>
-        <div className="text-start space-y-1">
-          <h1 className="text-4xl font-black font-headline text-slate-900 tracking-tight">
+        <div className="text-start space-y-0.5">
+          <h1 className="text-xl md:text-2xl font-bold text-slate-900">
              {isRtl ? 'تسجيل أصل تشغيلي جديد' : 'Register New Asset'}
           </h1>
-          <p className="text-muted-foreground font-bold italic text-sm">
-             {isRtl ? 'إدراج معدة مملوكة أو مستأجرة وتحديد مسارها المالي.' : 'Register owned or rented equipment with financial metrics.'}
+          <p className="text-muted-foreground font-medium text-xs">
+             {isRtl ? 'إدراج معدة مملوكة أو مستأجرة وتحديد مسارها المالي.' : 'Register owned or rented equipment.'}
           </p>
         </div>
       </div>

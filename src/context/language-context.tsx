@@ -15,6 +15,15 @@ interface LanguageContextType {
 const translations: Record<Language, Record<string, any>> = {
   ar: {
     common: {
+      dashboard: 'لوحة التحكم',
+      crm: 'العملاء والفرص',
+      projects: 'المشاريع',
+      construction: 'المقاولات الميدانية',
+      procurement: 'المشتريات والتوريد',
+      hr: 'الموارد البشرية',
+      accounting: 'المحاسبة',
+      inventory: 'المخازن',
+      settings: 'الإعدادات',
       save: 'حفظ',
       cancel: 'إلغاء',
       edit: 'تعديل',
@@ -45,7 +54,9 @@ const translations: Record<Language, Record<string, any>> = {
       order: 'الترتيب',
       name: 'الاسم',
       code: 'الكود',
-      description: 'الوصف'
+      description: 'الوصف',
+      switchLang: 'English',
+      logout: 'تسجيل الخروج'
     },
     dashboard: {
       title: 'نظرة عامة على العمليات',
@@ -62,23 +73,11 @@ const translations: Record<Language, Record<string, any>> = {
     clients: {
       title: 'قاعدة بيانات العملاء',
       addNew: 'تسجيل عميل جديد',
-      form: {
-        title: 'بيانات العميل',
-        identity: 'الهوية والبيانات القانونية',
-        location: 'الموقع والعنوان الذكي',
-        assignEngineer: 'المهندس المسؤول'
-      },
       table: {
         profile: 'العميل المالك',
         staff: 'المسؤول',
         contact: 'الهاتف',
         status: 'الحالة'
-      },
-      details: {
-        title: 'تفاصيل العميل',
-        transactions: 'المعاملات الفنية',
-        location: 'الرادار الجغرافي',
-        history: 'سجل الأحداث'
       }
     },
     projects: {
@@ -86,11 +85,7 @@ const translations: Record<Language, Record<string, any>> = {
       radar: 'تتبع الإنجاز الميداني والمطالبات',
       contracting: 'المقاولات',
       addNew: 'بدء مشروع',
-      stats: {
-        portfolio: 'إجمالي المحفظة',
-        claims: 'مطالبات نشطة',
-        collection: 'نسبة التحصيل'
-      },
+      boqExplorer: 'مستكشف المقايسات',
       table: {
         project: 'المشروع / العميل',
         progress: 'الإنجاز',
@@ -98,38 +93,38 @@ const translations: Record<Language, Record<string, any>> = {
         status: 'الحالة'
       },
       details: {
-        title: 'تفاصيل المشروع',
         radar: 'رادار التنفيذ',
         finance: 'المستندات المالية',
         locked: 'المسار مقفل - مطلوب ربط مالي'
       }
     },
-    boq: {
-      title: 'مستكشف المقايسات',
-      tabs: {
-        estimates: 'المقايسات',
-        variations: 'الأوامر التغييرية'
-      }
+    construction: {
+      radar: 'رادار العمليات الميدانية',
+      groups: 'مجموعات العمل',
+      equipment: 'سجل المعدات والآليات',
+      reports: 'زيارات المواقع المنفذة'
     },
     hr: {
-      title: 'الموارد البشرية',
-      payroll: 'الرواتب'
-    },
-    procurement: {
-      title: 'المشتريات'
-    },
-    accounting: {
-      title: 'المحاسبة'
-    },
-    inventory: {
-      title: 'المخازن'
-    },
-    settings: {
-      title: 'الإعدادات'
+      title: 'شؤون الموظفين والامتثال',
+      staff: 'سجل الموظفين',
+      leaves: 'طلبات الإجازات',
+      payroll: 'مسيرات الرواتب',
+      gratuity: 'نهاية الخدمة',
+      permissions: 'الاستئذانات',
+      attendance: 'البصمة والحضور'
     }
   },
   en: {
     common: {
+      dashboard: 'Dashboard',
+      crm: 'CRM & Sales',
+      projects: 'Projects',
+      construction: 'Field Operations',
+      procurement: 'Procurement',
+      hr: 'HR & People',
+      accounting: 'Accounting',
+      inventory: 'Inventory',
+      settings: 'Settings',
       save: 'Save',
       cancel: 'Cancel',
       edit: 'Edit',
@@ -160,7 +155,9 @@ const translations: Record<Language, Record<string, any>> = {
       order: 'Order',
       name: 'Name',
       code: 'Code',
-      description: 'Description'
+      description: 'Description',
+      switchLang: 'العربية',
+      logout: 'Logout'
     },
     dashboard: {
       title: 'Operations Overview',
@@ -177,23 +174,11 @@ const translations: Record<Language, Record<string, any>> = {
     clients: {
       title: 'Clients Database',
       addNew: 'New Registration',
-      form: {
-        title: 'Client Profile',
-        identity: 'Identity & Legal',
-        location: 'Smart Location Radar',
-        assignEngineer: 'Assigned Engineer'
-      },
       table: {
         profile: 'Client Profile',
         staff: 'Assigned Staff',
         contact: 'Mobile',
         status: 'Status'
-      },
-      details: {
-        title: 'Client Details',
-        transactions: 'Technical Transactions',
-        location: 'Geographic Radar',
-        history: 'History Log'
       }
     },
     projects: {
@@ -201,11 +186,7 @@ const translations: Record<Language, Record<string, any>> = {
       radar: 'Field progress and Interim Payments',
       contracting: 'Contracting',
       addNew: 'New Project',
-      stats: {
-        portfolio: 'Total Portfolio',
-        claims: 'Active Claims',
-        collection: 'Collection'
-      },
+      boqExplorer: 'BOQ Explorer',
       table: {
         project: 'Project / Client',
         progress: 'Progress',
@@ -213,18 +194,25 @@ const translations: Record<Language, Record<string, any>> = {
         status: 'Status'
       },
       details: {
-        title: 'Project Details',
         radar: 'Execution Radar',
         finance: 'Financial Documents',
         locked: 'Pipeline Locked - Financial Link Required'
       }
     },
-    boq: {
-      title: 'BOQ Explorer',
-      tabs: {
-        estimates: 'Estimates',
-        variations: 'Variations'
-      }
+    construction: {
+      radar: 'Field Ops Radar',
+      groups: 'Work Crews',
+      equipment: 'Equipment Registry',
+      reports: 'Site Reports'
+    },
+    hr: {
+      title: 'HR & Compliance',
+      staff: 'Staff Records',
+      leaves: 'Leave Requests',
+      payroll: 'Payroll',
+      gratuity: 'Indemnity',
+      permissions: 'Permissions',
+      attendance: 'Attendance'
     }
   }
 };
@@ -252,7 +240,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     for (const k of keys) {
       value = value?.[k];
     }
-    return value || key;
+    return typeof value === 'string' ? value : key;
   };
 
   return (

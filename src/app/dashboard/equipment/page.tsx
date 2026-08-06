@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -9,11 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   Truck, Plus, Search, Loader2, 
-  Edit3, Filter, ArrowRight,
-  Calculator, ShieldCheck, Building2
+  Filter, ArrowRight
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, where } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
@@ -45,14 +43,14 @@ export default function EquipmentMasterPage() {
   }, [equipment, searchTerm]);
 
   return (
-    <div className="space-y-4 w-full px-4 md:px-6 animate-in fade-in duration-500" dir={dir}>
+    <div className="space-y-4 w-full animate-in fade-in duration-500" dir={dir}>
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
           <h1 className="text-xl md:text-2xl font-bold text-slate-900">
-            {isRtl ? 'سجل المعدات والآليات' : 'Equipment Registry'}
+            {t('construction.equipment')}
           </h1>
-          <p className="text-xs text-muted-foreground font-medium opacity-80 italic">
-            {isRtl ? 'إدارة الأصول المملوكة والمستأجرة.' : 'Manage owned and rented assets.'}
+          <p className="text-xs text-muted-foreground font-medium">
+            {isRtl ? 'إدارة سجل الأصول والمعدات المملوكة والمستأجرة.' : 'Manage owned and rented assets.'}
           </p>
         </div>
         <Button 
@@ -64,19 +62,19 @@ export default function EquipmentMasterPage() {
         </Button>
       </header>
 
-      <Card className="rounded-lg shadow-sm border-slate-100 overflow-hidden bg-white">
+      <Card className="rounded-lg shadow-sm border border-slate-100 overflow-hidden bg-white">
         <div className="p-3 flex flex-row items-center justify-between gap-4 bg-slate-50/30 border-b">
           <div className="relative w-full max-w-sm">
             <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input 
-              placeholder={isRtl ? 'بحث بالكود أو الاسم...' : 'Search assets...'} 
-              className="ps-9 h-9 border-slate-200 bg-white text-sm font-medium" 
+              placeholder={t('common.search')} 
+              className="ps-9 h-9 border-slate-200 bg-white text-sm font-medium rounded-md" 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant="outline" size="sm" className="h-9 px-3 rounded-md font-bold text-xs">
-             <Filter className="h-3.5 w-3.5 me-2" /> {isRtl ? 'تصفية' : 'Filter'}
+          <Button variant="outline" size="sm" className="h-9 px-3 rounded-md font-bold text-xs border-slate-200">
+             <Filter className="h-3.5 w-3.5 me-2" /> {t('common.filter')}
           </Button>
         </div>
         <CardContent className="p-0 overflow-x-auto">
@@ -94,17 +92,17 @@ export default function EquipmentMasterPage() {
               {loading ? (
                 <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 font-bold italic">{isRtl ? 'لا يوجد معدات.' : 'No assets found.'}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 font-bold italic">No assets found.</TableCell></TableRow>
               ) : (
                 filtered.map((item) => (
                   <TableRow key={item.id} className="group hover:bg-slate-50/50 transition-colors border-b-slate-100 cursor-pointer" onClick={() => router.push(`/dashboard/equipment/${item.id}/edit`)}>
                     <TableCell className="ps-6 py-2.5 text-start">
                        <div className="flex items-center gap-3">
                           <div className={cn(
-                            "h-9 w-9 rounded-md flex items-center justify-center border shadow-sm shrink-0",
+                            "h-8 w-8 rounded-md flex items-center justify-center border shadow-sm shrink-0",
                             item.ownershipType === 'owned' ? "bg-primary/5 text-primary" : "bg-blue-50 text-blue-600"
                           )}>
-                             <Truck className="h-4 w-4" />
+                             <Truck className="h-3.5 w-3.5" />
                           </div>
                           <div className="text-start">
                              <span className="font-bold text-slate-800 text-sm block leading-none">{item.name}</span>
@@ -114,7 +112,7 @@ export default function EquipmentMasterPage() {
                     </TableCell>
                     <TableCell className="text-start">
                        <Badge variant="outline" className={cn(
-                         "text-[9px] font-bold uppercase px-2 h-5 border-0",
+                         "text-[9px] font-bold uppercase px-2 h-5 border-0 rounded-md",
                          item.ownershipType === 'owned' ? "bg-blue-50 text-blue-600" : "bg-orange-50 text-orange-600"
                        )}>
                           {item.ownershipType}

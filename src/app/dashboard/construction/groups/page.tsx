@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -8,13 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   Users, Plus, Search, Loader2, 
-  Trash2, Edit3, 
-  Briefcase, HardHat, Filter, ArrowRight,
-  Building2, Check, LayoutGrid, AlertTriangle, X
+  ArrowRight, Filter
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, where, addDoc, serverTimestamp, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, where, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
@@ -40,13 +37,7 @@ export default function WorkGroupsPage() {
   const [loading, setLoading] = useState(false);
   
   const [form, setForm] = useState<Partial<WorkGroup>>({
-    name: '',
-    code: '',
-    departmentId: '',
-    departmentName: '',
-    supervisorId: '',
-    memberIds: [],
-    isActive: true
+    name: '', code: '', departmentId: '', supervisorId: '', memberIds: [], isActive: true
   });
 
   const groupsQuery = useMemo(() => 
@@ -72,10 +63,7 @@ export default function WorkGroupsPage() {
 
   const supervisors = useMemo(() => {
     return filteredEmployeesForSelection.filter(e => 
-      e.jobTitle?.includes('مراقب') || 
-      e.jobTitle?.includes('Supervisor') || 
-      e.jobTitle?.includes('مهندس') ||
-      e.jobTitle?.includes('رئيس')
+      e.jobTitle?.includes('مراقب') || e.jobTitle?.includes('Supervisor') || e.jobTitle?.includes('مهندس')
     );
   }, [filteredEmployeesForSelection]);
 
@@ -102,57 +90,52 @@ export default function WorkGroupsPage() {
         await addDoc(collection(db, paths.workGroups(companyId)), data);
       }
       
-      toast({ title: t('saved') });
+      toast({ title: t('common.saved') });
       setIsAddOpen(false);
-      resetForm();
+      setForm({ name: '', code: '', departmentId: '', supervisorId: '', memberIds: [], isActive: true });
     } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+      toast({ variant: "destructive", title: t('common.error') });
     } finally {
       setLoading(false);
     }
   };
 
-  const resetForm = () => {
-    setForm({ name: '', code: '', departmentId: '', departmentName: '', supervisorId: '', memberIds: [], isActive: true });
-  };
-
   const filteredGroups = (groups || []).filter(g => 
     g.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    g.supervisorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    g.departmentName.toLowerCase().includes(searchTerm.toLowerCase())
+    g.supervisorName?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <div className="space-y-4 w-full px-4 md:px-6 animate-in fade-in duration-500" dir={dir}>
+    <div className="space-y-4 w-full animate-in fade-in duration-500" dir={dir}>
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
            <h1 className="text-xl md:text-2xl font-bold text-slate-900">
-             {t('workGroups')}
+             {t('construction.groups')}
            </h1>
-           <p className="text-xs text-muted-foreground font-medium opacity-80">{isRtl ? 'إدارة أطقم الميدان والتخصصات.' : 'Field crew management.'}</p>
+           <p className="text-xs text-muted-foreground font-medium">{isRtl ? 'إدارة أطقم الميدان والتخصصات.' : 'Field crew management.'}</p>
         </div>
 
-        <Dialog open={isAddOpen} onOpenChange={(v) => { setIsAddOpen(v); if(!v) resetForm(); }}>
+        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="h-9 px-4 font-bold rounded-md shadow-sm">
-               <Plus className="h-4 w-4 me-2" /> {t('newGroup')}
+               <Plus className="h-4 w-4 me-2" /> {isRtl ? 'تكوين طاقم عمل' : 'New Group'}
             </Button>
           </DialogTrigger>
           <DialogContent className="rounded-lg p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl" dir={dir}>
-             <div className="bg-slate-50 p-6 text-slate-900 text-start flex items-center justify-between border-b">
-                <DialogTitle className="text-lg font-bold">{isRtl ? 'تكوين طاقم عمل' : 'Setup Crew'}</DialogTitle>
+             <div className="bg-slate-50 p-6 text-slate-900 text-start border-b">
+                <DialogTitle className="text-lg font-bold">{isRtl ? 'إعداد طاقم جديد' : 'Setup Crew'}</DialogTitle>
              </div>
              
-             <div className="p-6 space-y-4 text-start max-h-[60vh] overflow-y-auto scrollbar-hide bg-white">
+             <div className="p-6 space-y-4 text-start bg-white">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                    <div className="space-y-1.5">
                       <Label className="text-[10px] font-bold uppercase text-slate-400">اسم الطاقم</Label>
-                      <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="h-9 border-slate-200 text-xs font-medium" />
+                      <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="h-9 border-slate-200 text-xs font-medium rounded-md" />
                    </div>
                    <div className="space-y-1.5">
                       <Label className="text-[10px] font-bold uppercase text-slate-400">القسم المرجعي</Label>
                       <Select value={form.departmentId} onValueChange={v => setForm({...form, departmentId: v, supervisorId: '', memberIds: []})}>
-                         <SelectTrigger className="h-9 border-slate-200 text-xs font-medium">
+                         <SelectTrigger className="h-9 border-slate-200 text-xs font-medium rounded-md">
                             <SelectValue placeholder="..." />
                          </SelectTrigger>
                          <SelectContent className="rounded-md">
@@ -165,7 +148,7 @@ export default function WorkGroupsPage() {
                 <div className={cn("space-y-1.5", !form.departmentId && "opacity-30 pointer-events-none")}>
                    <Label className="text-[10px] font-bold uppercase text-slate-400">المشرف المسؤول</Label>
                    <Select value={form.supervisorId} onValueChange={v => setForm({...form, supervisorId: v})}>
-                      <SelectTrigger className="h-9 border-slate-200 text-xs font-medium"><SelectValue placeholder="..." /></SelectTrigger>
+                      <SelectTrigger className="h-9 border-slate-200 text-xs font-medium rounded-md"><SelectValue placeholder="..." /></SelectTrigger>
                       <SelectContent className="rounded-md">
                          {supervisors.map(s => <SelectItem key={s.id} value={s.id!} className="text-xs">{s.fullName}</SelectItem>)}
                       </SelectContent>
@@ -188,7 +171,7 @@ export default function WorkGroupsPage() {
                                }}
                                className={cn(
                                  "p-2 rounded-md cursor-pointer transition-all flex items-center gap-3 border",
-                                 isChecked ? "bg-white border-primary shadow-sm" : "bg-white/50 border-transparent hover:border-slate-200"
+                                 isChecked ? "bg-white border-primary shadow-sm" : "bg-white/50 border-transparent"
                                )}
                              >
                                 <Checkbox checked={isChecked} className="h-4 w-4 pointer-events-none" />
@@ -202,26 +185,26 @@ export default function WorkGroupsPage() {
              </div>
 
              <DialogFooter className="p-6 bg-slate-50 border-t">
-                <Button onClick={handleSave} disabled={loading || !form.name || !form.departmentId} size="sm" className="w-full h-10 font-bold">
-                   {loading ? <Loader2 className="animate-spin h-4 w-4" /> : (isRtl ? 'اعتماد الطاقم' : 'Confirm')}
+                <Button onClick={handleSave} disabled={loading || !form.name} size="sm" className="w-full h-10 font-bold rounded-md">
+                   {loading ? <Loader2 className="animate-spin h-4 w-4" /> : (isRtl ? 'حفظ الطاقم' : 'Save')}
                 </Button>
              </DialogFooter>
           </DialogContent>
         </Dialog>
       </header>
 
-      <Card className="rounded-lg shadow-sm border-slate-100 overflow-hidden bg-white">
-         <div className="p-3 flex flex-row items-center justify-between gap-4 bg-slate-50/30 border-b">
+      <Card className="rounded-lg shadow-sm border border-slate-100 overflow-hidden bg-white">
+         <div className="p-3 flex flex-row items-center justify-between gap-4 bg-slate-50/30">
             <div className="relative w-full max-w-sm">
                <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                <Input 
-                 placeholder={t('search')} 
-                 className="ps-9 h-9 border-slate-200 bg-white font-medium text-sm" 
+                 placeholder={t('common.search')} 
+                 className="ps-9 h-9 border-slate-200 bg-white font-medium text-sm rounded-md" 
                  value={searchTerm}
                  onChange={e => setSearchTerm(e.target.value)}
                />
             </div>
-            <Button variant="outline" size="sm" className="h-9 px-3 rounded-md font-bold text-xs"><Filter className="h-3.5 w-3.5 me-2" /> {isRtl ? 'تصفية' : 'Filters'}</Button>
+            <Button variant="outline" size="sm" className="h-9 px-3 rounded-md font-bold text-xs border-slate-200"><Filter className="h-3.5 w-3.5 me-2" /> {t('common.filter')}</Button>
          </div>
          <CardContent className="p-0 overflow-x-auto">
             <Table>
@@ -240,15 +223,15 @@ export default function WorkGroupsPage() {
                     <TableRow key={group.id} className="hover:bg-slate-50/50 border-b-slate-100 group cursor-pointer" onClick={() => { setForm(group); setIsAddOpen(true); }}>
                        <TableCell className="py-2.5 ps-6 text-start">
                           <div className="flex flex-col">
-                             <span className="font-bold text-slate-800 text-sm leading-none">{group.name}</span>
-                             <span className="text-[9px] text-slate-400 font-medium mt-1">{group.departmentName}</span>
+                             <span className="font-bold text-slate-800 text-sm">{group.name}</span>
+                             <span className="text-[9px] text-slate-400 font-medium">{group.departmentName}</span>
                           </div>
                        </TableCell>
                        <TableCell className="text-start">
                           <span className="text-xs font-medium text-slate-600">{group.supervisorName}</span>
                        </TableCell>
                        <TableCell className="text-center">
-                          <Badge variant="outline" className="font-bold border-slate-100 bg-slate-50 text-[10px] px-2">{group.memberCount} Staff</Badge>
+                          <Badge variant="outline" className="font-bold border-slate-100 bg-slate-50 text-[10px] px-2 rounded-md">{group.memberCount} Staff</Badge>
                        </TableCell>
                        <TableCell className="pe-6 text-end">
                           <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-300 group-hover:text-primary">

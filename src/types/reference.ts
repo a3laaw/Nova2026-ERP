@@ -1,5 +1,5 @@
 /**
- * @fileOverview تعريف واجهات البيانات المرجعية لنظام Nova ERP (الهيكل الموحد والقاموس السيادي).
+ * @fileOverview تعريف واجهات البيانات المرجعية لنظام Nova ERP.
  */
 
 export interface BaseReference {
@@ -9,17 +9,14 @@ export interface BaseReference {
   updatedAt?: any;
 }
 
-/**
- * القالب الأساسي للقوائم النظامية القابلة للتوسعة
- */
 export interface BaseReferenceList extends BaseReference {
   code: string;
   name: string;
   nameEn?: string;
   description?: string;
-  isSystem: boolean;   // هل السجل مضاف بواسطة النظام؟
-  isEditable: boolean; // هل يسمح للشركة بتعديل الاسم/الوصف?
-  isActive: boolean;   // هل السجل متاح للاستخدام في القوائم؟
+  isSystem: boolean;
+  isEditable: boolean;
+  isActive: boolean;
   order: number;
   createdBy?: string;
   updatedBy?: string;
@@ -29,12 +26,6 @@ export interface UnitType extends BaseReferenceList {
   symbol?: string;
   category?: string; 
 }
-
-export interface PaymentMethod extends BaseReferenceList {}
-export interface PaymentConditionType extends BaseReferenceList {}
-export interface MilestoneTimingType extends BaseReferenceList {}
-export interface ItemCategory extends BaseReferenceList {}
-export interface CostTypeCategory extends BaseReferenceList {}
 
 export interface Governorate extends BaseReference {
   name: string;
@@ -60,18 +51,6 @@ export interface MeetingRoom extends BaseReference {
   order: number;
 }
 
-export interface ServiceType extends BaseReference {
-  code: string;
-  name: string;
-  nameEn: string;
-  description?: string;
-  isActive: boolean;
-  order: number;
-  color?: string;
-  moduleScope?: string;
-}
-
-// الهياكل الهندسية الرباعية للمسارات الفنية
 export interface ActivityType extends BaseReference {
   code: string;
   name: string;
@@ -119,7 +98,7 @@ export interface TechnicalStage extends BaseReference {
   isRequired: boolean;
   isEditable: boolean;
   nextStageIds: string[];
-  allowedDepartmentIds?: string[]; // مضاف: الأقسام المسموح لها برؤية/تنفيذ هذه المرحلة
+  allowedDepartmentIds?: string[];
   isActive: boolean;
 }
 
@@ -129,7 +108,7 @@ export interface Department extends BaseReference {
   description?: string;
   order: number;
   isActive: boolean;
-  color?: string; // لون القسم المرجعي للتقارير
+  color?: string;
 }
 
 export interface Job extends BaseReference {
@@ -137,60 +116,45 @@ export interface Job extends BaseReference {
   departmentName?: string;
   name: string;
   nameEn: string;
-  roleId?: string;       // اختياري: لتمكين المهن (Trades) بدون وصول للنظام
-  roleName?: string;     // اختياري
-  roleCode?: string;     // اختياري
-  hourlyCost?: number;   // تكلفة الساعة المرجعية للوظيفة
+  roleId?: string;
+  roleName?: string;
+  roleCode?: string;
+  hourlyCost?: number;
   order: number;
   isActive: boolean;
 }
 
-/**
- * --- المرجع الشجري الديناميكي الموحد لبنود BOQ (Single Source of Truth) ---
- * المصدر السيادي الوحيد لكافة بنود الأعمال في النظام.
- */
 export type BOQNodeRole = 'group' | 'work_item';
 
 export interface BOQReferenceNode extends BaseReference {
-  code: string;               // كود البند الموحد
-  title: string;              // مسمى العقدة
-  description?: string;       // وصف تفصيلي
-  parentId: string | null;    // مرجع العقدة الأب
-  order: number;              // التترتيب داخل المستوى
-  childrenCount: number;      // عدد الأبناء المباشرين
-  depth: number;              // مستوى العمق (0 للجذر)
-  ancestorIds: string[];      // مصفوفة كافة الأباء في المسار العلوي
-  nodeRole: BOQNodeRole;      // دور العقدة (مجموعة أم بند تنفيذ)
-  isExecutable: boolean;      // هل يمكن استخدامها كبند تنفيذ فعلي؟
+  code: string;
+  title: string;
+  description?: string;
+  parentId: string | null;
+  order: number;
+  childrenCount: number;
+  depth: number;
+  ancestorIds: string[];
+  nodeRole: BOQNodeRole;
+  isExecutable: boolean;
   isActive: boolean;
   createdBy?: string;
   updatedBy?: string;
-
-  // الربط التشغيلي (للجذور والطبقات العليا) - موروث أو معرف مباشرة
   activityTypeId?: string;
   activityTypeName?: string;
   serviceId?: string;
   serviceName?: string;
   subServiceId?: string;
   subServiceName?: string;
-  
-  // وراثة الخدمات
-  inheritServices?: boolean;   // هل ترث الربط التشغيلي من الأب؟
-
-  // الخصائص الفنية والتنفيذية للبنود (Executable Items)
+  inheritServices?: boolean;
   unitTypeId?: string;
   unitName?: string;
   unitSymbol?: string;
-  
-  // الارتباط الفني المطور (متعدد)
-  technicalStageId?: string;        // المرحلة الفنية الافتراضية (Default)
-  technicalStageIds?: string[];     // كافة المراحل المرتبطة بهذا البند
-  
-  estimatedRate?: number;           // السعر المرجعي التقديري
+  technicalStageId?: string;
+  technicalStageIds?: string[];
+  estimatedRate?: number;
   billingTriggerGroup?: string;
-  allowedItemCategoryIds?: string[]; // تصنيف الأصناف (مخزني)
-
-  // حقول الربط المسموح (للفلترة والوراثة)
+  allowedItemCategoryIds?: string[];
   allowedServiceIds?: string[];
   allowedServiceNames?: string[];
   allowedActivityTypeIds?: string[];
