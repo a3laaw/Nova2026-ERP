@@ -317,9 +317,14 @@ export default function TransactionDetailsPage() {
            {isFieldProject && (
              <>
                {activeBoq ? (
-                 <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="btn-gradient h-10 px-6 rounded-xl gap-2">
-                    <FileSpreadsheet className="h-4 w-4" /> {isRtl ? 'عرض المقايسة' : 'View BOQ'}
-                 </Button>
+                 <div className="flex gap-2">
+                    <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="btn-gradient h-10 px-6 rounded-xl gap-2">
+                        <FileSpreadsheet className="h-4 w-4" /> {isRtl ? 'عرض المقايسة' : 'View BOQ'}
+                    </Button>
+                    <Button onClick={() => setIsVOOpen(true)} variant="outline" className="h-10 px-6 rounded-xl border-2 gap-2 text-primary border-primary/20 bg-white">
+                        <Sparkles className="h-4 w-4" /> {isRtl ? 'أمر تغييري' : 'New VO'}
+                    </Button>
+                 </div>
                ) : (
                  <Button onClick={() => setIsBoqInitOpen(true)} variant="outline" className="h-10 px-6 rounded-xl border-2 gap-2 text-primary border-primary/20 hover:bg-primary/5">
                     <FilePlus className="h-4 w-4" /> {isRtl ? 'إنشاء مقايسة' : 'Create BOQ'}
@@ -469,7 +474,8 @@ export default function TransactionDetailsPage() {
             <div className="p-10 space-y-8">
                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
                   <SelectTrigger className="h-14 rounded-2xl border-2 font-black text-lg"><SelectValue placeholder="..." /></SelectTrigger>
-                  <SelectContent className="rounded-2xl">{templates?.map(t => (<SelectItem key={t.id} value={t.id!} className="font-bold py-4">{t.name}</SelectItem>))}</SelectContent>
+                  <SelectContent className="rounded-2xl">
+                     {templates?.map(t => (<SelectItem key={t.id} value={t.id!} className="font-bold py-4">{t.name}</SelectItem>))}</SelectContent>
                </Select>
                <Button onClick={handleCreateBOQ} disabled={!selectedTemplateId || !!loadingAction} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl gap-3 shadow-xl shadow-primary/20 border-b-8 border-orange-700">{loadingAction ? <Loader2 className="animate-spin h-6 w-6" /> : <Sparkles className="h-6 w-6" />}{isRtl ? 'إنشاء المقايسة' : 'Generate'}</Button>
             </div>
