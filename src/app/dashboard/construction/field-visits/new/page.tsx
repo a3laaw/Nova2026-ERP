@@ -21,7 +21,7 @@ import {
   Building2, Briefcase, Globe, 
   ShieldCheck, UserCircle, X,
   AlertTriangle, Lock, Gavel,
-  Zap, Compass
+  Zap, Compass, ShieldAlert
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, where, getDocs, orderBy, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
