@@ -217,17 +217,24 @@ export class DocumentService {
 
     await updateDoc(docRef, updates);
 
-    // التحقق من شرط تفعيل المسار الفني
+    // التحقق من شرط تفعيل المسار الفني والعميل
     const finalStatus = data.status || updates.status || currentData.status;
-    if (['approved', 'paid', 'active'].includes(finalStatus) && currentData.transactionId) {
-       const transService = new TransactionService(this.db, this.companyId, this.permissions);
-       await transService.initializeTechnicalPath(
-         currentData.transactionId,
-         currentData.activityTypeId || '',
-         currentData.serviceId || '',
-         currentData.subServiceId || '',
-         userId
-       );
+    if (['approved', 'paid', 'active'].includes(finalStatus)) {
+       // 1. تفعيل العميل سيادياً كـ "متعاقد" لتمكين الزيارات الميدانية
+       const clientRef = doc(this.db, paths.clients(this.companyId), currentData.clientId);
+       await updateDoc(clientRef, { status: 'contracted', updatedAt: serverTimestamp() });
+
+       // 2. تفعيل المسار الفني
+       if (currentData.transactionId) {
+          const transService = new TransactionService(this.db, this.companyId, this.permissions);
+          await transService.initializeTechnicalPath(
+            currentData.transactionId,
+            currentData.activityTypeId || '',
+            currentData.serviceId || '',
+            currentData.subServiceId || '',
+            userId
+          );
+       }
     }
 
     if (currentData && !currentData.isHistoryRecorded) {

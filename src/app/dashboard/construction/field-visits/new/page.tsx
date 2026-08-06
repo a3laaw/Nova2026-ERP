@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, Suspense } from 'react';
@@ -37,10 +36,12 @@ import { Equipment } from '@/types/equipment';
 import { Department } from '@/types/reference';
 import { BOQ, BOQItem, Contract } from '@/types/documents';
 import { BOQExecutionService } from '@/services/boq-execution-service';
+import { usePermissions } from '@/hooks/use-permissions';
 
 function NewFieldVisitForm() {
   const { globalUser, user } = useAuthContext();
   const { lang, dir, t } = useLanguage();
+  const { isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -122,9 +123,22 @@ function NewFieldVisitForm() {
     return { workerIds };
   }, [dayExecutions]);
 
-  const clientsQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.clients(companyId)), where('status', '==', 'contracted')) : null, 
-  [db, companyId]);
+  // تحديث استعلام العملاء ليدعم العزل المعلوماتي (Sovereign Isolation)
+  const clientsQuery = useMemo(() => {
+    if (!companyId || !db) return null;
+    const base = collection(db, paths.clients(companyId));
+    
+    // فلترة سيادية: فقط المتعاقدون، وإذا لم يكن مديراً يرى فقط ما تم إسناده له
+    if (isAdmin) {
+      return query(base, where('status', '==', 'contracted'));
+    } else {
+      return query(base, 
+        where('status', '==', 'contracted'), 
+        where('assignedEngineerId', '==', globalUser?.employeeId || 'NONE')
+      );
+    }
+  }, [db, companyId, isAdmin, globalUser?.employeeId]);
+
   const { data: constructionClients } = useCollection<any>(clientsQuery);
 
   const projectsQuery = useMemo(() => 
@@ -391,6 +405,11 @@ function NewFieldVisitForm() {
                         <SelectTrigger className="h-11 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
                         <SelectContent className="rounded-xl border-2 shadow-2xl z-[150]">
                            {constructionClients?.map(c => <SelectItem key={c.id} value={c.id} className="font-bold">{c.nameAr}</SelectItem>)}
+                           {(!constructionClients || constructionClients.length === 0) && (
+                              <div className="p-4 text-center text-[10px] font-bold text-slate-400">
+                                 {isRtl ? 'لا يوجد عملاء متعاقدون حالياً.' : 'No contracted clients found.'}
+                              </div>
+                           )}
                         </SelectContent>
                      </Select>
                   </div>
