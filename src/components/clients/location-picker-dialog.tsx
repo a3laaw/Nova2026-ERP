@@ -53,12 +53,16 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
   const [isSearching, setIsSearching] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
 
-  // استخراج الإحداثيات من الرابط عند الفتح
+  // استخراج الإحداثيات من الرابط عند الفتح (Sovereign Parser)
   useEffect(() => {
     if (initialUrl && isOpen) {
       const match = initialUrl.match(/q=([-+]?\d+\.\d+),([-+]?\d+\.\d+)/) || initialUrl.match(/@([-+]?\d+\.\d+),([-+]?\d+\.\d+)/);
       if (match) {
-        setPosition([parseFloat(match[1]), parseFloat(match[2])]);
+        const lat = parseFloat(match[1]);
+        const lng = parseFloat(match[2]);
+        if (!isNaN(lat) && !isNaN(lng)) {
+          setPosition([lat, lng]);
+        }
       }
     }
   }, [initialUrl, isOpen]);
@@ -67,12 +71,13 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
    * خوارزمية البحث الذكية (Smart Search & Coordinate Detection)
    */
   const handleSearch = async () => {
-    const query = searchQuery.trim();
-    if (!query) return;
+    const queryStr = searchQuery.trim();
+    if (!queryStr) return;
 
     // 1. فحص ما إذا كان المدخل عبارة عن إحداثيات (Lat, Lng)
-    const coordRegex = /^([-+]?\d+\.\d+),\s*([-+]?\d+\.\d+)$/;
-    const coordMatch = query.match(coordRegex);
+    // يدعم الصيغ: 29.3, 47.9 أو 29.3 47.9
+    const coordRegex = /^([-+]?\d+\.\d+)[,\s]+([-+]?\d+\.\d+)$/;
+    const coordMatch = queryStr.match(coordRegex);
 
     if (coordMatch) {
       const lat = parseFloat(coordMatch[1]);
@@ -88,12 +93,15 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
     setIsSearching(true);
     try {
       // تعزيز البحث بكلمة الكويت لضمان دقة النتائج المحلية
-      const searchUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ' Kuwait')}&limit=1`;
+      const searchUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(queryStr + ' Kuwait')}&limit=1`;
       const res = await fetch(searchUrl);
       const data = await res.json();
       
       if (data && data.length > 0) {
-        setPosition([parseFloat(data[0].lat), parseFloat(data[0].lon)]);
+        const lat = parseFloat(data[0].lat);
+        const lng = parseFloat(data[0].lon);
+        setPosition([lat, lng]);
+        toast({ title: isRtl ? "تم العثور على الموقع" : "Location Found" });
       } else {
         toast({ 
           variant: "destructive", 
@@ -103,13 +111,14 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
       }
     } catch (e) {
       console.error("Search failed", e);
+      toast({ variant: "destructive", title: isRtl ? "فشل محرك البحث" : "Search Engine Failure" });
     } finally {
       setIsSearching(false);
     }
   };
 
   const handleLocateMe = () => {
-    if (!navigator.geolocation) {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
       toast({ variant: "destructive", title: "GPS Not Supported" });
       return;
     }
@@ -122,13 +131,13 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
       },
       () => {
         setIsLocating(false);
-        toast({ variant: "destructive", title: "GPS Access Denied" });
+        toast({ variant: "destructive", title: isRtl ? "تم رفض الوصول للموقع" : "GPS Access Denied" });
       }
     );
   };
 
   const handleConfirm = () => {
-    // توليد رابط جوجل ماب سيادي دقيق
+    // توليد رابط جوجل ماب سيادي دقيق للاستخدام في الملاحة
     const googleUrl = `https://www.google.com/maps?q=${position[0]},${position[1]}`;
     onSelect(googleUrl);
     onClose();
@@ -137,16 +146,17 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
-        <div className="bg-primary/5 p-8 text-slate-900 text-start flex items-center justify-between border-b shrink-0">
-           <div className="flex items-center gap-4">
+        <div className="bg-primary/5 p-8 text-slate-900 text-start flex items-center justify-between border-b shrink-0 relative">
+           <div className="flex items-center gap-4 relative z-10">
               <div className="h-12 w-12 bg-primary/20 rounded-2xl flex items-center justify-center text-primary shadow-lg ring-4 ring-primary/5">
                  <LocateFixed className="h-7 w-7" />
               </div>
               <div>
                  <DialogTitle className="text-2xl font-black font-headline">{isRtl ? 'رادار المواقع الذكي' : 'Smart Location Radar'}</DialogTitle>
-                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] mt-1">{isRtl ? 'ابحث بالمنطقة والقطعة أو الصق الإحداثيات مباشرة' : 'Search by Area/Block or Paste Coordinates'}</p>
+                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">{isRtl ? 'ابحث بالمنطقة والقطعة أو الصق الإحداثيات مباشرة' : 'Search by Area/Block or Paste Coordinates'}</p>
               </div>
            </div>
+           <Button variant="ghost" onClick={onClose} className="rounded-full h-10 w-10 text-slate-400 relative z-10"><X className="h-6 w-6" /></Button>
         </div>
 
         <div className="p-8 space-y-6">
@@ -157,7 +167,7 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
                    value={searchQuery}
                    onChange={e => setSearchQuery(e.target.value)}
                    onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                   placeholder={isRtl ? "المنطقة، القطعة، الشارع.. أو الإحداثيات (Lat, Lng)" : "Area, Block, Street.. or (Lat, Lng)"}
+                   placeholder={isRtl ? "مثال: الروضة قطعة 2، أو 29.3, 47.9" : "e.g. Rawda Block 2, or 29.3, 47.9"}
                    className="h-14 rounded-2xl border-2 ps-12 font-bold text-lg bg-slate-50/50 focus:bg-white transition-all shadow-inner"
                  />
                  {isSearching && <Loader2 className="absolute end-4 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-primary" />}
@@ -173,7 +183,7 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
               </Button>
            </div>
 
-           <div className="h-[450px] w-full rounded-[2.5rem] overflow-hidden border-4 border-slate-50 shadow-2xl relative group">
+           <div className="h-[450px] w-full rounded-[2.5rem] overflow-hidden border-4 border-slate-50 shadow-2xl relative group bg-slate-100">
               {isOpen && <MapView position={position} setPosition={setPosition} />}
               
               <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1000] pointer-events-none w-full px-10 flex justify-center">

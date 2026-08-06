@@ -217,14 +217,15 @@ export class DocumentService {
 
     await updateDoc(docRef, updates);
 
-    // التحقق من شرط تفعيل المسار الفني والعميل
-    const finalStatus = data.status || updates.status || currentData.status;
+    // --- الإنفاذ السيادي (Sovereign Enforcement) ---
+    // التحقق من شرط تفعيل حالة العميل آلياً فور دخول العقد حيز التنفيذ
+    const finalStatus = data.status || currentData.status;
     if (['approved', 'paid', 'active'].includes(finalStatus)) {
-       // 1. تفعيل العميل سيادياً كـ "متعاقد" لتمكين الزيارات الميدانية
+       // 1. ترقية العميل إلى "متعاقد" لفتح رادار الميدان
        const clientRef = doc(this.db, paths.clients(this.companyId), currentData.clientId);
        await updateDoc(clientRef, { status: 'contracted', updatedAt: serverTimestamp() });
 
-       // 2. تفعيل المسار الفني
+       // 2. تفعيل المسار الفني المرتبط
        if (currentData.transactionId) {
           const transService = new TransactionService(this.db, this.companyId, this.permissions);
           await transService.initializeTechnicalPath(
@@ -241,9 +242,9 @@ export class DocumentService {
       const clientService = new ClientService(this.db, this.companyId);
       await clientService.addHistory(currentData.clientId, {
         type: 'system_log',
-        content: `تم تحديث مستند تعاقدي للمعاملة: ${currentData.name}`,
+        content: `تم اعتماد وحفظ العقد النهائي وتفعيل الحالة التعاقدية للعميل.`,
         userId, 
-        userName: data.updatedBy || 'User', 
+        userName: data.updatedBy || 'System Admin', 
         companyId: this.companyId
       });
     }
