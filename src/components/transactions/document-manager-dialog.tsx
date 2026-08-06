@@ -56,10 +56,6 @@ interface Props {
   clientName: string;
 }
 
-/**
- * مدير المستندات الفنية والمالية.
- * تم تطهير اللون الكحلي بالكامل واستبداله بتصميم فاتح ومشرق بالألوان الجديدة.
- */
 export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction, clientId, clientName }: Props) {
   const { lang, dir, t } = useLanguage();
   const { globalUser, user } = useAuthContext();
@@ -96,13 +92,30 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
 
   const { data: documents, loading: docsLoading } = useCollection<any>(docsQuery);
 
+  // تحديث استعلام القوالب ليكون سيادياً مفلتراً حسب نوع النشاط والمسار
   const templatesQuery = useMemo(() => {
-    if (!companyId || !db) return null;
+    if (!companyId || !db || !transaction.activityTypeId) return null;
     const path = type === 'quotation' ? paths.quotationTemplates(companyId) : paths.contractTemplates(companyId);
-    return query(collection(db, path), where('isActive', '==', true));
-  }, [db, companyId, type]);
+    
+    // فلترة حصرية حسب النشاط لضمان عدم خلط قوالب المقاولات مع الاستشارات
+    return query(
+      collection(db, path), 
+      where('isActive', '==', true),
+      where('activityTypeId', '==', transaction.activityTypeId)
+    );
+  }, [db, companyId, type, transaction.activityTypeId]);
 
-  const { data: templates } = useCollection<any>(templatesQuery);
+  const { data: rawTemplates } = useCollection<any>(templatesQuery);
+
+  // إعطاء الأولوية للقالب المطابق للمسار الفني الدقيق
+  const templates = useMemo(() => {
+    if (!rawTemplates) return [];
+    return [...rawTemplates].sort((a, b) => {
+       if (a.subServiceId === transaction.subServiceId) return -1;
+       if (b.subServiceId === transaction.subServiceId) return 1;
+       return 0;
+    });
+  }, [rawTemplates, transaction.subServiceId]);
 
   const handleCreate = async () => {
     if (!db || !companyId || !user || !selectedTemplateId) return;
@@ -212,15 +225,29 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
                 
                 <div className="p-8 rounded-[2rem] bg-slate-50 border-2 border-slate-100 space-y-6 shadow-inner">
                    <div className="space-y-2">
-                      <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اختيار القالب المرجعي' : 'Choose Base Template'}</Label>
+                      <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">
+                         {isRtl ? `القوالب المتوافقة مع (${transaction.activityTypeName})` : `Templates matching ${transaction.activityTypeName}`}
+                      </Label>
                       <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
                          <SelectTrigger className="h-12 rounded-xl border-2 bg-white font-bold text-sm">
                             <SelectValue placeholder="..." />
                          </SelectTrigger>
                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
                             {templates?.map(temp => (
-                              <SelectItem key={temp.id} value={temp.id!} className="font-bold py-3 text-xs border-b last:border-0 border-slate-50">{temp.name}</SelectItem>
+                              <SelectItem key={temp.id} value={temp.id!} className="font-bold py-3 text-xs border-b last:border-0 border-slate-50">
+                                 <div className="flex flex-col text-start">
+                                    <span>{temp.name}</span>
+                                    {temp.subServiceId === transaction.subServiceId && (
+                                       <Badge className="bg-emerald-50 text-emerald-600 border-0 text-[7px] font-black h-4 w-fit mt-1">DIRECT MATCH</Badge>
+                                    )}
+                                 </div>
+                              </SelectItem>
                             ))}
+                            {templates.length === 0 && (
+                               <div className="p-6 text-center text-slate-400 text-xs italic">
+                                  No templates found for this activity.
+                               </div>
+                            )}
                          </SelectContent>
                       </Select>
                    </div>

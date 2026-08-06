@@ -55,25 +55,42 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
   const [docTypeToCreate, setDocTypeToCreate] = useState<'quotation' | 'contract' | null>(null);
   const [deletingContext, setDeletingContext] = useState<{ id: string, type: 'quotation' | 'contract' } | null>(null);
 
-  // جلب عروض الأسعار
+  // جلب عروض الأسعار المرتبطة بالمعاملة
   const quotesQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.quotations(companyId)), where('transactionId', '==', transaction.id)) : null, 
   [db, companyId, transaction.id]);
   const { data: quotes, loading: quotesLoading } = useCollection<any>(quotesQuery);
 
-  // جلب العقود
+  // جلب العقود المرتبطة بالمعاملة
   const contractsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.contracts(companyId)), where('transactionId', '==', transaction.id)) : null, 
   [db, companyId, transaction.id]);
   const { data: contracts, loading: contractsLoading } = useCollection<any>(contractsQuery);
 
-  // جلب القوالب
+  // جلب القوالب المفلترة سيادياً حسب نوع النشاط لضمان عدم التداخل (المقاولات تظهر قوالب المقاولات فقط)
   const templatesQuery = useMemo(() => {
-    if (!companyId || !db || !docTypeToCreate) return null;
+    if (!companyId || !db || !docTypeToCreate || !transaction.activityTypeId) return null;
     const path = docTypeToCreate === 'quotation' ? paths.quotationTemplates(companyId) : paths.contractTemplates(companyId);
-    return query(collection(db, path), where('isActive', '==', true));
-  }, [db, companyId, docTypeToCreate]);
-  const { data: templates } = useCollection<any>(templatesQuery);
+    
+    // الربط الذكي: البحث عن القوالب التي تنتمي لنفس النشاط (مقاولات/استشارات) ولها حالة نشطة
+    return query(
+      collection(db, path), 
+      where('isActive', '==', true),
+      where('activityTypeId', '==', transaction.activityTypeId)
+    );
+  }, [db, companyId, docTypeToCreate, transaction.activityTypeId]);
+  
+  const { data: rawTemplates } = useCollection<any>(templatesQuery);
+
+  // فرز القوالب: إعطاء الأولوية للقوالب المرتبطة بنفس المسار الفني المباشر
+  const templates = useMemo(() => {
+    if (!rawTemplates) return [];
+    return [...rawTemplates].sort((a, b) => {
+       if (a.subServiceId === transaction.subServiceId) return -1;
+       if (b.subServiceId === transaction.subServiceId) return 1;
+       return 0;
+    });
+  }, [rawTemplates, transaction.subServiceId]);
 
   const handleCreate = async () => {
     if (!db || !companyId || !docTypeToCreate || !selectedTemplateId) return;
@@ -222,7 +239,6 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
          />
       </div>
 
-      {/* مودال اختيار القالب - غير متداخل */}
       <Dialog open={!!docTypeToCreate} onOpenChange={(v) => !v && setDocTypeToCreate(null)}>
          <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
             <div className="bg-[#1e1b4b] p-10 text-white text-start">
@@ -233,13 +249,30 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
             </div>
             <div className="p-10 space-y-8 text-start bg-white">
                <div className="space-y-3">
-                  <Label className="font-black text-xs uppercase text-slate-400 tracking-widest">{isRtl ? 'اختر القالب المرجعي' : 'Choose Template'}</Label>
+                  <Label className="font-black text-xs uppercase text-slate-400 tracking-widest">
+                     {isRtl ? `اختر القالب المرجعي (${transaction.activityTypeName})` : `Choose Template (${transaction.activityTypeName})`}
+                  </Label>
                   <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
                      <SelectTrigger className="h-14 rounded-2xl border-2 font-black text-lg">
                         <SelectValue placeholder="..." />
                      </SelectTrigger>
                      <SelectContent className="rounded-2xl">
-                        {templates?.map(t => (<SelectItem key={t.id} value={t.id!} className="font-bold py-4">{t.name}</SelectItem>))}
+                        {templates?.map(t => (
+                          <SelectItem key={t.id} value={t.id!} className="font-bold py-4">
+                            <div className="flex flex-col text-start">
+                               <span>{t.name}</span>
+                               {t.subServiceId === transaction.subServiceId && (
+                                  <Badge className="bg-emerald-50 text-emerald-600 border-0 text-[7px] font-black h-4 w-fit mt-1">DIRECT MATCH</Badge>
+                               )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                        {templates.length === 0 && (
+                           <div className="p-8 text-center opacity-40">
+                              <AlertTriangle className="h-8 w-8 mx-auto text-amber-500 mb-2" />
+                              <p className="text-[10px] font-black uppercase">No Templates found for this Activity</p>
+                           </div>
+                        )}
                      </SelectContent>
                   </Select>
                </div>
@@ -251,7 +284,6 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
          </DialogContent>
       </Dialog>
 
-      {/* حوار تأكيد الحذف */}
       <AlertDialog open={!!deletingContext} onOpenChange={(v) => !v && setDeletingContext(null)}>
          <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white" dir={dir}>
             <AlertDialogHeader>
