@@ -106,7 +106,7 @@ export default function FieldVisitDetailsPage() {
         
         <div className="flex gap-2">
            {!visit.isVerified && isAdmin && !isReviewing && (
-             <Button onClick={handleVerify} disabled={verifying} size="sm" className="h-9 px-4 font-bold bg-emerald-600">
+             <Button onClick={handleVerify} disabled={verifying} size="sm" className="h-9 px-4 font-bold bg-emerald-600 text-white">
                 {verifying ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
                 {isRtl ? 'اعتماد للاستحقاق' : 'Verify'}
              </Button>
@@ -198,7 +198,7 @@ export default function FieldVisitDetailsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                <div className="space-y-3">
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><Users className="h-3.5 w-3.5 text-primary" /> Labor</h4>
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><Users className="h-3.5 w-3.5 text-primary" /> {t('common.labor')}</h4>
                   <div className="space-y-1.5">
                      {visit.laborDetails?.map((l: any, i: number) => (
                         <div key={i} className="flex justify-between items-center text-xs p-2.5 bg-slate-50 rounded-lg border border-slate-100">
@@ -206,10 +206,11 @@ export default function FieldVisitDetailsPage() {
                            <span className="font-bold text-slate-400">{l.count} Staff</span>
                         </div>
                      ))}
+                     {!visit.laborDetails?.length && <p className="text-[10px] text-slate-300 italic">No labor logs.</p>}
                   </div>
                </div>
                <div className="space-y-3">
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><Truck className="h-3.5 w-3.5 text-primary" /> Equipment</h4>
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><Truck className="h-3.5 w-3.5 text-primary" /> {t('common.equipment')}</h4>
                   <div className="space-y-1.5">
                      {visit.equipmentUsed?.map((e: any, i: number) => (
                         <div key={i} className="flex justify-between items-center text-xs p-2.5 bg-slate-50 rounded-lg border border-slate-100">
@@ -217,6 +218,7 @@ export default function FieldVisitDetailsPage() {
                            <span className="font-bold text-primary">{e.hoursUsed} hrs</span>
                         </div>
                      ))}
+                     {!visit.equipmentUsed?.length && <p className="text-[10px] text-slate-300 italic">No equipment logs.</p>}
                   </div>
                </div>
             </div>

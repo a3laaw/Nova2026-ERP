@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, Suspense } from 'react';
@@ -8,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
@@ -27,11 +25,9 @@ import { paths } from '@/firebase/multi-tenant';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Employee, WorkGroup } from '@/types/hr';
-import { Transaction, StageInstance } from '@/types/transaction';
+import { Transaction } from '@/types/transaction';
 import { Equipment } from '@/types/equipment';
-import { Department } from '@/types/reference';
-import { BOQ, BOQItem, Contract } from '@/types/documents';
-import { BOQExecutionService } from '@/services/boq-execution-service';
+import { BOQ, BOQItem } from '@/types/documents';
 import { usePermissions } from '@/hooks/use-permissions';
 
 function NewFieldVisitForm() {
@@ -52,15 +48,14 @@ function NewFieldVisitForm() {
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [visitDate, setVisitDate] = useState(new Date().toISOString().split('T')[0]);
   
-  const [selectedGroups, setSelectedGroups] = useState<any[]>([]);
-  const [individualLabor, setIndividualLabor] = useState<any[]>([]);
-  const [selectedDeptId, setSelectedDeptId] = useState('');
-  const [equipmentList, setEquipmentList] = useState<any[]>([]);
+  const [laborDetails, setLaborDetails] = useState<any[]>([{ trade: '', count: 1, hours: 8, hourlyCostRef: 0 }]);
+  const [equipmentUsed, setEquipmentUsed] = useState<any[]>([{ equipmentId: '', name: '', hoursUsed: 4, hourlyRateRef: 0 }]);
 
   const [gridRows, setGridRows] = useState<any[]>([
     { boqItemId: '', quantity: '', notes: '', photoUrls: [], isUploading: false }
   ]);
 
+  // استرجاع البيانات عند الاستنساخ
   useEffect(() => {
     async function fetchCloneData() {
       if (!cloneId || !db || !companyId) return;
@@ -69,40 +64,39 @@ function NewFieldVisitForm() {
         const data = snap.data();
         setSelectedClientId(data.clientId);
         setSelectedProjectId(data.transactionId);
-        if (data.laborDetails) {
-           const groups = data.laborDetails.filter((l: any) => l.type === 'group').map((g: any) => ({ id: g.id, name: g.trade, memberCount: g.count }));
-           setSelectedGroups(groups);
-           const individuals = data.laborDetails.filter((l: any) => l.type === 'individual').map((i: any) => ({ employeeId: i.employeeId, employeeName: i.employeeName || '---', trade: i.trade, hours: i.hours || 8, hourlyCostRef: i.hourlyCostRef || 0 }));
-           setIndividualLabor(individuals);
-        }
-        setEquipmentList(data.equipmentUsed || []);
+        if (data.laborDetails) setLaborDetails(data.laborDetails);
+        if (data.equipmentUsed) setEquipmentUsed(data.equipmentUsed);
         if (data.items) {
-           setGridRows(data.items.map((i: any) => ({ boqItemId: i.boqItemId, quantity: i.quantity, notes: i.notes, photoUrls: i.photoUrls || [], isUploading: false })));
+           setGridRows(data.items.map((i: any) => ({ 
+             boqItemId: i.boqItemId, 
+             quantity: i.quantity, 
+             notes: i.notes, 
+             photoUrls: i.photoUrls || [], 
+             isUploading: false 
+           })));
         }
       }
     }
     fetchCloneData();
   }, [cloneId, db, companyId]);
 
-  const allTransactionsQuery = useMemo(() => 
+  // الاستعلامات المرجعية
+  const transQuery = useMemo(() => 
     (companyId && db) ? query(collection(db, paths.transactions(companyId)), where('status', '!=', 'completed')) : null, [db, companyId]);
-  const { data: allActiveTransactions } = useCollection<Transaction>(allTransactionsQuery);
+  const { data: allTransactions } = useCollection<Transaction>(transQuery);
 
   const fieldProjects = useMemo(() => {
-    return (allActiveTransactions || []).filter(t => {
+    return (allTransactions || []).filter(t => {
       const isField = t.activityTypeName?.includes('مقاولات') || t.activityTypeName?.includes('Construction') || t.activityTypeName?.includes('Design & Build');
       if (!isAdmin && globalUser?.employeeId) return isField && t.assignedEngineerId === globalUser.employeeId;
       return isField;
     });
-  }, [allActiveTransactions, isAdmin, globalUser?.employeeId]);
+  }, [allTransactions, isAdmin, globalUser]);
 
-  const contractedClientsQuery = useMemo(() => companyId && db ? query(collection(db, paths.clients(companyId)), where('status', '==', 'contracted')) : null, [db, companyId]);
-  const { data: allContractedClients } = useCollection<any>(contractedClientsQuery);
+  const clientsQuery = useMemo(() => companyId && db ? query(collection(db, paths.clients(companyId)), where('status', '==', 'contracted')) : null, [db, companyId]);
+  const { data: contractedClients } = useCollection<any>(clientsQuery);
 
-  const constructionClients = useMemo(() => (allContractedClients || []).filter(c => fieldProjects.some(p => p.clientId === c.id)).sort((a, b) => a.nameAr.localeCompare(b.nameAr)), [allContractedClients, fieldProjects]);
   const clientProjects = useMemo(() => selectedClientId ? fieldProjects.filter(p => p.clientId === selectedClientId) : [], [fieldProjects, selectedClientId]);
-  const activeContract = useMemo(() => null, []); // Placeholder for logic
-  const isFinancialLockActive = false; // Logic omitted for brevity
 
   const boqQuery = useMemo(() => companyId && db && selectedProjectId ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', selectedProjectId)) : null, [db, companyId, selectedProjectId]);
   const { data: boqs } = useCollection<BOQ>(boqQuery);
@@ -111,17 +105,17 @@ function NewFieldVisitForm() {
   const itemsQuery = useMemo(() => companyId && db && activeBoq?.id ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
   const { data: boqItems } = useCollection<BOQItem>(itemsQuery);
 
-  const workGroups = []; // Simplified
-  const departments = []; // Simplified
-  const employees = []; // Simplified
-  const equipmentRegistry = []; // Simplified
+  const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
+  const { data: employees } = useCollection<Employee>(empsQuery);
+
+  const equipQuery = useMemo(() => companyId && db ? query(collection(db, paths.equipment(companyId)), where('status', '==', 'available')) : null, [db, companyId]);
+  const { data: equipmentRegistry } = useCollection<Equipment>(equipQuery);
 
   const handlePhotoUpload = async (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || !companyId || !firebaseApp) return;
     
     updateRow(idx, 'isUploading', true);
-    // تصحيح سيادي: استخدام نسخة التطبيق النشطة لضمان ربط الـ Storage
     const storage = getStorage(firebaseApp);
     const urls: string[] = [];
     
@@ -134,10 +128,7 @@ function NewFieldVisitForm() {
       }
       const newPhotos = [...gridRows[idx].photoUrls, ...urls];
       updateRow(idx, 'photoUrls', newPhotos);
-      toast({ title: isRtl ? "تم رفع الصور بنجاح" : "Photos uploaded" });
-    } catch (err) {
-      console.error("Storage Upload Error:", err);
-      toast({ variant: "destructive", title: isRtl ? "فشل الرفع" : "Upload failed" });
+      toast({ title: isRtl ? "تم رفع الصور" : "Photos uploaded" });
     } finally {
       updateRow(idx, 'isUploading', false);
     }
@@ -154,17 +145,28 @@ function NewFieldVisitForm() {
     setLoading(true);
     try {
       const visitRef = doc(collection(db, paths.fieldVisits(companyId)));
+      const project = allTransactions?.find(t => t.id === selectedProjectId);
+      
       await setDoc(visitRef, {
         id: visitRef.id,
         companyId,
         transactionId: selectedProjectId,
+        transactionNumber: project?.transactionNumber || '',
+        clientId: selectedClientId,
+        clientName: contractedClients?.find(c => c.id === selectedClientId)?.nameAr || '',
         visitDate,
-        items: gridRows.map(r => ({ ...r, executionStatus: 'pending' })),
+        items: gridRows.map(r => {
+           const boqItem = boqItems?.find(i => i.id === r.boqItemId);
+           return { ...r, itemName: boqItem?.referenceTitle || '', executionStatus: 'pending' };
+        }),
+        laborDetails: laborDetails.filter(l => l.trade),
+        equipmentUsed: equipmentUsed.filter(e => e.equipmentId),
+        engineerId: globalUser?.employeeId || user.uid,
         engineerName: globalUser?.fullName || 'Engineer',
         status: 'submitted',
         createdAt: serverTimestamp(),
       });
-      toast({ title: isRtl ? "تم الحفظ بنجاح" : "Saved" });
+      toast({ title: t('common.saved') });
       router.push('/dashboard/construction/field-visits');
     } finally {
       setLoading(false);
@@ -175,14 +177,14 @@ function NewFieldVisitForm() {
     <div className="space-y-4 w-full px-4 md:px-6 animate-in fade-in" dir={dir}>
       <div className="flex justify-between items-center border-b pb-4">
         <div className="text-start">
-           <h1 className="text-xl md:text-2xl font-bold text-slate-900">{isRtl ? 'توثيق ميداني' : 'Field Log'}</h1>
-           <p className="text-xs text-muted-foreground font-medium uppercase tracking-tight opacity-60">Sovereign Field Unit</p>
+           <h1 className="text-xl md:text-2xl font-bold text-slate-900">{isRtl ? 'توثيق إنجاز ميداني' : 'Field Progress Log'}</h1>
+           <p className="text-xs text-muted-foreground font-medium opacity-60 uppercase tracking-tighter">Sovereign Field Unit</p>
         </div>
         <div className="flex gap-2">
-           <Button variant="outline" size="sm" onClick={() => router.back()} className="h-9 font-bold">إلغاء</Button>
-           <Button onClick={handleSave} disabled={loading} size="sm" className="h-9 px-6 font-bold gap-2">
+           <Button variant="outline" size="sm" onClick={() => router.back()} className="h-9 font-bold">{t('common.cancel')}</Button>
+           <Button onClick={handleSave} disabled={loading || !selectedProjectId} size="sm" className="h-9 px-6 font-bold gap-2">
               {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
-              {isRtl ? 'حفظ التقرير' : 'Save Log'}
+              {t('common.saveReport')}
            </Button>
         </div>
       </div>
@@ -192,24 +194,93 @@ function NewFieldVisitForm() {
             <Card className="rounded-lg shadow-sm border-slate-100 bg-white">
                <CardHeader className="bg-slate-50 p-4 border-b">
                   <CardTitle className="text-xs font-bold uppercase text-slate-500 flex items-center gap-2">
-                     <Target className="h-4 w-4 text-primary" /> {isRtl ? 'سياق العمل' : 'Project Context'}
+                     <Target className="h-4 w-4 text-primary" /> {t('construction.context')}
                   </CardTitle>
                </CardHeader>
                <CardContent className="p-4 space-y-4">
                   <div className="space-y-1.5 text-start">
                      <Label className="text-[10px] font-bold uppercase text-slate-400">العميل</Label>
                      <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-                        <SelectTrigger className="h-9 text-sm font-medium"><SelectValue placeholder="..." /></SelectTrigger>
-                        <SelectContent>{constructionClients?.map(c => <SelectItem key={c.id} value={c.id} className="text-xs">{c.nameAr}</SelectItem>)}</SelectContent>
+                        <SelectTrigger className="h-9 text-sm font-medium border-slate-200"><SelectValue placeholder="..." /></SelectTrigger>
+                        <SelectContent className="rounded-lg">{contractedClients?.map(c => <SelectItem key={c.id} value={c.id} className="text-xs">{c.nameAr}</SelectItem>)}</SelectContent>
                      </Select>
                   </div>
                   <div className="space-y-1.5 text-start">
                      <Label className="text-[10px] font-bold uppercase text-slate-400">المشروع</Label>
                      <Select disabled={!selectedClientId} value={selectedProjectId} onValueChange={setSelectedProjectId}>
-                        <SelectTrigger className="h-9 text-sm font-medium"><SelectValue placeholder="..." /></SelectTrigger>
-                        <SelectContent>{clientProjects?.map(p => <SelectItem key={p.id} value={p.id} className="text-xs">{p.subServiceName}</SelectItem>)}</SelectContent>
+                        <SelectTrigger className="h-9 text-sm font-medium border-slate-200"><SelectValue placeholder="..." /></SelectTrigger>
+                        <SelectContent className="rounded-lg">{clientProjects?.map(p => <SelectItem key={p.id} value={p.id} className="text-xs">{p.subServiceName}</SelectItem>)}</SelectContent>
                      </Select>
                   </div>
+               </CardContent>
+            </Card>
+
+            <Card className="rounded-lg shadow-sm border-slate-100 bg-white">
+               <CardHeader className="bg-slate-50 p-4 border-b">
+                  <CardTitle className="text-xs font-bold uppercase text-slate-500 flex items-center gap-2">
+                     <Users className="h-4 w-4 text-primary" /> {t('common.labor')}
+                  </CardTitle>
+               </CardHeader>
+               <CardContent className="p-4 space-y-4">
+                  <div className="flex justify-between items-center mb-2">
+                     <span className="text-[10px] font-bold text-slate-400 uppercase">طاقم العمل</span>
+                     <Button variant="ghost" size="sm" onClick={() => setLaborDetails([...laborDetails, { trade: '', count: 1, hours: 8, hourlyCostRef: 0 }])} className="h-6 text-[10px]"><Plus className="h-3 w-3" /></Button>
+                  </div>
+                  {laborDetails.map((l, i) => (
+                    <div key={i} className="flex gap-2 items-end group">
+                       <div className="flex-1">
+                          <Select onValueChange={v => {
+                             const emp = employees?.find(x => x.fullName === v);
+                             const nl = [...laborDetails];
+                             nl[i].trade = v;
+                             nl[i].hourlyCostRef = (emp?.basicSalary || 0) / 26 / 8;
+                             setLaborDetails(nl);
+                          }}>
+                             <SelectTrigger className="h-8 text-[11px]"><SelectValue placeholder="التخصص/الموظف..." /></SelectTrigger>
+                             <SelectContent className="rounded-lg">
+                                {employees?.map(e => <SelectItem key={e.id} value={e.fullName} className="text-[10px]">{e.fullName} ({e.jobTitle})</SelectItem>)}
+                             </SelectContent>
+                          </Select>
+                       </div>
+                       <Input type="number" value={l.count} onChange={e => { const nl = [...laborDetails]; nl[i].count = Number(e.target.value); setLaborDetails(nl); }} className="h-8 w-12 text-center text-xs" />
+                       <Trash2 className="h-4 w-4 text-slate-200 cursor-pointer hover:text-rose-500 mb-2 opacity-0 group-hover:opacity-100" onClick={() => setLaborDetails(laborDetails.filter((_, idx) => idx !== i))} />
+                    </div>
+                  ))}
+               </CardContent>
+            </Card>
+
+            <Card className="rounded-lg shadow-sm border-slate-100 bg-white">
+               <CardHeader className="bg-slate-50 p-4 border-b">
+                  <CardTitle className="text-xs font-bold uppercase text-slate-500 flex items-center gap-2">
+                     <Truck className="h-4 w-4 text-primary" /> {t('common.equipment')}
+                  </CardTitle>
+               </CardHeader>
+               <CardContent className="p-4 space-y-4">
+                  <div className="flex justify-between items-center mb-2">
+                     <span className="text-[10px] font-bold text-slate-400 uppercase">المعدات والآليات</span>
+                     <Button variant="ghost" size="sm" onClick={() => setEquipmentUsed([...equipmentUsed, { equipmentId: '', hoursUsed: 4, hourlyRateRef: 0 }])} className="h-6 text-[10px]"><Plus className="h-3 w-3" /></Button>
+                  </div>
+                  {equipmentUsed.map((e, i) => (
+                    <div key={i} className="flex gap-2 items-center group">
+                       <div className="flex-1">
+                          <Select onValueChange={v => {
+                             const eq = equipmentRegistry?.find(x => x.id === v);
+                             const ne = [...equipmentUsed];
+                             ne[i].equipmentId = v;
+                             ne[i].name = eq?.name || '';
+                             ne[i].hourlyRateRef = eq?.hourlyRentalRate || eq?.hourlyDepreciationRate || 0;
+                             setEquipmentUsed(ne);
+                          }}>
+                             <SelectTrigger className="h-8 text-[11px]"><SelectValue placeholder="المعدة..." /></SelectTrigger>
+                             <SelectContent className="rounded-lg">
+                                {equipmentRegistry?.map(eq => <SelectItem key={eq.id} value={eq.id!} className="text-[10px]">{eq.name} (#{eq.code})</SelectItem>)}
+                             </SelectContent>
+                          </Select>
+                       </div>
+                       <Input type="number" value={e.hoursUsed} onChange={v => { const ne = [...equipmentUsed]; ne[i].hoursUsed = Number(v.target.value); setEquipmentUsed(ne); }} className="h-8 w-12 text-center text-xs" />
+                       <Trash2 className="h-4 w-4 text-slate-200 cursor-pointer hover:text-rose-500 opacity-0 group-hover:opacity-100" onClick={() => setEquipmentUsed(equipmentUsed.filter((_, idx) => idx !== i))} />
+                    </div>
+                  ))}
                </CardContent>
             </Card>
          </div>
@@ -217,16 +288,18 @@ function NewFieldVisitForm() {
          <div className="lg:col-span-8">
             <Card className="rounded-lg shadow-sm border-slate-100 bg-white overflow-hidden">
                <CardHeader className="bg-slate-50 p-4 border-b flex flex-row justify-between items-center">
-                  <CardTitle className="text-sm font-bold text-slate-700 flex items-center gap-2"><LayoutGrid className="h-4 w-4" /> {isRtl ? 'الأعمال المنجزة' : 'Work Grid'}</CardTitle>
-                  <Button variant="outline" size="sm" onClick={() => setGridRows([...gridRows, { boqItemId: '', quantity: '', notes: '', photoUrls: [], isUploading: false }])} className="h-7 text-[10px] font-bold">إضافة سطر</Button>
+                  <CardTitle className="text-sm font-bold text-slate-700 flex items-center gap-2"><LayoutGrid className="h-4 w-4" /> {t('construction.siteProgress')}</CardTitle>
+                  <Button variant="outline" size="sm" onClick={() => setGridRows([...gridRows, { boqItemId: '', quantity: '', notes: '', photoUrls: [], isUploading: false }])} className="h-7 text-[10px] font-bold gap-2">
+                     <Plus className="h-3 w-3" /> {t('common.addLabel')}
+                  </Button>
                </CardHeader>
                <CardContent className="p-0">
                   <Table>
                      <TableHeader className="bg-slate-50/50">
                         <TableRow className="border-0">
                            <TableHead className="text-[10px] font-bold uppercase ps-4">البند</TableHead>
-                           <TableHead className="text-center w-[80px] text-[10px] font-bold uppercase">الكمية</TableHead>
-                           <TableHead className="text-center w-[80px] text-[10px] font-bold uppercase">الصور</TableHead>
+                           <TableHead className="text-center w-[100px] text-[10px] font-bold uppercase">الكمية</TableHead>
+                           <TableHead className="text-center w-[100px] text-[10px] font-bold uppercase">الصور</TableHead>
                            <TableHead className="pe-4"></TableHead>
                         </TableRow>
                      </TableHeader>
@@ -235,25 +308,28 @@ function NewFieldVisitForm() {
                            <TableRow key={idx} className="border-b-slate-50 group">
                               <TableCell className="ps-4 py-3">
                                  <Select value={row.boqItemId} onValueChange={v => updateRow(idx, 'boqItemId', v)}>
-                                    <SelectTrigger className="h-8 text-[11px] font-medium bg-white"><SelectValue placeholder="..." /></SelectTrigger>
-                                    <SelectContent>{boqItems?.map(i => <SelectItem key={i.id} value={i.id!} className="text-[10px]">{i.referenceTitle}</SelectItem>)}</SelectContent>
+                                    <SelectTrigger className="h-8 text-[11px] font-medium bg-white border-slate-200"><SelectValue placeholder="..." /></SelectTrigger>
+                                    <SelectContent className="rounded-lg">{boqItems?.map(i => <SelectItem key={i.id} value={i.id!} className="text-[10px]">{i.referenceTitle}</SelectItem>)}</SelectContent>
                                  </Select>
                               </TableCell>
-                              <TableCell><Input value={row.quantity} onChange={e => updateRow(idx, 'quantity', e.target.value)} className="h-8 text-center text-xs font-bold" /></TableCell>
+                              <TableCell><Input value={row.quantity} onChange={e => updateRow(idx, 'quantity', e.target.value)} className="h-8 text-center text-xs font-bold border-slate-200" /></TableCell>
                               <TableCell className="text-center">
                                  <div className="flex items-center justify-center gap-2">
-                                    <label className="h-8 w-8 rounded-md bg-white border flex items-center justify-center cursor-pointer hover:bg-slate-50">
+                                    <label className="h-8 w-8 rounded-md bg-white border border-slate-200 flex items-center justify-center cursor-pointer hover:bg-slate-50">
                                        <Camera className="h-4 w-4 text-slate-400" />
                                        <input type="file" multiple accept="image/*" className="hidden" onChange={e => handlePhotoUpload(idx, e)} />
                                     </label>
-                                    {row.photoUrls.length > 0 && <span className="text-[10px] font-bold text-emerald-600">{row.photoUrls.length}</span>}
+                                    {row.photoUrls.length > 0 && <span className="text-[10px] font-black text-emerald-600">{row.photoUrls.length}</span>}
                                  </div>
                               </TableCell>
-                              <TableCell className="pe-4"><Trash2 className="h-4 w-4 text-slate-300 cursor-pointer hover:text-rose-500" onClick={() => setGridRows(gridRows.filter((_, i) => i !== idx))} /></TableCell>
+                              <TableCell className="pe-4"><Trash2 className="h-4 w-4 text-slate-200 cursor-pointer hover:text-rose-500 opacity-0 group-hover:opacity-100" onClick={() => setGridRows(gridRows.filter((_, i) => i !== idx))} /></TableCell>
                            </TableRow>
                         ))}
                      </TableBody>
                   </Table>
+                  {gridRows.length === 0 && (
+                    <div className="p-20 text-center text-slate-300 italic text-sm">أضف بنود الإنجاز للتقرير.</div>
+                  )}
                </CardContent>
             </Card>
          </div>

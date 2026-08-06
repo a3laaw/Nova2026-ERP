@@ -18,31 +18,34 @@ export function BreadcrumbNav() {
 
   // خريطة ترجمة المسارات لضمان ظهورها بشكل احترافي
   const routeMap: Record<string, string> = {
-    dashboard: t('dashboard'),
-    crm: t('crm'),
-    clients: t('clients'),
-    projects: t('projects'),
-    hr: t('hr'),
-    employees: t('staffRecords'),
-    leaves: t('leaves'),
-    permissions: t('permissions'),
-    attendance: t('attendance'),
-    payroll: t('payroll'),
-    gratuity: t('gratuity'),
-    accounting: t('accounting'),
-    inventory: t('inventory'),
-    procurement: t('procurement'),
-    suppliers: t('suppliers'),
-    settings: t('settings'),
-    profile: t('profile'),
-    company: t('companyIdentity'),
-    checklists: t('checklists'),
-    roles: t('rolesRef'),
-    'work-hours': t('workHours'),
-    templates: t('templates'),
-    quotes: t('quoteAnalysis'),
-    new: isRtl ? 'إضافة جديد' : 'New',
-    edit: isRtl ? 'تعديل' : 'Edit',
+    dashboard: t('common.dashboard'),
+    crm: t('common.crm'),
+    clients: t('common.clients'),
+    projects: t('common.projects'),
+    hr: t('common.hr'),
+    employees: t('hr.staff'),
+    leaves: t('hr.leaves'),
+    permissions: t('hr.permissions'),
+    attendance: t('hr.attendance'),
+    payroll: t('hr.payroll'),
+    gratuity: t('hr.gratuity'),
+    accounting: t('common.accounting'),
+    inventory: t('common.inventory'),
+    procurement: t('common.procurement'),
+    suppliers: t('common.suppliers'),
+    settings: t('common.settings'),
+    profile: t('common.profile'),
+    company: t('common.companyIdentity'),
+    checklists: t('common.checklists'),
+    roles: t('common.rolesRef'),
+    'work-hours': t('common.workHours'),
+    templates: t('common.templates'),
+    quotes: t('common.quoteAnalysis'),
+    'field-visits': t('construction.reports'),
+    construction: t('common.construction'),
+    bookings: t('construction.radar'),
+    new: t('common.new'),
+    edit: t('common.edit'),
   };
 
   const formatSegment = (segment: string) => {
@@ -62,7 +65,7 @@ export function BreadcrumbNav() {
         variant="ghost" 
         size="icon" 
         onClick={() => router.back()}
-        className="h-9 w-9 rounded-xl bg-white shadow-sm border border-slate-200 text-slate-400 hover:text-primary hover:border-primary/20 transition-all shrink-0"
+        className="h-9 w-9 rounded-xl bg-white shadow-sm border border-slate-200 text-slate-400 hover:text-primary transition-all shrink-0"
       >
         <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
       </Button>

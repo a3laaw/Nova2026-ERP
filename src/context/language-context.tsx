@@ -17,7 +17,7 @@ const translations: Record<Language, Record<string, any>> = {
     common: {
       dashboard: 'لوحة التحكم',
       crm: 'العملاء والفرص',
-      leads: 'الفرص والمبايعات',
+      leads: 'الفرص والمبيعات',
       clients: 'قاعدة بيانات العملاء',
       projects: 'المشاريع والمعاملات',
       construction: 'العمليات الميدانية',
@@ -35,7 +35,7 @@ const translations: Record<Language, Record<string, any>> = {
       actions: 'إجراءات',
       loading: 'جاري التحميل...',
       details: 'تفاصيل',
-      new: 'جديد',
+      new: 'إضافة جديد',
       confirm: 'تأكيد',
       all: 'الكل',
       active: 'نشط',
@@ -59,7 +59,11 @@ const translations: Record<Language, Record<string, any>> = {
       code: 'الكود',
       description: 'الوصف',
       switchLang: 'English',
-      logout: 'تسجيل الخروج'
+      logout: 'تسجيل الخروج',
+      addLabel: 'إضافة سطر',
+      saveReport: 'حفظ التقرير الميداني',
+      labor: 'العمالة والموارد البشرية',
+      equipment: 'المعدات والآليات الميدانية'
     },
     dashboard: {
       title: 'نظرة عامة على العمليات',
@@ -105,7 +109,9 @@ const translations: Record<Language, Record<string, any>> = {
       radar: 'رادار العمليات الميدانية',
       groups: 'مجموعات العمل',
       equipment: 'سجل المعدات والآليات',
-      reports: 'زيارات المواقع المنفذة'
+      reports: 'زيارات المواقع المنفذة',
+      context: 'سياق العمل والموقع',
+      siteProgress: 'الأعمال والكميات المنجزة'
     },
     hr: {
       title: 'شؤون الموظفين والامتثال',
@@ -139,7 +145,7 @@ const translations: Record<Language, Record<string, any>> = {
       actions: 'Actions',
       loading: 'Loading...',
       details: 'Details',
-      new: 'New',
+      new: 'Add New',
       confirm: 'Confirm',
       all: 'All',
       active: 'Active',
@@ -163,7 +169,11 @@ const translations: Record<Language, Record<string, any>> = {
       code: 'Code',
       description: 'Description',
       switchLang: 'العربية',
-      logout: 'Logout'
+      logout: 'Logout',
+      addLabel: 'Add Row',
+      saveReport: 'Save Field Report',
+      labor: 'Labor & Manpower',
+      equipment: 'Site Equipment & Assets'
     },
     dashboard: {
       title: 'Operations Overview',
@@ -209,7 +219,9 @@ const translations: Record<Language, Record<string, any>> = {
       radar: 'Field Ops Radar',
       groups: 'Work Crews',
       equipment: 'Equipment Registry',
-      reports: 'Site Reports'
+      reports: 'Site Reports',
+      context: 'Work Context & Project',
+      siteProgress: 'Work Progress & Quantities'
     },
     hr: {
       title: 'HR & Compliance',
