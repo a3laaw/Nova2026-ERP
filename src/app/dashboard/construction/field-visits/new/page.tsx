@@ -112,20 +112,17 @@ function NewFieldVisitForm() {
 
   // --- Queries ---
 
-  // 1. جلب كافة المعاملات النشطة في الشركة لفرز العملاء والنشاطات
   const allTransactionsQuery = useMemo(() => 
     (companyId && db) ? query(collection(db, paths.transactions(companyId)), where('status', '!=', 'completed')) : null,
   [db, companyId]);
   const { data: allActiveTransactions } = useCollection<Transaction>(allTransactionsQuery);
 
-  // 2. فلترة المعاملات الميدانية حصراً (مقاولات أو تصميم وبناء)
   const fieldProjects = useMemo(() => {
     return (allActiveTransactions || []).filter(t => {
       const isField = t.activityTypeName?.includes('مقاولات') || 
                       t.activityTypeName?.includes('Construction') || 
                       t.activityTypeName?.includes('Design & Build');
       
-      // العزل السيادي: المهندس يرى مشاريعه، المدير يرى الكل
       if (!isAdmin && globalUser?.employeeId) {
         return isField && t.assignedEngineerId === globalUser.employeeId;
       }
@@ -133,27 +130,23 @@ function NewFieldVisitForm() {
     });
   }, [allActiveTransactions, isAdmin, globalUser?.employeeId]);
 
-  // 3. جلب كافة العملاء المتعاقدين
   const contractedClientsQuery = useMemo(() => {
     if (!companyId || !db) return null;
     return query(collection(db, paths.clients(companyId)), where('status', '==', 'contracted'));
   }, [db, companyId]);
   const { data: allContractedClients } = useCollection<any>(contractedClientsQuery);
 
-  // 4. الفرز النهائي للعملاء: يظهر العميل فقط إذا كان لديه مشروع "ميداني" نشط
   const constructionClients = useMemo(() => {
     return (allContractedClients || []).filter(c => 
       fieldProjects.some(p => p.clientId === c.id)
     ).sort((a, b) => a.nameAr.localeCompare(b.nameAr));
   }, [allContractedClients, fieldProjects]);
 
-  // 5. مشاريع العميل المختار (مفلترة ميدانياً)
   const clientProjects = useMemo(() => {
     if (!selectedClientId) return [];
     return fieldProjects.filter(p => p.clientId === selectedClientId);
   }, [fieldProjects, selectedClientId]);
 
-  // استعلام العقود للتحقق من الاعتماد المالي للمشروع المختار
   const contractsQuery = useMemo(() => 
     companyId && db && selectedProjectId ? query(collection(db, paths.contracts(companyId)), where('transactionId', '==', selectedProjectId)) : null,
   [db, companyId, selectedProjectId]);
@@ -187,10 +180,12 @@ function NewFieldVisitForm() {
 
   const groupsQuery = useMemo(() => companyId && db ? query(collection(db, paths.workGroups(companyId)), where('isActive', '==', true)) : null, [db, companyId]);
   const deptsQuery = useMemo(() => companyId && db ? query(collection(db, paths.departments(companyId)), orderBy('order')) : null, [db, companyId]);
+  const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
   const equipQuery = useMemo(() => companyId && db ? query(collection(db, paths.equipment(companyId)), where('isActive', '==', true)) : null, [db, companyId]);
   
   const { data: workGroups } = useCollection<WorkGroup>(groupsQuery);
   const { data: departments } = useCollection<Department>(deptsQuery);
+  const { data: employees } = useCollection<Employee>(empsQuery);
   const { data: equipmentRegistry } = useCollection<Equipment>(equipQuery);
 
   const selectedClient = useMemo(() => constructionClients?.find(c => c.id === selectedClientId), [constructionClients, selectedClientId]);
@@ -257,7 +252,7 @@ function NewFieldVisitForm() {
   };
 
   const handleAddEmployee = (v: string) => {
-    const emp = (allEmployees || [])?.find(e => e.id === v);
+    const emp = (employees || [])?.find(e => e.id === v);
     if (!emp) return;
     if (activeSelectedMemberIds.has(v)) return;
     setIndividualLabor([...individualLabor, {
