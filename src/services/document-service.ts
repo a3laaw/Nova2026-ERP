@@ -218,10 +218,9 @@ export class DocumentService {
     await updateDoc(docRef, updates);
 
     // --- الإنفاذ السيادي (Sovereign Enforcement) ---
-    // التحقق من شرط تفعيل حالة العميل آلياً فور دخول العقد حيز التنفيذ
     const finalStatus = data.status || currentData.status;
     if (['approved', 'paid', 'active'].includes(finalStatus)) {
-       // 1. ترقية العميل إلى "متعاقد" لفتح رادار الميدان
+       // 1. ترقية العميل إلى "متعاقد" لفتح رادار الميدان فوراً
        const clientRef = doc(this.db, paths.clients(this.companyId), currentData.clientId);
        await updateDoc(clientRef, { status: 'contracted', updatedAt: serverTimestamp() });
 

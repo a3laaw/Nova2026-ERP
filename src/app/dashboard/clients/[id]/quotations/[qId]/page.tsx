@@ -38,10 +38,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-/**
- * صفحة عرض عرض السعر (Official Quotation View).
- * تم تطهير اللون الكحلي بالكامل واستبداله بتصميم فاتح ومشرق.
- */
 export default function QuotationViewPage() {
   const params = useParams();
   const quotationId = params.qId as string;
@@ -111,6 +107,9 @@ export default function QuotationViewPage() {
         ? stats.totalItemizedAmount 
         : (editData.totalAmount || quote?.totalAmount || 0);
       
+      // الترقية التلقائية للحالة لفتح الربط بالعميل
+      const newStatus = (quote?.status === 'draft' && !quote.isHistoryRecorded) ? 'approved' : editData.status;
+
       const { id, createdAt, updatedAt, ...sanitizedData } = editData as any;
       const finalItems = (editData.items || [])
         .filter((i: any) => !i.deleted)
@@ -121,6 +120,7 @@ export default function QuotationViewPage() {
 
       await service.updateQuotation(quotationId, {
         ...sanitizedData,
+        status: newStatus,
         items: finalItems,
         totalAmount: finalAmount,
         updatedByName: globalUser?.username || user.displayName || 'Admin'
@@ -202,10 +202,6 @@ export default function QuotationViewPage() {
     ? (editData.pricingMode === 'itemized' ? stats.totalItemizedAmount : (editData.totalAmount || quote.totalAmount || 0))
     : (quote.totalAmount || 0);
 
-  const getTimingLabel = (time: MilestoneTiming) => {
-    return t(time);
-  };
-
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-700 bg-[#fdfaf3]" dir={dir}>
       <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 print:hidden px-6 pt-6 text-start">
@@ -261,14 +257,14 @@ export default function QuotationViewPage() {
 
       <PrintWrapper title={isRtl ? "عرض سعر فني ومالي" : "Technical & Financial Proposal"} className="mt-2">
          <div className="space-y-8 text-start">
-            <div className="p-6 bg-primary/5 rounded-[2rem] border-2 border-dashed border-primary/20 flex items-center justify-between gap-4 shadow-sm print:hidden">
+            <div className="p-4 bg-primary/5 rounded-xl border-2 border-dashed border-primary/20 flex items-center justify-between gap-4 shadow-sm print:hidden">
                 <div className="flex items-center gap-4 text-start">
                   <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-lg"><Calculator className="h-5 w-5" /></div>
                   <div>
                     <p className="text-[7px] font-black uppercase text-primary tracking-widest">Pricing Mode</p>
                     {isEditing ? (
                       <Select value={editData.pricingMode} onValueChange={(v: PricingMode) => setEditForm({...editData, pricingMode: v})}>
-                         <SelectTrigger className="h-10 w-40 rounded-xl border-2 bg-white text-slate-900 font-black text-xs mt-1"><SelectValue /></SelectTrigger>
+                         <SelectTrigger className="h-8 w-32 rounded-md border-2 bg-white text-slate-900 font-black text-xs mt-0.5"><SelectValue /></SelectTrigger>
                          <SelectContent className="rounded-xl border-2 shadow-2xl">
                             <SelectItem value="itemized" className="font-bold text-xs">{t('itemized')}</SelectItem>
                             <SelectItem value="fixed" className="font-bold text-xs">{t('fixed')}</SelectItem>
@@ -280,7 +276,7 @@ export default function QuotationViewPage() {
                 </div>
                 
                 {(editData.pricingMode === 'percentage' || editData.pricingMode === 'fixed') && (
-                  <div className="space-y-1 text-start w-48">
+                  <div className="space-y-1 text-start w-32">
                      <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'الميزانية المستهدفة' : 'Target Budget'}</Label>
                      {isEditing ? (
                        <div className="relative">
@@ -288,11 +284,11 @@ export default function QuotationViewPage() {
                             type="number" 
                             value={editData.totalAmount === 0 ? "" : editData.totalAmount} 
                             onChange={e => setEditForm({...editData, totalAmount: e.target.value === "" ? 0 : Number(e.target.value)})} 
-                            className="h-10 rounded-xl border-2 bg-white text-slate-900 font-black text-xl text-center shadow-inner" 
+                            className="h-8 rounded-lg border-2 bg-white text-slate-900 font-black text-lg text-center shadow-inner" 
                           />
-                          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-300">KWD</div>
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-300">KWD</div>
                        </div>
-                     ) : <p className="font-black text-2xl text-slate-900">{(editData.totalAmount || 0).toLocaleString()} <span className="text-xs text-slate-400">KWD</span></p>}
+                     ) : <p className="font-black text-xl text-slate-900">{(editData.totalAmount || 0).toLocaleString()} <span className="text-xs text-slate-400">KWD</span></p>}
                   </div>
                 )}
             </div>
@@ -306,20 +302,10 @@ export default function QuotationViewPage() {
                   <div className="space-y-0.5">
                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'الموضوع /' : 'Subject:'}</p>
                      {isEditing ? (
-                        <Input value={editData.name} onChange={e => setEditForm({...editData, name: e.target.value})} className="font-bold border-2 h-12 rounded-xl text-sm" />
+                        <Input value={editData.name} onChange={e => setEditForm({...editData, name: e.target.value})} className="font-bold border-2 h-10 rounded-xl text-sm" />
                      ) : (
                         <p className="text-base font-black text-primary">{quote.name}</p>
                      )}
-                  </div>
-               </div>
-               <div className="text-start md:text-end">
-                  <div className="bg-slate-50/50 p-6 rounded-3xl border-2 border-white shadow-inner inline-block min-w-[200px]">
-                     <div className="space-y-1.5">
-                        <div className="flex justify-between items-center text-[10px] font-black uppercase gap-6">
-                           <span className="text-slate-400">{isRtl ? 'تاريخ الإصدار' : 'Issue Date'}</span>
-                           <span className="text-slate-900">{(quote.createdAt?.toDate ? quote.createdAt.toDate() : new Date()).toLocaleDateString()}</span>
-                        </div>
-                     </div>
                   </div>
                </div>
             </div>
@@ -364,13 +350,13 @@ export default function QuotationViewPage() {
                                 <td className="p-4 text-start">
                                    {isEditing ? (
                                       <div className="space-y-2">
-                                         <Input value={item.label} onChange={e => updateItem(originalIdx, 'label', e.target.value)} className="h-10 rounded-xl font-black text-sm bg-white" />
-                                         <Input value={item.description} onChange={e => updateItem(originalIdx, 'description', e.target.value)} className="h-8 text-[10px] font-medium opacity-70 bg-slate-50" placeholder={isRtl ? "وصف إضافي..." : "Add detail..."} />
+                                         <Input value={item.label} onChange={e => updateItem(originalIdx, 'label', e.target.value)} className="h-8 rounded-lg font-black text-sm bg-white" />
+                                         <Input value={item.description} onChange={e => updateItem(originalIdx, 'description', e.target.value)} className="h-7 text-[10px] font-medium opacity-70 bg-slate-50" placeholder={isRtl ? "وصف إضافي..." : "Add detail..."} />
                                          
                                          {item.technicalStageId && item.technicalStageId !== 'NONE' && (
                                             <p className="text-[8px] font-black text-primary/60 italic flex items-center gap-1 mt-1">
-                                               <Clock className="h-3 w-3" />
-                                               {getTimingLabel(item.timing || 'at')} {item.technicalStageId === 'SIGNING' ? (isRtl ? 'توقيع العقد' : 'Contract Signing') : linkedStageName}
+                                               <Clock className="h-2 w-2" />
+                                               {t(item.timing || 'at')} {item.technicalStageId === 'SIGNING' ? t('contractSigning') : linkedStageName}
                                             </p>
                                          )}
                                       </div>
@@ -381,7 +367,7 @@ export default function QuotationViewPage() {
                                          {item.technicalStageId && item.technicalStageId !== 'NONE' && (
                                             <p className="text-[10px] font-black text-primary/60 italic flex items-center gap-1">
                                                <Clock className="h-3 w-3" />
-                                               {getTimingLabel(item.timing || 'at')} {item.technicalStageId === 'SIGNING' ? (isRtl ? 'توقيع العقد' : 'Contract Signing') : linkedStageName}
+                                               {t(item.timing || 'at')} {item.technicalStageId === 'SIGNING' ? t('contractSigning') : linkedStageName}
                                             </p>
                                          )}
                                       </div>
@@ -390,9 +376,9 @@ export default function QuotationViewPage() {
                                 {editData.pricingMode === 'percentage' && (
                                    <td className="p-4 text-center">
                                       {isEditing ? (
-                                         <div className="relative w-20 mx-auto">
-                                            <Input type="number" value={item.percentage === 0 ? "" : item.percentage} onChange={e => updateItem(originalIdx, 'percentage', e.target.value === "" ? 0 : Number(e.target.value))} className="h-10 rounded-xl border-2 font-black text-center pe-6 text-sm" />
-                                            <Percent className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
+                                         <div className="relative w-16 mx-auto">
+                                            <Input type="number" value={item.percentage === 0 ? "" : item.percentage} onChange={e => updateItem(originalIdx, 'percentage', e.target.value === "" ? 0 : Number(e.target.value))} className="h-8 rounded-lg border-2 font-black text-center pe-5 text-sm" />
+                                            <Percent className="absolute right-1 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
                                          </div>
                                       ) : <Badge className="bg-slate-900 text-white font-black text-[10px] px-3 h-6 rounded-lg shadow-sm">{item.percentage}%</Badge>}
                                    </td>
@@ -400,7 +386,7 @@ export default function QuotationViewPage() {
                                 {isEditing && (
                                    <td className="p-2">
                                       <Select value={item.timing || 'at'} onValueChange={v => updateItem(originalIdx, 'timing', v)}>
-                                         <SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs bg-white"><SelectValue /></SelectTrigger>
+                                         <SelectTrigger className="h-8 rounded-lg border-2 font-black text-xs bg-white"><SelectValue /></SelectTrigger>
                                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
                                             <SelectItem value="at" className="font-bold text-xs">{t('at')}</SelectItem>
                                             <SelectItem value="before" className="font-bold text-xs">{t('before')}</SelectItem>
@@ -417,14 +403,14 @@ export default function QuotationViewPage() {
                                         onValueChange={v => updateItem(originalIdx, 'technicalStageId', v)}
                                       >
                                          <SelectTrigger className={cn(
-                                           "h-10 rounded-xl border-2 font-black text-xs",
+                                           "h-8 rounded-lg border-2 font-black text-xs",
                                            (item.technicalStageId && item.technicalStageId !== 'NONE') ? "bg-primary/5 text-primary border-primary/20" : "bg-white"
                                          )}>
                                             <SelectValue placeholder={isRtl ? "ربط فني..." : "Link Stage..."} />
                                          </SelectTrigger>
                                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
                                             <SelectItem value="SIGNING" className="font-black text-xs py-3">
-                                               <span className="flex items-center gap-2"><ShieldCheck className="h-3 w-3 text-emerald-500" /> {isRtl ? 'عند توقيع العقد (حر)' : 'At Signing'}</span>
+                                               <span className="flex items-center gap-2"><ShieldCheck className="h-3 w-3 text-emerald-500" /> {t('contractSigning')}</span>
                                             </SelectItem>
                                             <SelectItem value="NONE" className="font-bold text-xs text-slate-400 italic">--- {isRtl ? 'بدون ربط' : 'No Link'} ---</SelectItem>
                                             {stages?.map(s => (
@@ -445,7 +431,7 @@ export default function QuotationViewPage() {
                                 </td>
                                 <td className="p-4 text-end pe-10 w-40">
                                    {isEditing && editData.pricingMode !== 'percentage' ? (
-                                      <Input type="number" step="0.001" value={item.unitPrice === 0 ? "" : item.unitPrice} onChange={e => updateItem(originalIdx, 'unitPrice', e.target.value === "" ? 0 : Number(e.target.value))} className="h-10 w-32 ms-auto text-end font-black text-emerald-600 text-sm bg-slate-50 border-2" />
+                                      <Input type="number" step="0.001" value={item.unitPrice === 0 ? "" : item.unitPrice} onChange={e => updateItem(originalIdx, 'unitPrice', e.target.value === "" ? 0 : Number(e.target.value))} className="h-8 w-32 ms-auto text-end font-black text-emerald-600 text-sm bg-slate-50 border-2" />
                                    ) : (
                                       <p className="font-mono font-black text-emerald-600 text-lg">{(lineAmount || 0).toLocaleString()} <span className="text-[10px] opacity-40">KWD</span></p>
                                    )}
@@ -458,9 +444,9 @@ export default function QuotationViewPage() {
                      <tfoot className="bg-slate-50 border-t-4 border-primary">
                         <tr>
                            <td colSpan={editData.pricingMode === 'percentage' ? (isEditing ? 5 : 4) : (isEditing ? 4 : 3)} className="p-8 text-start">
-                              <h3 className="text-base font-black font-headline uppercase tracking-tighter text-slate-900">{isRtl ? 'إجمالي قيمة العرض' : 'Total Quote Value'}</h3>
+                              <h3 className="text-base font-black font-headline uppercase tracking-tighter text-slate-900">{t('totalQuoteValue')}</h3>
                               {editData.pricingMode === 'percentage' && (
-                                 <Badge className={cn("mt-2 border-0 text-[10px] font-black h-6 px-4 shadow-sm", stats.isValid ? "bg-emerald-500 text-white" : "bg-rose-500 text-white")}>
+                                 <Badge className={cn("mt-2 border-0 text-[10px] font-black h-6 px-4 shadow-sm", stats.isValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>
                                     {stats.isValid ? `BALANCED: ${stats.totalPercentage}%` : `MISMATCH: ${stats.totalPercentage}%`}
                                  </Badge>
                               )}
@@ -480,7 +466,7 @@ export default function QuotationViewPage() {
 
             <div className="text-start space-y-4 pt-6">
                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 border-b-2 border-primary/20 pb-2">
-                  <ShieldCheck className="h-5 w-5 text-primary" /> {isRtl ? 'الشروط العامة والالتزامات' : 'Terms & Conditions'}
+                  <ShieldCheck className="h-5 w-5 text-primary" /> {t('defaultTerms')}
                </h4>
                {isEditing ? (
                   <Textarea value={editData.defaultTerms} onChange={e => setEditForm({...editData, defaultTerms: e.target.value})} className="min-h-[150px] rounded-[2rem] border-2 p-8 text-sm font-bold leading-relaxed bg-slate-50/50 shadow-inner" />

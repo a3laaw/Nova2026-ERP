@@ -37,10 +37,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-/**
- * صفحة عرض العقد الرسمي (Official Contract View).
- * تم تطهير اللون الكحلي بالكامل واستبداله بتصميم فاتح ومشرق.
- */
 export default function ContractViewPage() {
   const params = useParams();
   const contractId = params.cId as string;
@@ -122,9 +118,13 @@ export default function ContractViewPage() {
         ? stats.totalItemizedAmount 
         : (editData.totalAmount || 0);
 
+      // الفجوة المحللة: ضمان تحول الحالة إلى Approved عند الحفظ الأول لفتح حالة العميل
+      const newStatus = (contract?.status === 'draft' && !contract.isHistoryRecorded) ? 'approved' : editData.status;
+
       const { id, createdAt, updatedAt, ...sanitizedData } = editData as any;
       await service.updateContract(contractId, {
         ...sanitizedData,
+        status: newStatus,
         totalAmount: finalAmount,
         updatedBy: globalUser?.username || user.displayName || 'Admin'
       }, user.uid);
@@ -177,11 +177,11 @@ export default function ContractViewPage() {
   };
 
   const handleMarkAsPaid = async (docId: string) => {
-    if (!db || !companyId) return;
+    if (!db || !companyId || !user) return;
     setSaving(true);
     try {
       const service = new DocumentService(db, companyId, permissions);
-      await service.updateContract(contractId, { status: 'paid', isPaid: true } as any, user!.uid);
+      await service.updateContract(contractId, { status: 'paid', isPaid: true } as any, user.uid);
       toast({ title: isRtl ? "تم توثيق السداد وتفعيل المشروع" : "Payment Confirmed" });
     } catch (e) {
       toast({ variant: "destructive", title: t('error') });
@@ -428,7 +428,7 @@ export default function ContractViewPage() {
                            <td colSpan={editData.pricingMode === 'percentage' ? (isEditing ? 5 : 4) : (isEditing ? 4 : 3)} className="p-8 text-start">
                               <h3 className="text-base font-black font-headline uppercase tracking-widest text-slate-900">{isRtl ? 'إجمالي قيمة العقد النهائية' : 'Total Contract Value'}</h3>
                               {editData.pricingMode === 'percentage' && (
-                                 <Badge className={cn("mt-2 border-0 text-[10px] font-black h-6 px-4 shadow-sm", stats.isValid ? "bg-emerald-500 text-white" : "bg-rose-500 text-white animate-pulse")}>
+                                 <Badge className={cn("mt-2 border-0 text-[10px] font-black h-6 px-4 shadow-sm", stats.isValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100 animate-pulse")}>
                                     {stats.isValid ? `BALANCED: 100%` : `MISMATCH: ${stats.totalPercentage}%`}
                                  </Badge>
                               )}
