@@ -11,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   FileSpreadsheet, Search, Loader2, ArrowRight, 
   Trash2, AlertTriangle, Sparkles, Clock,
-  CheckCircle2, FileSearch, UserCircle, Settings2
+  CheckCircle2, FileSearch, UserCircle, Settings2,
+  XCircle, CheckCircle
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, where, collectionGroup, getDocs } from 'firebase/firestore';
@@ -100,7 +101,6 @@ export default function BOQExplorerPage() {
     });
   }, [rawBoqs]);
 
-  // استعلام شامل للأوامر التغييرية مع حماية ضد غياب الفهارس
   const allVOsQuery = useMemo(() => 
     companyId && db ? query(
       collectionGroup(db, 'variations'), 
@@ -302,7 +302,19 @@ export default function BOQExplorerPage() {
                          {vo.status === 'draft' ? (
                             <Button onClick={() => handleReviewVO(vo)} className="h-10 px-6 rounded-xl btn-gradient text-[10px] gap-2"><FileSearch className="h-4 w-4" /> {isRtl ? 'مراجعة واعتماد' : 'Review & Approve'}</Button>
                          ) : (
-                            <div className="flex items-center justify-end gap-2 text-slate-300 font-bold text-[9px] uppercase"><CheckCircle2 className="h-4 w-4" /> {isRtl ? 'تمت المعالجة' : 'Processed'}</div>
+                            <div className="flex items-center justify-end gap-2 text-slate-400 font-bold text-[10px] uppercase">
+                               {vo.status === 'approved' ? (
+                                  <>
+                                     <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                     <span className="text-emerald-600">{isRtl ? 'تم الاعتماد' : 'Approved'}</span>
+                                  </>
+                               ) : (
+                                  <>
+                                     <XCircle className="h-4 w-4 text-rose-500" />
+                                     <span className="text-rose-600">{isRtl ? 'تم الإلغاء' : 'Cancelled'}</span>
+                                  </>
+                               )}
+                            </div>
                          )}
                       </TableCell>
                     </TableRow>
