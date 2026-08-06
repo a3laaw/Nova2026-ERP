@@ -234,7 +234,7 @@ const Sidebar = React.forwardRef<
         />
         <div
           className={cn(
-            "duration-200 fixed inset-y-0 z-10 hidden h-svh w-[--sidebar-width] transition-[left,right,width] ease-linear md:flex",
+            "duration-200 fixed inset-y-0 z-[50] hidden h-svh w-[--sidebar-width] transition-[left,right,width] ease-linear md:flex",
             side === "left"
               ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
               : "right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]",
@@ -661,23 +661,24 @@ const SidebarMenuSkeleton = React.forwardRef<
       data-sidebar="menu-skeleton"
       className={cn("rounded-md h-8 flex gap-2 px-2 items-center", className)}
       {...props}
-    >
-      {showIcon && (
-        <Skeleton
-          className="size-4 rounded-md"
-          data-sidebar="menu-skeleton-icon"
-        />
-      )}
+    }
+  >
+    {showIcon && (
       <Skeleton
-        className="h-4 flex-1 max-w-[--skeleton-width]"
-        data-sidebar="menu-skeleton-text"
-        style={
-          {
-            "--skeleton-width": width,
-          } as React.CSSProperties
-        }
+        className="size-4 rounded-md"
+        data-sidebar="menu-skeleton-icon"
       />
-    </div>
+    )}
+    <Skeleton
+      className="h-4 flex-1 max-w-[--skeleton-width]"
+      data-sidebar="menu-skeleton-text"
+      style={
+        {
+          "--skeleton-width": width,
+        } as React.CSSProperties
+      }
+    />
+  </div>
   )
 })
 SidebarMenuSkeleton.displayName = "SidebarMenuSkeleton"

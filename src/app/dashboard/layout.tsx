@@ -119,7 +119,7 @@ export default function DashboardLayout({
         
         <SidebarInset className="flex flex-col bg-transparent">
           <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-white/90 backdrop-blur-md px-6 print:hidden shadow-sm">
-            <SidebarTrigger className={cn("text-slate-600 hover:bg-slate-100 rounded-lg shrink-0", isRtl ? "rotate-0" : "rotate-180")} />
+            <SidebarTrigger className={cn("text-slate-600 hover:bg-slate-100 rounded-lg shrink-0", isRtl ? "rotate-180" : "rotate-0")} />
             <div className="flex-1">
               <BreadcrumbNav />
             </div>
