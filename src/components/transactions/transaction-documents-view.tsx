@@ -45,10 +45,12 @@ interface Props {
 
 export function TransactionDocumentsView({ transaction, clientId, clientName, isAdmin, permissions }: Props) {
   const { lang, dir, t } = useLanguage();
-  const { db } = { db: useFirestore() };
+  const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
-  const companyId = transaction.companyId;
+  
+  // حارس البصمة: تأمين الوصول للمعرف
+  const companyId = transaction?.companyId;
 
   const [loading, setLoading] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
@@ -57,28 +59,27 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
 
   // جلب عروض الأسعار المرتبطة بالمعاملة
   const quotesQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.quotations(companyId)), where('transactionId', '==', transaction.id)) : null, 
-  [db, companyId, transaction.id]);
+    companyId && db && transaction?.id ? query(collection(db, paths.quotations(companyId)), where('transactionId', '==', transaction.id)) : null, 
+  [db, companyId, transaction?.id]);
   const { data: quotes, loading: quotesLoading } = useCollection<any>(quotesQuery);
 
   // جلب العقود المرتبطة بالمعاملة
   const contractsQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.contracts(companyId)), where('transactionId', '==', transaction.id)) : null, 
-  [db, companyId, transaction.id]);
+    companyId && db && transaction?.id ? query(collection(db, paths.contracts(companyId)), where('transactionId', '==', transaction.id)) : null, 
+  [db, companyId, transaction?.id]);
   const { data: contracts, loading: contractsLoading } = useCollection<any>(contractsQuery);
 
-  // جلب القوالب المفلترة سيادياً حسب نوع النشاط لضمان عدم التداخل (المقاولات تظهر قوالب المقاولات فقط)
+  // جلب القوالب المفلترة سيادياً حسب نوع النشاط لضمان عدم التداخل
   const templatesQuery = useMemo(() => {
-    if (!companyId || !db || !docTypeToCreate || !transaction.activityTypeId) return null;
+    if (!companyId || !db || !docTypeToCreate || !transaction?.activityTypeId) return null;
     const path = docTypeToCreate === 'quotation' ? paths.quotationTemplates(companyId) : paths.contractTemplates(companyId);
     
-    // الربط الذكي: البحث عن القوالب التي تنتمي لنفس النشاط (مقاولات/استشارات) ولها حالة نشطة
     return query(
       collection(db, path), 
       where('isActive', '==', true),
       where('activityTypeId', '==', transaction.activityTypeId)
     );
-  }, [db, companyId, docTypeToCreate, transaction.activityTypeId]);
+  }, [db, companyId, docTypeToCreate, transaction?.activityTypeId]);
   
   const { data: rawTemplates } = useCollection<any>(templatesQuery);
 
@@ -86,11 +87,20 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
   const templates = useMemo(() => {
     if (!rawTemplates) return [];
     return [...rawTemplates].sort((a, b) => {
-       if (a.subServiceId === transaction.subServiceId) return -1;
-       if (b.subServiceId === transaction.subServiceId) return 1;
+       if (a.subServiceId === transaction?.subServiceId) return -1;
+       if (b.subServiceId === transaction?.subServiceId) return 1;
        return 0;
     });
-  }, [rawTemplates, transaction.subServiceId]);
+  }, [rawTemplates, transaction?.subServiceId]);
+
+  // حماية نهائية من الرندر قبل توفر البيانات
+  if (!transaction || !companyId) {
+    return (
+      <div className="py-20 text-center">
+         <Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" />
+      </div>
+    );
+  }
 
   const handleCreate = async () => {
     if (!db || !companyId || !docTypeToCreate || !selectedTemplateId) return;
@@ -157,8 +167,8 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
                 <Icon className="h-6 w-6" />
              </div>
              <div>
-                <CardTitle className="text-xl font-black font-headline">{title}</CardTitle>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{data?.length || 0} {isRtl ? 'سجلات' : 'Records'}</p>
+                <CardTitle className="text-xl font-black font-headline text-start">{title}</CardTitle>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-start">{data?.length || 0} {isRtl ? 'سجلات' : 'Records'}</p>
              </div>
           </div>
           <Button onClick={() => setDocTypeToCreate(type)} variant="outline" className="h-10 rounded-xl font-black text-xs gap-2 border-2">

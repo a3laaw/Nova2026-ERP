@@ -237,6 +237,7 @@ const translations: Record<Language, Record<string, string>> = {
     newGroup: 'طاقم عمل جديد',
     supervisor: 'المشرف المسؤول',
     members: 'أعضاء الطاقم',
+    scope: 'نطاق الوصول',
   },
   en: {
     dashboard: 'Dashboard',
@@ -462,6 +463,7 @@ const translations: Record<Language, Record<string, string>> = {
     newGroup: 'New Crew',
     supervisor: 'Lead Foreman',
     members: 'Crew Members',
+    scope: 'Access Scope',
   }
 };
 
