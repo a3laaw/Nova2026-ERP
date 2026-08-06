@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -48,8 +49,8 @@ function BOQVariationStats({ boqId, companyId }: { boqId: string, companyId: str
 
   const { data: variations, loading } = useCollection<BOQVariation>(voQuery);
 
-  if (loading) return <div className="h-4 w-12 bg-slate-100 animate-pulse rounded-md" />;
-  if (!variations || variations.length === 0) return <span className="text-[9px] text-slate-300 font-bold italic">{isRtl ? 'لا يوجد تعديلات' : 'No VOs'}</span>;
+  if (loading) return <div className="h-3 w-10 bg-slate-100 animate-pulse rounded-md" />;
+  if (!variations || variations.length === 0) return <span className="text-[10px] text-slate-300 italic">{isRtl ? 'لا يوجد' : 'None'}</span>;
 
   const stats = {
     total: variations.length,
@@ -58,12 +59,12 @@ function BOQVariationStats({ boqId, companyId }: { boqId: string, companyId: str
   };
 
   return (
-    <div className="flex flex-wrap gap-1 justify-start">
-      <Badge variant="outline" className="h-5 px-1.5 text-[8px] font-black border-slate-200 text-slate-500 bg-white">
+    <div className="flex flex-wrap gap-1">
+      <Badge variant="outline" className="h-5 px-1.5 text-[9px] font-bold border-slate-200 text-slate-500 bg-white">
         VO: {stats.total}
       </Badge>
-      {stats.draft > 0 && <Badge className="h-5 px-1.5 text-[8px] font-black bg-blue-50 text-blue-600 border-0">D: {stats.draft}</Badge>}
-      {stats.approved > 0 && <Badge className="h-5 px-1.5 text-[8px] font-black bg-emerald-50 text-emerald-600 border-0">A: {stats.approved}</Badge>}
+      {stats.draft > 0 && <Badge className="h-5 px-1.5 text-[9px] font-bold bg-blue-50 text-blue-600 border-0">D: {stats.draft}</Badge>}
+      {stats.approved > 0 && <Badge className="h-5 px-1.5 text-[9px] font-bold bg-emerald-50 text-emerald-600 border-0">A: {stats.approved}</Badge>}
     </div>
   );
 }
@@ -87,17 +88,14 @@ export default function BOQExplorerPage() {
   const [reviewItems, setReviewItems] = useState<BOQVariationItem[]>([]);
   const [loadingReview, setLoadingReview] = useState(false);
 
-  // --- محرك الدمج البرمجي (Bypass CollectionGroup) ---
   const [allVOs, setAllVOs] = useState<BOQVariation[]>([]);
   const [voLoading, setVoLoading] = useState(false);
 
-  // 1. استعلام المقايسات (مباشر)
   const boqsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.boqs(companyId)), orderBy('createdAt', 'desc')) : null, 
   [db, companyId]);
   const { data: boqs, loading: boqLoading } = useCollection<BOQ>(boqsQuery);
 
-  // 2. دالة جلب الأوامر التغييرية - تم تحسينها لتعمل بالشحن المسبق (Pre-fetch)
   useEffect(() => {
     async function fetchAllVariations() {
       if (!boqs || boqs.length === 0 || !db || !companyId) {
@@ -105,13 +103,11 @@ export default function BOQExplorerPage() {
         return;
       }
       
-      // إذا كان لدينا بيانات بالفعل، لا نكرر البحث إلا إذا تغيرت قائمة المقايسات
       if (allVOs.length > 0 && !voLoading) return;
 
       setVoLoading(true);
       try {
         const results: BOQVariation[] = [];
-        // جلب الأوامر لكل مقايسة بشكل متوازي لتقليل زمن الانتظار
         const promises = boqs.map(async (boq) => {
            const voPath = paths.boqVariations(companyId, boq.id!);
            const snap = await getDocs(collection(db, voPath));
@@ -121,7 +117,6 @@ export default function BOQExplorerPage() {
         const voArrays = await Promise.all(promises);
         voArrays.forEach(arr => results.push(...arr));
         
-        // ترتيب النتائج زمنياً (الأحدث أولاً)
         const sorted = results.sort((a, b) => {
            const dateA = a.createdAt?.toMillis?.() || 0;
            const dateB = b.createdAt?.toMillis?.() || 0;
@@ -136,11 +131,10 @@ export default function BOQExplorerPage() {
       }
     }
 
-    // تفعيل الجلب المسبق بمجرد تحميل المقايسات
     if (boqs && boqs.length > 0) {
        fetchAllVariations();
     }
-  }, [boqs, db, companyId]); // أزلنا activeTab لضمان الشحن المسبق في الخلفية
+  }, [boqs, db, companyId, allVOs.length, voLoading]);
 
   const filteredBoqs = useMemo(() => {
     return (boqs || []).filter(boq => 
@@ -177,8 +171,6 @@ export default function BOQExplorerPage() {
       const service = new VariationService(db, companyId, permissions);
       await service.approveVariation(reviewVO.boqId, reviewVO.id!, reviewVO.transactionId, user.uid, user.displayName || 'Admin');
       toast({ title: isRtl ? "تم اعتماد التعديل بنجاح" : "Variation Approved" });
-      
-      // تحديث قائمة الأوامر التغييرية في الذاكرة بعد الموافقة
       setAllVOs(prev => prev.map(v => v.id === reviewVO.id ? { ...v, status: 'approved' } : v));
       setReviewVO(null);
     } catch (e: any) {
@@ -195,7 +187,6 @@ export default function BOQExplorerPage() {
       const service = new VariationService(db, companyId, permissions);
       await service.rejectVariation(reviewVO.boqId, reviewVO.id!, reviewVO.transactionId, user.uid, user.displayName || 'Admin');
       toast({ title: isRtl ? "تم رفض وإلغاء الطلب" : "Variation Rejected" });
-      
       setAllVOs(prev => prev.map(v => v.id === reviewVO.id ? { ...v, status: 'cancelled' } : v));
       setReviewVO(null);
     } catch (e: any) {
@@ -222,78 +213,80 @@ export default function BOQExplorerPage() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500" dir={dir}>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="w-full space-y-4 animate-in fade-in duration-500" dir={dir}>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
         <div className="text-start">
-          <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
-            <FileSpreadsheet className="h-10 w-10 text-primary" />
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2 text-slate-900">
+            <FileSpreadsheet className="h-5 w-5 text-primary" />
             {t('boqExplorer')}
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
+          <p className="text-xs text-muted-foreground font-medium opacity-80">
             {isRtl ? 'رقابة شاملة على ميزانيات المشاريع وتتبع التعديلات المالية.' : 'Unified oversight of project budgets and financial adjustments.'}
           </p>
         </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
-           <TabsList className="bg-white border-2 border-slate-100 p-1 rounded-xl h-12 gap-1 shadow-sm shrink-0">
-             <TabsTrigger value="boqs" className="rounded-lg font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2">
-                <FileSpreadsheet className="h-4 w-4" /> {isRtl ? 'المقايسات' : 'BOQs'}
+        <div className="flex flex-col md:flex-row justify-between items-center gap-3 mb-4">
+           <TabsList className="bg-white border p-1 rounded-md h-9 gap-1 shadow-sm shrink-0">
+             <TabsTrigger value="boqs" className="rounded-sm text-[11px] font-semibold px-6 h-full data-[state=active]:bg-primary data-[state=active]:text-white">
+                {isRtl ? 'المقايسات' : 'BOQs'}
              </TabsTrigger>
-             <TabsTrigger value="variations" className="rounded-lg font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2">
-                <Sparkles className="h-4 w-4" /> {isRtl ? 'الأوامر التغييرية' : 'Variations'}
+             <TabsTrigger value="variations" className="rounded-sm text-[11px] font-semibold px-6 h-full data-[state=active]:bg-primary data-[state=active]:text-white">
+                {isRtl ? 'الأوامر التغييرية' : 'Variations'}
                 {allVOs.filter(v => v.status === 'draft').length > 0 && (
-                   <Badge className="bg-rose-500 text-white border-0 h-4 px-1.5 min-w-[16px] flex items-center justify-center text-[8px] animate-pulse">
+                   <Badge className="bg-rose-500 text-white border-0 h-3.5 px-1 min-w-[14px] flex items-center justify-center text-[7px] ms-1">
                       {allVOs.filter(v => v.status === 'draft').length}
                    </Badge>
                 )}
              </TabsTrigger>
            </TabsList>
-           <div className="relative w-full max-w-md">
-              <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-              <Input placeholder={t('search')} className="ps-12 rounded-2xl h-12 bg-white border-2 border-slate-100 font-bold" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+           <div className="relative w-full max-w-sm">
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+              <Input placeholder={t('search')} className="ps-9 h-9 rounded-md bg-white border-slate-200 text-sm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
            </div>
         </div>
 
-        <TabsContent value="boqs" className="animate-in fade-in slide-in-from-bottom-2">
-          <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
-            <CardContent className="p-0 overflow-x-auto">
+        <TabsContent value="boqs" className="m-0">
+          <Card className="rounded-lg border shadow-sm bg-white overflow-hidden">
+            <CardContent className="p-0">
               <Table>
-                <TableHeader className="bg-muted/30">
-                  <TableRow>
-                    <TableHead className="py-8 ps-10 text-start">{isRtl ? 'رقم المقايسة / العميل' : 'BOQ / Client'}</TableHead>
-                    <TableHead className="text-start">{isRtl ? 'ملخص التعديلات' : 'VO Summary'}</TableHead>
-                    <TableHead className="text-end">{isRtl ? 'الميزانية المخططة' : 'Planned Budget'}</TableHead>
-                    <TableHead className="text-start">{t('status')}</TableHead>
-                    <TableHead className="pe-10 text-end"></TableHead>
+                <TableHeader className="bg-slate-50">
+                  <TableRow className="border-b">
+                    <TableHead className="py-3 ps-4 text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'رقم المقايسة / العميل' : 'BOQ / Client'}</TableHead>
+                    <TableHead className="py-3 text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'ملخص التعديلات' : 'VO Summary'}</TableHead>
+                    <TableHead className="py-3 text-end text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'الميزانية' : 'Budget'}</TableHead>
+                    <TableHead className="py-3 text-[10px] font-bold uppercase text-slate-500">{t('status')}</TableHead>
+                    <TableHead className="py-3 pe-4 text-end"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {boqLoading ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-32"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/20" /></TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-6 w-6 mx-auto text-primary/20" /></TableCell></TableRow>
                   ) : filteredBoqs.length === 0 ? (
-                     <TableRow><TableCell colSpan={5} className="text-center py-32 text-slate-300 italic font-bold">لا يوجد مقايسات حالياً.</TableCell></TableRow>
+                     <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 text-sm font-medium">لا يوجد مقايسات حالياً.</TableCell></TableRow>
                   ) : filteredBoqs.map((boq) => (
-                    <TableRow key={boq.id} className="hover:bg-slate-50 transition-colors group border-b-slate-50 cursor-pointer" onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}>
-                      <TableCell className="py-8 ps-10 text-start">
-                         <div className="flex items-center gap-5">
-                            <div className="h-14 w-14 rounded-2xl bg-white shadow-lg flex items-center justify-center text-primary font-black text-xl border-2 border-orange-50 group-hover:scale-110 transition-transform"><FileSpreadsheet className="h-7 w-7" /></div>
+                    <TableRow key={boq.id} className="hover:bg-slate-50/70 border-b cursor-pointer transition-colors" onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}>
+                      <TableCell className="py-2.5 ps-4 text-start">
+                         <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-md bg-primary/5 text-primary flex items-center justify-center font-bold text-xs border">
+                               {boq.boqNumber?.charAt(0) || 'B'}
+                            </div>
                             <div className="text-start">
-                               <p className="font-black text-xl text-slate-800">{boq.boqNumber}</p>
-                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1"><UserCircle className="h-3 w-3" /> {boq.clientName}</p>
+                               <p className="font-semibold text-sm text-slate-900">{boq.boqNumber}</p>
+                               <p className="text-[10px] text-slate-400 font-medium">{boq.clientName}</p>
                             </div>
                          </div>
                       </TableCell>
-                      <TableCell className="text-start"><BOQVariationStats boqId={boq.id!} companyId={companyId!} /></TableCell>
-                      <TableCell className="text-end font-mono font-black text-xl text-slate-900 pe-4">{boq.totalAmount?.toLocaleString()}</TableCell>
-                      <TableCell className="text-start">
-                         <Badge className={cn("font-black px-4 py-1.5 rounded-lg border-0 shadow-sm uppercase text-[9px]", boq.status === 'approved' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600')}>{boq.status}</Badge>
+                      <TableCell className="py-2.5 text-start"><BOQVariationStats boqId={boq.id!} companyId={companyId!} /></TableCell>
+                      <TableCell className="py-2.5 text-end font-mono font-bold text-slate-700">{boq.totalAmount?.toLocaleString()}</TableCell>
+                      <TableCell className="py-2.5 text-start">
+                         <Badge className={cn("text-[9px] font-bold uppercase px-2 h-5 border-0", boq.status === 'approved' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600')}>{boq.status}</Badge>
                       </TableCell>
-                      <TableCell className="pe-10 text-end" onClick={e => e.stopPropagation()}>
-                         <div className="flex justify-end gap-2">
-                            {isAdmin && <Button variant="ghost" size="icon" onClick={() => setDeletingId(boq.id!)} className="h-12 w-12 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50"><Trash2 className="h-6 w-6" /></Button>}
-                            <Button variant="outline" className="rounded-xl h-12 px-5 font-black text-[10px] gap-2 hover:bg-primary hover:text-white" onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}><Settings2 className="h-4 w-4" /> {isRtl ? 'إدارة' : 'Manage'}</Button>
+                      <TableCell className="py-2.5 pe-4 text-end" onClick={e => e.stopPropagation()}>
+                         <div className="flex justify-end gap-1">
+                            {isAdmin && <Button variant="ghost" size="icon" onClick={() => setDeletingId(boq.id!)} className="h-7 w-7 text-rose-400 hover:text-rose-600"><Trash2 className="h-4 w-4" /></Button>}
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-primary" onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}><ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} /></Button>
                          </div>
                       </TableCell>
                     </TableRow>
@@ -304,55 +297,46 @@ export default function BOQExplorerPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="variations" className="animate-in fade-in">
-          <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
-            <CardContent className="p-0 overflow-x-auto">
+        <TabsContent value="variations" className="m-0">
+          <Card className="rounded-lg border shadow-sm bg-white overflow-hidden">
+            <CardContent className="p-0">
               <Table>
-                <TableHeader className="bg-muted/30">
-                  <TableRow>
-                    <TableHead className="py-8 ps-10 text-start">{isRtl ? 'الأمر التغييري / العنوان' : 'Variation / Title'}</TableHead>
-                    <TableHead className="text-start">{isRtl ? 'المقايسة' : 'BOQ'}</TableHead>
-                    <TableHead className="text-end">{isRtl ? 'القيمة (صافي)' : 'Net Amount'}</TableHead>
-                    <TableHead className="text-start">{t('status')}</TableHead>
-                    <TableHead className="pe-10 text-end">{isRtl ? 'قرار الإدارة' : 'Decision'}</TableHead>
+                <TableHeader className="bg-slate-50">
+                  <TableRow className="border-b">
+                    <TableHead className="py-3 ps-4 text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'الأمر التغييري' : 'Variation'}</TableHead>
+                    <TableHead className="py-3 text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'المقايسة' : 'BOQ'}</TableHead>
+                    <TableHead className="py-3 text-end text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'القيمة' : 'Amount'}</TableHead>
+                    <TableHead className="py-3 text-[10px] font-bold uppercase text-slate-500">{t('status')}</TableHead>
+                    <TableHead className="py-3 pe-4 text-end"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {voLoading ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-32"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/20" /></TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-6 w-6 mx-auto text-primary/20" /></TableCell></TableRow>
                   ) : filteredVOs.length === 0 ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-32 text-slate-400 font-bold italic">
+                    <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-400 text-sm">
                        {isRtl ? 'لا يوجد أوامر تغييرية مسجلة.' : 'No variations found.'}
                     </TableCell></TableRow>
                   ) : filteredVOs.map((vo) => (
-                    <TableRow key={vo.id} className="hover:bg-slate-50/50 border-b-slate-50">
-                      <TableCell className="py-8 ps-10 text-start">
-                         <div className="flex items-center gap-5 text-start">
-                            <div className={cn("h-14 w-14 rounded-2xl shadow-lg flex items-center justify-center border-2", vo.status === 'approved' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-blue-50 text-blue-600 border-blue-100")}><Sparkles className="h-7 w-7" /></div>
-                            <div><p className="font-black text-xl text-slate-800">{vo.title}</p><p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">ID: {vo.id!.slice(-6)}</p></div>
+                    <TableRow key={vo.id} className="hover:bg-slate-50/70 border-b">
+                      <TableCell className="py-2.5 ps-4 text-start">
+                         <div className="flex items-center gap-3">
+                            <div className={cn("h-8 w-8 rounded-md flex items-center justify-center border", vo.status === 'approved' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-blue-50 text-blue-600 border-blue-100")}><Sparkles className="h-4 w-4" /></div>
+                            <div className="text-start"><p className="font-semibold text-sm text-slate-900">{vo.title}</p></div>
                          </div>
                       </TableCell>
-                      <TableCell className="text-start font-black text-slate-500 text-xs">{vo.boqNumber}</TableCell>
-                      <TableCell className="text-end font-mono font-black text-xl pe-4" style={{ color: (vo.totalAmount || 0) >= 0 ? '#10b981' : '#ef4444' }}>{(vo.totalAmount || 0) >= 0 ? '+' : ''}{(vo.totalAmount || 0).toLocaleString()}</TableCell>
-                      <TableCell className="text-start">
-                         <Badge className={cn("font-black px-4 py-1.5 rounded-lg border-0 shadow-sm uppercase text-[9px]", vo.status === 'approved' ? 'bg-emerald-50 text-emerald-600' : vo.status === 'cancelled' ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600')}>{vo.status}</Badge>
+                      <TableCell className="py-2.5 text-start font-bold text-slate-500 text-[11px]">{vo.boqNumber}</TableCell>
+                      <TableCell className="py-2.5 text-end font-mono font-bold text-sm" style={{ color: (vo.totalAmount || 0) >= 0 ? '#10b981' : '#ef4444' }}>{(vo.totalAmount || 0) >= 0 ? '+' : ''}{(vo.totalAmount || 0).toLocaleString()}</TableCell>
+                      <TableCell className="py-2.5 text-start">
+                         <Badge className={cn("text-[9px] font-bold uppercase px-2 h-5 border-0", vo.status === 'approved' ? 'bg-emerald-50 text-emerald-600' : vo.status === 'cancelled' ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600')}>{vo.status}</Badge>
                       </TableCell>
-                      <TableCell className="pe-10 text-end">
+                      <TableCell className="py-2.5 pe-4 text-end">
                          {vo.status === 'draft' ? (
-                            <Button onClick={() => handleReviewVO(vo)} className="h-10 px-6 rounded-xl btn-gradient text-[10px] gap-2"><FileSearch className="h-4 w-4" /> {isRtl ? 'مراجعة واعتماد' : 'Review & Approve'}</Button>
+                            <Button onClick={() => handleReviewVO(vo)} className="h-7 px-3 rounded-md text-[10px] font-bold gap-1.5"><FileSearch className="h-3.5 w-3.5" /> {isRtl ? 'مراجعة' : 'Review'}</Button>
                          ) : (
-                            <div className="flex items-center justify-end gap-2 text-slate-400 font-bold text-[10px] uppercase">
-                               {vo.status === 'approved' ? (
-                                  <>
-                                     <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                                     <span className="text-emerald-600">{isRtl ? 'تم الاعتماد' : 'Approved'}</span>
-                                  </>
-                               ) : (
-                                  <>
-                                     <XCircle className="h-4 w-4 text-rose-500" />
-                                     <span className="text-rose-600">{isRtl ? 'تم الإلغاء' : 'Cancelled'}</span>
-                                  </>
-                               )}
+                            <div className="flex items-center justify-end gap-1.5 text-slate-400 font-bold text-[10px] uppercase">
+                               {vo.status === 'approved' ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> : <XCircle className="h-3.5 w-3.5 text-rose-500" />}
+                               {vo.status}
                             </div>
                          )}
                       </TableCell>
@@ -366,61 +350,69 @@ export default function BOQExplorerPage() {
       </Tabs>
 
       <Dialog open={!!reviewVO} onOpenChange={(open) => !open && setReviewVO(null)}>
-         <DialogContent className="max-w-5xl rounded-none p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
-            <div className="bg-[#1e1b4b] p-8 text-white text-start flex justify-between items-center">
-               <div className="flex items-center gap-6">
-                  <div className="h-14 w-14 bg-primary/20 rounded-2xl flex items-center justify-center text-primary shadow-2xl"><FileSearch className="h-7 w-7" /></div>
-                  <div><DialogTitle className="text-2xl font-black">{isRtl ? 'مراجعة أمر تغييري' : 'Review Variation'}</DialogTitle><p className="text-[10px] text-slate-400 uppercase tracking-widest">{reviewVO?.title} | {reviewVO?.boqNumber}</p></div>
+         <DialogContent className="max-w-4xl rounded-lg p-0 overflow-hidden border shadow-2xl bg-white" dir={dir}>
+            <div className="bg-slate-50 p-6 text-slate-900 text-start border-b flex justify-between items-center">
+               <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary shadow-sm"><FileSearch className="h-5 w-5" /></div>
+                  <div><DialogTitle className="text-lg font-bold">{isRtl ? 'مراجعة أمر تغييري' : 'Review Variation'}</DialogTitle><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{reviewVO?.title} | {reviewVO?.boqNumber}</p></div>
                </div>
                <div className="text-end">
-                  <p className="text-[9px] font-black text-primary uppercase mb-1">Impact</p>
-                  <h3 className={cn("text-3xl font-black font-mono", (reviewVO?.totalAmount || 0) >= 0 ? "text-emerald-400" : "text-rose-400")}>{(reviewVO?.totalAmount || 0).toLocaleString()} <span className="text-xs opacity-40">KWD</span></h3>
+                  <p className="text-[8px] font-bold text-primary uppercase mb-1">Financial Impact</p>
+                  <h3 className={cn("text-xl font-bold font-mono", (reviewVO?.totalAmount || 0) >= 0 ? "text-emerald-600" : "text-rose-600")}>{(reviewVO?.totalAmount || 0).toLocaleString()} <span className="text-[10px] opacity-40">KWD</span></h3>
                </div>
             </div>
-            <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto scrollbar-hide text-start">
-               <div className="p-6 bg-slate-50 rounded-2xl border-2 border-white shadow-inner"><h5 className="font-black text-xs text-slate-400 uppercase mb-2">Justification</h5><p className="text-sm font-bold text-slate-700 leading-relaxed">{reviewVO?.reason || '---'}</p></div>
-               <div className="border rounded-2xl overflow-hidden shadow-sm">
+            <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto text-start">
+               <div className="p-4 bg-slate-50/50 rounded-lg border text-sm font-medium text-slate-600 leading-relaxed italic">"{reviewVO?.reason || '---'}"</div>
+               <div className="border rounded-md overflow-hidden">
                   <Table>
-                     <TableHeader className="bg-slate-900">
+                     <TableHeader className="bg-slate-50">
                         <TableRow>
-                           <TableHead className="ps-6 text-white">Action</TableHead>
-                           <TableHead className="text-white">Item</TableHead>
-                           <TableHead className="text-center text-white">Delta</TableHead>
-                           <TableHead className="text-end text-white">Rate</TableHead>
-                           <TableHead className="text-end pe-6 text-white">Total</TableHead>
+                           <TableHead className="ps-4 py-2 text-[10px] font-bold uppercase">Action</TableHead>
+                           <TableHead className="py-2 text-[10px] font-bold uppercase">Item</TableHead>
+                           <TableHead className="py-2 text-center text-[10px] font-bold uppercase">Delta</TableHead>
+                           <TableHead className="py-2 text-end text-[10px] font-bold uppercase">Rate</TableHead>
+                           <TableHead className="pe-4 py-2 text-end text-[10px] font-bold uppercase">Total</TableHead>
                         </TableRow>
                      </TableHeader>
                      <TableBody>
-                        {loadingReview ? <TableRow><TableCell colSpan={5} className="text-center py-12"><Loader2 className="animate-spin mx-auto text-primary" /></TableCell></TableRow> : reviewItems.map((item, idx) => (
-                          <TableRow key={idx}>
-                             <TableCell className="ps-6"><Badge variant="outline" className="font-black text-[8px] uppercase">{item.type}</Badge></TableCell>
-                             <TableCell className="font-bold text-xs text-slate-700">{item.description}</TableCell>
-                             <TableCell className="text-center font-mono font-black text-xs">{item.quantityDelta}</TableCell>
-                             <TableCell className="text-end font-mono text-xs">{item.rate?.toLocaleString()}</TableCell>
-                             <TableCell className="text-end pe-6 font-mono font-black">{item.total?.toLocaleString()}</TableCell>
+                        {loadingReview ? <TableRow><TableCell colSpan={5} className="text-center py-10"><Loader2 className="animate-spin h-5 w-5 mx-auto text-primary" /></TableCell></TableRow> : reviewItems.map((item, idx) => (
+                          <TableRow key={idx} className="text-xs">
+                             <TableCell className="ps-4 py-2"><Badge variant="outline" className="text-[8px] font-bold uppercase h-4 px-1">{item.type}</Badge></TableCell>
+                             <TableCell className="py-2 font-semibold text-slate-700">{item.description}</TableCell>
+                             <TableCell className="py-2 text-center font-mono font-bold">{item.quantityDelta}</TableCell>
+                             <TableCell className="py-2 text-end font-mono">{item.rate?.toLocaleString()}</TableCell>
+                             <TableCell className="pe-4 py-2 text-end font-mono font-bold">{item.total?.toLocaleString()}</TableCell>
                           </TableRow>
                         ))}
                      </TableBody>
                   </Table>
                </div>
             </div>
-            <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4">
-               <Button onClick={handleRejectVO} disabled={!!processingId} variant="outline" className="flex-1 h-16 rounded-2xl border-2 border-rose-100 text-rose-600 font-black">رفض وإلغاء</Button>
-               <Button onClick={handleApproveVO} disabled={!!processingId} className="flex-[2] h-16 rounded-2xl btn-gradient text-xl gap-3">{processingId ? <Loader2 className="animate-spin h-6 w-6" /> : <CheckCircle2 className="h-6 w-6" />}{isRtl ? 'اعتماد التغيير وحقنه' : 'Approve & Commit'}</Button>
+            <DialogFooter className="p-4 bg-slate-50 border-t flex flex-row gap-2">
+               <Button onClick={() => setReviewVO(null)} variant="outline" className="flex-1 h-9 rounded-md text-xs font-semibold">إلغاء</Button>
+               <Button onClick={handleRejectVO} disabled={!!processingId} variant="destructive" className="flex-1 h-9 rounded-md text-xs font-semibold">رفض التعديل</Button>
+               <Button onClick={handleApproveVO} disabled={!!processingId} className="flex-[1.5] h-9 rounded-md text-xs font-bold gap-2">
+                  {processingId ? <Loader2 className="animate-spin h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                  {isRtl ? 'اعتماد التغيير وحقنه' : 'Approve & Commit'}
+               </Button>
             </DialogFooter>
          </DialogContent>
       </Dialog>
 
       <AlertDialog open={!!deletingId} onOpenChange={open => !open && setDeletingId(null)}>
-        <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white" dir={dir}>
+        <AlertDialogContent className="rounded-lg p-6 max-w-md border shadow-2xl bg-white" dir={dir}>
           <AlertDialogHeader>
-             <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50"><AlertTriangle className="h-10 w-10" /></div>
-             <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">{t('confirmDelete')}</AlertDialogTitle>
-             <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">{isRtl ? 'هل أنت متأكد؟ سيتم حذف المقايسة وكافة سجلات التنفيذ الميداني المرتبطة بها نهائياً.' : 'Are you sure? This BOQ and all associated field execution logs will be permanently deleted.'}</AlertDialogDescription>
+             <div className="mx-auto w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mb-4"><Trash2 className="h-6 w-6" /></div>
+             <AlertDialogTitle className="text-center font-bold text-xl">{t('confirmDelete')}</AlertDialogTitle>
+             <AlertDialogDescription className="text-center font-medium text-slate-400 mt-2 text-sm">
+                {isRtl ? 'سيتم حذف المقايسة وكافة سجلات التنفيذ الميداني المرتبطة بها نهائياً.' : 'Are you sure? This BOQ and all associated field execution logs will be permanently deleted.'}
+             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
-            <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteBOQ} disabled={isDeleting} className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200">{isDeleting ? <Loader2 className="animate-spin h-5 w-5" /> : (isRtl ? 'نعم، احذف المقايسة' : 'Confirm Delete')}</AlertDialogAction>
+          <AlertDialogFooter className="mt-6 gap-2 flex flex-row">
+            <AlertDialogCancel className="flex-1 h-9 rounded-md text-xs font-bold">إلغاء</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteBOQ} disabled={isDeleting} className="flex-1 h-9 rounded-md text-xs font-bold bg-rose-600 hover:bg-rose-700">
+               {isDeleting ? <Loader2 className="animate-spin h-4 w-4" /> : (isRtl ? 'نعم، احذف' : 'Confirm')}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
