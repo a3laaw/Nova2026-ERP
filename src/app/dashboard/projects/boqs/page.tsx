@@ -97,7 +97,7 @@ export default function BOQExplorerPage() {
   [db, companyId]);
   const { data: boqs, loading: boqLoading } = useCollection<BOQ>(boqsQuery);
 
-  // 2. دالة جلب الأوامر التغييرية لكل مقايسة ودمجها (Sovereign Fetch & Merge)
+  // 2. دالة جلب الأوامر التغييرية - تم تحسينها لتعمل بالشحن المسبق (Pre-fetch)
   useEffect(() => {
     async function fetchAllVariations() {
       if (!boqs || boqs.length === 0 || !db || !companyId) {
@@ -105,10 +105,13 @@ export default function BOQExplorerPage() {
         return;
       }
       
+      // إذا كان لدينا بيانات بالفعل، لا نكرر البحث إلا إذا تغيرت قائمة المقايسات
+      if (allVOs.length > 0 && !voLoading) return;
+
       setVoLoading(true);
       try {
         const results: BOQVariation[] = [];
-        // جلب الأوامر لكل مقايسة بشكل متوازي
+        // جلب الأوامر لكل مقايسة بشكل متوازي لتقليل زمن الانتظار
         const promises = boqs.map(async (boq) => {
            const voPath = paths.boqVariations(companyId, boq.id!);
            const snap = await getDocs(collection(db, voPath));
@@ -118,12 +121,14 @@ export default function BOQExplorerPage() {
         const voArrays = await Promise.all(promises);
         voArrays.forEach(arr => results.push(...arr));
         
-        // ترتيب النتائج زمنياً
-        setAllVOs(results.sort((a, b) => {
+        // ترتيب النتائج زمنياً (الأحدث أولاً)
+        const sorted = results.sort((a, b) => {
            const dateA = a.createdAt?.toMillis?.() || 0;
            const dateB = b.createdAt?.toMillis?.() || 0;
            return dateB - dateA;
-        }));
+        });
+
+        setAllVOs(sorted);
       } catch (e) {
         console.error("Manual variation merge failed:", e);
       } finally {
@@ -131,10 +136,11 @@ export default function BOQExplorerPage() {
       }
     }
 
-    if (activeTab === 'variations') {
+    // تفعيل الجلب المسبق بمجرد تحميل المقايسات
+    if (boqs && boqs.length > 0) {
        fetchAllVariations();
     }
-  }, [boqs, db, companyId, activeTab]);
+  }, [boqs, db, companyId]); // أزلنا activeTab لضمان الشحن المسبق في الخلفية
 
   const filteredBoqs = useMemo(() => {
     return (boqs || []).filter(boq => 
@@ -171,10 +177,10 @@ export default function BOQExplorerPage() {
       const service = new VariationService(db, companyId, permissions);
       await service.approveVariation(reviewVO.boqId, reviewVO.id!, reviewVO.transactionId, user.uid, user.displayName || 'Admin');
       toast({ title: isRtl ? "تم اعتماد التعديل بنجاح" : "Variation Approved" });
+      
+      // تحديث قائمة الأوامر التغييرية في الذاكرة بعد الموافقة
+      setAllVOs(prev => prev.map(v => v.id === reviewVO.id ? { ...v, status: 'approved' } : v));
       setReviewVO(null);
-      // تحديث القائمة يدوياً
-      setActiveTab("boqs"); 
-      setTimeout(() => setActiveTab("variations"), 100);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
@@ -189,9 +195,9 @@ export default function BOQExplorerPage() {
       const service = new VariationService(db, companyId, permissions);
       await service.rejectVariation(reviewVO.boqId, reviewVO.id!, reviewVO.transactionId, user.uid, user.displayName || 'Admin');
       toast({ title: isRtl ? "تم رفض وإلغاء الطلب" : "Variation Rejected" });
+      
+      setAllVOs(prev => prev.map(v => v.id === reviewVO.id ? { ...v, status: 'cancelled' } : v));
       setReviewVO(null);
-      setActiveTab("boqs");
-      setTimeout(() => setActiveTab("variations"), 100);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     } finally {
@@ -237,6 +243,11 @@ export default function BOQExplorerPage() {
              </TabsTrigger>
              <TabsTrigger value="variations" className="rounded-lg font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2">
                 <Sparkles className="h-4 w-4" /> {isRtl ? 'الأوامر التغييرية' : 'Variations'}
+                {allVOs.filter(v => v.status === 'draft').length > 0 && (
+                   <Badge className="bg-rose-500 text-white border-0 h-4 px-1.5 min-w-[16px] flex items-center justify-center text-[8px] animate-pulse">
+                      {allVOs.filter(v => v.status === 'draft').length}
+                   </Badge>
+                )}
              </TabsTrigger>
            </TabsList>
            <div className="relative w-full max-w-md">
