@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -9,7 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   HardHat, Plus, Search, Loader2, ArrowRight,
   Filter, Calendar, Camera,
-  UserCircle, LayoutGrid, Copy, Edit3
+  UserCircle, LayoutGrid, Copy, Edit3,
+  MoreVertical
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -24,7 +26,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical } from "lucide-react";
 
 export default function FieldVisitsListPage() {
   const { globalUser } = useAuthContext();
@@ -52,91 +53,61 @@ export default function FieldVisitsListPage() {
   }, [rawVisits, searchTerm]);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500" dir={dir}>
+    <div className="space-y-4 w-full px-4 md:px-6 animate-in fade-in duration-500" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
-           <h1 className="text-3xl font-black font-headline flex items-center gap-3 text-slate-900">
-             <HardHat className="h-8 w-8 text-primary" />
-             {isRtl ? 'سجل الزيارات الميدانية المعتمد' : 'Official Field Visits Log'}
+           <h1 className="text-xl md:text-2xl font-bold text-slate-900">
+             {isRtl ? 'سجل الزيارات الميدانية' : 'Field Visits Log'}
            </h1>
-           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-              {isRtl ? 'أرشيف تقارير الإنجاز اليومية الموثقة بالصور والموارد.' : 'Archive of daily progress reports with evidence and resources.'}
+           <p className="text-xs text-muted-foreground font-medium opacity-80 italic">
+              {isRtl ? 'تقارير الإنجاز اليومية الموثقة.' : 'Daily progress reports archive.'}
            </p>
         </div>
-        <Button onClick={() => router.push('/dashboard/construction/field-visits/new')} className="h-12 px-8 rounded-xl shadow-xl shadow-primary/20 gap-2">
-          <Plus className="h-5 w-5" /> {isRtl ? 'تقرير زيارة جديد' : 'New Site Report'}
+        <Button onClick={() => router.push('/dashboard/construction/field-visits/new')} size="sm" className="h-9 px-4 font-bold rounded-md shadow-sm">
+          <Plus className="h-4 w-4 me-2" /> {isRtl ? 'تقرير جديد' : 'New Report'}
         </Button>
       </div>
 
-      <Card className="border-0 shadow-sm rounded-2xl bg-white overflow-hidden">
-        <div className="p-5 flex flex-row items-center justify-between gap-4">
-          <div className="relative w-full max-w-md">
-            <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+      <Card className="rounded-lg shadow-sm border-slate-100 overflow-hidden bg-white">
+        <div className="p-3 flex flex-row items-center justify-between gap-4 bg-slate-50/30">
+          <div className="relative w-full max-w-sm">
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input 
-              placeholder={isRtl ? 'بحث باسم العميل أو المهندس...' : 'Search clients or engineers...'} 
-              className="ps-12 h-11 bg-slate-50/50 border-slate-200 font-bold" 
+              placeholder={isRtl ? 'بحث...' : 'Search...'} 
+              className="ps-9 h-9 rounded-md border-slate-200 bg-white text-sm font-medium" 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant="outline" className="h-11 px-6 border-slate-200 font-bold">
-             <Filter className="h-4 w-4 me-2" /> {isRtl ? 'تصفية' : 'Filter'}
+          <Button variant="outline" size="sm" className="h-9 px-3 rounded-md font-bold text-xs">
+             <Filter className="h-3.5 w-3.5 me-2" /> {isRtl ? 'تصفية' : 'Filter'}
           </Button>
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {loading ? (
-          <div className="col-span-full py-20 text-center"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></div>
+          <div className="col-span-full py-20 text-center"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></div>
         ) : filtered.length === 0 ? (
-          <div className="col-span-full py-40 text-center flex flex-col items-center gap-6 opacity-30">
-             <Calendar className="h-16 w-16 text-slate-200" />
-             <p className="text-xl font-black text-slate-400">{isRtl ? 'لا يوجد تقارير زيارات مسجلة حالياً.' : 'No site reports found.'}</p>
-          </div>
+          <div className="col-span-full py-20 text-center opacity-30 italic font-bold">No reports found.</div>
         ) : (
           filtered.map((visit) => (
-            <Card key={visit.id} className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden group hover:ring-2 hover:ring-primary/20 transition-all">
-               <CardHeader className="bg-slate-50/50 p-6 border-b flex flex-row justify-between items-center">
-                  <div className="flex items-center gap-3">
-                     <div className="h-9 w-9 rounded-xl bg-white shadow-sm flex items-center justify-center text-primary border border-primary/10">
-                        <Calendar className="h-4 w-4" />
-                     </div>
-                     <span className="font-black text-xs text-slate-600">{visit.visitDate}</span>
+            <Card key={visit.id} className="rounded-lg border shadow-sm bg-white overflow-hidden group hover:shadow-md transition-all cursor-pointer" onClick={() => router.push(`/dashboard/construction/field-visits/${visit.id}`)}>
+               <CardHeader className="bg-slate-50 p-4 border-b flex flex-row justify-between items-center">
+                  <div className="flex items-center gap-2">
+                     <Calendar className="h-3.5 w-3.5 text-primary" />
+                     <span className="font-bold text-[10px] text-slate-600">{visit.visitDate}</span>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                       <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full"><MoreVertical className="h-4 w-4" /></Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="rounded-xl border-2 shadow-2xl">
-                       <DropdownMenuItem className="font-bold text-xs gap-2" onClick={() => router.push(`/dashboard/construction/field-visits/${visit.id}`)}>
-                          <ArrowRight className="h-3.5 w-3.5" /> عرض التقرير
-                       </DropdownMenuItem>
-                       <DropdownMenuItem className="font-bold text-xs gap-2" onClick={() => router.push(`/dashboard/construction/field-visits/new?cloneId=${visit.id}`)}>
-                          <Copy className="h-3.5 w-3.5" /> استنساخ للنسخ
-                       </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <Badge variant="outline" className="text-[8px] font-black uppercase border-0">{visit.status}</Badge>
                </CardHeader>
-               <CardContent className="p-6 space-y-4 text-start cursor-pointer" onClick={() => router.push(`/dashboard/construction/field-visits/${visit.id}`)}>
-                  <div className="space-y-1">
-                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'العميل المالك' : 'Client Name'}</p>
-                     <h4 className="font-black text-base text-slate-800 truncate">{visit.clientName}</h4>
+               <CardContent className="p-4 space-y-3 text-start">
+                  <div className="space-y-0.5">
+                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter truncate">{visit.clientName}</p>
+                     <h4 className="font-bold text-xs text-slate-800 truncate">{visit.transactionNumber}</h4>
                   </div>
-
-                  <div className="flex items-center gap-2 pt-2 border-t border-slate-50">
-                     <UserCircle className="h-3.5 w-3.5 text-primary" />
-                     <span className="text-[10px] font-bold text-slate-500">{visit.engineerName}</span>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4 py-2 bg-slate-50/50 rounded-xl px-4">
-                     <div className="flex items-center gap-2">
-                        <LayoutGrid className="h-3 w-3 text-blue-500" />
-                        <span className="text-[10px] font-black text-slate-700">{visit.items?.length || 0} {isRtl ? 'بنود' : 'Items'}</span>
-                     </div>
-                     <div className="flex items-center gap-2">
-                        <Camera className="h-3 w-3 text-orange-500" />
-                        <span className="text-[10px] font-black text-slate-700">{visit.items?.reduce((acc: number, i: any) => acc + (i.photoUrls?.length || 0), 0)} {isRtl ? 'صور' : 'Photos'}</span>
-                     </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-50">
+                     <span className="text-[9px] font-bold text-slate-500 truncate">{visit.engineerName}</span>
+                     <ArrowRight className={cn("h-3.5 w-3.5 text-slate-300", isRtl && "rotate-180")} />
                   </div>
                </CardContent>
             </Card>

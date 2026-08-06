@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -213,11 +214,11 @@ export function ConstructionBookingsView() {
   if (!mounted || apptsLoading || empsLoading || !settings) return <div className="h-[40vh] flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-700 print:space-y-1 print:pt-0" dir={dir}>
+    <div className="space-y-4 animate-in fade-in duration-700 print:space-y-1 print:pt-0" dir={dir}>
       
       <div className="flex justify-center print:hidden">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => setCurrentDate(subDays(currentDate, 1))} className="h-10 w-10 rounded-xl bg-white shadow-sm border-2 border-slate-100"><ChevronLeft className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
+          <Button variant="ghost" size="icon" onClick={() => setCurrentDate(subDays(currentDate, 1))} className="h-9 w-9 rounded-md border text-slate-400"><ChevronLeft className={cn("h-4 w-4", !isRtl && "rotate-180")} /></Button>
           <div className="flex gap-2">
             {[-1, 0, 1].map((offset) => {
               const d = addDays(currentDate, offset);
@@ -227,51 +228,50 @@ export function ConstructionBookingsView() {
                   key={offset}
                   onClick={() => setCurrentDate(d)}
                   className={cn(
-                    "cursor-pointer transition-all border-2 rounded-2xl w-24 h-20 flex flex-col items-center justify-center text-center",
-                    isActive ? "bg-[#1e1b4b] border-[#1e1b4b] shadow-xl shadow-indigo-900/20 scale-105" : "bg-white border-slate-100 hover:border-primary/20"
+                    "cursor-pointer transition-all border rounded-lg w-20 h-16 flex flex-col items-center justify-center text-center",
+                    isActive ? "bg-primary border-primary shadow-md scale-105" : "bg-white border-slate-200 hover:border-primary/40"
                   )}
                 >
-                  <p className={cn("text-[9px] font-black uppercase tracking-tighter", isActive ? "text-primary" : "text-slate-400")}>{format(d, 'EEEE', { locale: isRtl ? ar : enUS })}</p>
-                  <p className={cn("text-xl font-black mt-0.5", isActive ? "text-white" : "text-slate-900")}>{format(d, 'd')}</p>
-                  <p className={cn("text-[8px] font-bold uppercase", isActive ? "text-white/60" : "text-slate-400")}>{format(d, 'MMM')}</p>
+                  <p className={cn("text-[8px] font-bold uppercase tracking-tight", isActive ? "text-white" : "text-slate-400")}>{format(d, 'EEEE', { locale: isRtl ? ar : enUS })}</p>
+                  <p className={cn("text-lg font-bold", isActive ? "text-white" : "text-slate-900")}>{format(d, 'd')}</p>
                 </Card>
               );
             })}
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setCurrentDate(addDays(currentDate, 1))} className="h-10 w-10 rounded-xl bg-white shadow-sm border-2 border-slate-100"><ChevronRight className={cn("h-5 w-5", !isRtl && "rotate-180")} /></Button>
+          <Button variant="ghost" size="icon" onClick={() => setCurrentDate(addDays(currentDate, 1))} className="h-9 w-9 rounded-md border text-slate-400"><ChevronRight className={cn("h-4 w-4", !isRtl && "rotate-180")} /></Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 print:gap-1">
-         <Card className="border-0 shadow-md rounded-xl bg-white border-b-4 border-b-slate-900 print:shadow-none print:border-b-2">
-            <CardContent className="p-3 print:p-1 flex flex-col items-center justify-center text-center h-16 print:h-12">
-               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter">{isRtl ? 'إجمالي اليوم' : 'Total'}</p>
-               <h3 className="text-xl print:text-xs font-black text-slate-900" style={{ fontVariantNumeric: 'tabular-nums' }}>{filteredAppointments.length.toLocaleString('en-US')}</h3>
+      <div className="grid grid-cols-4 gap-3 print:gap-1">
+         <Card className="rounded-lg shadow-sm border-slate-100 bg-white border-b-4 border-b-slate-500">
+            <CardContent className="p-3 flex flex-col items-center justify-center h-14">
+               <p className="text-[9px] font-bold text-slate-400 uppercase">{isRtl ? 'إجمالي اليوم' : 'Total'}</p>
+               <h3 className="text-lg font-bold text-slate-900">{filteredAppointments.length}</h3>
             </CardContent>
          </Card>
-         <Card className="border-0 shadow-md rounded-xl bg-white border-b-4 border-b-yellow-400 print:shadow-none print:border-b-2">
-            <CardContent className="p-3 print:p-1 flex flex-col items-center justify-center text-center h-16 print:h-12">
-               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter">{isRtl ? 'قيد التنفيذ' : 'Active'}</p>
-               <h3 className="text-xl print:text-xs font-black text-yellow-500" style={{ fontVariantNumeric: 'tabular-nums' }}>{filteredAppointments.filter(a => a.status === 'scheduled').length.toLocaleString('en-US')}</h3>
+         <Card className="rounded-lg shadow-sm border-slate-100 bg-white border-b-4 border-b-yellow-500">
+            <CardContent className="p-3 flex flex-col items-center justify-center h-14">
+               <p className="text-[9px] font-bold text-slate-400 uppercase">{isRtl ? 'قيد التنفيذ' : 'Active'}</p>
+               <h3 className="text-lg font-bold text-yellow-600">{filteredAppointments.filter(a => a.status === 'scheduled').length}</h3>
             </CardContent>
          </Card>
-         <Card className="border-0 shadow-md rounded-xl bg-white border-b-4 border-b-emerald-500 print:shadow-none print:border-b-2">
-            <CardContent className="p-3 print:p-1 flex flex-col items-center justify-center text-center h-16 print:h-12">
-               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter">{isRtl ? 'مكتملة' : 'Done'}</p>
-               <h3 className="text-xl print:text-xs font-black text-emerald-600" style={{ fontVariantNumeric: 'tabular-nums' }}>{filteredAppointments.filter(a => a.status === 'completed').length.toLocaleString('en-US')}</h3>
+         <Card className="rounded-lg shadow-sm border-slate-100 bg-white border-b-4 border-b-emerald-500">
+            <CardContent className="p-3 flex flex-col items-center justify-center h-14">
+               <p className="text-[9px] font-bold text-slate-400 uppercase">{isRtl ? 'مكتملة' : 'Done'}</p>
+               <h3 className="text-lg font-bold text-emerald-600">{filteredAppointments.filter(a => a.status === 'completed').length}</h3>
             </CardContent>
          </Card>
-         <Card className="border-0 shadow-md rounded-xl bg-white border-b-4 border-b-blue-500 print:shadow-none print:border-b-2">
-            <CardContent className="p-3 print:p-1 flex flex-col items-center justify-center text-center h-16 print:h-12">
-               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter">{isRtl ? 'القوى الميدانية' : 'Staff'}</p>
-               <h3 className="text-xl print:text-xs font-black text-blue-600" style={{ fontVariantNumeric: 'tabular-nums' }}>{fieldEngineers.length.toLocaleString('en-US')}</h3>
+         <Card className="rounded-lg shadow-sm border-slate-100 bg-white border-b-4 border-b-blue-500">
+            <CardContent className="p-3 flex flex-col items-center justify-center h-14">
+               <p className="text-[9px] font-bold text-slate-400 uppercase">{isRtl ? 'المهندسين' : 'Engineers'}</p>
+               <h3 className="text-lg font-bold text-blue-600">{fieldEngineers.length}</h3>
             </CardContent>
          </Card>
       </div>
 
-      <div className="space-y-8 pb-10 print:pb-0 print:space-y-4">
+      <div className="space-y-6 pb-10">
          <GridSection 
-           title={isRtl ? "الفترة الميدانية الأولى ☀️" : "Morning Session"} 
+           title={isRtl ? "الفترة الصباحية ☀️" : "Morning Session"} 
            slots={timeSlots.morning} 
            engineers={fieldEngineers} 
            grid={filteredAppointments} 
@@ -288,7 +288,7 @@ export function ConstructionBookingsView() {
          />
          {timeSlots.evening.length > 0 && (
            <GridSection 
-             title={isRtl ? "الفترة الميدانية الثانية 🌆" : "Evening Session"} 
+             title={isRtl ? "الفترة المسائية 🌆" : "Evening Session"} 
              slots={timeSlots.evening} 
              engineers={fieldEngineers} 
              grid={filteredAppointments} 
@@ -315,10 +315,8 @@ function GridSection({ title, slots, engineers, grid, visitCounts, onAction, isR
   const getBlockedReason = (engId: string, slotTime: string) => {
      const leave = leaves?.find((l: any) => l.employeeId === engId && dateStr >= l.startDate && dateStr <= l.endDate);
      if (leave) return { type: 'leave', label: isRtl ? 'إجازة' : 'Leave' };
-
      const absence = absences?.find((a: any) => a.employeeId === engId);
      if (absence) return { type: 'absent', label: isRtl ? 'غائب' : 'Absent' };
-
      const perm = permissions?.find((p: any) => {
         if (p.userId !== engId) return false;
         const slot = parse(slotTime, 'HH:mm', new Date());
@@ -327,39 +325,31 @@ function GridSection({ title, slots, engineers, grid, visitCounts, onAction, isR
         return slot >= pStart && slot < pEnd;
      });
      if (perm) return { type: 'permission', label: isRtl ? 'استئذان' : 'Perm' };
-
      return null;
   };
 
   return (
-    <div className="space-y-4 print:space-y-1">
-       <div className="flex items-center gap-3 px-1 print:gap-1">
-          <Badge className="bg-slate-900 text-white font-black px-4 py-1 rounded-lg text-[9px] uppercase tracking-widest">{title}</Badge>
-          <div className="h-[1px] flex-1 bg-slate-100" />
+    <div className="space-y-2">
+       <div className="flex items-center gap-2 px-1">
+          <Badge className="bg-slate-800 text-white font-bold text-[9px] uppercase px-3">{title}</Badge>
+          <div className="h-px flex-1 bg-slate-100" />
        </div>
 
-       <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white shadow-sm print:border-0 print:shadow-none scrollbar-hide">
+       <div className="overflow-x-auto rounded-lg border border-slate-100 bg-white shadow-sm scrollbar-hide">
           <table className="w-full border-collapse">
              <thead>
-                <tr className="bg-slate-50/50 print:bg-white">
-                   <th className="w-16 p-2 border-b border-slate-100 font-black text-[9px] text-slate-400 uppercase tracking-tighter bg-slate-50/50 print:p-1 print:w-10">Time</th>
-                   {engineers.map((eng: Employee) => {
-                      const engAppts = grid.filter((a: any) => a.engineerId === eng.id);
-                      return (
-                        <th key={eng.id} className="p-3 border-b border-slate-100 border-s border-s-slate-50 min-w-[180px] print:p-1 print:min-w-[100px]">
-                           <div className="flex flex-col items-center text-center">
-                              <Avatar className="h-10 w-10 rounded-2xl shrink-0 mb-2 border-2 border-white shadow-md ring-1 ring-slate-100">
-                                 <AvatarImage src={`https://picsum.photos/seed/${eng.id}/40/40`} />
-                                 <AvatarFallback className="bg-primary/10 text-primary font-black text-[10px]">{eng.fullName.charAt(0)}</AvatarFallback>
-                              </Avatar>
-                              <div className="text-center w-full">
-                                 <span className="font-black text-slate-800 text-[11px] leading-none block truncate">{eng.fullName}</span>
-                                 <Badge className="bg-slate-100 text-slate-500 text-[7px] font-black h-4 px-1.5 border-0 mt-1.5 uppercase shadow-sm">{engAppts.length} TASKS</Badge>
-                              </div>
-                           </div>
-                        </th>
-                      );
-                   })}
+                <tr className="bg-slate-50/50">
+                   <th className="w-14 p-2 border-b font-bold text-[10px] text-slate-400">Time</th>
+                   {engineers.map((eng: Employee) => (
+                      <th key={eng.id} className="p-2 border-b border-s min-w-[150px]">
+                         <div className="flex items-center gap-2">
+                            <Avatar className="h-6 w-6 rounded-md">
+                               <AvatarFallback className="bg-primary/10 text-primary text-[8px] font-bold">{eng.fullName.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <span className="font-bold text-[11px] text-slate-700 truncate">{eng.fullName}</span>
+                         </div>
+                      </th>
+                   ))}
                 </tr>
              </thead>
              <tbody>
@@ -368,105 +358,40 @@ function GridSection({ title, slots, engineers, grid, visitCounts, onAction, isR
                   const slotEnd = addMinutes(slotStart, settings?.fieldWork?.slotDurationMinutes || 60);
 
                   return (
-                    <tr key={slot} className="group/row">
-                       <td className="p-3 text-center border-b border-slate-50 border-e border-e-slate-50 font-mono font-black text-slate-300 text-[10px] bg-slate-50/20">{slot}</td>
+                    <tr key={slot} className="group">
+                       <td className="p-2 text-center border-b border-e font-mono font-bold text-slate-300 text-[10px] bg-slate-50/20">{slot}</td>
                        {engineers.map((eng: Employee) => {
                           const appt = grid.find((a: any) => {
                              const apptStart = parseISO(a.start);
-                             const apptEnd = a.end 
-                               ? parseISO(a.end) 
-                               : addMinutes(apptStart, settings?.fieldWork?.slotDurationMinutes || 60);
-                             
+                             const apptEnd = a.end ? parseISO(a.end) : addMinutes(apptStart, settings?.fieldWork?.slotDurationMinutes || 60);
                              return apptStart < slotEnd && slotStart < apptEnd && a.engineerId === eng.id;
                           });
 
                           const block = getBlockedReason(eng.id!, slot);
-
-                          if (block) {
-                             return (
-                               <td key={eng.id} className="p-0.5 border-b border-slate-50 border-s border-s-slate-50">
-                                  <div className="h-full flex items-center justify-center gap-1.5 text-[8px] font-black text-slate-300 uppercase italic opacity-40">
-                                     {block.label}
-                                  </div>
-                             </td>
-                             );
-                          }
+                          if (block) return <td key={eng.id} className="p-1 border-b border-s bg-slate-50/30 text-[8px] font-bold text-slate-300 text-center uppercase italic">{block.label}</td>;
 
                           if (appt) {
                              const isCompleted = appt.status === 'completed';
-                             const apptStart = parseISO(appt.start);
-                             const isStartSlot = apptStart >= slotStart && apptStart < slotEnd;
-                             const visitCount = visitCounts.get(appt.id);
-
+                             const isStartSlot = parseISO(appt.start) >= slotStart && parseISO(appt.start) < slotEnd;
                              return (
-                               <td key={eng.id} className="p-0.5 border-b border-slate-50 border-s border-s-slate-50 align-top">
-                                  <div className="relative h-full">
-                                    <Card 
-                                      onClick={() => router.push(`/dashboard/appointments/${appt.id}`)}
-                                      className={cn(
-                                        "p-2 rounded-xl h-full transition-all cursor-pointer min-h-[44px] shadow-sm",
-                                        isCompleted ? "bg-emerald-50/50 border-emerald-500/20" : "bg-primary/5 border-primary/20"
-                                      )}
-                                    >
-                                      <div className="text-start space-y-1 pr-6">
-                                          {isStartSlot && (
-                                            <>
-                                              <div className="flex items-center gap-1.5">
-                                                 {isCompleted ? (
-                                                    <CheckCircle2 className="h-2.5 w-2.5 text-emerald-600 shrink-0" />
-                                                 ) : (
-                                                    <Badge className="h-3.5 px-1 bg-black/5 text-[7px] font-black border-0">V{visitCount}</Badge>
-                                                 )}
-                                                 <p className={cn("font-black text-[9px] leading-tight truncate", isCompleted ? "text-emerald-900" : "text-slate-900")}>
-                                                   {appt.clientName}
-                                                 </p>
-                                              </div>
-                                              <div className="flex items-center gap-1 text-[7px] font-bold opacity-60">
-                                                 <MapPin className="h-2.5 w-2.5" /> {appt.governorateName?.slice(0, 10)}
-                                              </div>
-                                            </>
-                                          )}
-                                      </div>
-                                    </Card>
-
-                                    {isStartSlot && (
-                                      <div className="absolute top-1 right-1 print:hidden" onClick={e => e.stopPropagation()}>
-                                        <DropdownMenu>
-                                          <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-5 w-5 rounded-md hover:bg-black/5">
-                                              <MoreVertical className="h-3 w-3" />
-                                            </Button>
-                                          </DropdownMenuTrigger>
-                                          <DropdownMenuContent className="rounded-xl border-2 shadow-2xl" align="end">
-                                            <DropdownMenuItem className="font-bold text-xs gap-2" onClick={() => router.push(`/dashboard/appointments/${appt.id}`)}>
-                                              <Eye className="h-3.5 w-3.5" /> {isRtl ? 'فتح التقرير' : 'Open Report'}
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem className="font-bold text-xs gap-2" onClick={() => onAction('edit', eng, slot, appt)}>
-                                              <Edit3 className="h-3.5 w-3.5" /> {isRtl ? 'تعديل' : 'Edit'}
-                                            </DropdownMenuItem>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem className="font-black text-xs gap-2 text-rose-600">
-                                              <Trash2 className="h-3.5 w-3.5" /> {isRtl ? 'إلغاء الموعد' : 'Cancel'}
-                                            </DropdownMenuItem>
-                                          </DropdownMenuContent>
-                                        </DropdownMenu>
-                                      </div>
+                               <td key={eng.id} className="p-0.5 border-b border-s align-top">
+                                  <div 
+                                    onClick={() => router.push(`/dashboard/appointments/${appt.id}`)}
+                                    className={cn(
+                                      "p-1.5 rounded-md h-full transition-all cursor-pointer min-h-[36px] border",
+                                      isCompleted ? "bg-emerald-50/30 border-emerald-500/20" : "bg-primary/5 border-primary/20"
                                     )}
+                                  >
+                                      {isStartSlot && (
+                                         <p className={cn("font-bold text-[9px] truncate", isCompleted ? "text-emerald-700" : "text-slate-800")}>
+                                            {appt.clientName}
+                                         </p>
+                                      )}
                                   </div>
                                </td>
                              );
                           }
-                          return (
-                            <td 
-                              key={eng.id} 
-                              onClick={() => onAction('create', eng, slot)}
-                              className="p-0.5 border-b border-slate-50 border-s border-s-slate-50 group-hover/row:bg-primary/[0.02] cursor-pointer"
-                            >
-                               <div className="h-6 flex items-center justify-center opacity-0 group-hover/row:opacity-100 transition-opacity">
-                                  <Plus className="h-3 w-3 text-primary/30" />
-                               </div>
-                            </td>
-                          );
+                          return <td key={eng.id} className="p-0.5 border-b border-s hover:bg-slate-50/50 cursor-pointer" onClick={() => onAction('create', eng, slot)} />
                        })}
                     </tr>
                   );

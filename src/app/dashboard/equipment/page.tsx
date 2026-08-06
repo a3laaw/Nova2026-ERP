@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -44,96 +45,93 @@ export default function EquipmentMasterPage() {
   }, [equipment, searchTerm]);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-700" dir={dir}>
+    <div className="space-y-4 w-full px-4 md:px-6 animate-in fade-in duration-500" dir={dir}>
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
-          <h1 className="text-3xl font-black font-headline flex items-center gap-3 text-slate-900">
-            <Truck className="h-8 w-8 text-primary" />
+          <h1 className="text-xl md:text-2xl font-bold text-slate-900">
             {isRtl ? 'سجل المعدات والآليات' : 'Equipment Registry'}
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {isRtl ? 'إدارة الأصول المملوكة والمستأجرة وتكاليف التشغيل.' : 'Manage owned/rented assets and operating costs.'}
+          <p className="text-xs text-muted-foreground font-medium opacity-80 italic">
+            {isRtl ? 'إدارة الأصول المملوكة والمستأجرة.' : 'Manage owned and rented assets.'}
           </p>
         </div>
         <Button 
+          size="sm"
           onClick={() => router.push('/dashboard/equipment/new')} 
-          className="h-12 px-8 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-2 border-b-4 border-orange-700"
+          className="h-9 px-4 font-bold rounded-md shadow-sm"
         >
-           <Plus className="h-5 w-5" /> {isRtl ? 'إضافة معدة جديدة' : 'Register New Asset'}
+           <Plus className="h-4 w-4 me-2" /> {isRtl ? 'إضافة أصل جديد' : 'New Asset'}
         </Button>
       </header>
 
-      <Card className="border-0 shadow-sm rounded-2xl bg-white overflow-hidden">
-        <div className="p-5 flex flex-row items-center justify-between gap-4">
-          <div className="relative w-full max-w-md">
-            <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
+      <Card className="rounded-lg shadow-sm border-slate-100 overflow-hidden bg-white">
+        <div className="p-3 flex flex-row items-center justify-between gap-4 bg-slate-50/30 border-b">
+          <div className="relative w-full max-w-sm">
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input 
               placeholder={isRtl ? 'بحث بالكود أو الاسم...' : 'Search assets...'} 
-              className="ps-12 h-11 bg-slate-50/50 border-slate-200 font-bold" 
+              className="ps-9 h-9 border-slate-200 bg-white text-sm font-medium" 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant="outline" className="h-11 px-6 border-slate-200 font-bold">
-             <Filter className="h-4 w-4 me-2" /> {isRtl ? 'تصفية' : 'Filter'}
+          <Button variant="outline" size="sm" className="h-9 px-3 rounded-md font-bold text-xs">
+             <Filter className="h-3.5 w-3.5 me-2" /> {isRtl ? 'تصفية' : 'Filter'}
           </Button>
         </div>
-      </Card>
-
-      <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/5">
         <CardContent className="p-0 overflow-x-auto">
           <Table>
-            <TableHeader className="bg-slate-50/80 border-b">
+            <TableHeader className="bg-slate-50">
               <TableRow>
-                <TableHead className="py-6 ps-10 text-start font-black uppercase text-[10px] tracking-widest">{isRtl ? 'المعدة / الكود' : 'Asset / Code'}</TableHead>
-                <TableHead className="text-start font-black uppercase text-[10px] tracking-widest">{isRtl ? 'نوع الملكية' : 'Ownership'}</TableHead>
-                <TableHead className="text-center font-black uppercase text-[10px] tracking-widest">{isRtl ? 'الحالة' : 'Status'}</TableHead>
-                <TableHead className="text-end font-black uppercase text-[10px] tracking-widest">{isRtl ? 'التعرفة (KWD/HR)' : 'Rate/hr'}</TableHead>
-                <TableHead className="pe-10 text-end"></TableHead>
+                <TableHead className="py-3 ps-6 text-start text-[10px] font-bold uppercase text-slate-500">المعدة / الكود</TableHead>
+                <TableHead className="text-start text-[10px] font-bold uppercase text-slate-500">نوع الملكية</TableHead>
+                <TableHead className="text-center text-[10px] font-bold uppercase text-slate-500">الحالة</TableHead>
+                <TableHead className="text-end text-[10px] font-bold uppercase text-slate-500">التعرفة</TableHead>
+                <TableHead className="pe-6"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/20" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 font-bold italic">{isRtl ? 'لا يوجد معدات مسجلة.' : 'No assets found.'}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 font-bold italic">{isRtl ? 'لا يوجد معدات.' : 'No assets found.'}</TableCell></TableRow>
               ) : (
                 filtered.map((item) => (
-                  <TableRow key={item.id} className="group hover:bg-primary/[0.01] transition-colors border-b-slate-100 cursor-pointer" onClick={() => router.push(`/dashboard/equipment/${item.id}/edit`)}>
-                    <TableCell className="ps-10 py-6 text-start">
-                       <div className="flex items-center gap-4">
+                  <TableRow key={item.id} className="group hover:bg-slate-50/50 transition-colors border-b-slate-100 cursor-pointer" onClick={() => router.push(`/dashboard/equipment/${item.id}/edit`)}>
+                    <TableCell className="ps-6 py-2.5 text-start">
+                       <div className="flex items-center gap-3">
                           <div className={cn(
-                            "h-11 w-11 rounded-xl flex items-center justify-center shadow-inner border border-primary/10",
-                            item.ownershipType === 'owned' ? "bg-primary/5 text-primary" : "bg-orange-50 text-orange-600"
+                            "h-9 w-9 rounded-md flex items-center justify-center border shadow-sm shrink-0",
+                            item.ownershipType === 'owned' ? "bg-primary/5 text-primary" : "bg-blue-50 text-blue-600"
                           )}>
-                             <Truck className="h-5 w-5" />
+                             <Truck className="h-4 w-4" />
                           </div>
                           <div className="text-start">
-                             <span className="font-black text-slate-800 text-lg leading-none">{item.name}</span>
-                             <span className="text-[10px] text-slate-400 font-bold mt-2 uppercase tracking-widest font-mono">#{item.code}</span>
+                             <span className="font-bold text-slate-800 text-sm block leading-none">{item.name}</span>
+                             <span className="text-[9px] text-slate-400 font-mono mt-1 block">#{item.code}</span>
                           </div>
                        </div>
                     </TableCell>
                     <TableCell className="text-start">
                        <Badge variant="outline" className={cn(
-                         "font-black text-[9px] uppercase px-3 py-1",
-                         item.ownershipType === 'owned' ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-orange-50 text-orange-600 border-orange-100"
+                         "text-[9px] font-bold uppercase px-2 h-5 border-0",
+                         item.ownershipType === 'owned' ? "bg-blue-50 text-blue-600" : "bg-orange-50 text-orange-600"
                        )}>
-                          {isRtl ? (item.ownershipType === 'owned' ? 'مملوكة' : 'مستأجرة') : item.ownershipType.toUpperCase()}
+                          {item.ownershipType}
                        </Badge>
                     </TableCell>
                     <TableCell className="text-center">
-                       <div className="flex items-center justify-center gap-2">
-                          <span className={cn("h-2 w-2 rounded-full", item.status === 'available' ? "bg-emerald-500" : "bg-rose-500")} />
-                          <span className="text-[10px] font-black uppercase text-slate-600">{item.status}</span>
+                       <div className="flex items-center justify-center gap-1.5">
+                          <span className={cn("h-1.5 w-1.5 rounded-full", item.status === 'available' ? "bg-emerald-500" : "bg-rose-500")} />
+                          <span className="text-[10px] font-bold uppercase text-slate-600">{item.status}</span>
                        </div>
                     </TableCell>
-                    <TableCell className="text-end font-mono font-black text-emerald-600 text-lg pe-10">
-                       {(item.hourlyRentalRate || item.hourlyDepreciationRate || 0).toLocaleString()}
+                    <TableCell className="text-end font-mono font-bold text-xs text-emerald-600">
+                       {(item.hourlyRentalRate || item.hourlyDepreciationRate || 0).toLocaleString()} <span className="text-[8px] opacity-40">KWD</span>
                     </TableCell>
-                    <TableCell className="pe-10 text-end">
-                       <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary group-hover:text-white transition-all h-9 w-9">
-                          <ArrowRight className={cn("h-5 w-5", isRtl && "rotate-180")} />
+                    <TableCell className="pe-6 text-end">
+                       <Button variant="ghost" size="icon" className="rounded-md group-hover:text-primary transition-all h-8 w-8">
+                          <ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} />
                        </Button>
                     </TableCell>
                   </TableRow>
