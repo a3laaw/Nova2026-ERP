@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import {
   FileSpreadsheet, Search, Loader2, ArrowRight, 
   Trash2, AlertTriangle, Sparkles, Clock,
   CheckCircle2, FileSearch, UserCircle, Settings2,
-  XCircle, CheckCircle
+  XCircle, RefreshCw
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, where, collectionGroup, getDocs } from 'firebase/firestore';
@@ -83,11 +83,13 @@ export default function BOQExplorerPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [indexError, setIndexError] = useState<string | null>(null);
   
   const [reviewVO, setReviewVO] = useState<BOQVariation | null>(null);
   const [reviewItems, setReviewItems] = useState<BOQVariationItem[]>([]);
   const [loadingReview, setLoadingReview] = useState(false);
 
+  // 1. استعلام المقايسات (مباشر)
   const boqsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.boqs(companyId))) : null, 
   [db, companyId]);
@@ -101,13 +103,24 @@ export default function BOQExplorerPage() {
     });
   }, [rawBoqs]);
 
+  // 2. استعلام الأوامر التغييرية (شمولي - يتطلب فهرس)
   const allVOsQuery = useMemo(() => 
     companyId && db ? query(
       collectionGroup(db, 'variations'), 
       where('companyId', '==', companyId)
     ) : null, 
   [db, companyId]);
-  const { data: rawVOs, loading: voLoading } = useCollection<BOQVariation>(allVOsQuery);
+  
+  const { data: rawVOs, loading: voLoading, error: voError } = useCollection<BOQVariation>(allVOsQuery);
+
+  // مراقبة أخطاء الفهرسة (Critical Monitoring)
+  useEffect(() => {
+    if (voError?.message?.includes('index')) {
+      setIndexError(voError.message);
+    } else {
+      setIndexError(null);
+    }
+  }, [voError]);
 
   const filteredBoqs = useMemo(() => {
     return (boqs || []).filter(boq => 
@@ -203,6 +216,23 @@ export default function BOQExplorerPage() {
         </div>
       </div>
 
+      {indexError && (
+        <div className="p-6 bg-orange-50 border-4 border-orange-100 rounded-[2.5rem] text-start space-y-4 shadow-xl animate-in shake-in duration-500">
+           <div className="flex items-center gap-3 text-[#f97316]">
+              <AlertTriangle className="h-8 w-8" />
+              <h3 className="text-xl font-black">{isRtl ? 'تنبيه: يتطلب النظام إنشاء فهرس سحابي' : 'Cloud Index Required'}</h3>
+           </div>
+           <p className="text-sm font-bold text-slate-700 leading-relaxed">
+             {isRtl 
+               ? 'يرجى الضغط على الرابط أدناه لمرة واحدة لتمكين البحث الشامل في الأوامر التغييرية. هذا إجراء تقني لضمان سرعة البحث في السحاب:' 
+               : 'Please click the link below once to enable global variation search. This is a technical step to ensure fast cloud querying:'}
+           </p>
+           <Button className="bg-white border-2 border-orange-200 text-[#f97316] font-bold h-12 shadow-sm hover:bg-orange-50 gap-2" onClick={() => window.open(indexError.split(': ')[1], '_blank')}>
+              <RefreshCw className="h-4 w-4" /> {isRtl ? 'إنشاء الفهرس في Firebase Console' : 'Create Index Now'}
+           </Button>
+        </div>
+      )}
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
            <TabsList className="bg-white border-2 border-slate-100 p-1 rounded-xl h-12 gap-1 shadow-sm shrink-0">
@@ -284,7 +314,9 @@ export default function BOQExplorerPage() {
                   {voLoading ? (
                     <TableRow><TableCell colSpan={5} className="text-center py-32"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/20" /></TableCell></TableRow>
                   ) : filteredVOs.length === 0 ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-32 text-slate-400 font-bold italic">{isRtl ? 'لا يوجد أوامر تغييرية معلقة حالياً.' : 'No pending variations found.'}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center py-32 text-slate-400 font-bold italic">
+                       {indexError ? (isRtl ? 'بانتظار إنشاء الفهرس السحابي...' : 'Waiting for Index...') : (isRtl ? 'لا يوجد أوامر تغييرية مسجلة.' : 'No variations found.')}
+                    </TableCell></TableRow>
                   ) : filteredVOs.map((vo) => (
                     <TableRow key={vo.id} className="hover:bg-slate-50/50 border-b-slate-50">
                       <TableCell className="py-8 ps-10 text-start">
@@ -372,7 +404,7 @@ export default function BOQExplorerPage() {
          </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+      <AlertDialog open={!!deletingId} onOpenChange={open => !open && setDeletingId(null)}>
         <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white" dir={dir}>
           <AlertDialogHeader>
              <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50"><AlertTriangle className="h-10 w-10" /></div>
