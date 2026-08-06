@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, Suspense } from 'react';
@@ -274,7 +275,7 @@ function NewFieldVisitForm() {
       code: equip.code,
       hoursUsed: 4,
       isMultiSite: false,
-      hourlyRateRef: 0
+      hourlyRateRef: equip.hourlyRentalRate || equip.hourlyDepreciationRate || 0
     }]);
   };
 
@@ -526,6 +527,54 @@ function NewFieldVisitForm() {
                            <X className="h-4 w-4 text-rose-300 cursor-pointer hover:text-rose-600" onClick={() => setIndividualLabor(individualLabor.filter((_, idx) => idx !== i))} />
                         </div>
                      ))}
+                  </div>
+               </CardContent>
+            </Card>
+
+            {/* موديول المعدات والآليات - مستعاد ومحصن */}
+            <Card className={cn("border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start transition-all", isFinancialLockActive && "opacity-30 pointer-events-none")}>
+               <CardHeader className="bg-slate-50 border-b p-6">
+                  <CardTitle className="text-sm font-black flex items-center gap-2"><Truck className="h-4 w-4 text-primary" /> {isRtl ? 'المعدات والآليات' : 'Equipment Usage'}</CardTitle>
+               </CardHeader>
+               <CardContent className="p-6 space-y-6">
+                  <div className="space-y-2">
+                     <Label className="text-[10px] font-black uppercase text-slate-400">إضافة معدة للموقع</Label>
+                     <Select onValueChange={handleAddEquipment}>
+                        <SelectTrigger className="h-10 border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
+                        <SelectContent className="z-[151] rounded-xl">
+                           {equipmentRegistry?.filter(e => e.status === 'available').map(e => (
+                              <SelectItem key={e.id} value={e.id!} className="font-bold py-3">
+                                 <div className="flex flex-col text-start">
+                                    <span>{e.name}</span>
+                                    <span className="text-[8px] text-slate-400 uppercase font-mono">#{e.code}</span>
+                                 </div>
+                              </SelectItem>
+                           ))}
+                        </SelectContent>
+                     </Select>
+                  </div>
+
+                  <div className="space-y-3 pt-4 border-t">
+                     {equipmentList.map((e, i) => (
+                        <div key={i} className="flex gap-4 items-center bg-slate-50 p-4 rounded-2xl border-2 border-white shadow-inner animate-in slide-in-from-right-2">
+                           <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-primary shadow-sm border border-primary/10"><Truck className="h-5 w-5" /></div>
+                           <div className="flex-1 text-start">
+                              <p className="text-xs font-black text-slate-800">{e.name}</p>
+                              <p className="text-[9px] font-bold text-slate-400 uppercase">Ref: {e.code}</p>
+                           </div>
+                           <div className="flex items-center gap-2">
+                              <Input 
+                                type="number" 
+                                value={e.hoursUsed} 
+                                onChange={v => { const ne = [...equipmentList]; ne[i].hoursUsed = Number(v.target.value); setEquipmentList(ne); }} 
+                                className="h-9 w-16 text-center font-black rounded-lg border-2 bg-white" 
+                              />
+                              <span className="text-[10px] font-black text-slate-400 uppercase">Hrs</span>
+                              <X className="h-4 w-4 text-rose-300 cursor-pointer hover:text-rose-600 ms-2" onClick={() => setEquipmentList(equipmentList.filter((_, idx) => idx !== i))} />
+                           </div>
+                        </div>
+                     ))}
+                     {equipmentList.length === 0 && <div className="py-10 text-center text-[10px] text-slate-300 font-bold italic">No equipment logged for this visit.</div>}
                   </div>
                </CardContent>
             </Card>

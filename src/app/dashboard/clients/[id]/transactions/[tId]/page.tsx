@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -19,7 +20,8 @@ import {
   Gavel, Receipt, Trash2, RotateCcw,
   PencilLine, History as HistoryIcon,
   ChevronRight,
-  ShieldAlert
+  ShieldAlert,
+  ShieldX
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, limit, doc, addDoc, getDocs } from 'firebase/firestore';
@@ -118,7 +120,8 @@ export default function TransactionDetailsPage() {
     contracts?.find(c => ['approved', 'paid', 'active', 'signed'].includes(c.status || '') || c.isPaid),
   [contracts]);
   
-  const isExecutionLockActive = !activeContract;
+  // القفل المالي السيادي: إذا لم يوجد عقد معتمد، يغلق المسار الفني بالكامل
+  const isFinancialLockActive = !activeContract;
 
   const isFieldProject = useMemo(() => {
     if (!transaction) return false;
@@ -301,7 +304,7 @@ export default function TransactionDetailsPage() {
   if (transLoading || stagesLoading || contractsLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700" dir={dir}>
+    <div className="space-y-8 animate-in fade-in duration-700 pb-20" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4">
         <div className="flex items-center gap-4 text-start">
            <div className="h-11 px-4 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black text-sm border-2 border-primary/20 shadow-inner">{transaction?.transactionNumber}</div>
@@ -314,7 +317,7 @@ export default function TransactionDetailsPage() {
            </div>
         </div>
         <div className="flex gap-2">
-           {isFieldProject && (
+           {!isFinancialLockActive && isFieldProject && (
              <>
                {activeBoq ? (
                  <div className="flex gap-2">
@@ -337,7 +340,7 @@ export default function TransactionDetailsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-7">
-             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+             <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="w-full">
                 <TabsList className="bg-white border-2 border-slate-100 p-1 rounded-xl h-14 w-full md:w-fit gap-2 shadow-sm mb-6">
                    <TabsTrigger value="pipeline" className="rounded-lg font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2 h-full">
                       <Workflow className="h-4 w-4" /> {isRtl ? 'رادار التنفيذ' : 'Technical Radar'}
@@ -350,14 +353,37 @@ export default function TransactionDetailsPage() {
                 </TabsList>
 
                 <TabsContent value="pipeline" className="animate-in fade-in slide-in-from-bottom-2">
-                   {(rawStages || []).length === 0 ? (
+                   {isFinancialLockActive ? (
+                      <Card className="border-4 border-dashed border-rose-100 rounded-[3rem] bg-white p-12 text-center space-y-8 shadow-2xl animate-in zoom-in-95 duration-500">
+                         <div className="w-24 h-24 bg-rose-50 rounded-[2.5rem] flex items-center justify-center mx-auto text-rose-500 shadow-inner ring-8 ring-rose-50/50">
+                            <Lock className="h-12 w-12" />
+                         </div>
+                         <div className="space-y-3">
+                            <h3 className="text-3xl font-black text-slate-900 font-headline">{isRtl ? 'المسار الفني مقفل - مطلوب ربط مالي' : 'Technical Pipeline Locked'}</h3>
+                            <p className="text-lg font-bold text-slate-400 max-w-md mx-auto leading-relaxed">
+                               {isRtl 
+                                 ? 'لا يمكن المباشرة بالعمل الفني أو بناء المقايسة لهذا المشروع لعدم وجود عقد معتمد أو مسدد.' 
+                                 : 'Financial link required: You cannot launch the technical path or build BOQ without an approved/paid contract.'}
+                            </p>
+                         </div>
+                         <div className="flex flex-col items-center gap-4">
+                            <Button 
+                              onClick={() => setActiveTab('documents')}
+                              className="h-16 px-12 rounded-2xl bg-slate-900 text-white font-black text-xl shadow-xl gap-3 hover:scale-105 transition-all"
+                            >
+                               <Gavel className="h-6 w-6" /> {isRtl ? 'الانتقال لإصدار العقد' : 'Go to Contracts'}
+                            </Button>
+                            <p className="text-[10px] font-black text-rose-400 uppercase tracking-[0.3em]">Sovereign Financial Guard Active</p>
+                         </div>
+                      </Card>
+                   ) : (rawStages || []).length === 0 ? (
                       <div className="py-24 text-center bg-white rounded-[3rem] border-4 border-dashed border-slate-100 space-y-6">
                         <div className="w-24 h-24 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto text-slate-200"><Workflow className="h-12 w-12" /></div>
                         <div className="space-y-2">
                            <h3 className="text-2xl font-black text-slate-900">{isRtl ? 'بانتظار إطلاق المسار الفني' : 'Awaiting Pipeline Launch'}</h3>
-                           <p className="text-sm font-bold text-slate-400 max-sm mx-auto">{isRtl ? 'يمكنك الآن إطلاق مراحل العمل الفني المعتمدة لهذا المسار لبدء المتابعة.' : 'Ready to launch technical stages for this path.'}</p>
+                           <p className="text-sm font-bold text-slate-400 max-sm mx-auto">{isRtl ? 'تم التحقق من الربط المالي. يمكنك الآن إطلاق مراحل العمل الفني المعتمدة لهذا المسار.' : 'Financial link verified. You can now launch technical stages.'}</p>
                         </div>
-                        {isAdmin && (
+                        {(isAdmin || isAssignedEngineer) && (
                           <div className="flex flex-col items-center gap-3">
                              <Button onClick={handleManualInitialize} disabled={loadingAction === 'init'} className="h-14 px-12 rounded-2xl gap-3 shadow-xl bg-primary">
                                 {loadingAction === 'init' ? <Loader2 className="animate-spin" /> : <Zap className="h-5 w-5" />}
@@ -372,16 +398,6 @@ export default function TransactionDetailsPage() {
                            <h3 className="text-lg font-black font-headline text-slate-800 flex items-center gap-2"><Workflow className="h-5 w-5 text-primary" /> {isRtl ? (isDesignProject ? 'مسار التصميم الهندسي' : 'رادار المسار الميداني') : (isDesignProject ? 'Design Pipeline' : 'Field Pipeline')}</h3>
                            <span className="text-3xl font-black font-headline text-primary">{progressPercent}%</span>
                         </div>
-                        
-                        {isExecutionLockActive && isFieldProject && (
-                           <div className="bg-rose-50 border-2 border-rose-100 rounded-2xl p-4 flex items-start gap-4 mb-4">
-                              <ShieldAlert className="h-6 w-6 text-rose-600 shrink-0 mt-1" />
-                              <div className="text-start space-y-1">
-                                 <h5 className="font-black text-sm text-rose-900">{isRtl ? 'المشروع مغلق للتنفيذ' : 'Execution Locked'}</h5>
-                                 <p className="text-[10px] font-bold text-rose-700">{isRtl ? 'لا يمكن تسجيل إنجاز ميداني لعدم وجود عقد معتمد أو مسدد.' : 'Field logs disabled: No approved contract found.'}</p>
-                              </div>
-                           </div>
-                        )}
 
                         <div className="space-y-4">
                            {stages.map((stage, idx) => {

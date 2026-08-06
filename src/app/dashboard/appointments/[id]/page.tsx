@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -54,7 +55,7 @@ export default function AppointmentDetailPage() {
   const [selectedStageId, setSelectedStageId] = useState("");
   const [loggedItems, setLoggedItems] = useState<any[]>([]);
   const [laborDetails, setLaborDetails] = useState<any[]>([{ trade: '', count: 1, hours: 8, hourlyCostRef: 0 }]);
-  const [equipmentUsed, setEquipmentUsed] = useState<any[]>([]);
+  const [equipmentUsed, setEquipmentUsed] = useState<any[]>([{ equipmentId: '', hoursUsed: 4, hourlyRateRef: 0 }]);
 
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [isRecordOpen, setIsRecordOpen] = useState(false);
@@ -230,13 +231,40 @@ export default function AppointmentDetailPage() {
                   <div className="space-y-6">
                      <div className="flex justify-between items-center"><Label className="font-black text-sm text-slate-800">العمالة الميدانية</Label><Button variant="ghost" size="sm" onClick={() => setLaborDetails([...laborDetails, { trade: '', count: 1, hours: 8, hourlyCostRef: 0 }])} className="h-7 text-[10px] font-black"><Plus className="h-3 w-3" /> Add Trade</Button></div>
                      {laborDetails.map((l, i) => (
-                       <div key={i} className="flex gap-2 items-end"><Select onValueChange={v => { const j = availableJobs.find(x => x.name === v); const nl = [...laborDetails]; nl[i].trade = v; nl[i].hourlyCostRef = j?.hourlyCost || 0; setLaborDetails(nl); }}><SelectTrigger className="h-9 rounded-lg border-2 text-xs"><SelectValue /></SelectTrigger><SelectContent>{availableJobs.map(j => <SelectItem key={j.id} value={j.name}>{j.name}</SelectItem>)}</SelectContent></Select><Input type="number" value={l.count} onChange={e => { const nl = [...laborDetails]; nl[i].count = Number(e.target.value); setLaborDetails(nl); }} className="h-9 w-16 text-center font-black" /></div>
+                       <div key={i} className="flex gap-2 items-end">
+                         <Select onValueChange={v => { 
+                           const j = availableJobs.find(x => x.name === v); 
+                           const nl = [...laborDetails]; 
+                           nl[i].trade = v; 
+                           nl[i].hourlyCostRef = j?.hourlyCost || 0; 
+                           setLaborDetails(nl); 
+                         }}>
+                           <SelectTrigger className="h-9 rounded-lg border-2 text-xs"><SelectValue placeholder={isRtl ? "تخصص العمالة..." : "Trade..."} /></SelectTrigger>
+                           <SelectContent className="z-[160]">{availableJobs.map(j => <SelectItem key={j.id} value={j.name}>{j.name}</SelectItem>)}</SelectContent>
+                         </Select>
+                         <Input type="number" value={l.count} onChange={e => { const nl = [...laborDetails]; nl[i].count = Number(e.target.value); setLaborDetails(nl); }} className="h-9 w-16 text-center font-black" />
+                         <Trash2 className="h-4 w-4 text-rose-300 cursor-pointer" onClick={() => setLaborDetails(laborDetails.filter((_, idx) => idx !== i))} />
+                       </div>
                      ))}
                   </div>
                   <div className="space-y-6">
-                     <div className="flex justify-between items-center"><Label className="font-black text-sm text-slate-800">المعدات</Label><Button variant="ghost" size="sm" onClick={() => setEquipmentUsed([...equipmentUsed, { equipmentId: '', hoursUsed: 4 }])} className="h-7 text-[10px] font-black"><Plus className="h-3 w-3" /> Add Gear</Button></div>
+                     <div className="flex justify-between items-center"><Label className="font-black text-sm text-slate-800">المعدات والآليات</Label><Button variant="ghost" size="sm" onClick={() => setEquipmentUsed([...equipmentUsed, { equipmentId: '', hoursUsed: 4, hourlyRateRef: 0 }])} className="h-7 text-[10px] font-black"><Plus className="h-3 w-3" /> Add Gear</Button></div>
                      {equipmentUsed.map((e, i) => (
-                        <div key={i} className="flex gap-2 items-center"><Select onValueChange={v => { const ne = [...equipmentUsed]; ne[i].equipmentId = v; setEquipmentUsed(ne); }}><SelectTrigger className="h-9 rounded-lg border-2 text-xs"><SelectValue /></SelectTrigger><SelectContent>{equipmentItems?.map((x:any) => <SelectItem key={x.id} value={x.id!}>{x.name}</SelectItem>)}</SelectContent></Select><Input type="number" value={e.hoursUsed} onChange={v => { const ne = [...equipmentUsed]; ne[i].hoursUsed = Number(v.target.value); setEquipmentUsed(ne); }} className="h-9 w-16 text-center font-black" /><Trash2 className="h-4 w-4 text-rose-300" onClick={() => setEquipmentUsed(equipmentUsed.filter((_, idx) => idx !== i))} /></div>
+                        <div key={i} className="flex gap-2 items-center">
+                           <Select onValueChange={v => { 
+                             const equip = equipmentItems?.find((x:any) => x.id === v);
+                             const ne = [...equipmentUsed]; 
+                             ne[i].equipmentId = v; 
+                             ne[i].name = equip?.name || '';
+                             ne[i].hourlyRateRef = equip?.hourlyRentalRate || equip?.hourlyDepreciationRate || 0;
+                             setEquipmentUsed(ne); 
+                           }}>
+                             <SelectTrigger className="h-9 rounded-lg border-2 text-xs"><SelectValue placeholder={isRtl ? "اختر المعدة..." : "Select Gear..."} /></SelectTrigger>
+                             <SelectContent className="z-[160]">{equipmentItems?.map((x:any) => <SelectItem key={x.id} value={x.id!}>{x.name} ({x.code})</SelectItem>)}</SelectContent>
+                           </Select>
+                           <Input type="number" value={e.hoursUsed} onChange={v => { const ne = [...equipmentUsed]; ne[i].hoursUsed = Number(v.target.value); setEquipmentUsed(ne); }} className="h-9 w-16 text-center font-black" />
+                           <Trash2 className="h-4 w-4 text-rose-300 cursor-pointer" onClick={() => setEquipmentUsed(equipmentUsed.filter((_, idx) => idx !== i))} />
+                        </div>
                      ))}
                   </div>
                </div>
