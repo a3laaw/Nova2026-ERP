@@ -18,12 +18,14 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/global_users/$(request.auth.uid)).data;
     }
 
-    // التحقق من دور الأدمن (Case-Insensitive)
+    // التحقق من دور الأدمن (Sovereign Authority Lock)
+    // تم التحديث ليكون أكثر مرونة وحماية ضد الحقول المفقودة
     function isGlobalAdmin() {
       return isAuthenticated() && (
         isSovereignDev() ||
         (exists(/databases/$(database)/documents/global_users/$(request.auth.uid)) && 
-         currentUserData().roleCode.upper() == 'ADMIN')
+         (currentUserData().get('roleCode', 'USER').upper() == 'ADMIN' || 
+          currentUserData().get('role', 'user').upper() == 'ADMIN'))
       );
     }
 
@@ -58,7 +60,7 @@ service cloud.firestore {
     }
 
     // --- 4. قواعد الاستعلامات المشتركة (Collection Group Rules) ---
-    // هذا الجزء هو المسؤول عن حل خطأ "list in collection_query"
+    // تم إضافة "variations" لحل خطأ الصلاحيات في مستكشف المقايسات
     
     match /{path=**}/stages/{stageId} {
       allow read: if belongsToCompany(resource.data.companyId);
@@ -77,6 +79,10 @@ service cloud.firestore {
     }
 
     match /{path=**}/attendance/{recordId} {
+      allow read: if belongsToCompany(resource.data.companyId);
+    }
+
+    match /{path=**}/variations/{voId} {
       allow read: if belongsToCompany(resource.data.companyId);
     }
 

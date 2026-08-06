@@ -23,7 +23,7 @@ export function usePermissions() {
     // 2. إذا كان المالك المسجل في وثيقة الشركة
     const isOwner = company && globalUser && company.ownerUid === globalUser.uid;
     
-    // 3. إذا كان يحمل كود ADMIN بشكل قطعي
+    // 3. إذا كان يحمل كود ADMIN بشكل قطعي (Case-Insensitive)
     const isExplicitAdmin = globalUser?.roleCode?.toUpperCase() === 'ADMIN' || 
                            globalUser?.role?.toUpperCase() === 'ADMIN';
 

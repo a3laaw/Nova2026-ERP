@@ -37,7 +37,7 @@ export class SeedService {
       let targetCompanyId = data.companyId;
       let roleId = data.roleId;
 
-      // 1. استرجاع الكود المفقود من ملف الشركة (حالة حسابات مثل نور)
+      // 1. استرجاع الكود المفقود من ملف الشركة (حالة الحسابات التي فقدت الكود)
       if (!currentRoleCode && roleId && targetCompanyId && targetCompanyId !== 'awaiting_setup') {
         try {
           const roleSnap = await getDoc(doc(this.db, 'companies', targetCompanyId, 'roles', roleId));
@@ -50,6 +50,7 @@ export class SeedService {
       }
 
       // 2. التوحيد القطعي لحالة الأحرف (Sovereign Normalization)
+      // نضمن أن أي كلمة "admin" تتحول لـ "ADMIN" لفتح القفل الأمني
       const rawCode = currentRoleCode || currentRole || 'USER';
       const finalRoleCode = String(rawCode).toUpperCase();
       const finalRole = finalRoleCode.toLowerCase();
@@ -60,6 +61,17 @@ export class SeedService {
           role: finalRole,
           updatedAt: serverTimestamp()
         });
+
+        // مزامنة السجل المحلي داخل الشركة أيضاً
+        if (targetCompanyId && targetCompanyId !== 'awaiting_setup') {
+           const localUserRef = doc(this.db, 'companies', targetCompanyId, 'users', userDoc.id);
+           batch.update(localUserRef, {
+              roleCode: finalRoleCode,
+              role: finalRole,
+              updatedAt: serverTimestamp()
+           });
+        }
+
         count++;
       }
     }
