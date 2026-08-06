@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { 
@@ -10,12 +9,10 @@ import {
   Users, 
   Briefcase, 
   DollarSign, 
-  ArrowUpRight, 
   Plus,
   Activity,
   FileText,
   ShieldAlert,
-  CalendarX,
   ArrowRight,
   Clock,
   Loader2
@@ -25,8 +22,7 @@ import {
   BarChart, 
   XAxis, 
   YAxis, 
-  CartesianGrid,
-  ResponsiveContainer
+  CartesianGrid
 } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { cn } from "@/lib/utils"
@@ -63,10 +59,9 @@ const chartConfig = {
 export default function DashboardPage() {
   const { company } = useCompanyContext();
   const { globalUser } = useAuthContext();
-  const { t, dir, lang } = useLanguage();
+  const { t, dir, isRtl } = useLanguage();
   const db = useFirestore();
   const router = useRouter();
-  const isRtl = lang === 'ar';
 
   const companyId = globalUser?.companyId;
   const isAdmin = globalUser?.roleCode === 'ADMIN' || globalUser?.role?.toLowerCase() === 'admin';
@@ -93,7 +88,7 @@ export default function DashboardPage() {
 
   const stats = [
     {
-      title: isRtl ? "إيرادات المشاريع" : "Project Revenue",
+      title: t('dashboard.stats.revenue'),
       value: "1.2M KWD",
       change: "+12.5%",
       trend: "up",
@@ -102,7 +97,7 @@ export default function DashboardPage() {
       bg: "bg-blue-50",
     },
     {
-      title: isRtl ? "المشاريع النشطة" : "Active Projects",
+      title: t('dashboard.stats.activeProjects'),
       value: "24",
       change: "+2 new",
       trend: "up",
@@ -111,7 +106,7 @@ export default function DashboardPage() {
       bg: "bg-orange-50",
     },
     {
-      title: isRtl ? "القوى العاملة" : "Workforce",
+      title: t('dashboard.stats.workforce'),
       value: "142",
       change: "98% present",
       trend: "neutral",
@@ -120,7 +115,7 @@ export default function DashboardPage() {
       bg: "bg-yellow-50",
     },
     {
-      title: isRtl ? "معدل الإنجاز" : "Completion Rate",
+      title: t('dashboard.stats.completion'),
       value: "84%",
       change: "+5% yr",
       trend: "up",
@@ -134,17 +129,17 @@ export default function DashboardPage() {
     <div className="space-y-6 w-full px-4 md:px-6" dir={dir}>
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="text-start">
-          <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">{isRtl ? 'نظرة عامة على العمليات' : 'Operations Overview'}</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">{t('dashboard.title')}</h1>
           <p className="text-xs text-muted-foreground font-medium">{company?.name || '...'}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-9 font-semibold px-4 border-slate-200">
+          <Button variant="outline" size="sm" className="h-9 font-semibold px-4">
             <FileText className="me-2 h-3.5 w-3.5" />
-            {isRtl ? `تصدير التقرير` : `Export`}
+            {t('dashboard.export')}
           </Button>
-          <Button size="sm" onClick={() => router.push('/dashboard/clients')} className="h-9 font-semibold px-4">
+          <Button size="sm" onClick={() => router.push('/dashboard/clients')} className="h-9 font-semibold px-4 shadow-sm">
             <Plus className="me-2 h-3.5 w-3.5" />
-            {isRtl ? 'مشروع جديد' : 'New Project'}
+            {t('projects.addNew')}
           </Button>
         </div>
       </header>
@@ -153,10 +148,10 @@ export default function DashboardPage() {
         <div className="animate-in slide-in-from-top-4 duration-500">
            <div className="flex items-center gap-2 mb-3 px-1">
               <ShieldAlert className="h-4 w-4 text-rose-500" />
-              <h2 className="text-sm font-bold text-rose-900">
-                {isRtl ? (isAdmin ? 'تنبيه: مهمات متأخرة' : 'مهام بانتظار الإغلاق') : 'Missions Awaiting Closure'}
+              <h2 className="text-sm font-bold text-slate-900">
+                {t('dashboard.missions')}
               </h2>
-              <Badge className="bg-rose-500 text-white font-bold h-5 px-2 text-[10px] rounded-full">
+              <Badge variant="outline" className="bg-rose-50 text-rose-600 border-rose-100 font-bold h-5 px-2 text-[10px] rounded-full">
                  {overdueMissions.length}
               </Badge>
            </div>
@@ -168,13 +163,13 @@ export default function DashboardPage() {
                   <Card 
                     key={mission.id} 
                     onClick={() => router.push(`/dashboard/appointments/${mission.id}`)}
-                    className="min-w-[240px] border-rose-100 bg-white hover:border-rose-300 transition-all cursor-pointer rounded-lg shadow-sm"
+                    className="min-w-[220px] border-slate-100 bg-white hover:border-primary/20 transition-all cursor-pointer rounded-lg shadow-sm"
                   >
-                     <CardContent className="p-4 space-y-3">
+                     <CardContent className="p-4 space-y-2">
                         <div className="flex justify-between items-start">
                            <div className="text-start">
-                              <p className="text-[10px] font-bold text-rose-400 uppercase">{isRtl ? 'تأخير' : 'Late'}</p>
-                              <p className="text-xs font-bold text-rose-600">{daysLate} {isRtl ? 'أيام' : 'Days'}</p>
+                              <p className="text-[10px] font-bold text-rose-500 uppercase">{t('common.pending')}</p>
+                              <p className="text-xs font-bold text-slate-600">{daysLate} {t('hr.gratuity.days') || 'Days'}</p>
                            </div>
                         </div>
                         <div className="text-start space-y-0.5">
@@ -220,10 +215,10 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 rounded-lg border-slate-100 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between px-6 py-4 border-b border-slate-50">
+        <Card className="lg:col-span-2 rounded-lg border-slate-100 shadow-sm overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between px-6 py-4 border-b bg-slate-50/50">
             <div className="text-start">
-              <CardTitle className="text-sm font-bold text-slate-900">{isRtl ? 'الأداء المالي' : 'Financial Performance'}</CardTitle>
+              <CardTitle className="text-sm font-bold text-slate-900">{t('accounting.title')}</CardTitle>
             </div>
             <Activity className="h-4 w-4 text-slate-300" />
           </CardHeader>
@@ -252,16 +247,16 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-lg border-slate-100 shadow-sm">
-          <CardHeader className="px-6 py-4 border-b border-slate-50 text-start">
-            <CardTitle className="text-sm font-bold text-slate-900">{isRtl ? 'سجل العمليات' : 'Live Activity'}</CardTitle>
+        <Card className="rounded-lg border-slate-100 shadow-sm overflow-hidden bg-white">
+          <CardHeader className="px-6 py-4 border-b bg-slate-50/50 text-start">
+            <CardTitle className="text-sm font-bold text-slate-900">{t('dashboard.recent')}</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-slate-50">
               {[
-                { title: isRtl ? "موافقة عرض سعر" : "Quote Approved", detail: "Project Alpha", time: "5m", color: "bg-blue-500" },
-                { title: isRtl ? "تحديث الحضور" : "Attendance Logged", detail: "120 Staff present", time: "1h", color: "bg-orange-500" },
-                { title: isRtl ? "إصدار مستند" : "Payment Voucher", detail: "Contract #2291", time: "3h", color: "bg-emerald-500" },
+                { title: "Quote Approved", detail: "Project Alpha", time: "5m", color: "bg-blue-500" },
+                { title: "Attendance Logged", detail: "120 Staff present", time: "1h", color: "bg-orange-500" },
+                { title: "Payment Voucher", detail: "Contract #2291", time: "3h", color: "bg-emerald-500" },
               ].map((activity, i) => (
                 <div key={i} className="flex items-start gap-3 p-4 hover:bg-slate-50/50 transition-colors">
                   <div className={cn("h-1.5 w-1.5 rounded-full mt-1.5 shrink-0", activity.color)} />
@@ -274,8 +269,8 @@ export default function DashboardPage() {
               ))}
             </div>
             <div className="p-3 bg-slate-50/30">
-              <Button variant="ghost" className="w-full h-8 text-[10px] font-bold text-blue-600 hover:bg-blue-50">
-                {isRtl ? 'عرض الكل' : 'View All'}
+              <Button variant="ghost" className="w-full h-8 text-[10px] font-bold text-primary hover:bg-primary/5">
+                {t('common.viewAll')}
               </Button>
             </div>
           </CardContent>

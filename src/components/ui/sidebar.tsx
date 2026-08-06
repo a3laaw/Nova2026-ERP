@@ -452,7 +452,7 @@ SidebarGroupLabel.displayName = "SidebarGroupLabel"
 const SidebarGroupAction = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<"button"> & { asChild?: boolean }
->(({ className, asChild = false, ...props }, ref) => {
+>(({ className, asChild = false, showOnHover = false, ...props }, ref) => {
   const Comp = asChild ? Slot : "button"
 
   return (
@@ -661,24 +661,23 @@ const SidebarMenuSkeleton = React.forwardRef<
       data-sidebar="menu-skeleton"
       className={cn("rounded-md h-8 flex gap-2 px-2 items-center", className)}
       {...props}
-    }
-  >
-    {showIcon && (
+    >
+      {showIcon && (
+        <Skeleton
+          className="size-4 rounded-md"
+          data-sidebar="menu-skeleton-icon"
+        />
+      )}
       <Skeleton
-        className="size-4 rounded-md"
-        data-sidebar="menu-skeleton-icon"
+        className="h-4 flex-1 max-w-[--skeleton-width]"
+        data-sidebar="menu-skeleton-text"
+        style={
+          {
+            "--skeleton-width": width,
+          } as React.CSSProperties
+        }
       />
-    )}
-    <Skeleton
-      className="h-4 flex-1 max-w-[--skeleton-width]"
-      data-sidebar="menu-skeleton-text"
-      style={
-        {
-          "--skeleton-width": width,
-        } as React.CSSProperties
-      }
-    />
-  </div>
+    </div>
   )
 })
 SidebarMenuSkeleton.displayName = "SidebarMenuSkeleton"

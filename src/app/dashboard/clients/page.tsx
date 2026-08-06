@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -9,8 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
-  Users, UserPlus, Search, Loader2, 
-  ArrowRight, Filter, Briefcase, ShieldCheck
+  UserPlus, Search, Loader2, 
+  ArrowRight, Filter, UserCircle, ShieldCheck
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
@@ -63,16 +62,16 @@ export default function ClientsListPage() {
   }, [rawClients, searchTerm, isAdmin, globalUser?.employeeId]);
 
   return (
-    <div className="space-y-4 w-full px-4 md:px-6 animate-in fade-in" dir={dir}>
+    <div className="space-y-4 w-full px-4 md:px-6 animate-in fade-in duration-500" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
            <h1 className="text-xl md:text-2xl font-bold text-slate-900">
-             {isRtl ? 'قاعدة بيانات العملاء' : 'Clients Database'}
+             {t('clients.title')}
            </h1>
            {!isAdmin && (
              <div className="flex items-center gap-2 mt-1">
                 <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 font-bold text-[9px] px-2 h-4 rounded-md">
-                   {isRtl ? 'عرض سيادي معزول' : 'Isolated View'}
+                   {isRtl ? 'عرض معزول' : 'Isolated View'}
                 </Badge>
                 <p className="text-[10px] font-medium text-slate-400 uppercase">
                    {isRtl ? 'تظهر ملفاتك المنسوبة فقط' : 'Your assigned files only'}
@@ -83,42 +82,39 @@ export default function ClientsListPage() {
         
         {canRegisterClient && (
           <Button onClick={() => router.push('/dashboard/clients/new')} size="sm" className="h-9 px-4 font-bold rounded-md shadow-sm">
-            <UserPlus className="h-4 w-4 me-2" /> {isRtl ? 'تسجيل عميل' : 'New Registration'}
+            <UserPlus className="h-4 w-4 me-2" /> {t('clients.addNew')}
           </Button>
         )}
       </div>
 
-      <Card className="rounded-lg shadow-sm border-slate-100 overflow-hidden">
-        <div className="p-3 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50/30">
+      <Card className="rounded-lg shadow-sm border overflow-hidden bg-white">
+        <div className="p-3 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50/30 border-b">
            <div className="relative w-full max-w-sm">
               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input 
-                placeholder={isRtl ? 'بحث...' : 'Search...'} 
+                placeholder={t('common.search')} 
                 className="ps-9 h-9 rounded-md border-slate-200 bg-white text-sm font-medium" 
                 value={searchTerm} 
                 onChange={e => setSearchTerm(e.target.value)} 
               />
            </div>
            <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="h-9 px-3 rounded-md font-bold text-xs">
-                 <Filter className="h-3.5 w-3.5 me-2" /> {isRtl ? 'تصفية' : 'Filters'}
+              <Button variant="outline" size="sm" className="h-9 px-3 rounded-md font-bold text-xs border-slate-200">
+                 <Filter className="h-3.5 w-3.5 me-2" /> {t('common.filter')}
               </Button>
-              <Badge variant="secondary" className="bg-slate-900 text-white font-bold h-9 px-3 rounded-md text-xs">
+              <Badge variant="secondary" className="bg-slate-800 text-white font-bold h-9 px-3 rounded-md text-xs">
                  {filtered.length}
               </Badge>
            </div>
         </div>
-      </Card>
-
-      <Card className="rounded-lg shadow-sm border-slate-100 overflow-hidden bg-white">
-        <CardContent className="p-0">
+        <CardContent className="p-0 overflow-x-auto">
           <Table>
-            <TableHeader className="bg-slate-50">
-              <TableRow>
-                <TableHead className="py-3 ps-6 text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'العميل المالك' : 'Client Profile'}</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'المسؤول' : 'Assigned Staff'}</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'الهاتف' : 'Mobile'}</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'الحالة' : 'Status'}</TableHead>
+            <TableHeader className="bg-slate-50/50">
+              <TableRow className="border-b-0">
+                <TableHead className="py-3 ps-6 text-[10px] font-bold uppercase text-slate-500">{t('clients.table.profile')}</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{t('clients.table.staff')}</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{t('clients.table.contact')}</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{t('clients.table.status')}</TableHead>
                 <TableHead className="pe-6"></TableHead>
               </TableRow>
             </TableHeader>
@@ -144,13 +140,13 @@ export default function ClientsListPage() {
                   <TableCell className="py-2.5 text-start">
                      <Badge className={cn(
                        "font-bold px-2 py-0.5 h-5 rounded-md text-[9px] uppercase", 
-                       client.status === 'contracted' ? 'bg-emerald-50 text-emerald-600 border-0' : 'bg-orange-50 text-orange-600 border-0'
+                       client.status === 'contracted' ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'
                      )}>
                         {client.status}
                      </Badge>
                   </TableCell>
                   <TableCell className="pe-6 text-end">
-                     <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-300 group-hover:text-primary">
+                     <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-300 group-hover:text-primary rounded-md">
                         <ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} />
                      </Button>
                   </TableCell>
