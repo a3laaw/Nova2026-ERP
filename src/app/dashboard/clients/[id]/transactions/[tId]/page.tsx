@@ -106,7 +106,7 @@ export default function TransactionDetailsPage() {
   const canSeeFinance = check('accounting', 'view').can || check('procurement', 'view').can;
 
   const currentUserName = useMemo(() => {
-    return globalUser?.fullName || user?.displayName || globalUser?.username || 'مهندس غير معرف';
+    return globalUser?.fullName || user?.displayName || globalUser?.username || 'Engineer';
   }, [globalUser, user]);
 
   const transRef = useMemo(() => (companyId && db && transactionId) ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
@@ -119,13 +119,21 @@ export default function TransactionDetailsPage() {
     contracts?.find(c => ['approved', 'paid', 'active', 'signed'].includes(c.status || '') || c.isPaid),
   [contracts]);
   
-  const isFinancialLockActive = !activeContract;
+  // القفل المالي يمنع التنفيذ فقط وليس التخطيط (BOQ)
+  const isExecutionLockActive = !activeContract;
 
-  // تحديد نوع المعاملة بدقة لفلترة الرادار
-  const isConsulting = useMemo(() => {
+  // تحديد طبيعة المشروع بدقة سيادية
+  const isFieldProject = useMemo(() => {
     if (!transaction) return false;
-    const name = transaction.activityTypeName || '';
-    return name.includes('استشارات') || name.includes('Consulting') || name.includes('تصميم') || name.includes('Design');
+    const type = transaction.activityTypeName || '';
+    // دعم كافة مسميات المقاولات والبناء
+    return type.includes('مقاولات') || type.includes('Construction') || type.includes('بناء') || type.includes('Build');
+  }, [transaction]);
+
+  const isDesignProject = useMemo(() => {
+    if (!transaction) return false;
+    const type = transaction.activityTypeName || '';
+    return type.includes('استشارات') || type.includes('Consulting') || type.includes('تصميم') || type.includes('Design');
   }, [transaction]);
 
   const stagesQuery = useMemo(() => 
@@ -166,7 +174,7 @@ export default function TransactionDetailsPage() {
   useEffect(() => {
     let active = true;
     async function fetchAllProgress() {
-      if (!executionService || !stages || stages.length === 0 || isConsulting) return;
+      if (!executionService || !stages || stages.length === 0 || isDesignProject) return;
       const results: Record<string, StageProgressResult> = {};
       const promises = stages.map(async (s) => {
         const res = await executionService.getTechnicalStageProgress(transactionId, s.technicalStageId);
@@ -178,7 +186,7 @@ export default function TransactionDetailsPage() {
     }
     fetchAllProgress();
     return () => { active = false; };
-  }, [executionService, stages, transactionId, allExecutions, isConsulting]);
+  }, [executionService, stages, transactionId, allExecutions, isDesignProject]);
 
   const handleCreateBOQ = async () => {
     if (!db || !companyId || !user || !selectedTemplateId || !transaction) return;
@@ -229,7 +237,7 @@ export default function TransactionDetailsPage() {
 
   const handleCompleteStage = async (stage: StageInstance, force: boolean = false) => {
     if (!transactionService || !user || !stage.id) return;
-    if (!isConsulting && !force) {
+    if (!isDesignProject && !force) {
       const progress = stageProgressMap[stage.technicalStageId];
       if (progress && !progress.canComplete) { setIncompleteStage({ stage, progress }); return; }
     }
@@ -306,10 +314,18 @@ export default function TransactionDetailsPage() {
            </div>
         </div>
         <div className="flex gap-2">
-           {activeBoq && (
-             <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="btn-gradient h-10 px-6 rounded-xl gap-2">
-                <FileSpreadsheet className="h-4 w-4" /> {isRtl ? 'عرض المقايسة' : 'View BOQ'}
-             </Button>
+           {isFieldProject && (
+             <>
+               {activeBoq ? (
+                 <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className="btn-gradient h-10 px-6 rounded-xl gap-2">
+                    <FileSpreadsheet className="h-4 w-4" /> {isRtl ? 'عرض المقايسة' : 'View BOQ'}
+                 </Button>
+               ) : (
+                 <Button onClick={() => setIsBoqInitOpen(true)} variant="outline" className="h-10 px-6 rounded-xl border-2 gap-2 text-primary border-primary/20 hover:bg-primary/5">
+                    <FilePlus className="h-4 w-4" /> {isRtl ? 'إنشاء مقايسة' : 'Create BOQ'}
+                 </Button>
+               )}
+             </>
            )}
         </div>
       </div>
@@ -329,25 +345,12 @@ export default function TransactionDetailsPage() {
                 </TabsList>
 
                 <TabsContent value="pipeline" className="animate-in fade-in slide-in-from-bottom-2">
-                   {isFinancialLockActive ? (
-                      <Card className="border-4 border-dashed border-rose-100 rounded-[3rem] bg-rose-50/30 p-20 text-center">
-                         <div className="w-24 h-24 bg-white rounded-[2rem] flex items-center justify-center mx-auto text-rose-500 shadow-xl mb-8 ring-8 ring-rose-50/50"><Lock className="h-12 w-12" /></div>
-                         <h3 className="text-3xl font-black text-rose-900 font-headline">{isRtl ? 'رادار التنفيذ مغلق مالياً' : 'Pipeline Locked'}</h3>
-                         <p className="text-slate-400 font-bold mt-2">{isRtl ? 'يرجى اعتماد عقد المشروع لفتح مسار العمل.' : 'Approve contract to launch pipeline.'}</p>
-                         
-                         {canSeeFinance && (
-                           <Button onClick={() => setActiveTab('documents')} variant="outline" className="rounded-xl border-2 font-bold px-10 h-14 mt-6 gap-2">
-                              <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} /> 
-                              {isRtl ? 'الذهاب لإدارة العقود والسداد' : 'Go to Finance'}
-                           </Button>
-                         )}
-                      </Card>
-                   ) : (rawStages || []).length === 0 ? (
+                   {(rawStages || []).length === 0 ? (
                       <div className="py-24 text-center bg-white rounded-[3rem] border-4 border-dashed border-slate-100 space-y-6">
                         <div className="w-24 h-24 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto text-slate-200"><Workflow className="h-12 w-12" /></div>
                         <div className="space-y-2">
                            <h3 className="text-2xl font-black text-slate-900">{isRtl ? 'بانتظار إطلاق المسار الفني' : 'Awaiting Pipeline Launch'}</h3>
-                           <p className="text-sm font-bold text-slate-400 max-sm mx-auto">{isRtl ? 'لقد تم اعتماد العقد بنجاح. يمكنك الآن إطلاق مراحل العمل الفني المعتمدة لهذا المسار.' : 'Contract approved. You can now launch technical stages for this path.'}</p>
+                           <p className="text-sm font-bold text-slate-400 max-sm mx-auto">{isRtl ? 'يمكنك الآن إطلاق مراحل العمل الفني المعتمدة لهذا المسار لبدء المتابعة.' : 'Ready to launch technical stages for this path.'}</p>
                         </div>
                         {isAdmin && (
                           <div className="flex flex-col items-center gap-3">
@@ -355,20 +358,26 @@ export default function TransactionDetailsPage() {
                                 {loadingAction === 'init' ? <Loader2 className="animate-spin" /> : <Zap className="h-5 w-5" />}
                                 {isRtl ? 'إطلاق المسار الفني الآن' : 'Launch Technical Path'}
                              </Button>
-                             {!isConsulting && !activeBoq && (
-                               <Button onClick={() => setIsBoqInitOpen(true)} variant="outline" className="h-12 border-2 px-8 rounded-xl gap-2">
-                                  <FilePlus className="h-4 w-4" /> {isRtl ? 'إنشاء مقايسة للمشروع' : 'Create BOQ'}
-                               </Button>
-                             )}
                           </div>
                         )}
                       </div>
                    ) : (
                      <div className="space-y-6 text-start">
                         <div className="flex justify-between items-end px-2">
-                           <h3 className="text-lg font-black font-headline text-slate-800 flex items-center gap-2"><Workflow className="h-5 w-5 text-primary" /> {isRtl ? (isConsulting ? 'مسار التصميم الهندسي' : 'رادار المسار الميداني') : (isConsulting ? 'Design Pipeline' : 'Field Pipeline')}</h3>
+                           <h3 className="text-lg font-black font-headline text-slate-800 flex items-center gap-2"><Workflow className="h-5 w-5 text-primary" /> {isRtl ? (isDesignProject ? 'مسار التصميم الهندسي' : 'رادار المسار الميداني') : (isDesignProject ? 'Design Pipeline' : 'Field Pipeline')}</h3>
                            <span className="text-3xl font-black font-headline text-primary">{progressPercent}%</span>
                         </div>
+                        
+                        {isExecutionLockActive && isFieldProject && (
+                           <div className="bg-rose-50 border-2 border-rose-100 rounded-2xl p-4 flex items-start gap-4 mb-4">
+                              <ShieldAlert className="h-6 w-6 text-rose-600 shrink-0 mt-1" />
+                              <div className="text-start space-y-1">
+                                 <h5 className="font-black text-sm text-rose-900">{isRtl ? 'المشروع مغلق للتنفيذ' : 'Execution Locked'}</h5>
+                                 <p className="text-[10px] font-bold text-rose-700">{isRtl ? 'لا يمكن تسجيل إنجاز ميداني لعدم وجود عقد معتمد أو مسدد.' : 'Field logs disabled: No approved contract found.'}</p>
+                              </div>
+                           </div>
+                        )}
+
                         <div className="space-y-4">
                            {stages.map((stage, idx) => {
                               const boqProgress = stageProgressMap[stage.technicalStageId];
@@ -388,10 +397,10 @@ export default function TransactionDetailsPage() {
                                            <div className="flex items-center gap-2">
                                               <h4 className="font-black text-base text-slate-900 tracking-tight">{stage.name}</h4>
                                               {isReadyToStart && <Badge className="bg-orange-100 text-orange-700 border-0 font-black text-[7px] px-2 h-4 animate-ready-pulse uppercase">{isRtl ? 'جاهزة للبدء' : 'Ready to Start'}</Badge>}
-                                              {isConsulting && (stage.revisionCount || 0) > 0 && <Badge className="bg-orange-100 text-orange-700 border-0 font-black text-[9px] px-2 h-5">{isRtl ? `مراجعة #${stage.revisionCount}` : `Rev #${stage.revisionCount}`}</Badge>}
+                                              {isDesignProject && (stage.revisionCount || 0) > 0 && <Badge className="bg-orange-100 text-orange-700 border-0 font-black text-[9px] px-2 h-5">{isRtl ? `مراجعة #${stage.revisionCount}` : `Rev #${stage.revisionCount}`}</Badge>}
                                               {!isAdmin && !isDeptAllowed && <Badge variant="outline" className="bg-rose-50 text-rose-600 border-rose-100 font-black text-[7px] gap-1 h-4"><Lock className="h-2 w-2" /> {isRtl ? 'خاص بقسم آخر' : 'Dept Locked'}</Badge>}
                                            </div>
-                                           {!isConsulting && boqProgress && boqProgress.linkedItemsCount > 0 && (<div className="mt-2 space-y-1.5"><div className="flex justify-between text-[8px] font-black uppercase text-slate-400"><span>{isRtl ? 'الإنجاز الفني' : 'Progress'}</span><span>{boqProgress.progressPercent} %</span></div><Progress value={boqProgress.progressPercent} className="h-1.5" /></div>)}
+                                           {isFieldProject && boqProgress && boqProgress.linkedItemsCount > 0 && (<div className="mt-2 space-y-1.5"><div className="flex justify-between text-[8px] font-black uppercase text-slate-400"><span>{isRtl ? 'الإنجاز الفني' : 'Progress'}</span><span>{boqProgress.progressPercent} %</span></div><Progress value={boqProgress.progressPercent} className="h-1.5" /></div>)}
                                         </div>
                                      </div>
                                      <div className="flex gap-2" onClick={e => e.stopPropagation()}>
@@ -399,8 +408,8 @@ export default function TransactionDetailsPage() {
                                               <>
                                                 {stage.status === 'pending' && <Button onClick={() => handleStartStage(stage.id!)} disabled={!!processingId || (!isAdmin && !isDeptAllowed)} className="h-10 px-6 rounded-xl bg-blue-600 text-white font-black text-[10px] gap-2 shadow-lg hover:scale-105 transition-all">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Play className="h-4 w-4" />} {isRtl ? 'بدء العمل' : 'Start'}</Button>}
                                                 {stage.status === 'in-progress' && <Button onClick={() => handleCompleteStage(stage)} disabled={!!processingId || (!isAdmin && !isDeptAllowed)} className="h-10 px-6 rounded-xl bg-emerald-600 text-white font-black text-[10px] gap-2 shadow-lg hover:scale-105 transition-all">{processingId === stage.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Check className="h-4 w-4" />} {isRtl ? 'إكمال' : 'Done'}</Button>}
-                                                {stage.status === 'in-progress' && isConsulting && (<Button onClick={() => handleOpenRevisionDialog(stage)} disabled={processingId === `rev_${stage.id}` || (!isAdmin && !isDeptAllowed)} variant="outline" className="h-10 px-4 rounded-xl border-orange-200 text-orange-600 font-black text-[10px] gap-2 hover:bg-orange-50">{processingId === `rev_${stage.id}` ? <Loader2 className="animate-spin h-4 w-4" /> : <RotateCcw className="h-4 w-4" />} {isRtl ? 'تسجيل دورة تعديل' : 'Log Revision'}</Button>)}
-                                                {stage.status === 'in-progress' && editAccess.can && !isConsulting && (<Button disabled={!isAdmin && !isDeptAllowed} onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }} className="btn-gradient h-10 px-6 rounded-xl text-[10px] gap-2"><Hammer className="h-4 w-4" /> {isRtl ? 'تسجيل إنجاز' : 'Log'}</Button>)}
+                                                {stage.status === 'in-progress' && isDesignProject && (<Button onClick={() => handleOpenRevisionDialog(stage)} disabled={processingId === `rev_${stage.id}` || (!isAdmin && !isDeptAllowed)} variant="outline" className="h-10 px-4 rounded-xl border-orange-200 text-orange-600 font-black text-[10px] gap-2 hover:bg-orange-50">{processingId === `rev_${stage.id}` ? <Loader2 className="animate-spin h-4 w-4" /> : <RotateCcw className="h-4 w-4" />} {isRtl ? 'تسجيل دورة تعديل' : 'Log Revision'}</Button>)}
+                                                {stage.status === 'in-progress' && editAccess.can && isFieldProject && !isExecutionLockActive && (<Button disabled={!isAdmin && !isDeptAllowed} onClick={() => { setTargetStage(stage); setIsRecordOpen(true); }} className="btn-gradient h-10 px-6 rounded-xl text-[10px] gap-2"><Hammer className="h-4 w-4" /> {isRtl ? 'تسجيل إنجاز' : 'Log'}</Button>)}
                                               </>
                                            )}
                                            {isAdmin && stage.status === 'completed' && <Button onClick={() => handleReopenStage(stage.id!)} variant="outline" className="h-9 px-4 rounded-lg text-orange-600 border-orange-200 hover:bg-orange-50 text-[9px] gap-1"><RotateCcw className="h-3 w-3" /> {isRtl ? 'إعادة فتح' : 'Reopen'}</Button>}
