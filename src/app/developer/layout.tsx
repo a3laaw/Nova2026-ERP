@@ -16,6 +16,7 @@ export default function DeveloperLayout({
   const { user, globalUser, loading, logout } = useAuthContext();
   const { lang, setLang, t } = useLanguage();
   const router = useRouter();
+  const isRtl = lang === 'ar';
 
   useEffect(() => {
     if (!loading) {
@@ -42,7 +43,6 @@ export default function DeveloperLayout({
 
   return (
     <div className="min-h-screen bg-[#F8F9FA]" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-      {/* هيدر فاتح مشرق متوافق مع الهوية الجديدة */}
       <header className="bg-white border-b-2 border-primary/10 p-4 flex items-center justify-between shadow-sm sticky top-0 z-50">
         <div className={cn("flex items-center gap-3", lang === 'ar' ? "flex-row-reverse" : "flex-row")}>
           <div className="p-2 bg-primary rounded-xl text-white shadow-lg">
@@ -58,13 +58,17 @@ export default function DeveloperLayout({
         </div>
         <div className={cn("flex items-center gap-4", lang === 'ar' ? "flex-row-reverse" : "flex-row")}>
           <Button 
-            variant="ghost" 
+            variant="outline" 
             size="sm" 
             onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
-            className="text-slate-600 hover:bg-slate-50 gap-2 font-bold"
+            className="h-9 px-4 gap-2 rounded-full border-primary/20 hover:border-primary/40 bg-white shadow-sm transition-all group"
           >
-            <Languages className="h-4 w-4 text-primary" />
-            {t('switchLang')}
+            <div className="bg-primary/5 p-1 rounded-full group-hover:bg-primary/10 transition-colors">
+               <Languages className="h-3.5 w-3.5 text-primary" />
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-700">
+               {lang === 'ar' ? 'English' : 'العربية'}
+            </span>
           </Button>
           <div className="h-6 w-[1px] bg-slate-100" />
           <span className="text-[10px] font-black bg-slate-50 border border-slate-100 px-4 py-1.5 rounded-full text-slate-500 hidden sm:inline-flex items-center gap-2">

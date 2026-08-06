@@ -11,7 +11,7 @@ import { UserNav } from "@/components/layout/user-nav"
 import { NotificationBell } from "@/components/layout/notification-bell"
 import { BreadcrumbNav } from "@/components/layout/breadcrumb-nav"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, LogOut, Lock, Clock, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { Loader2, LogOut, Lock, Clock, ShieldAlert, AlertTriangle, Languages } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -124,8 +124,18 @@ export default function DashboardLayout({
               <BreadcrumbNav />
             </div>
             <div className="flex items-center gap-4 shrink-0">
-              <Button variant="ghost" size="sm" onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')} className="font-black gap-2 text-slate-600 h-10 px-4 text-xs">
-                {t('switchLang')}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')} 
+                className="h-9 px-3 gap-2 rounded-full border-primary/20 hover:border-primary/40 bg-white shadow-sm transition-all group"
+              >
+                <div className="bg-primary/5 p-1 rounded-full group-hover:bg-primary/10 transition-colors">
+                  <Languages className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-700">
+                  {lang === 'ar' ? 'English' : 'العربية'}
+                </span>
               </Button>
               <NotificationBell />
               <div className="h-8 w-[1.5px] bg-slate-100 rounded-full" />
