@@ -123,7 +123,35 @@ const translations: Record<Language, Record<string, any>> = {
         rate: 'التعرفة',
         total: 'الإجمالي',
         noBoqs: 'لا يوجد مقايسات حالياً.',
-        noVariations: 'لا يوجد أوامر تغييرية مسجلة.'
+        noVariations: 'لا يوجد أوامر تغييرية مسجلة.',
+        newVO: 'أمر تغييري جديد',
+        items: 'البنود',
+        sections: 'الأقسام',
+        planned: 'المخطط',
+        previous: 'سابق',
+        current: 'حالي',
+        progress: 'إنجاز'
+      },
+      voManager: {
+        title: 'إصدار أمر تغييري',
+        reason: 'المبرر الفني',
+        voTitle: 'عنوان التعديل',
+        addAdjustment: 'إضافة تعديل',
+        increase: 'زيادة كمية',
+        decrease: 'نقص كمية',
+        omit: 'حذف بند',
+        newItem: 'بند مستجد',
+        targetItem: 'البند المستهدف',
+        deltaQty: 'الفارق',
+        financialSection: 'القسم المالي',
+        executionPath: 'مسار المباشرة',
+        linkExisting: 'ربط بمرحلة موجودة',
+        injectNew: 'حقن مرحلة جديدة',
+        stageName: 'اسم المرحلة',
+        stageCode: 'كود المرحلة',
+        insertAfter: 'مكان الإدراج',
+        parallel: 'مرحلة موازية',
+        confirmVO: 'تأكيد وحفظ الأمر'
       },
       table: {
         project: 'المشروع / العميل',
@@ -265,7 +293,35 @@ const translations: Record<Language, Record<string, any>> = {
         rate: 'Rate',
         total: 'Total',
         noBoqs: 'No BOQs found.',
-        noVariations: 'No variations found.'
+        noVariations: 'No variations found.',
+        newVO: 'New Variation',
+        items: 'Items',
+        sections: 'Sections',
+        planned: 'Planned',
+        previous: 'Prev',
+        current: 'Curr',
+        progress: 'Progress'
+      },
+      voManager: {
+        title: 'Issue Variation Order',
+        reason: 'Technical Justification',
+        voTitle: 'Variation Title',
+        addAdjustment: 'Add Adjustment',
+        increase: 'Increase Qty',
+        decrease: 'Decrease Qty',
+        omit: 'Omit Item',
+        newItem: 'New Work Item',
+        targetItem: 'Target BOQ Item',
+        deltaQty: 'Qty Delta',
+        financialSection: 'Financial Section',
+        executionPath: 'Execution Path',
+        linkExisting: 'Link to Existing Stage',
+        injectNew: 'Inject New Stage',
+        stageName: 'Stage Name',
+        stageCode: 'Stage Code',
+        insertAfter: 'Insert After',
+        parallel: 'Parallel Stage',
+        confirmVO: 'Confirm & Save VO'
       },
       table: {
         project: 'Project / Client',
@@ -338,3 +394,4 @@ export const useLanguage = () => {
   if (!context) throw new Error('useLanguage must be used within LanguageProvider');
   return context;
 };
+

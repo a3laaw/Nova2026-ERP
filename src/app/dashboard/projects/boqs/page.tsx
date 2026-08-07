@@ -38,9 +38,8 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 function BOQVariationStats({ boqId, companyId }: { boqId: string, companyId: string }) {
-  const { lang, t } = useLanguage();
+  const { isRtl, t } = useLanguage();
   const db = useFirestore();
-  const isRtl = lang === 'ar';
 
   const voQuery = useMemo(() =>
     companyId && db ? query(collection(db, paths.boqVariations(companyId, boqId))) : null,
@@ -49,7 +48,7 @@ function BOQVariationStats({ boqId, companyId }: { boqId: string, companyId: str
   const { data: variations, loading } = useCollection<BOQVariation>(voQuery);
 
   if (loading) return <div className="h-3 w-10 bg-slate-100 animate-pulse rounded-md" />;
-  if (!variations || variations.length === 0) return <span className="text-[10px] text-slate-300 italic">{isRtl ? 'لا يوجد' : 'None'}</span>;
+  if (!variations || variations.length === 0) return <span className="text-[10px] text-slate-300 italic">{t('common.all')}</span>;
 
   const stats = {
     total: variations.length,
@@ -60,7 +59,7 @@ function BOQVariationStats({ boqId, companyId }: { boqId: string, companyId: str
   return (
     <div className="flex flex-wrap gap-1">
       <Badge variant="outline" className="h-5 px-1.5 text-[9px] font-bold border-slate-200 text-slate-500 bg-white uppercase">
-        {isRtl ? 'تعديل:' : 'VO:'} {stats.total}
+        {t('projects.boqExplorer.variation')}: {stats.total}
       </Badge>
       {stats.draft > 0 && <Badge className="h-5 px-1.5 text-[9px] font-bold bg-blue-50 text-blue-600 border-0 uppercase">D: {stats.draft}</Badge>}
       {stats.approved > 0 && <Badge className="h-5 px-1.5 text-[9px] font-bold bg-emerald-50 text-emerald-600 border-0 uppercase">A: {stats.approved}</Badge>}
@@ -70,11 +69,10 @@ function BOQVariationStats({ boqId, companyId }: { boqId: string, companyId: str
 
 export default function BOQExplorerPage() {
   const { globalUser, user } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
+  const { t, lang, dir, isRtl } = useLanguage();
   const { isAdmin, permissions } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
-  const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -185,7 +183,7 @@ export default function BOQExplorerPage() {
     try {
       const service = new VariationService(db, companyId, permissions);
       await service.rejectVariation(reviewVO.boqId, reviewVO.id!, reviewVO.transactionId, user.uid, user.displayName || 'Admin');
-      toast({ title: isRtl ? "تم رفض وإلغاء الطلب" : "Variation Rejected" });
+      toast({ title: t('common.saved') });
       setAllVOs(prev => prev.map(v => v.id === reviewVO.id ? { ...v, status: 'cancelled' } : v));
       setReviewVO(null);
     } catch (e: any) {
@@ -220,18 +218,18 @@ export default function BOQExplorerPage() {
             {t('projects.boqExplorer.title')}
           </h1>
           <p className="text-xs text-muted-foreground font-medium opacity-80">
-            {isRtl ? 'رقابة شاملة على ميزانيات المشاريع وتتبع التعديلات المالية.' : 'Unified oversight of project budgets and financial adjustments.'}
+            {t('projects.radar')}
           </p>
         </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="flex flex-col md:flex-row justify-between items-center gap-3 mb-4">
-           <TabsList className="bg-white border p-1 rounded-md h-9 gap-1 shadow-sm shrink-0">
-             <TabsTrigger value="boqs" className="rounded-sm text-[11px] font-bold px-6 h-full data-[state=active]:bg-primary data-[state=active]:text-white transition-all">
+           <TabsList className="bg-white border p-1 rounded-lg h-9 gap-1 shadow-sm shrink-0">
+             <TabsTrigger value="boqs" className="rounded-md text-[11px] font-bold px-6 h-full data-[state=active]:bg-primary data-[state=active]:text-white transition-all">
                 {t('projects.boqExplorer.boqs')}
              </TabsTrigger>
-             <TabsTrigger value="variations" className="rounded-sm text-[11px] font-bold px-6 h-full data-[state=active]:bg-primary data-[state=active]:text-white transition-all">
+             <TabsTrigger value="variations" className="rounded-md text-[11px] font-bold px-6 h-full data-[state=active]:bg-primary data-[state=active]:text-white transition-all">
                 {t('projects.boqExplorer.variations')}
                 {allVOs.filter(v => v.status === 'draft').length > 0 && (
                    <Badge className="bg-rose-500 text-white border-0 h-4 px-1.5 min-w-[18px] flex items-center justify-center text-[8px] ms-2 rounded-full">
@@ -268,7 +266,7 @@ export default function BOQExplorerPage() {
                     <TableRow key={boq.id} className="hover:bg-slate-50/70 border-b cursor-pointer transition-colors" onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}>
                       <TableCell className="py-2.5 ps-4 text-start">
                          <div className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-lg bg-primary/5 text-primary flex items-center justify-center font-bold text-xs border">
+                            <div className="h-8 w-8 rounded-lg bg-primary/5 text-primary flex items-center justify-center font-bold text-xs border border-primary/10">
                                {boq.boqNumber?.charAt(0) || 'B'}
                             </div>
                             <div className="text-start">
@@ -327,7 +325,7 @@ export default function BOQExplorerPage() {
                       <TableCell className="py-2.5 text-start font-bold text-slate-500 text-[11px]">{vo.boqNumber}</TableCell>
                       <TableCell className="py-2.5 text-end font-mono font-bold text-sm" style={{ color: (vo.totalAmount || 0) >= 0 ? '#10b981' : '#ef4444' }}>{(vo.totalAmount || 0) >= 0 ? '+' : ''}{(vo.totalAmount || 0).toLocaleString()} <span className="text-[9px] opacity-40">KWD</span></TableCell>
                       <TableCell className="py-2.5 text-start">
-                         <Badge className={cn("text-[9px] font-bold uppercase px-2 h-5 border-0 rounded-md", vo.status === 'approved' ? 'bg-emerald-50 text-emerald-600' : vo.status === 'cancelled' ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600')}>{isRtl ? (vo.status === 'draft' ? 'مسودة' : vo.status === 'approved' ? 'معتمد' : 'ملغي') : vo.status}</Badge>
+                         <Badge className={cn("text-[9px] font-bold uppercase px-2 h-5 border-0 rounded-md", vo.status === 'approved' ? 'bg-emerald-50 text-emerald-600' : vo.status === 'cancelled' ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600')}>{vo.status}</Badge>
                       </TableCell>
                       <TableCell className="py-2.5 pe-4 text-end">
                          {vo.status === 'draft' ? (
@@ -335,7 +333,7 @@ export default function BOQExplorerPage() {
                          ) : (
                             <div className="flex items-center justify-end gap-1.5 text-slate-400 font-bold text-[10px] uppercase">
                                {vo.status === 'approved' ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> : <XCircle className="h-3.5 w-3.5 text-rose-500" />}
-                               {isRtl ? (vo.status === 'approved' ? 'تم الاعتماد' : 'تم الإلغاء') : vo.status}
+                               {vo.status}
                             </div>
                          )}
                       </TableCell>
@@ -389,7 +387,7 @@ export default function BOQExplorerPage() {
             </div>
             <DialogFooter className="p-4 bg-slate-50 border-t flex flex-row gap-3">
                <Button onClick={() => setReviewVO(null)} variant="outline" className="flex-1 h-10 rounded-md text-xs font-bold bg-white">{t('common.cancel')}</Button>
-               <Button onClick={handleRejectVO} disabled={!!processingId} variant="destructive" className="flex-1 h-10 rounded-md text-xs font-bold">{isRtl ? 'رفض وإلغاء' : 'Reject'}</Button>
+               <Button onClick={handleRejectVO} disabled={!!processingId} variant="destructive" className="flex-1 h-10 rounded-md text-xs font-bold">{t('common.cancel')}</Button>
                <Button onClick={handleApproveVO} disabled={!!processingId} className="flex-[1.5] h-10 rounded-md text-xs font-black gap-2 shadow-lg">
                   {processingId ? <Loader2 className="animate-spin h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
                   {t('projects.boqExplorer.approveAndCommit')}
@@ -404,7 +402,7 @@ export default function BOQExplorerPage() {
              <div className="mx-auto w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-6 ring-8 ring-rose-50/50"><Trash2 className="h-8 w-8" /></div>
              <AlertDialogTitle className="text-center font-black text-2xl text-slate-900">{t('common.confirmDelete')}</AlertDialogTitle>
              <AlertDialogDescription className="text-center font-bold text-slate-400 mt-2 text-sm leading-relaxed">
-                {isRtl ? 'سيتم حذف المقايسة وكافة سجلات التنفيذ الميداني المرتبطة بها نهائياً.' : 'Are you sure? This BOQ and all associated field execution logs will be permanently deleted.'}
+                {t('common.confirmDelete')}
              </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-8 gap-3 flex flex-row">
