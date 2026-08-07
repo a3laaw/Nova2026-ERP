@@ -1,8 +1,9 @@
+
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -49,20 +50,22 @@ import {
 } from "@/components/ui/select";
 import { VOManagerDialog } from '@/components/transactions/vo-manager-dialog';
 
-export default function TransactionDetailsPage() {
+function TransactionDetailsContent() {
   const params = useParams();
   const searchParams = useSearchParams();
-  const clientId = params.id as string;
-  const transactionId = params.tId as string;
+  const router = useRouter();
+  
+  const clientId = params?.id as string;
+  const transactionId = params?.tId as string;
+  
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir } = useLanguage();
   const { permissions, isAdmin, check } = usePermissions();
   const db = useFirestore();
-  const router = useRouter();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'pipeline');
+  const [activeTab, setActiveTab] = useState('pipeline');
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [stageProgressMap, setStageProgressMap] = useState<Record<string, StageProgressResult>>({});
@@ -72,8 +75,13 @@ export default function TransactionDetailsPage() {
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [isVOOpen, setIsVOOpen] = useState(false);
 
-  const canSeeFinance = check('accounting', 'view').can || check('procurement', 'view').can;
+  // Sync tab with URL search params safely
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab) setActiveTab(tab);
+  }, [searchParams]);
 
+  const canSeeFinance = check('accounting', 'view').can || check('procurement', 'view').can;
   const currentUserName = useMemo(() => globalUser?.fullName || user?.displayName || 'Engineer', [globalUser, user]);
 
   const transRef = useMemo(() => (companyId && db && transactionId) ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
@@ -112,10 +120,14 @@ export default function TransactionDetailsPage() {
   useEffect(() => {
     if (!executionService || !stages.length || !isFieldProject) return;
     const fetchAllProgress = async () => {
-      const results: Record<string, StageProgressResult> = {};
-      const resolved = await Promise.all(stages.map(async s => ({ id: s.technicalStageId, res: await executionService.getTechnicalStageProgress(transactionId, s.technicalStageId) })));
-      resolved.forEach(item => { results[item.id] = item.res; });
-      setStageProgressMap(results);
+      try {
+        const results: Record<string, StageProgressResult> = {};
+        const resolved = await Promise.all(stages.map(async s => ({ id: s.technicalStageId, res: await executionService.getTechnicalStageProgress(transactionId, s.technicalStageId) })));
+        resolved.forEach(item => { results[item.id] = item.res; });
+        setStageProgressMap(results);
+      } catch (e) {
+        console.warn("Failed to fetch stage progress", e);
+      }
     };
     fetchAllProgress();
   }, [executionService, stages, transactionId, allExecutions, isFieldProject]);
@@ -123,24 +135,39 @@ export default function TransactionDetailsPage() {
   const handleStartStage = async (stageId: string) => {
     if (!transactionService || !user) return;
     setProcessingId(stageId);
-    try { await transactionService.startStage(transactionId, stageId, user.uid, currentUserName, globalUser?.departmentId); toast({ title: t('common.active') }); }
-    catch (e: any) { toast({ variant: "destructive", title: t('common.error'), description: e.message }); }
+    try { 
+      await transactionService.startStage(transactionId, stageId, user.uid, currentUserName, globalUser?.departmentId); 
+      toast({ title: t('common.active') }); 
+    }
+    catch (e: any) { 
+      toast({ variant: "destructive", title: t('common.error'), description: e.message }); 
+    }
     finally { setProcessingId(null); }
   };
 
   const handleCompleteStage = async (stage: StageInstance, force: boolean = false) => {
     if (!transactionService || !user || !stage.id) return;
     setProcessingId(stage.id);
-    try { await transactionService.completeStage(transactionId, stage.id, user.uid, currentUserName, globalUser?.departmentId, force); toast({ title: t('common.completed') }); }
-    catch (e: any) { toast({ variant: "destructive", title: t('common.error'), description: e.message }); }
+    try { 
+      await transactionService.completeStage(transactionId, stage.id, user.uid, currentUserName, globalUser?.departmentId, force); 
+      toast({ title: t('common.completed') }); 
+    }
+    catch (e: any) { 
+      toast({ variant: "destructive", title: t('common.error'), description: e.message }); 
+    }
     finally { setProcessingId(null); }
   };
 
   const handleManualInitialize = async () => {
     if (!transactionService || !transaction || !user) return;
     setLoadingAction('init');
-    try { await transactionService.initializeTechnicalPath(transactionId, transaction.activityTypeId, transaction.serviceId, transaction.subServiceId, user.uid); toast({ title: t('common.active') }); }
-    catch (e: any) { toast({ variant: "destructive", title: t('common.error'), description: e.message }); }
+    try { 
+      await transactionService.initializeTechnicalPath(transactionId, transaction.activityTypeId, transaction.serviceId, transaction.subServiceId, user.uid); 
+      toast({ title: t('common.active') }); 
+    }
+    catch (e: any) { 
+      toast({ variant: "destructive", title: t('common.error'), description: e.message }); 
+    }
     finally { setLoadingAction(null); }
   };
 
@@ -153,8 +180,16 @@ export default function TransactionDetailsPage() {
       await service.instantiateBoqFromTemplate(selectedTemplateId, { transactionId, clientId, clientName: transaction.clientName, activityTypeId: transaction.activityTypeId, serviceId: transaction.serviceId, subServiceId: transaction.subServiceId, name: template?.name || "" }, user.uid, currentUserName);
       toast({ title: t('common.saved') });
       setIsBoqInitOpen(false);
-    } catch (e: any) { toast({ variant: "destructive", title: t('common.error'), description: e.message }); }
+    } catch (e: any) { 
+      toast({ variant: "destructive", title: t('common.error'), description: e.message }); 
+    }
     finally { setLoadingAction(null); }
+  };
+
+  const safePush = (path: string) => {
+    if (clientId && transactionId) {
+      router.push(path);
+    }
   };
 
   if (transLoading || stagesLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
@@ -176,11 +211,11 @@ export default function TransactionDetailsPage() {
            {!isFinancialLockActive && isFieldProject && (
              <div className="flex gap-2">
                 {activeBoq ? (
-                  <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} variant="outline" size="sm" className="h-8 px-3 rounded-md font-bold text-[10px] gap-1.5">
+                  <Button onClick={() => safePush(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} variant="outline" size="sm" className="h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border-slate-200 shadow-sm">
                       <FileSpreadsheet className="h-3 w-3" /> {isRtl ? 'المقايسة' : 'BOQ'}
                   </Button>
                 ) : (
-                  <Button onClick={() => setIsBoqInitOpen(true)} variant="outline" size="sm" className="h-8 px-3 rounded-md font-bold text-[10px] gap-1.5">
+                  <Button onClick={() => setIsBoqInitOpen(true)} variant="outline" size="sm" className="h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border-slate-200 shadow-sm">
                      <FilePlus className="h-3 w-3" /> {isRtl ? 'إنشاء مقايسة' : 'Create BOQ'}
                   </Button>
                 )}
@@ -213,15 +248,15 @@ export default function TransactionDetailsPage() {
                                {isRtl ? 'يجب إصدار عقد معتمد لبدء العمل الفني والميداني.' : 'Approved contract required to launch technical pipeline.'}
                             </p>
                          </div>
-                         <Button onClick={() => setActiveTab('documents')} size="sm" className="h-8 font-bold px-6 text-[10px]">
+                         <Button onClick={() => setActiveTab('documents')} size="sm" className="h-8 font-bold px-6 text-[10px] rounded-md shadow-sm">
                             <Gavel className="h-3.5 w-3.5 me-2" /> {isRtl ? 'إصدار العقد' : 'Go to Contracts'}
                          </Button>
                       </Card>
                    ) : !stages.length ? (
-                      <Card className="py-20 text-center bg-white rounded-lg border-2 border-dashed space-y-4">
+                      <Card className="py-20 text-center bg-white rounded-lg border-2 border-dashed space-y-4 shadow-none">
                         <Workflow className="h-8 w-8 text-slate-100 mx-auto" />
                         <h3 className="text-xs font-bold text-slate-900">{isRtl ? 'بانتظار إطلاق المسار' : 'Awaiting Launch'}</h3>
-                        <Button onClick={handleManualInitialize} disabled={loadingAction === 'init'} size="sm" className="h-8 font-bold px-6 text-[10px]">
+                        <Button onClick={handleManualInitialize} disabled={loadingAction === 'init'} size="sm" className="h-8 font-bold px-6 text-[10px] rounded-md shadow-sm">
                            <Zap className="h-3.5 w-3.5 me-2" /> {isRtl ? 'تفعيل المسار' : 'Launch Path'}
                         </Button>
                       </Card>
@@ -244,12 +279,16 @@ export default function TransactionDetailsPage() {
                                      <div className="flex gap-1.5">
                                            {isOperationalFrontier && (
                                               <>
-                                                {stage.status === 'pending' && <Button onClick={(e) => { e.stopPropagation(); handleStartStage(stage.id!); }} size="sm" className="h-7 px-3 rounded-md text-[10px] font-bold bg-primary">{isRtl ? 'بدء' : 'Start'}</Button>}
-                                                {stage.status === 'in-progress' && <Button onClick={(e) => { e.stopPropagation(); handleCompleteStage(stage); }} size="sm" className="h-7 px-3 rounded-md text-[10px] font-bold bg-emerald-600">{isRtl ? 'إنهاء' : 'Finish'}</Button>}
+                                                {stage.status === 'pending' && <Button onClick={(e) => { e.stopPropagation(); handleStartStage(stage.id!); }} size="sm" className="h-7 px-3 rounded-md text-[10px] font-bold bg-primary shadow-sm hover:brightness-105">
+                                                  {processingId === stage.id ? <Loader2 className="h-3 w-3 animate-spin" /> : (isRtl ? 'بدء' : 'Start')}
+                                                </Button>}
+                                                {stage.status === 'in-progress' && <Button onClick={(e) => { e.stopPropagation(); handleCompleteStage(stage); }} size="sm" className="h-7 px-3 rounded-md text-[10px] font-bold bg-emerald-600 shadow-sm hover:brightness-105">
+                                                  {processingId === stage.id ? <Loader2 className="h-3 w-3 animate-spin" /> : (isRtl ? 'إنهاء' : 'Finish')}
+                                                </Button>}
                                               </>
                                            )}
                                            {(isAdmin) && stage.status === 'completed' && (
-                                              <Button onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/appointments/new?transactionId=${transactionId}&stageId=${stage.id}`); }} variant="ghost" size="sm" className="h-7 px-2 rounded-md text-[10px] text-slate-400 hover:text-primary"><RotateCcw className="h-3 w-3" /></Button>
+                                              <Button onClick={(e) => { e.stopPropagation(); safePush(`/dashboard/appointments/new?transactionId=${transactionId}&stageId=${stage.id}`); }} variant="ghost" size="sm" className="h-7 px-2 rounded-md text-[10px] text-slate-400 hover:text-primary"><RotateCcw className="h-3 w-3" /></Button>
                                            )}
                                      </div>
                                   </CardContent>
@@ -274,14 +313,14 @@ export default function TransactionDetailsPage() {
       </div>
 
       <Dialog open={isBoqInitOpen} onOpenChange={setIsBoqInitOpen}>
-         <DialogContent className="rounded-lg max-w-md p-0 overflow-hidden" dir={dir}>
+         <DialogContent className="rounded-lg max-w-md p-0 overflow-hidden border shadow-2xl" dir={dir}>
             <div className="bg-slate-50 p-6 border-b text-start"><DialogTitle className="text-base font-bold">{isRtl ? 'اختيار قالب المقايسة' : 'Select BOQ Template'}</DialogTitle></div>
             <div className="p-6 space-y-4">
                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
                   <SelectTrigger className="h-10 rounded-md border-slate-200"><SelectValue placeholder="..." /></SelectTrigger>
                   <SelectContent className="z-[160]">{templates?.map(t => <SelectItem key={t.id} value={t.id!} className="text-xs">{t.name}</SelectItem>)}</SelectContent>
                </Select>
-               <Button onClick={handleCreateBOQ} disabled={!selectedTemplateId || !!loadingAction} className="w-full h-10 rounded-md font-bold text-xs">
+               <Button onClick={handleCreateBOQ} disabled={!selectedTemplateId || !!loadingAction} className="w-full h-10 rounded-md font-bold text-xs shadow-sm">
                   {loadingAction === 'creating_boq' ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4 me-2" />} {isRtl ? 'تنشيط المقايسة' : 'Create Now'}
                </Button>
             </div>
@@ -290,5 +329,13 @@ export default function TransactionDetailsPage() {
 
       {activeBoq && <VOManagerDialog isOpen={isVOOpen} onClose={() => setIsVOOpen(false)} boqId={activeBoq.id} transactionId={transactionId} boqNumber={activeBoq.boqNumber} boqItems={boqItems || []} />}
     </div>
+  );
+}
+
+export default function TransactionDetailsPage() {
+  return (
+    <Suspense fallback={<div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>}>
+      <TransactionDetailsContent />
+    </Suspense>
   );
 }
