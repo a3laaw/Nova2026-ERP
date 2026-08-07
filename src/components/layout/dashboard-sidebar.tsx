@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview القائمة الجانبية (Sidebar) بتصميم الكبسولات البرتقالية المدمجة.
  * تم إصلاح خطأ الـ Unique Keys عبر استخدام الروابط كمعرفات.
@@ -15,7 +16,8 @@ import {
   Layers, FileSearch, Truck,
   Building2, ChevronLeft, Settings2, ChevronDown,
   Database, FileSpreadsheet, CalendarDays, Gavel,
-  MapPinned, Hammer, MapPin, Landmark
+  MapPinned, Hammer, MapPin, Landmark, Receipt,
+  GitBranch, BarChart3
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
@@ -114,6 +116,11 @@ export function DashboardSidebar() {
         url: "/dashboard/accounting", 
         resource: 'accounting',
         subItems: [
+          { title: isRtl ? 'دليل الحسابات' : 'Chart of Accounts', url: "/dashboard/accounting/coa", icon: GitBranch },
+          { title: isRtl ? 'سندات القبض' : 'Receipts', url: "/dashboard/accounting/vouchers/receipt", icon: Receipt },
+          { title: isRtl ? 'سندات الصرف' : 'Payments', icon: Wallet, url: "/dashboard/accounting/vouchers/payment" },
+          { title: isRtl ? 'قيود اليومية' : 'Journal Entries', url: "/dashboard/accounting/journals", icon: FileText },
+          { title: isRtl ? 'التقارير المالية' : 'Financial Reports', url: "/dashboard/accounting/reports", icon: BarChart3 },
           { title: isRtl ? 'المطابقة البنكية' : 'Reconciliation', url: "/dashboard/accounting", icon: Sparkles },
         ]
       },

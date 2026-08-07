@@ -1,3 +1,4 @@
+
 'use client';
 
 import { getTenantPath } from '@/lib/utils';
@@ -62,4 +63,7 @@ export const paths = {
   equipmentAssignments: (companyId: string) => getTenantPath(companyId, 'equipmentAssignments'),
   costRateCards: (companyId: string) => getTenantPath(companyId, 'costRateCards'),
   ipcs: (companyId: string) => getTenantPath(companyId, 'ipcs'),
+  accounts: (companyId: string) => getTenantPath(companyId, 'accounts'),
+  journalEntries: (companyId: string) => getTenantPath(companyId, 'journalEntries'),
+  vouchers: (companyId: string) => getTenantPath(companyId, 'vouchers'),
 };

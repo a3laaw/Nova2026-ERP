@@ -1,76 +1,63 @@
+
 {
   "entities": {
-    "Client": {
-      "title": "Client Record",
-      "description": "الجذر التجاري للعميل في النظام، يحتوي على بيانات التواصل والعنوان والحالة التشغيلية.",
+    "Account": {
+      "title": "Accounting Account",
+      "description": "عنصر في دليل الحسابات (شجرة الحسابات).",
       "type": "object",
       "properties": {
-        "fileNumber": { "type": "string" },
+        "code": { "type": "string" },
         "nameAr": { "type": "string" },
         "nameEn": { "type": "string" },
-        "mobile": { "type": "string" },
-        "status": { "type": "string" },
+        "type": { "type": "string", "enum": ["asset", "liability", "equity", "revenue", "expense"] },
+        "parentId": { "type": "string" },
+        "isGroup": { "type": "boolean" },
+        "level": { "type": "number" },
         "companyId": { "type": "string" }
       },
-      "required": ["fileNumber", "nameAr", "mobile", "status", "companyId"]
+      "required": ["code", "nameAr", "type", "isGroup", "companyId"]
     },
-    "Employee": {
-      "title": "Employee Record",
-      "description": "سجل الموظف الشامل والبيانات المالية والوظيفية.",
+    "JournalEntry": {
+      "title": "Journal Entry",
+      "description": "قيد محاسبي مزدوج القيمة.",
       "type": "object",
       "properties": {
-        "employeeNumber": { "type": "string" },
-        "fullName": { "type": "string" },
-        "civilId": { "type": "string" },
-        "jobTitle": { "type": "string" },
-        "basicSalary": { "type": "number" },
-        "companyId": { "type": "string" }
-      }
-    },
-    "JobApplication": {
-      "title": "Job Application",
-      "description": "طلب توظيف مقدم من مرشح خارجي عبر بوابة التوظيف العامة.",
-      "type": "object",
-      "properties": {
-        "fullName": { "type": "string" },
-        "email": { "type": "string" },
-        "mobile": { "type": "string" },
-        "position": { "type": "string" },
-        "experienceYears": { "type": "number" },
-        "resumeUrl": { "type": "string" },
-        "status": { "type": "string", "enum": ["new", "reviewing", "interview", "rejected", "hired"] },
-        "companyId": { "type": "string" }
-      }
-    },
-    "FieldExecution": {
-      "title": "Field Execution Log",
-      "description": "سجل الإنجاز الميداني متضمناً الموارد المستخدمة من عمالة ومعدات.",
-      "type": "object",
-      "properties": {
-        "boqItemId": { "type": "string" },
-        "quantity": { "type": "number" },
-        "laborDetails": {
+        "entryNumber": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["draft", "posted", "reversed"] },
+        "lines": {
           "type": "array",
           "items": {
             "type": "object",
             "properties": {
-              "trade": { "type": "string" },
-              "count": { "type": "number" }
+              "accountId": { "type": "string" },
+              "accountName": { "type": "string" },
+              "debit": { "type": "number" },
+              "credit": { "type": "number" },
+              "projectId": { "type": "string" },
+              "costCenterId": { "type": "string" },
+              "memo": { "type": "string" }
             }
           }
         },
-        "equipmentUsed": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "equipmentId": { "type": "string" },
-              "hoursUsed": { "type": "number" }
-            }
-          }
-        },
-        "appointmentId": { "type": "string" },
-        "recordedBy": { "type": "string" }
+        "companyId": { "type": "string" }
+      }
+    },
+    "Voucher": {
+      "title": "Accounting Voucher",
+      "description": "سند مالي (قبض أو صرف).",
+      "type": "object",
+      "properties": {
+        "voucherNumber": { "type": "string" },
+        "type": { "type": "string", "enum": ["receipt", "payment"] },
+        "date": { "type": "string" },
+        "amount": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "personName": { "type": "string" },
+        "accountId": { "type": "string" },
+        "journalEntryId": { "type": "string" },
+        "notes": { "type": "string" }
       }
     }
   },
@@ -78,9 +65,8 @@
     "providers": ["password"]
   },
   "firestore": {
-    "/companies/{companyId}/clients/{clientId}": { "schema": "#/entities/Client", "description": "سجلات العملاء" },
-    "/companies/{companyId}/employees/{empId}": { "schema": "#/entities/Employee", "description": "سجلات الموظفين" },
-    "/companies/{companyId}/applications/{appId}": { "schema": "#/entities/JobApplication", "description": "طلبات التوظيف المستلمة" },
-    "/companies/{companyId}/executions/{execId}": { "schema": "#/entities/FieldExecution", "description": "سجلات التنفيذ والموارد الميدانية" }
+    "/companies/{companyId}/accounts/{accountId}": { "schema": "#/entities/Account", "description": "دليل الحسابات" },
+    "/companies/{companyId}/journalEntries/{entryId}": { "schema": "#/entities/JournalEntry", "description": "قيود اليومية" },
+    "/companies/{companyId}/vouchers/{voucherId}": { "schema": "#/entities/Voucher", "description": "سندات القبض والصرف" }
   }
 }
