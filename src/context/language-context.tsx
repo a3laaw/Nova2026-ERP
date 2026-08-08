@@ -15,7 +15,7 @@ interface LanguageContextType {
 // القاموس الموحد الشامل بالنظام - أسلوب أودو البسيط والراديائي (Odoo ERP Standard)
 const translations: Record<Language, Record<string, string>> = {
   ar: {
-    // 1. الأقسام الرئيسية (Main Navigation)
+    // 1. الأقسام الرئيسية (Navigation)
     'dashboard': 'لوحة التحكم',
     'dashboard.title': 'لوحة التحكم',
     'dashboard.export': 'تصدير التقارير',
@@ -58,41 +58,15 @@ const translations: Record<Language, Record<string, string>> = {
     'projects.table.status': 'الحالة',
     'projects.details.radar': 'متابعة التنفيذ',
     'projects.details.finance': 'المالية والعقود',
-    'projects.details.locked': 'المسار مقفل (يتطلب عقداً ومقايسة معتمدة)',
     'projects.voManager.title': 'أوامر التغيير (VOs)',
     'projects.voManager.addAdjustment': 'إضافة تعديل',
     'projects.voManager.confirmVO': 'اعتماد أمر التغيير',
-    'projects.voManager.increase': 'زيادة كمية',
-    'projects.voManager.decrease': 'تخفيض كمية',
-    'projects.voManager.omit': 'إلغاء بند',
-    'projects.voManager.newItem': 'بند جديد (أمر تغييري)',
-    'projects.voManager.targetItem': 'البند المستهدف',
-    'projects.voManager.deltaQty': 'فرق الكمية',
-    'projects.voManager.financialSection': 'القسم المالي',
-    'projects.voManager.executionPath': 'مسار التنفيذ',
-    'projects.voManager.linkExisting': 'ربط بمرحلة حالية',
-    'projects.voManager.injectNew': 'حقن مرحلة جديدة',
-    'projects.voManager.stageName': 'اسم المرحلة',
-    'projects.voManager.stageCode': 'كود المرحلة',
-    'projects.voManager.insertAfter': 'إدراج بعد',
-    'projects.voManager.parallel': 'مرحلة موازية (مكملة)',
-    'projects.boqNumber': 'رقم المقايسة',
-    'projects.clientName': 'العميل',
-    'projects.budget': 'الميزانية',
-    'projects.status': 'الحالة',
-    'projects.boqExplorer.noBoqs': 'لا يوجد مقايسات معتمدة لهذا المشروع.',
-    'projects.boqExplorer.rate': 'السعر',
-    'projects.boqExplorer.action': 'الإجراء',
-    'projects.boqExplorer.voSummary': 'ملخص التعديلات',
 
     // 4. الخدمات الميدانية والموردين والمشتريات (Field Ops & Purchasing)
     'construction': 'الخدمات الميدانية',
     'construction.radar': 'العمليات الميدانية',
     'construction.groups': 'فرق العمل',
     'construction.reports': 'تقارير الموقع',
-    'construction.equipment': 'المعدات',
-    'construction.context': 'بيانات الموقع',
-    'construction.siteProgress': 'الإنجاز الميداني',
     'procurement': 'المشتريات',
     'suppliers': 'الموردون',
     'contracts': 'العقود',
@@ -152,24 +126,10 @@ const translations: Record<Language, Record<string, string>> = {
     'common.close': 'إغلاق',
     'common.saved': 'تم الحفظ بنجاح',
     'common.error': 'حدث خطأ',
-    'common.confirmDelete': 'تأكيد الحذف',
-    'common.deleted': 'تم الحذف بنجاح',
-    'common.viewAll': 'عرض الكل',
-    'common.pending': 'معلق',
-    'common.active': 'نشط',
-    'common.completed': 'مكتمل',
-    'common.addLabel': 'البند',
-    'common.labor': 'العمالة',
-    'common.equipment': 'المعدات',
-    'common.loadFromGroup': 'تحميل طاقم',
-    'common.photos': 'الصور',
-    'common.saveReport': 'حفظ التقرير',
-
-    // Extra mapping for sidebar/breadcrumbs
-    'details': 'التفاصيل',
-    'transactions': 'المعاملات',
-    'roles': 'الصلاحيات',
-    'profile-settings': 'إعدادات الحساب'
+    'common.name': 'الاسم',
+    'common.company': 'الشركة',
+    'common.email': 'البريد الإلكتروني',
+    'common.value': 'القيمة التقديرية'
   },
   en: {
     'dashboard': 'Dashboard',
@@ -186,7 +146,6 @@ const translations: Record<Language, Record<string, string>> = {
     'addLead': 'New Lead',
 
     'projects': 'Projects',
-    'projects.title': 'Projects & Transactions',
     'construction': 'Field Service',
     'procurement': 'Purchase',
     'suppliers': 'Vendors',
@@ -210,9 +169,11 @@ const translations: Record<Language, Record<string, string>> = {
     'common.cancel': 'Cancel',
     'common.search': 'Search...',
     'common.filter': 'Filter',
-    'common.confirm': 'Confirm',
-    'common.saved': 'Saved Successfully',
-    'common.error': 'Error Occurred'
+    'common.name': 'Name',
+    'common.company': 'Company',
+    'common.status': 'Status',
+    'common.email': 'Email',
+    'common.value': 'Estimated Value'
   }
 };
 
