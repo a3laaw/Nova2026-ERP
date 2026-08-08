@@ -12,9 +12,10 @@ interface LanguageContextType {
   t: (key: string) => string;
 }
 
+// القاموس السيادي - نظام المفاتيح المسطحة (Flat Keys) لضمان الوصول بنسبة 100%
 const translations: Record<Language, Record<string, string>> = {
   ar: {
-    // الكلمات السيادية (Core)
+    // الأقسام الرئيسية
     'dashboard': 'لوحة التحكم',
     'crm': 'العملاء والفرص',
     'projects': 'المشاريع والمعاملات',
@@ -25,70 +26,74 @@ const translations: Record<Language, Record<string, string>> = {
     'inventory': 'المخازن والعهد',
     'settings': 'إعدادات النظام',
     'profile': 'الملف الشخصي',
-    'details': 'تفاصيل',
-    'transactions': 'المعاملات',
 
-    // العملاء والفرص (CRM)
+    // سجل العملاء (الظاهر في الصورة)
+    'clients.title': 'سجل العملاء',
+    'clients.addNew': 'تسجيل عميل جديد',
+    'clients.table.profile': 'ملف العميل',
+    'clients.table.staff': 'المهندس المسؤول',
+    'clients.table.contact': 'الاتصال',
+    'clients.table.status': 'الحالة',
+    'clients.details.transactions': 'المعاملات الفنية',
+    'clients.details.location': 'إحداثيات الموقع',
+    'clients.details.history': 'سجل الحركات',
+
+    // القائمة الجانبية (Sidebar)
     'leads': 'الفرص البيعية',
     'clients': 'سجل العملاء',
     'appointments': 'المواعيد والزيارات',
     'halls': 'حجز القاعات والاجتماعات',
     'visitsDossier': 'سجل تفاعل العملاء',
-
-    // المشاريع (Projects)
     'activeProjects': 'المشاريع الجارية',
     'boqExplorer': 'مستكشف المقايسات',
     'reports': 'التقارير الهندسية',
-
-    // العمليات الميدانية (Field Ops)
     'fieldRadar': 'الرادار الميداني',
     'workGroups': 'مجموعات العمل',
-    'equipment': 'سجل المعدات',
+    'equipment': 'سجل المعدات والآليات',
     'fieldLogs': 'تقارير الميدان',
-
-    // المشتريات (Procurement)
-    'suppliers': 'الموردين',
-    'contracts': 'العقود',
+    'suppliers': 'الموردين المعتمدين',
+    'contracts': 'العقود الرسمية',
     'aiAnalysis': 'تحليل العروض (AI)',
-
-    // الموارد البشرية (HR)
     'staffRecords': 'شؤون الموظفين',
     'leaveRequests': 'طلبات الإجازات',
     'payrollBatches': 'مسيرات الرواتب',
-
-    // المحاسبة (Accounting)
     'chartOfAccounts': 'دليل الحسابات',
     'receiptVouchers': 'سندات القبض',
     'paymentVouchers': 'سندات الصرف',
     'journalEntries': 'قيود اليومية',
     'financialReports': 'التقارير المالية',
-
-    // الإعدادات (Settings)
     'usersManagement': 'إدارة المستخدمين',
     'companyIdentity': 'هوية المنشأة',
     'checklists': 'الدستور التشغيلي',
-    'rolesPermissions': 'الأدوار والصلاحيات',
+    'rolesPermissions': 'مصفوفة الصلاحيات',
     'workHours': 'مواعيد العمل',
     'userProfile': 'ملفي الشخصي',
 
-    // رسائل النظام والقفل
+    // تفاصيل المشروع
     'projects.details.radar': 'رادار التنفيذ الميداني',
     'projects.details.finance': 'المالية والوثائق',
     'projects.details.locked': 'المسار الفني مقفل: يتطلب عقد معتمد ومقايسة ميزانية معتمدة للبدء.',
     'projects.boqExplorer.noBoqs': 'لا توجد مقايسات مسجلة حالياً لهذه المعاملة.',
-    
-    // الأزرار
+    'projects.boqNumber': 'رقم المقايسة',
+    'projects.clientName': 'اسم العميل',
+    'projects.budget': 'الميزانية',
+    'projects.status': 'الحالة',
+
+    // شريط المسار (Breadcrumb)
+    'details': 'تفاصيل',
+    'transactions': 'المعاملات',
+
+    // كلمات عامة
+    'common.search': 'بحث...',
+    'common.filter': 'تصفية',
     'common.save': 'حفظ البيانات',
     'common.cancel': 'إلغاء',
-    'common.edit': 'تعديل',
     'common.delete': 'حذف',
-    'common.search': 'بحث...',
-    'common.active': 'نشط',
-    'common.completed': 'مكتمل',
-    'common.pending': 'قيد الانتظار',
-    'common.error': 'خطأ في النظام',
+    'common.edit': 'تعديل',
     'common.saved': 'تم الحفظ بنجاح',
-    
+    'common.error': 'خطأ في النظام',
+    'common.close': 'إغلاق',
+
     // أنماط التسعير
     'itemized': 'تسعير بنود',
     'fixed': 'مبلغ مقطوع',
@@ -98,9 +103,10 @@ const translations: Record<Language, Record<string, string>> = {
   en: {
     'dashboard': 'Dashboard',
     'crm': 'CRM',
-    'leads': 'Leads',
-    'clients': 'Clients',
-    'projects': 'Projects',
+    'clients.title': 'Clients List',
+    'clients.addNew': 'Add New Client',
+    'common.search': 'Search...',
+    'common.filter': 'Filter',
     'checklists': 'Constitution',
     'templates': 'Templates',
     'rolesRef': 'Permissions',
