@@ -313,7 +313,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                         <td className="p-2">
                                            <div className="relative w-14 mx-auto">
                                               <Input type="number" value={m.percentage === 0 ? "" : m.percentage} onChange={e => updateItem(idx, 'percentage', e.target.value === "" ? 0 : Number(e.target.value))} className="h-8 rounded-lg border-2 font-black text-center pe-5 text-[10px]" />
-                                              <Percent className="absolute right-1 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-300" />
+                                              <Percent className="absolute right-1 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
                                            </div>
                                         </td>
                                       )}

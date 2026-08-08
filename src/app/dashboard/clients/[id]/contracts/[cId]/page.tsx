@@ -118,7 +118,6 @@ export default function ContractViewPage() {
         ? stats.totalItemizedAmount 
         : (editData.totalAmount || 0);
 
-      // الفجوة المحللة: ضمان تحول الحالة إلى Approved عند الحفظ الأول لفتح حالة العميل
       const newStatus = (contract?.status === 'draft' && !contract.isHistoryRecorded) ? 'approved' : editData.status;
 
       const { id, createdAt, updatedAt, ...sanitizedData } = editData as any;
@@ -218,7 +217,7 @@ export default function ContractViewPage() {
                     {editData.status || contract.status}
                  </Badge>
               </div>
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">REF: {contract.id.slice(-8).toUpperCase()} | {editData.pricingMode}</p>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">REF: {contract.id.slice(-8).toUpperCase()} | {isRtl ? t(editData.pricingMode || '') : editData.pricingMode}</p>
            </div>
         </div>
         <div className="flex gap-2">
@@ -256,7 +255,7 @@ export default function ContractViewPage() {
                 <div className="flex items-center gap-4 text-start">
                   <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-lg"><Calculator className="h-5 w-5" /></div>
                   <div>
-                    <p className="text-[10px] font-black uppercase text-primary tracking-widest">Pricing Mode</p>
+                    <p className="text-[10px] font-black uppercase text-primary tracking-widest">{t('pricingMode')}</p>
                     {isEditing ? (
                       <Select value={editData.pricingMode} onValueChange={(v: PricingMode) => setEditForm({...editData, pricingMode: v})}>
                          <SelectTrigger className="h-10 w-40 rounded-xl border-2 bg-white text-slate-900 font-black text-xs mt-1"><SelectValue /></SelectTrigger>
@@ -266,7 +265,7 @@ export default function ContractViewPage() {
                             <SelectItem value="percentage" className="font-bold text-xs">{t('percentage')}</SelectItem>
                          </SelectContent>
                       </Select>
-                    ) : <span className="text-xs font-black uppercase text-slate-900">{editData.pricingMode}</span>}
+                    ) : <span className="text-xs font-black uppercase text-slate-900">{t(editData.pricingMode || '')}</span>}
                   </div>
                 </div>
                 
@@ -428,7 +427,7 @@ export default function ContractViewPage() {
                            <td colSpan={editData.pricingMode === 'percentage' ? (isEditing ? 5 : 4) : (isEditing ? 4 : 3)} className="p-8 text-start">
                               <h3 className="text-base font-black font-headline uppercase tracking-widest text-slate-900">{isRtl ? 'إجمالي قيمة العقد النهائية' : 'Total Contract Value'}</h3>
                               {editData.pricingMode === 'percentage' && (
-                                 <Badge className={cn("mt-2 border-0 text-[10px] font-black h-6 px-4 shadow-sm", stats.isValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100 animate-pulse")}>
+                                 <Badge className={cn("mt-2 border-0 text-[10px] font-black h-6 px-4 shadow-sm", stats.isValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>
                                     {stats.isValid ? `BALANCED: 100%` : `MISMATCH: ${stats.totalPercentage}%`}
                                  </Badge>
                               )}

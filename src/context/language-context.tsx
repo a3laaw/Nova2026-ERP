@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -20,14 +19,53 @@ const translations: Record<Language, Record<string, any>> = {
     crm: 'العملاء والفرص',
     leads: 'الفرص والمبيعات',
     clients: 'قاعدة بيانات العملاء',
-    projects: 'المشاريع والمعاملات',
-    construction: 'العمليات الميدانية',
+    projects: {
+      title: 'المشاريع والمعاملات',
+      radar: 'رادار المشاريع',
+      contracting: 'قسم المقاولات',
+      addNew: 'فتح معاملة جديدة',
+      boqExplorer: 'مستكشف المقايسات',
+      boqNumber: 'رقم المقايسة',
+      clientName: 'اسم العميل',
+      budget: 'الميزانية',
+      status: 'الحالة',
+      details: {
+        radar: 'رادار التنفيذ',
+        finance: 'المالية والوثائق',
+        locked: 'المسار الفني مقفل',
+        transactions: 'المعاملات المرتبطة',
+        location: 'موقع المشروع',
+        history: 'سجل الحركات'
+      },
+      table: {
+        project: 'المشروع / العميل',
+        progress: 'نسبة الإنجاز',
+        billing: 'التحصيل المالي',
+        status: 'حالة المشروع'
+      },
+      stats: {
+        portfolio: 'إجمالي المحفظة',
+        claims: 'المطالبات المالية',
+        collection: 'نسبة التحصيل'
+      }
+    },
+    construction: {
+      radar: 'الرادار الميداني',
+      groups: 'مجموعات العمل',
+      equipment: 'سجل المعدات والآليات',
+      reports: 'تقارير الميدان',
+      context: 'السياق التشغيلي',
+      siteProgress: 'توثيق الإنجاز الميداني'
+    },
     procurement: 'المشتريات والتوريد',
     hr: 'الموارد البشرية',
     accounting: 'المحاسبة والمالية',
     inventory: 'المخازن والعهد',
     reports: 'التقارير والرقابة',
-    settings: 'الإعدادات',
+    settings: {
+      title: 'الإعدادات',
+      checklists: 'الدستور التشغيلي'
+    },
     save: 'حفظ البيانات',
     cancel: 'إلغاء',
     edit: 'تعديل',
@@ -61,7 +99,7 @@ const translations: Record<Language, Record<string, any>> = {
     description: 'الوصف',
     logout: 'تسجيل الخروج',
     
-    // Core Navigation Keys (Requested Fixes)
+    // Core Keys
     checklists: 'الدستور التشغيلي',
     templates: 'مكتبة القوالب',
     rolesRef: 'مصفوفة الصلاحيات',
@@ -71,6 +109,25 @@ const translations: Record<Language, Record<string, any>> = {
     usersManagement: 'إدارة المستخدمين',
     workHours: 'مواعيد العمل',
     systemSetup: 'تأسيس النظام',
+
+    // Pricing Modes
+    itemized: 'تسعير بنود',
+    fixed: 'مبلغ مقطوع',
+    percentage: 'نسبة مئوية',
+    pricingMode: 'نمط التسعير',
+    totalQuoteValue: 'إجمالي قيمة العقد النهائية',
+    defaultTerms: 'الشروط والأحكام العامة',
+    contractSigning: 'توقيع العقد',
+    at: 'عند',
+    before: 'قبل',
+    during: 'أثناء',
+    after: 'بعد',
+    amount: 'المبلغ',
+    unit: 'الوحدة',
+    quantity: 'الكمية',
+    notes: 'ملاحظات',
+    technicalLink: 'الارتباط الفني',
+    milestoneTiming: 'توقيت الاستحقاق',
 
     // Checklists & Settings Tabs
     referenceLists: 'القوائم المرجعية',
@@ -90,35 +147,6 @@ const translations: Record<Language, Record<string, any>> = {
     itemCategories: 'تصنيفات الأصناف',
     costTypeCategories: 'تصنيفات التكلفة',
     
-    // Projects & BOQ
-    boqExplorer: 'مستكشف المقايسات',
-    boqs: 'المقايسات المعتمدة',
-    variations: 'الأوامر التغييرية',
-    boqNumber: 'رقم المقايسة',
-    clientName: 'اسم العميل',
-    budget: 'الميزانية',
-    financialImpact: 'الأثر المالي',
-    review: 'مراجعة',
-    approveAndCommit: 'اعتماد وحقن التعديل',
-    item: 'البند',
-    planned: 'المخطط',
-    executed: 'المنفذ',
-    rate: 'التعرفة',
-    total: 'الإجمالي',
-    progress: 'الإنجاز',
-    
-    // Accounting
-    chartOfAccounts: 'دليل الحسابات',
-    receiptVouchers: 'سندات القبض',
-    paymentVouchers: 'سندات الصرف',
-    journalEntries: 'قيود اليومية',
-    financialReports: 'التقارير المالية',
-    bankReconciliation: 'المطابقة البنكية',
-    debit: 'مدين',
-    credit: 'دائن',
-    balance: 'الرصيد',
-    amount: 'المبلغ',
-
     // HR
     staffRecords: 'سجل الموظفين',
     leaveRequests: 'طلبات الإجازات',
@@ -137,14 +165,53 @@ const translations: Record<Language, Record<string, any>> = {
     crm: 'CRM',
     leads: 'Leads',
     clients: 'Clients',
-    projects: 'Projects',
-    construction: 'Field Operations',
+    projects: {
+      title: 'Projects & Transactions',
+      radar: 'Project Radar',
+      contracting: 'Contracting Div',
+      addNew: 'New Transaction',
+      boqExplorer: 'BOQ Explorer',
+      boqNumber: 'BOQ Number',
+      clientName: 'Client Name',
+      budget: 'Budget',
+      status: 'Status',
+      details: {
+        radar: 'Execution Radar',
+        finance: 'Finance & Docs',
+        locked: 'Technical Path Locked',
+        transactions: 'Related Transactions',
+        location: 'Project Location',
+        history: 'Audit Log'
+      },
+      table: {
+        project: 'Project / Client',
+        progress: 'Progress %',
+        billing: 'Financial Billing',
+        status: 'Project Status'
+      },
+      stats: {
+        portfolio: 'Portfolio Value',
+        claims: 'Financial Claims',
+        collection: 'Collection Rate'
+      }
+    },
+    construction: {
+      radar: 'Field Radar',
+      groups: 'Work Groups',
+      equipment: 'Equipment Master',
+      reports: 'Field Logs',
+      context: 'Operational Context',
+      siteProgress: 'Site Progress Log'
+    },
     procurement: 'Procurement',
     hr: 'Human Resources',
     accounting: 'Accounting',
     inventory: 'Inventory',
     reports: 'Reports',
-    settings: 'Settings',
+    settings: {
+      title: 'Settings',
+      checklists: 'Operational Checklists'
+    },
     save: 'Save',
     cancel: 'Cancel',
     edit: 'Edit',
@@ -188,6 +255,24 @@ const translations: Record<Language, Record<string, any>> = {
     workHours: 'Work Hours',
     systemSetup: 'System Setup',
 
+    itemized: 'Itemized',
+    fixed: 'Fixed Amount',
+    percentage: 'Percentage',
+    pricingMode: 'Pricing Mode',
+    totalQuoteValue: 'Total Contract Value',
+    defaultTerms: 'General Terms & Conditions',
+    contractSigning: 'Contract Signing',
+    at: 'At',
+    before: 'Before',
+    during: 'During',
+    after: 'After',
+    amount: 'Amount',
+    unit: 'Unit',
+    quantity: 'Quantity',
+    notes: 'Notes',
+    technicalLink: 'Technical Link',
+    milestoneTiming: 'Milestone Timing',
+
     referenceLists: 'Reference Lists',
     boqMasterTree: 'BOQ Master Tree',
     halls: 'Halls',
@@ -203,33 +288,6 @@ const translations: Record<Language, Record<string, any>> = {
     milestoneTimingTypes: 'Milestone Timing',
     itemCategories: 'Item Categories',
     costTypeCategories: 'Cost Categories',
-
-    boqExplorer: 'BOQ Explorer',
-    boqs: 'Approved BOQs',
-    variations: 'Variations',
-    boqNumber: 'BOQ Number',
-    clientName: 'Client Name',
-    budget: 'Budget',
-    financialImpact: 'Financial Impact',
-    review: 'Review',
-    approveAndCommit: 'Approve & Commit',
-    item: 'Item',
-    planned: 'Planned',
-    executed: 'Executed',
-    rate: 'Rate',
-    total: 'Total',
-    progress: 'Progress',
-
-    chartOfAccounts: 'Chart of Accounts',
-    receiptVouchers: 'Receipt Vouchers',
-    paymentVouchers: 'Payment Vouchers',
-    journalEntries: 'Journal Entries',
-    financialReports: 'Financial Reports',
-    bankReconciliation: 'Bank Reconciliation',
-    debit: 'Debit',
-    credit: 'Credit',
-    balance: 'Balance',
-    amount: 'Amount',
 
     staffRecords: 'Staff Records',
     leaveRequests: 'Leave Requests',

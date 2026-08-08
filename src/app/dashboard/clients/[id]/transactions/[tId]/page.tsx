@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect, Suspense } from 'react';
@@ -19,15 +18,14 @@ import {
   LayoutGrid
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { collection, query, orderBy, where, limit, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, where, limit, doc, updateDoc, serverTimestamp, addDoc } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { Transaction, StageInstance } from '@/types/transaction';
 import { TransactionService } from '@/services/transaction-service';
-import { BOQExecutionService, StageProgressResult } from '@/services/boq-execution-service';
-import { BOQ, BOQItem, BOQItemExecutionEntry, Contract } from '@/types/documents';
+import { BOQ, Contract } from '@/types/documents';
 import { BOQTemplate } from '@/types/templates';
 import { CommentSection } from '@/components/transactions/comment-section';
 import { DocumentService } from '@/services/document-service';
@@ -91,7 +89,6 @@ function TransactionDetailsContent() {
   const { data: boqs } = useCollection<BOQ>(boqQuery);
   const activeBoq = boqs?.[0];
 
-  // الحارس السيادي الذكي: القفل المالي مقسوم لشرطين (عقد معتمد + مقايسة معتمدة)
   const isFinancialLockActive = useMemo(() => {
      const hasApprovedContract = contracts?.some(c => ['approved', 'paid', 'active', 'signed'].includes(c.status || '') || c.isPaid);
      const hasApprovedBOQ = activeBoq?.status === 'approved';
@@ -244,11 +241,11 @@ function TransactionDetailsContent() {
           <div className="lg:col-span-7">
              <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="w-full">
                 <TabsList className="bg-slate-100/50 p-1 rounded-md h-9 gap-1 shadow-sm mb-4 inline-flex">
-                   <TabsTrigger value="pipeline" className="rounded-sm text-[10px] font-bold px-4 h-full data-[state=active]:bg-white data-[state=active]:text-primary transition-all">
+                   <TabsTrigger value="pipeline" className="rounded-sm text-[10px] font-black px-4 h-full data-[state=active]:bg-white data-[state=active]:text-primary transition-all">
                       {t('projects.details.radar')}
                    </TabsTrigger>
                    {canSeeFinance && (
-                     <TabsTrigger value="documents" className="rounded-sm text-[10px] font-bold px-4 h-full data-[state=active]:bg-white data-[state=active]:text-primary transition-all">
+                     <TabsTrigger value="documents" className="rounded-sm text-[10px] font-black px-4 h-full data-[state=active]:bg-white data-[state=active]:text-primary transition-all">
                         {t('projects.details.finance')}
                      </TabsTrigger>
                    )}
