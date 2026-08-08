@@ -185,10 +185,10 @@ export default function ReceiptVouchersPage() {
               <Table>
                  <TableHeader className="bg-slate-50">
                     <TableRow>
-                       <TableHead className="py-3 ps-6 text-start">رقم السند / التاريخ</TableHead>
-                       <TableHead className="text-start">من السيد</TableHead>
-                       <TableHead className="text-end">المبلغ</TableHead>
-                       <TableHead className="text-center">طريقة الدفع</TableHead>
+                       <TableHead className="py-3 ps-6 text-start">{isRtl ? 'رقم السند / التاريخ' : 'Voucher No. / Date'}</TableHead>
+                       <TableHead className="text-start">{isRtl ? 'من السيد' : 'Received From'}</TableHead>
+                       <TableHead className="text-end">{isRtl ? 'المبلغ' : 'Amount'}</TableHead>
+                       <TableHead className="text-center">{isRtl ? 'طريقة الدفع' : 'Payment Method'}</TableHead>
                        <TableHead className="pe-6"></TableHead>
                     </TableRow>
                  </TableHeader>

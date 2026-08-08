@@ -339,7 +339,7 @@ function GridSection({ title, slots, engineers, grid, visitCounts, onAction, isR
           <table className="w-full border-collapse">
              <thead>
                 <tr className="bg-slate-50/50">
-                   <th className="w-14 p-2 border-b font-bold text-[10px] text-slate-400">Time</th>
+                   <th className="w-14 p-2 border-b font-bold text-[10px] text-slate-400">{isRtl ? 'الوقت' : 'Time'}</th>
                    {engineers.map((eng: Employee) => (
                       <th key={eng.id} className="p-2 border-b border-s min-w-[150px]">
                          <div className="flex items-center gap-2">
