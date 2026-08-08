@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -27,7 +26,7 @@ export default function TechnicalSetupPage() {
         <div className="text-start">
           <h1 className="text-3xl md:text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
             <Database className="h-8 w-8 md:h-10 md:w-10 text-primary" />
-            {t('settings.checklists') || t('checklists')}
+            {t('settings.checklists')}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic text-start">
             {isRtl ? 'إدارة الدستور التشغيلي والقواعد المرجعية الموحدة للنظام' : 'Manage operational constitution and unified system references'}

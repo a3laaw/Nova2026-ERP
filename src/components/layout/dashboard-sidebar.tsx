@@ -63,7 +63,7 @@ export function DashboardSidebar() {
         subItems: [
           { title: t('projects.title'), url: "/dashboard/projects", icon: Layers },
           { title: t('projects.boqExplorer'), url: "/dashboard/projects/boqs", icon: FileSpreadsheet },
-          { title: t('reports'), url: "/dashboard/reports", icon: FileText },
+          { title: t('reports.title'), url: "/dashboard/reports", icon: FileText },
         ]
       },
       { 
@@ -129,7 +129,7 @@ export function DashboardSidebar() {
         resource: 'settings',
         subItems: [
           { title: t('usersManagement'), url: "/dashboard/settings/users", icon: Users },
-          { title: t('companyIdentity'), url: "/dashboard/settings/company", icon: Building2 },
+          { title: t('companyProfile'), url: "/dashboard/settings/company", icon: Building2 },
           { title: t('checklists'), url: "/dashboard/settings/checklists", icon: Database },
           { title: t('rolesPermissions'), url: "/dashboard/settings/roles", icon: ShieldCheck },
           { title: t('workHours'), url: "/dashboard/settings/work-hours", icon: Clock },

@@ -12,7 +12,7 @@ interface LanguageContextType {
   t: (key: string) => string;
 }
 
-// القاموس الموحد الشامل بالنظام - أسلوب أودو البسيط والراديائي (Odoo ERP Standard)
+// القاموس الموحد الشامل - إصدار التحصين النهائي (Odoo ERP Standard)
 const translations: Record<Language, Record<string, string>> = {
   ar: {
     // 1. الأقسام الرئيسية (Navigation)
@@ -41,10 +41,13 @@ const translations: Record<Language, Record<string, string>> = {
     'clients.table.staff': 'المسؤول',
     'clients.table.status': 'الحالة',
     'addLead': 'فرصة جديدة',
+    'appointments': 'المواعيد والزيارات',
+    'meetings': 'حجز القاعات والاجتماعات',
+    'visitsDossier': 'سجل تفاعل العملاء',
 
     // 3. المشاريع وجداول الكميات وأوامر التغيير (Projects, BOQs & Change Orders)
-    'projects': 'المشاريع',
-    'projects.title': 'المشاريع والمعاملات',
+    'projects': 'المشاريع والمعاملات',
+    'projects.title': 'المشاريع الجارية',
     'projects.radar': 'متابعة المشاريع',
     'projects.addNew': 'مشروع جديد',
     'projects.contracting': 'قسم المقاولات',
@@ -61,29 +64,31 @@ const translations: Record<Language, Record<string, string>> = {
     'projects.voManager.title': 'أوامر التغيير (VOs)',
     'projects.voManager.addAdjustment': 'إضافة تعديل',
     'projects.voManager.confirmVO': 'اعتماد أمر التغيير',
+    'boqExplorer': 'مستكشف المقايسات',
 
     // 4. الخدمات الميدانية والموردين والمشتريات (Field Ops & Purchasing)
-    'construction': 'الخدمات الميدانية',
-    'construction.radar': 'العمليات الميدانية',
-    'construction.groups': 'فرق العمل',
-    'construction.reports': 'تقارير الموقع',
-    'procurement': 'المشتريات',
-    'suppliers': 'الموردون',
+    'construction': 'العمليات الميدانية',
+    'construction.radar': 'الرادار الميداني',
+    'construction.groups': 'مجموعات العمل',
+    'construction.reports': 'تقارير الميدان',
+    'construction.equipment': 'سجل المعدات',
+    'procurement': 'المشتريات والتوريد',
+    'suppliers': 'الموردين',
     'contracts': 'العقود',
     'purchaseOrders': 'أوامر الشراء',
     'aiAnalysis': 'تحليل العروض',
 
     // 5. الموظفون والرواتب (HR & Payroll)
-    'hr': 'الموظفون والرواتب',
-    'staffRecords': 'الموظفون',
+    'hr': 'الموارد البشرية',
+    'staffRecords': 'شؤون الموظفين',
     'leaveRequests': 'الإجازات',
-    'payrollBatches': 'مسير الرواتب',
+    'payrollBatches': 'مسيرات الرواتب',
     'payroll': 'الرواتب',
     'hr.attendance.title': 'سجل الحضور والإنصراف',
     'hr.gratuity.title': 'حاسبة نهاية الخدمة',
 
     // 6. المحاسبة والمالية (Accounting)
-    'accounting': 'المحاسبة',
+    'accounting': 'المحاسبة والمالية',
     'chartOfAccounts': 'شجرة الحسابات',
     'receiptVouchers': 'سندات القبض',
     'paymentVouchers': 'سندات الصرف',
@@ -91,20 +96,35 @@ const translations: Record<Language, Record<string, string>> = {
     'financialReports': 'التقارير المالية',
 
     // 7. المخزون والإعدادات (Inventory & Settings)
-    'inventory': 'المخزون',
-    'settings': 'الإعدادات',
-    'usersManagement': 'المستخدمون والصلاحيات',
+    'inventory': 'المخازن والعهد',
+    'settings': 'إعدادات النظام',
+    'settings.checklists': 'قواعد العمل',
+    'usersManagement': 'إدارة المستخدمين',
     'companyIdentity': 'بيانات الشركة',
+    'companyProfile': 'بيانات الشركة',
     'checklists': 'قواعد العمل',
     'rolesPermissions': 'الأدوار والصلاحيات',
     'workHours': 'ساعات العمل والعطلات',
     'userProfile': 'الملف الشخصي',
     'templates': 'القوالب',
     'equipment': 'المعدات',
-    'appointments': 'المواعيد',
-    'meetings': 'الاجتماعات والقاعات',
 
-    // 8. الكلمات العامة البسيطة (Common Terms)
+    // 8. القوائم المرجعية التفصيلية (Reference Lists)
+    'referenceLists': 'القوائم المرجعية',
+    'boqMasterTree': 'شجرة المقايسات',
+    'halls': 'القاعات',
+    'orgRef': 'الهيكل التنظيمي',
+    'techRef': 'المسارات الفنية',
+    'geoRef': 'البيانات الجغرافية',
+    'systemSetup': 'إعداد النظام',
+    'unitTypes': 'وحدات القياس',
+    'paymentMethods': 'طرق الدفع',
+    'paymentConditionTypes': 'شروط الدفع',
+    'milestoneTimingTypes': 'توقيت الدفعات',
+    'itemCategories': 'تصنيفات الأصناف',
+    'costTypeCategories': 'تصنيفات التكلفة',
+
+    // 9. الكلمات العامة (Common)
     'common.add': 'إضافة',
     'common.edit': 'تعديل',
     'common.delete': 'حذف',
@@ -126,54 +146,31 @@ const translations: Record<Language, Record<string, string>> = {
     'common.close': 'إغلاق',
     'common.saved': 'تم الحفظ بنجاح',
     'common.error': 'حدث خطأ',
-    'common.name': 'الاسم',
-    'common.company': 'الشركة',
-    'common.email': 'البريد الإلكتروني',
-    'common.value': 'القيمة التقديرية'
+    'reports.title': 'التقارير'
   },
   en: {
     'dashboard': 'Dashboard',
-    'dashboard.title': 'Dashboard',
-    'dashboard.export': 'Export',
-    'dashboard.recent': 'Recent Activity',
-    'dashboard.missions': 'Field Tasks',
-
     'crm': 'CRM',
-    'leads': 'Leads & Opportunities',
-    'clients': 'Contacts',
-    'clients.addNew': 'New Contact',
-    'clients.title': 'Contacts',
-    'addLead': 'New Lead',
-
     'projects': 'Projects',
     'construction': 'Field Service',
-    'procurement': 'Purchase',
-    'suppliers': 'Vendors',
-    'purchaseOrders': 'Purchase Orders',
-
-    'hr': 'Employees',
-    'staffRecords': 'Employees',
-    'payroll': 'Payroll',
-    'leaveRequests': 'Time Off',
-
+    'procurement': 'Procurement',
+    'hr': 'HR & Payroll',
     'accounting': 'Accounting',
-    'chartOfAccounts': 'Chart of Accounts',
-    'journalEntries': 'Journal Entries',
-    'paymentVouchers': 'Payment Vouchers',
-    'receiptVouchers': 'Receipt Vouchers',
-
     'inventory': 'Inventory',
     'settings': 'Settings',
-
+    'staffRecords': 'Employees',
+    'leaveRequests': 'Time Off',
+    'payrollBatches': 'Payroll',
+    'chartOfAccounts': 'Chart of Accounts',
+    'receiptVouchers': 'Receipt Vouchers',
+    'paymentVouchers': 'Payment Vouchers',
+    'journalEntries': 'Journal Entries',
+    'financialReports': 'Financial Reports',
+    'companyProfile': 'Company Profile',
     'common.save': 'Save',
     'common.cancel': 'Cancel',
     'common.search': 'Search...',
-    'common.filter': 'Filter',
-    'common.name': 'Name',
-    'common.company': 'Company',
-    'common.status': 'Status',
-    'common.email': 'Email',
-    'common.value': 'Estimated Value'
+    'common.filter': 'Filter'
   }
 };
 

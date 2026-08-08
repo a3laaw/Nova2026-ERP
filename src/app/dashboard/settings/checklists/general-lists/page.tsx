@@ -100,7 +100,7 @@ export default function GeneralListsPage() {
       toast({ title: t('saved') });
       setEditingItem(null);
     } catch (e: any) {
-      toast({ variant: "destructive", title: t('error'), description: e.message });
+      toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
       setLoadingAction(null);
     }
@@ -132,7 +132,7 @@ export default function GeneralListsPage() {
       
       <div className="lg:col-span-3 space-y-4 text-start">
          <div className="bg-white rounded-xl shadow-lg border border-slate-100 p-2 space-y-1">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-4 py-2">{isRtl ? 'القوائم الأساسية' : 'Main Lists'}</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-4 py-2">{t('inline.main.lists')}</p>
             {staticMenuItems.map((item) => {
               const isActive = activeTab === item.id;
               return (
@@ -183,7 +183,7 @@ export default function GeneralListsPage() {
                   </div>
                   <DialogFooter>
                     <Button onClick={() => setIsAddingList(false)} className="w-full h-12">
-                      {isRtl ? 'إنشاء القائمة' : 'Create List'}
+                      {t('inline.create.list')}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -198,7 +198,7 @@ export default function GeneralListsPage() {
                <div className="relative w-full max-w-sm">
                   <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                   <Input 
-                    placeholder={t('search')} 
+                    placeholder={t('common.search')} 
                     className="ps-12 h-11 bg-white border-slate-200 font-bold" 
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
@@ -212,7 +212,7 @@ export default function GeneralListsPage() {
                       className="h-11 px-6 shadow-lg flex items-center gap-2"
                     >
                         <Plus className="h-5 w-5" />
-                        {isRtl ? 'إضافة بند' : 'Add Entry'}
+                        {t('inline.add.entry')}
                     </Button>
                   )}
                </div>
@@ -221,10 +221,10 @@ export default function GeneralListsPage() {
                <Table>
                   <TableHeader className="bg-muted/30">
                      <TableRow>
-                        <TableHead className="py-6 ps-8 text-start">{t('name')}</TableHead>
-                        <TableHead className="text-start">{t('code')}</TableHead>
+                        <TableHead className="py-6 ps-8 text-start">{t('common.name')}</TableHead>
+                        <TableHead className="text-start">{t('common.code')}</TableHead>
                         <TableHead className="text-center">{t('order')}</TableHead>
-                        <TableHead className="text-start">{t('status')}</TableHead>
+                        <TableHead className="text-start">{t('common.status')}</TableHead>
                         <TableHead className="pe-8 text-end">{isRtl ? 'إجراءات' : 'Actions'}</TableHead>
                      </TableRow>
                   </TableHeader>
@@ -238,7 +238,7 @@ export default function GeneralListsPage() {
                                {isRtl ? item.name : (item.nameEn || item.name)}
                             </TableCell>
                             <TableCell className="text-start">
-                               <code className="text-[10px] bg-slate-100 px-2 py-0.5 rounded font-mono text-primary font-black">{item.code}</code>
+                               <code className="text-[10px] bg-slate-100 px-2 py-0.5 rounded font-mono text-primary font-black uppercase">{item.code}</code>
                             </TableCell>
                             <TableCell className="text-center font-bold text-slate-400">#{item.order}</TableCell>
                             <TableCell className="text-start">
@@ -249,12 +249,12 @@ export default function GeneralListsPage() {
                             <TableCell className="pe-8 text-end">
                                <div className="flex justify-end gap-2">
                                   {canEdit && (
-                                     <Button variant="outline" size="icon" onClick={() => setEditingItem(item)} className="h-9 w-9">
+                                     <Button variant="outline" size="icon" onClick={() => setEditingItem(item)} className="rounded-xl h-10 w-10 text-primary border-primary/10 hover:bg-primary hover:text-white transition-all">
                                         <Edit3 className="h-4 w-4" />
                                      </Button>
                                   )}
                                   {canDelete && item.isEditable && (
-                                     <Button variant="ghost" size="icon" onClick={() => setDeletingId(item.id!)} className="h-9 w-9 text-rose-500">
+                                     <Button variant="ghost" size="icon" onClick={() => setDeletingId(item.id!)} className="rounded-xl h-10 w-10 text-rose-300 hover:text-rose-600 hover:bg-rose-50">
                                         <Trash2 className="h-4 w-4" />
                                      </Button>
                                   )}
@@ -274,15 +274,15 @@ export default function GeneralListsPage() {
             <div className="bg-[#FFA000] p-8 text-white text-start">
                <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3">
                   <Edit3 className="h-8 w-8 text-white" />
-                  {editingItem?.id ? (isRtl ? 'تعديل بند' : 'Edit Entry') : (isRtl ? 'إضافة بند' : 'Add Entry')}
+                  {editingItem?.id ? t('inline.edit.entry') : t('inline.add.entry')}
                </DialogTitle>
             </div>
             
             <div className="p-10 space-y-6 text-start bg-white">
                <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
-                     <Label className="text-xs font-black uppercase text-slate-400">{t('code')}</Label>
-                     <Input value={editingItem?.code || ''} onChange={e => setEditingItem({...editingItem, code: e.target.value.toUpperCase()})} className="h-11 border-2 font-mono font-black" />
+                     <Label className="text-xs font-black uppercase text-slate-400">{t('common.code')}</Label>
+                     <Input value={editingItem?.code || ''} onChange={e => setEditingItem({...editingItem, code: e.target.value.toUpperCase().replace(/\s+/g, '_')})} className="h-11 border-2 font-mono font-black" />
                   </div>
                   <div className="space-y-2">
                      <Label className="text-xs font-black uppercase text-slate-400">{t('order')}</Label>
@@ -290,18 +290,18 @@ export default function GeneralListsPage() {
                   </div>
                </div>
                <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase text-slate-400">{t('name')} (AR)</Label>
+                  <Label className="text-xs font-black uppercase text-slate-400">{t('common.name')} (AR)</Label>
                   <Input value={editingItem?.name || ''} onChange={e => setEditingItem({...editingItem, name: e.target.value})} className="h-11 border-2" />
                </div>
                <div className="flex items-center justify-between p-6 bg-slate-50 rounded-xl border-2">
-                  <Label className="font-black text-slate-700">{t('isActive')}</Label>
+                  <Label className="font-black text-slate-700">{isRtl ? 'نشط' : 'Active'}</Label>
                   <Switch checked={editingItem?.isActive !== false} onCheckedChange={v => setEditingItem({...editingItem, isActive: v})} />
                </div>
             </div>
             <DialogFooter className="p-8 bg-slate-50 border-t">
                <Button onClick={handleSave} disabled={loadingAction === 'save'} className="w-full h-12 rounded-xl">
                   {loadingAction === 'save' ? <Loader2 className="animate-spin" /> : <Save className="h-5 w-5 me-2" />}
-                  {t('save')}
+                  {t('common.save')}
                </Button>
             </DialogFooter>
          </DialogContent>
