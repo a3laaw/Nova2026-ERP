@@ -46,7 +46,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { VOManagerDialog } from '@/components/transactions/vo-manager-dialog';
 
 function TransactionDetailsContent() {
   const params = useParams();
@@ -69,7 +68,6 @@ function TransactionDetailsContent() {
   
   const [isBoqInitOpen, setIsBoqInitOpen] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
-  const [isVOOpen, setIsVOOpen] = useState(false);
 
   useEffect(() => {
     const tab = searchParams.get('tab');
@@ -79,13 +77,15 @@ function TransactionDetailsContent() {
   const canSeeFinance = check('accounting', 'view').can || check('procurement', 'view').can;
   const currentUserName = useMemo(() => globalUser?.fullName || user?.displayName || 'Engineer', [globalUser, user]);
 
+  // 1. جلب بيانات المعاملة الأساسية
   const transRef = useMemo(() => (companyId && db && transactionId) ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction, loading: transLoading } = useDoc<Transaction>(transRef);
 
+  // 2. جلب العقود للتحقق من القفل المالي
   const contractsQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.contracts(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
   const { data: contracts } = useCollection<Contract>(contractsQuery);
   
-  // استخدام "الفلترة في الذاكرة" لضمان ظهور المقايسة فوراً وتجاوز مشاكل الفهارس
+  // 3. الحل السيادي لاختفاء المقايسة: جلب الكل والفلترة في الذاكرة (Memory Filtering)
   const boqQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqs(companyId))) : null, [db, companyId]);
   const { data: allBoqs } = useCollection<BOQ>(boqQuery);
   
@@ -93,6 +93,7 @@ function TransactionDetailsContent() {
     return allBoqs?.find(b => b.transactionId === transactionId);
   }, [allBoqs, transactionId]);
 
+  // منطق القفل المالي الصارم
   const isFinancialLockActive = useMemo(() => {
      const hasApprovedContract = contracts?.some(c => ['approved', 'paid', 'active', 'signed'].includes(c.status || '') || c.isPaid);
      const hasApprovedBOQ = activeBoq?.status === 'approved';
@@ -101,9 +102,11 @@ function TransactionDetailsContent() {
 
   const isFieldProject = useMemo(() => transaction?.activityTypeName?.includes('مقاولات') || transaction?.activityTypeName?.includes('Construction'), [transaction]);
 
+  // 4. جلب مراحل التنفيذ
   const stagesQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order', 'asc')) : null, [db, companyId, transactionId]);
   const { data: rawStages, loading: stagesLoading } = useCollection<StageInstance>(stagesQuery);
 
+  // 5. جلب قوالب المقايسات المتاحة لهذا المسار
   const templatesQuery = useMemo(() => (companyId && db && transaction?.subServiceId) ? query(collection(db, paths.boqTemplates(companyId)), where('subServiceId', '==', transaction.subServiceId)) : null, [db, companyId, transaction]);
   const { data: templates } = useCollection<BOQTemplate>(templatesQuery);
 
@@ -194,7 +197,15 @@ function TransactionDetailsContent() {
     try {
       const service = new DocumentService(db, companyId, permissions);
       const template = templates?.find(t => t.id === selectedTemplateId);
-      await service.instantiateBoqFromTemplate(selectedTemplateId, { transactionId, clientId, clientName: transaction.clientName, activityTypeId: transaction.activityTypeId, serviceId: transaction.serviceId, subServiceId: transaction.subServiceId, name: template?.name || "" }, user.uid, currentUserName);
+      await service.instantiateBoqFromTemplate(selectedTemplateId, { 
+        transactionId, 
+        clientId, 
+        clientName: transaction.clientName, 
+        activityTypeId: transaction.activityTypeId, 
+        serviceId: transaction.serviceId, 
+        subServiceId: transaction.subServiceId, 
+        name: template?.name || "" 
+      }, user.uid, currentUserName);
       toast({ title: t('common.saved') });
       setIsBoqInitOpen(false);
     } catch (e: any) { 
@@ -260,9 +271,9 @@ function TransactionDetailsContent() {
                       <Card className="border-2 border-dashed rounded-[1.5rem] bg-white p-12 text-center space-y-4">
                          <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto"><Lock className="h-8 w-8 text-slate-200" /></div>
                          <div className="space-y-1">
-                            <h3 className="text-sm font-black text-slate-900">{t('projects.details.locked')}</h3>
+                            <h3 className="text-sm font-black text-slate-900">{isRtl ? 'المسار الفني مقفل' : 'Technical Path Locked'}</h3>
                             <p className="text-[10px] text-slate-400 max-w-xs mx-auto leading-relaxed font-bold italic">
-                               {isRtl ? 'يجب إصدار عقد معتمد واعتماد مقايسة الأعمال قبل بدء العمل الميداني.' : 'Approved contract AND approved BOQ required to launch technical pipeline.'}
+                               {t('projects.details.locked')}
                             </p>
                          </div>
                          <div className="flex justify-center gap-3 pt-4">
@@ -346,7 +357,7 @@ function TransactionDetailsContent() {
                      <SelectValue placeholder="..." />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-2 shadow-2xl">
-                     {templates?.map(t => <SelectItem key={t.id} value={t.id!} className="font-bold py-3">{t.name}</SelectItem>)}
+                     {templates?.map(t => <SelectItem key={t.id} value={t.id!} className="font-bold py-4">{t.name}</SelectItem>)}
                   </SelectContent>
                </Select>
                <Button onClick={handleCreateBOQ} disabled={!selectedTemplateId || !!loadingAction} className="w-full h-14 rounded-2xl font-black text-sm shadow-xl shadow-primary/20 border-b-4 border-orange-700 mt-4 transition-all active:scale-95">
