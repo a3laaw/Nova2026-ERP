@@ -19,7 +19,7 @@ import {
   LayoutGrid
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { collection, query, orderBy, where, limit, doc } from 'firebase/firestore';
+import { collection, query, orderBy, where, limit, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -68,14 +68,11 @@ function TransactionDetailsContent() {
   const [activeTab, setActiveTab] = useState('pipeline');
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
-  const [stageProgressMap, setStageProgressMap] = useState<Record<string, StageProgressResult>>({});
-  const [filterStageId, setFilterStageId] = useState<string | null>(null);
   
   const [isBoqInitOpen, setIsBoqInitOpen] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [isVOOpen, setIsVOOpen] = useState(false);
 
-  // Sync tab with URL search params safely
   useEffect(() => {
     const tab = searchParams.get('tab');
     if (tab) setActiveTab(tab);
@@ -90,47 +87,29 @@ function TransactionDetailsContent() {
   const contractsQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.contracts(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
   const { data: contracts } = useCollection<Contract>(contractsQuery);
   
-  const activeContract = useMemo(() => contracts?.find(c => ['approved', 'paid', 'active', 'signed'].includes(c.status || '') || c.isPaid), [contracts]);
-  const isFinancialLockActive = !activeContract;
+  const boqQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId), limit(1)) : null, [db, companyId, transactionId]);
+  const { data: boqs } = useCollection<BOQ>(boqQuery);
+  const activeBoq = boqs?.[0];
+
+  // الحارس السيادي الذكي: القفل المالي مقسوم لشرطين (عقد معتمد + مقايسة معتمدة)
+  const isFinancialLockActive = useMemo(() => {
+     const hasApprovedContract = contracts?.some(c => ['approved', 'paid', 'active', 'signed'].includes(c.status || '') || c.isPaid);
+     const hasApprovedBOQ = activeBoq?.status === 'approved';
+     return !hasApprovedContract || !hasApprovedBOQ;
+  }, [contracts, activeBoq]);
 
   const isFieldProject = useMemo(() => transaction?.activityTypeName?.includes('مقاولات') || transaction?.activityTypeName?.includes('Construction'), [transaction]);
 
   const stagesQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order', 'asc')) : null, [db, companyId, transactionId]);
   const { data: rawStages, loading: stagesLoading } = useCollection<StageInstance>(stagesQuery);
 
-  const boqQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId), limit(1)) : null, [db, companyId, transactionId]);
-  const { data: boqs } = useCollection<BOQ>(boqQuery);
-  const activeBoq = boqs?.[0];
-
   const templatesQuery = useMemo(() => (companyId && db && transaction?.subServiceId) ? query(collection(db, paths.boqTemplates(companyId)), where('subServiceId', '==', transaction.subServiceId)) : null, [db, companyId, transaction]);
   const { data: templates } = useCollection<BOQTemplate>(templatesQuery);
-
-  const itemsQuery = useMemo(() => (companyId && db && activeBoq?.id) ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
-  const { data: boqItems } = useCollection<BOQItem>(itemsQuery);
-
-  const executionsQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.executions(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
-  const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
 
   const stages = useMemo(() => (rawStages || []).sort((a, b) => (a.order || 0) - (b.order || 0)), [rawStages]);
   const progressPercent = useMemo(() => stages.length ? Math.round((stages.filter(s => s.status === 'completed').length / stages.length) * 100) : 0, [stages]);
 
-  const executionService = useMemo(() => (db && companyId) ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
   const transactionService = useMemo(() => (db && companyId) ? new TransactionService(db, companyId, permissions) : null, [db, companyId, permissions]);
-
-  useEffect(() => {
-    if (!executionService || !stages.length || !isFieldProject) return;
-    const fetchAllProgress = async () => {
-      try {
-        const results: Record<string, StageProgressResult> = {};
-        const resolved = await Promise.all(stages.map(async s => ({ id: s.technicalStageId, res: await executionService.getTechnicalStageProgress(transactionId, s.technicalStageId) })));
-        resolved.forEach(item => { results[item.id] = item.res; });
-        setStageProgressMap(results);
-      } catch (e) {
-        console.warn("Failed to fetch stage progress", e);
-      }
-    };
-    fetchAllProgress();
-  }, [executionService, stages, transactionId, allExecutions, isFieldProject]);
 
   const handleStartStage = async (stageId: string) => {
     if (!transactionService || !user) return;
@@ -145,17 +124,54 @@ function TransactionDetailsContent() {
     finally { setProcessingId(null); }
   };
 
-  const handleCompleteStage = async (stage: StageInstance, force: boolean = false) => {
+  const handleCompleteStage = async (stage: StageInstance) => {
     if (!transactionService || !user || !stage.id) return;
     setProcessingId(stage.id);
     try { 
-      await transactionService.completeStage(transactionId, stage.id, user.uid, currentUserName, globalUser?.departmentId, force); 
+      await transactionService.completeStage(transactionId, stage.id, user.uid, currentUserName, globalUser?.departmentId); 
       toast({ title: t('common.completed') }); 
     }
     catch (e: any) { 
       toast({ variant: "destructive", title: t('common.error'), description: e.message }); 
     }
     finally { setProcessingId(null); }
+  };
+
+  const handleRevertStage = async (stage: StageInstance) => {
+    if (!db || !companyId || !user || !stage.id) return;
+    const reason = prompt(isRtl ? "سبب التراجع عن اكتمال المرحلة:" : "Reason for reverting stage completion:");
+    if (!reason) return;
+
+    setProcessingId(stage.id);
+    try {
+      const stageRef = doc(db, paths.transactionStages(companyId, transactionId), stage.id);
+      await updateDoc(stageRef, {
+        status: 'in-progress',
+        completedAt: null,
+        completedBy: null,
+        revertedAt: serverTimestamp(),
+        reversionReason: reason,
+        updatedAt: serverTimestamp()
+      });
+
+      const timelineRef = collection(db, paths.transactionTimeline(companyId, transactionId));
+      await addDoc(timelineRef, {
+        transactionId,
+        stageId: stage.id,
+        type: 'revision_logged',
+        content: `[تراجع إداري] تم إعادة فتح المرحلة "${stage.name}". المبرر: ${reason}`,
+        userId: user.uid,
+        userName: currentUserName,
+        companyId,
+        createdAt: serverTimestamp()
+      });
+
+      toast({ title: isRtl ? "تم التراجع عن المرحلة" : "Stage Reverted" });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('common.error') });
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   const handleManualInitialize = async () => {
@@ -208,15 +224,15 @@ function TransactionDetailsContent() {
            </div>
         </div>
         <div className="flex gap-2">
-           {!isFinancialLockActive && isFieldProject && (
+           {isFieldProject && (
              <div className="flex gap-2">
                 {activeBoq ? (
-                  <Button onClick={() => safePush(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} variant="outline" size="sm" className="h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border-slate-200 shadow-sm">
-                      <FileSpreadsheet className="h-3 w-3" /> {isRtl ? 'المقايسة' : 'BOQ'}
+                  <Button onClick={() => safePush(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} variant="outline" size="sm" className={cn("h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border-slate-200 shadow-sm", activeBoq.status !== 'approved' && "border-amber-200 bg-amber-50 text-amber-600")}>
+                      <FileSpreadsheet className="h-3 w-3" /> {activeBoq.status === 'approved' ? (isRtl ? 'المقايسة' : 'BOQ') : (isRtl ? 'بانتظار الاعتماد' : 'Awaiting Approval')}
                   </Button>
                 ) : (
                   <Button onClick={() => setIsBoqInitOpen(true)} variant="outline" size="sm" className="h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border-slate-200 shadow-sm">
-                     <FilePlus className="h-3 w-3" /> {isRtl ? 'إنشاء مقايسة' : 'Create BOQ'}
+                     <FilePlus className="h-3.5 w-3.5" /> {isRtl ? 'إنشاء مقايسة' : 'Create BOQ'}
                   </Button>
                 )}
              </div>
@@ -240,17 +256,22 @@ function TransactionDetailsContent() {
 
                 <TabsContent value="pipeline">
                    {isFinancialLockActive ? (
-                      <Card className="border-2 border-dashed rounded-lg bg-white p-12 text-center space-y-4">
-                         <Lock className="h-8 w-8 text-slate-200 mx-auto" />
+                      <Card className="border-2 border-dashed rounded-[1.5rem] bg-white p-12 text-center space-y-4">
+                         <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto"><Lock className="h-8 w-8 text-slate-200" /></div>
                          <div className="space-y-1">
-                            <h3 className="text-sm font-bold text-slate-900">{t('projects.details.locked')}</h3>
-                            <p className="text-[10px] text-slate-400 max-w-xs mx-auto leading-relaxed">
-                               {isRtl ? 'يجب إصدار عقد معتمد لبدء العمل الفني والميداني.' : 'Approved contract required to launch technical pipeline.'}
+                            <h3 className="text-sm font-black text-slate-900">{t('projects.details.locked')}</h3>
+                            <p className="text-[10px] text-slate-400 max-w-xs mx-auto leading-relaxed font-bold italic">
+                               {isRtl ? 'يجب إصدار عقد معتمد واعتماد مقايسة الأعمال قبل بدء العمل الميداني.' : 'Approved contract AND approved BOQ required to launch technical pipeline.'}
                             </p>
                          </div>
-                         <Button onClick={() => setActiveTab('documents')} size="sm" className="h-8 font-bold px-6 text-[10px] rounded-md shadow-sm">
-                            <Gavel className="h-3.5 w-3.5 me-2" /> {isRtl ? 'إصدار العقد' : 'Go to Contracts'}
-                         </Button>
+                         <div className="flex justify-center gap-3 pt-4">
+                            <Button onClick={() => setActiveTab('documents')} variant="outline" size="sm" className="h-8 font-bold px-6 text-[10px] rounded-md shadow-sm border-2">
+                               <Gavel className="h-3.5 w-3.5 me-2" /> {isRtl ? 'إصدار العقد' : 'Contracts'}
+                            </Button>
+                            <Button onClick={() => safePush(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} size="sm" className="h-8 font-bold px-6 text-[10px] rounded-md shadow-sm">
+                               <FileSpreadsheet className="h-3.5 w-3.5 me-2" /> {isRtl ? 'اعتماد المقايسة' : 'BOQ Baseline'}
+                            </Button>
+                         </div>
                       </Card>
                    ) : !stages.length ? (
                       <Card className="py-20 text-center bg-white rounded-lg border-2 border-dashed space-y-4 shadow-none">
@@ -261,22 +282,22 @@ function TransactionDetailsContent() {
                         </Button>
                       </Card>
                    ) : (
-                     <div className="space-y-3 text-start">
+                     <div className="space-y-3 text-start animate-in slide-in-from-bottom-4">
                         <div className="flex justify-between items-end px-1">
-                           <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2"><Workflow className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'المسار الفني' : 'Technical Path'}</h3>
-                           <span className="text-sm font-bold text-primary">{progressPercent}%</span>
+                           <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><Workflow className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'المسار الفني التنفيذي' : 'Technical Execution Path'}</h3>
+                           <span className="text-sm font-black text-primary">{progressPercent}%</span>
                         </div>
                         <div className="space-y-1.5">
                            {stages.map((stage, idx) => {
                               const isOperationalFrontier = stage.status === 'in-progress' || (stage.status === 'pending' && (idx === 0 || stages[idx-1].status === 'completed'));
                               return (
-                                <Card key={stage.id} onClick={() => setFilterStageId(filterStageId === stage.id ? null : stage.id!)} className={cn("rounded-md shadow-none border bg-white transition-all border-s-4 cursor-pointer", stage.status === 'completed' ? 'border-s-emerald-500' : stage.status === 'in-progress' ? 'border-s-blue-500' : 'border-s-slate-100 opacity-70')}>
+                                <Card key={stage.id} className={cn("rounded-md shadow-none border bg-white transition-all border-s-4", stage.status === 'completed' ? 'border-s-emerald-500' : stage.status === 'in-progress' ? 'border-s-blue-500' : 'border-s-slate-100 opacity-70')}>
                                   <CardContent className="p-3 flex items-center justify-between gap-4">
                                      <div className="flex items-center gap-3 flex-1 min-w-0">
                                         <div className={cn("h-6 w-6 rounded-md flex items-center justify-center font-bold text-[10px] shrink-0", stage.status === 'completed' ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-400")}>{stage.status === 'completed' ? <Check className="h-3 w-3" /> : (idx + 1)}</div>
                                         <h4 className="font-bold text-xs text-slate-900 truncate">{stage.name}</h4>
                                      </div>
-                                     <div className="flex gap-1.5">
+                                     <div className="flex gap-1.5 items-center">
                                            {isOperationalFrontier && (
                                               <>
                                                 {stage.status === 'pending' && <Button onClick={(e) => { e.stopPropagation(); handleStartStage(stage.id!); }} size="sm" className="h-7 px-3 rounded-md text-[10px] font-bold bg-primary shadow-sm hover:brightness-105">
@@ -288,7 +309,9 @@ function TransactionDetailsContent() {
                                               </>
                                            )}
                                            {(isAdmin) && stage.status === 'completed' && (
-                                              <Button onClick={(e) => { e.stopPropagation(); safePush(`/dashboard/appointments/new?transactionId=${transactionId}&stageId=${stage.id}`); }} variant="ghost" size="sm" className="h-7 px-2 rounded-md text-[10px] text-slate-400 hover:text-primary"><RotateCcw className="h-3 w-3" /></Button>
+                                              <Button onClick={(e) => { e.stopPropagation(); handleRevertStage(stage); }} variant="ghost" size="icon" className="h-7 w-7 rounded-md text-slate-300 hover:text-rose-500 hover:bg-rose-50">
+                                                {processingId === stage.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                                              </Button>
                                            )}
                                      </div>
                                   </CardContent>
@@ -307,27 +330,28 @@ function TransactionDetailsContent() {
                 )}
              </Tabs>
           </div>
-          <div className="lg:col-span-5 h-full">
-             <CommentSection transactionId={transactionId} path={paths.transactionComments(companyId!, transactionId)} stages={stages} filterStageId={filterStageId} onClearFilter={() => setFilterStageId(null)} />
+          <div className="lg:col-span-5 h-full min-h-[500px]">
+             <CommentSection transactionId={transactionId} path={paths.transactionComments(companyId!, transactionId)} stages={stages} />
           </div>
       </div>
 
       <Dialog open={isBoqInitOpen} onOpenChange={setIsBoqInitOpen}>
-         <DialogContent className="rounded-lg max-w-md p-0 overflow-hidden border shadow-2xl" dir={dir}>
-            <div className="bg-slate-50 p-6 border-b text-start"><DialogTitle className="text-base font-bold">{isRtl ? 'اختيار قالب المقايسة' : 'Select BOQ Template'}</DialogTitle></div>
-            <div className="p-6 space-y-4">
+         <DialogContent className="rounded-xl max-w-md p-0 overflow-hidden border shadow-3xl bg-white" dir={dir}>
+            <div className="bg-slate-50 p-6 border-b text-start"><DialogTitle className="text-base font-black flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> {isRtl ? 'تنشيط المقايسة المرجعية' : 'Activate BOQ Template'}</DialogTitle></div>
+            <div className="p-8 space-y-4 text-start">
+               <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'اختر القالب الهندسي' : 'Select Template'}</Label>
                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                  <SelectTrigger className="h-10 rounded-md border-slate-200"><SelectValue placeholder="..." /></SelectTrigger>
-                  <SelectContent className="z-[160]">{templates?.map(t => <SelectItem key={t.id} value={t.id!} className="text-xs">{t.name}</SelectItem>)}</SelectContent>
+                  <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                  <SelectContent className="rounded-xl border-2 shadow-2xl">
+                     {templates?.map(t => <SelectItem key={t.id} value={t.id!} className="font-bold py-3">{t.name}</SelectItem>)}
+                  </SelectContent>
                </Select>
-               <Button onClick={handleCreateBOQ} disabled={!selectedTemplateId || !!loadingAction} className="w-full h-10 rounded-md font-bold text-xs shadow-sm">
-                  {loadingAction === 'creating_boq' ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4 me-2" />} {isRtl ? 'تنشيط المقايسة' : 'Create Now'}
+               <Button onClick={handleCreateBOQ} disabled={!selectedTemplateId || !!loadingAction} className="w-full h-14 rounded-2xl font-black text-sm shadow-xl shadow-primary/20 border-b-4 border-orange-700 mt-4 transition-all active:scale-95">
+                  {loadingAction === 'creating_boq' ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4 me-2" />} {isRtl ? 'تنشيط وبدء الدراسة' : 'Instantiate & Start Study'}
                </Button>
             </div>
          </DialogContent>
       </Dialog>
-
-      {activeBoq && <VOManagerDialog isOpen={isVOOpen} onClose={() => setIsVOOpen(false)} boqId={activeBoq.id} transactionId={transactionId} boqNumber={activeBoq.boqNumber} boqItems={boqItems || []} />}
     </div>
   );
 }
