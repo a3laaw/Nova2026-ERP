@@ -206,7 +206,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
         </div>
         <div className="flex items-center gap-4">
            <div className="flex flex-col text-end">
-              <span className="text-[9px] font-black text-slate-400 uppercase">Pricing Integrity</span>
+              <span className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'سلامة التسعير' : 'Pricing Integrity'}</span>
               <Badge variant="outline" className={cn("h-6 border-2 font-black text-[9px]", stats.isValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>
                  {stats.isValid ? 'VALID' : 'MISMATCH'}
               </Badge>
@@ -231,7 +231,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                      <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} className="h-10 rounded-lg font-mono text-xs border-2" />
                   </div>
                   <div className="flex items-center justify-between p-3 mt-4 bg-slate-50 rounded-xl border-2">
-                     <Label className="text-[9px] font-black uppercase text-slate-500">Default</Label>
+                     <Label className="text-[9px] font-black uppercase text-slate-500">{isRtl ? 'قالب افتراضي' : 'Default Template'}</Label>
                      <Switch checked={formData.isDefault || false} onCheckedChange={v => setFormData({...formData, isDefault: v})} />
                   </div>
                </CardContent>
@@ -270,7 +270,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
 
                   <div className="space-y-2 text-start">
                      <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                        <FileText className="h-3.5 w-3.5 text-primary" /> {t('introText')}
+                        <FileText className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'النص التعريفي' : 'Intro Text'}
                      </h4>
                      <Textarea value={formData.introText || ''} onChange={e => setFormData({...formData, introText: e.target.value})} className="min-h-[80px] rounded-xl border-2 p-3 text-[10px] font-bold bg-slate-50/30" />
                   </div>
@@ -284,7 +284,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                            <Dialog open={isRegistryOpen} onOpenChange={setIsRegistryOpen}>
                               <DialogTrigger asChild>
                                  <Button variant="outline" size="sm" className="rounded-lg font-black text-[9px] border-2 h-7 px-4 gap-2 bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-sm">
-                                    <GitBranch className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'القاموس السيادي' : 'Registry Link'}
+                                    <GitBranch className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'القاموس الموحد' : 'Registry Link'}
                                  </Button>
                               </DialogTrigger>
                               <DialogContent className="max-w-4xl rounded-3xl p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
@@ -308,9 +308,9 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                  <th className="p-3 w-10 text-start">#</th>
                                  <th className="p-3 text-start">{isRtl ? 'مسمى البند / الدفعة' : 'Item Label'}</th>
                                  {formData.pricingMode === 'percentage' && <th className="p-3 text-center w-16">%</th>}
-                                 <th className="p-3 text-center w-24">{t('milestoneTiming')}</th>
-                                 <th className="p-3 text-start w-32">{t('technicalLink')}</th>
-                                 <th className="p-3 text-end pe-6 w-32">{t('amount')}</th>
+                                 <th className="p-3 text-center w-24">{isRtl ? 'التوقيت' : 'Timing'}</th>
+                                 <th className="p-3 text-start w-32">{isRtl ? 'الارتباط الفني' : 'Technical Link'}</th>
+                                 <th className="p-3 text-end pe-6 w-32">{isRtl ? 'المبلغ' : 'Amount'}</th>
                                  <th className="p-3 w-10"></th>
                               </tr>
                            </thead>
@@ -350,10 +350,10 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                          <Select value={m.timing || 'at'} onValueChange={v => updateItem(idx, 'timing', v)}>
                                             <SelectTrigger className="h-8 rounded-lg border-2 font-black text-[9px] bg-white"><SelectValue /></SelectTrigger>
                                             <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
-                                               <SelectItem value="at" className="font-bold text-[10px]">{t('at')}</SelectItem>
-                                               <SelectItem value="before" className="font-bold text-[10px]">{t('before')}</SelectItem>
-                                               <SelectItem value="during" className="font-bold text-[10px]">{t('during')}</SelectItem>
-                                               <SelectItem value="after" className="font-bold text-[10px]">{t('after')}</SelectItem>
+                                               <SelectItem value="at" className="font-bold text-[10px]">{isRtl ? 'عند' : 'at'}</SelectItem>
+                                               <SelectItem value="before" className="font-bold text-[10px]">{isRtl ? 'قبل' : 'before'}</SelectItem>
+                                               <SelectItem value="during" className="font-bold text-[10px]">{isRtl ? 'أثناء' : 'during'}</SelectItem>
+                                               <SelectItem value="after" className="font-bold text-[10px]">{isRtl ? 'بعد' : 'after'}</SelectItem>
                                             </SelectContent>
                                          </Select>
                                       </td>
@@ -367,7 +367,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                             </SelectTrigger>
                                             <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
                                                <SelectItem value="SIGNING" className="font-black text-[10px] py-2">
-                                                  <span className="flex items-center gap-1"><ShieldCheck className="h-2.5 w-2.5 text-emerald-500" /> {t('contractSigning')}</span>
+                                                  <span className="flex items-center gap-1"><ShieldCheck className="h-2.5 w-2.5 text-emerald-500" /> {isRtl ? 'توقيع العقد' : 'Contract Signing'}</span>
                                                </SelectItem>
                                                <SelectItem value="NONE" className="font-bold text-[10px] text-slate-400 italic">--- {isRtl ? 'بدون ربط' : 'No Link'} ---</SelectItem>
                                                {pathStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px] py-2 border-b last:border-0 border-slate-50">
@@ -397,7 +397,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                            <tfoot className="bg-slate-900 text-white">
                               <tr>
                                  <td colSpan={formData.pricingMode === 'percentage' ? 5 : 4} className="p-5 text-start">
-                                    <h3 className="text-xs font-black font-headline uppercase tracking-tighter">{t('totalQuoteValue')}</h3>
+                                    <h3 className="text-xs font-black font-headline uppercase tracking-tighter">{isRtl ? 'إجمالي قيمة العقد' : 'Total Contract Value'}</h3>
                                     {formData.pricingMode === 'percentage' && (
                                        <Badge className={cn("mt-1 border-0 text-[7px] font-black h-4 px-3 shadow-sm", stats.isValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>
                                           {stats.isValid ? `BALANCED: 100%` : `MISMATCH: ${stats.totalPercentage}%`}
@@ -407,7 +407,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                  <td colSpan={2} className="p-5 text-end pe-8">
                                     <div className="space-y-0.5">
                                        <h2 className="text-2xl font-black font-headline text-primary">{(currentDisplayAmount || 0).toLocaleString()}</h2>
-                                       <p className="text-[8px] font-black text-white/30 uppercase tracking-[0.3em]">Kuwaiti Dinars</p>
+                                       <p className="text-[8px] font-black text-white/30 uppercase tracking-[0.3em]">{isRtl ? 'دينار كويتي' : 'Kuwaiti Dinars'}</p>
                                     </div>
                                  </td>
                               </tr>
@@ -418,7 +418,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
 
                   <div className="space-y-4 pt-4 text-start">
                      <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 border-b-2 border-slate-900 pb-1">
-                        <ShieldCheck className="h-3 w-3 text-primary" /> {t('defaultTerms')}
+                        <ShieldCheck className="h-3 w-3 text-primary" /> {isRtl ? 'الشروط المرجعية' : 'Default Terms'}
                      </h4>
                      <Textarea value={formData.defaultTerms || ''} onChange={e => setFormData({...formData, defaultTerms: e.target.value})} className="min-h-[150px] rounded-2xl border-2 p-5 text-xs font-bold leading-relaxed bg-slate-50/30 focus:bg-white transition-all shadow-inner" placeholder="..." />
                   </div>
@@ -430,12 +430,12 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
             <Card className="border-0 shadow-xl rounded-[2rem] bg-white ring-1 ring-black/5 overflow-hidden">
                <CardHeader className="bg-slate-50 p-6 border-b text-start">
                   <CardTitle className="text-xs font-black flex items-center gap-2 uppercase text-slate-400">
-                     <Target className="h-4 w-4 text-primary" /> {isRtl ? 'الارتباط التشغيلي السيادي' : 'Operational Context'}
+                     <Target className="h-4 w-4 text-primary" /> {isRtl ? 'السياق التشغيلي' : 'Operational Context'}
                   </CardTitle>
                </CardHeader>
                <CardContent className="p-6 space-y-6 text-start">
                   <div className="space-y-2">
-                     <Label className="text-[10px] font-black uppercase text-slate-500">Activity Type</Label>
+                     <Label className="text-[10px] font-black uppercase text-slate-500">{isRtl ? 'نوع النشاط' : 'Activity Type'}</Label>
                      <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
                         <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs"><SelectValue placeholder="..." /></SelectTrigger>
                         <SelectContent className="rounded-xl">
@@ -444,7 +444,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                      </Select>
                   </div>
                   <div className="space-y-2">
-                     <Label className="text-[10px] font-black uppercase text-slate-500">Main Service</Label>
+                     <Label className="text-[10px] font-black uppercase text-slate-500">{isRtl ? 'الخدمة الرئيسية' : 'Main Service'}</Label>
                      <Select disabled={!formData.activityTypeId} value={formData.serviceId} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
                         <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs">
                            {servicesLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <SelectValue placeholder="..." />}
@@ -455,7 +455,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                      </Select>
                   </div>
                   <div className="space-y-2">
-                     <Label className="text-[10px] font-black uppercase text-slate-500">Specific Technical Path</Label>
+                     <Label className="text-[10px] font-black uppercase text-slate-500">{isRtl ? 'المسار التشغيلي' : 'Specific Technical Path'}</Label>
                      <Select disabled={!formData.serviceId} value={formData.subServiceId} onValueChange={v => {
                         const sub = activeSubs.find(s => s.id === v);
                         setFormData({...formData, subServiceId: v, subServiceName: sub?.name || ''});

@@ -187,13 +187,13 @@ export function ContractTemplateForm({ template, onClose }: Props) {
             <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
           </Button>
           <div className="text-start">
-             <h1 className="text-lg font-black text-slate-900 leading-none">{isRtl ? 'هندسة قوالب العقود السيادية' : 'Sovereign Contract Engineering'}</h1>
+             <h1 className="text-lg font-black text-slate-900 leading-none">{isRtl ? 'هندسة قوالب العقود' : 'Contract Template Engineering'}</h1>
              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{formData.name || 'Draft Contract Template'}</p>
           </div>
         </div>
         <div className="flex items-center gap-4">
            <div className="flex flex-col text-end">
-              <span className="text-[9px] font-black text-slate-400 uppercase">Balance Status</span>
+              <span className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'توازن الميزانية' : 'Balance Status'}</span>
               <Badge variant="outline" className={cn("h-6 border-2 font-black text-[9px]", stats.isValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>
                  {stats.isValid ? `BALANCED: ${formData.pricingMode === 'percentage' ? '100%' : 'OK'}` : `MISMATCH: ${stats.totalPercentage}%`}
               </Badge>
@@ -218,7 +218,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                      <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} className="h-9 rounded-lg font-mono text-xs border-2" />
                   </div>
                   <div className="flex items-center justify-between p-2 mt-4 bg-slate-50 rounded-lg border">
-                     <Label className="text-[8px] font-black uppercase text-slate-500">Default Template</Label>
+                     <Label className="text-[8px] font-black uppercase text-slate-500">{isRtl ? 'قالب افتراضي' : 'Default Template'}</Label>
                      <Switch checked={formData.isDefault || false} onCheckedChange={v => setFormData({...formData, isDefault: v})} />
                   </div>
                </CardContent>
@@ -256,7 +256,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
 
                   <div className="space-y-2 text-start">
                      <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                        <FileText className="h-3.5 w-3.5 text-primary" /> {t('introText')}
+                        <FileText className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'النص التعريفي' : 'Intro Text'}
                      </h4>
                      <Textarea value={formData.introText || ''} onChange={e => setFormData({...formData, introText: e.target.value})} className="min-h-[80px] rounded-xl border-2 p-3 text-[10px] font-bold bg-slate-50/30" />
                   </div>
@@ -278,9 +278,9 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                  <th className="p-3 w-10 text-start">#</th>
                                  <th className="p-3 text-start">{isRtl ? 'مسمى الدفعة' : 'Milestone Name'}</th>
                                  {formData.pricingMode === 'percentage' && <th className="p-3 text-center w-16">%</th>}
-                                 <th className="p-3 text-center w-24">{t('milestoneTiming')}</th>
-                                 <th className="p-3 text-start w-32">{t('technicalLink')}</th>
-                                 <th className="p-3 text-end pe-6 w-32">{t('amount')}</th>
+                                 <th className="p-3 text-center w-24">{isRtl ? 'التوقيت' : 'Timing'}</th>
+                                 <th className="p-3 text-start w-32">{isRtl ? 'الارتباط الفني' : 'Technical Link'}</th>
+                                 <th className="p-3 text-end pe-6 w-32">{isRtl ? 'المبلغ' : 'Amount'}</th>
                                  <th className="p-3 w-10"></th>
                               </tr>
                            </thead>
@@ -301,7 +301,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                             {m.technicalStageId && m.technicalStageId !== 'NONE' && (
                                               <p className="text-[7px] font-black text-primary/60 italic flex items-center gap-1 mt-1">
                                                 <Clock className="h-2 w-2" />
-                                                {t(m.timing || 'at')} {m.technicalStageId === 'SIGNING' ? t('contractSigning') : linkedStageName}
+                                                {isRtl ? 'عند' : 'at'} {m.technicalStageId === 'SIGNING' ? (isRtl ? 'توقيع العقد' : 'Contract Signing') : linkedStageName}
                                               </p>
                                             )}
                                          </div>
@@ -318,10 +318,10 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                          <Select value={m.timing || 'at'} onValueChange={v => updateMilestone(idx, 'timing', v)}>
                                             <SelectTrigger className="h-8 rounded-lg border-2 font-black text-[9px] bg-white"><SelectValue /></SelectTrigger>
                                             <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
-                                               <SelectItem value="at" className="font-bold text-[10px]">{t('at')}</SelectItem>
-                                               <SelectItem value="before" className="font-bold text-[10px]">{t('before')}</SelectItem>
-                                               <SelectItem value="during" className="font-bold text-[10px]">{t('during')}</SelectItem>
-                                               <SelectItem value="after" className="font-bold text-[10px]">{t('after')}</SelectItem>
+                                               <SelectItem value="at" className="font-bold text-[10px]">{isRtl ? 'عند' : 'at'}</SelectItem>
+                                               <SelectItem value="before" className="font-bold text-[10px]">{isRtl ? 'قبل' : 'before'}</SelectItem>
+                                               <SelectItem value="during" className="font-bold text-[10px]">{isRtl ? 'أثناء' : 'during'}</SelectItem>
+                                               <SelectItem value="after" className="font-bold text-[10px]">{isRtl ? 'بعد' : 'after'}</SelectItem>
                                             </SelectContent>
                                          </Select>
                                       </td>
@@ -329,7 +329,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                          <Select value={m.technicalStageId || 'SIGNING'} onValueChange={v => updateMilestone(idx, 'technicalStageId', v)}>
                                             <SelectTrigger className="h-8 rounded-lg border-2 font-bold text-[9px] bg-white"><SelectValue /></SelectTrigger>
                                             <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
-                                               <SelectItem value="SIGNING" className="font-bold text-[10px]">{t('contractSigning')}</SelectItem>
+                                               <SelectItem value="SIGNING" className="font-bold text-[10px]">{isRtl ? 'توقيع العقد' : 'Contract Signing'}</SelectItem>
                                                {pathStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px] py-2 border-b last:border-0 border-slate-50">
                                                   <span className="flex items-center gap-1"><Workflow className="h-2.5 w-2.5 text-primary" /> {s.name}</span>
                                                </SelectItem>)}
@@ -363,7 +363,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                  <td colSpan={2} className="p-5 text-end pe-8">
                                     <div className="space-y-0.5">
                                        <h2 className="text-2xl font-black font-headline text-primary">{(currentDisplayAmount || 0).toLocaleString()}</h2>
-                                       <p className="text-[8px] font-black text-white/30 uppercase tracking-[0.3em]">Kuwaiti Dinars</p>
+                                       <p className="text-[8px] font-black text-white/30 uppercase tracking-[0.3em]">{isRtl ? 'دينار كويتي' : 'Kuwaiti Dinars'}</p>
                                     </div>
                                  </td>
                               </tr>
@@ -374,7 +374,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
 
                   <div className="space-y-4 pt-4 text-start">
                      <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 border-b-2 border-slate-900 pb-2">
-                        <Gavel className="h-4 w-4 text-primary" /> {t('legalText')}
+                        <Gavel className="h-4 w-4 text-primary" /> {isRtl ? 'البنود القانونية' : 'Legal Text'}
                      </h4>
                      <Textarea value={formData.legalText || ''} onChange={e => setFormData({...formData, legalText: e.target.value})} className="min-h-[250px] rounded-2xl border-2 p-5 text-xs font-bold leading-relaxed bg-slate-50/30 focus:bg-white transition-all shadow-inner" placeholder="..." />
                   </div>
@@ -386,12 +386,12 @@ export function ContractTemplateForm({ template, onClose }: Props) {
             <Card className="border-0 shadow-xl rounded-[2rem] bg-white ring-1 ring-black/5 overflow-hidden">
                <CardHeader className="bg-slate-50 p-6 border-b">
                   <CardTitle className="text-xs font-black flex items-center gap-2 uppercase text-slate-400">
-                     <Target className="h-4 w-4 text-primary" /> {isRtl ? 'الارتباط التشغيلي السيادي' : 'Operational Context'}
+                     <Target className="h-4 w-4 text-primary" /> {isRtl ? 'السياق التشغيلي' : 'Operational Context'}
                   </CardTitle>
                </CardHeader>
                <CardContent className="p-6 space-y-6 text-start">
                   <div className="space-y-2">
-                     <Label className="text-[10px] font-black uppercase text-slate-500">Activity Type</Label>
+                     <Label className="text-[10px] font-black uppercase text-slate-500">{isRtl ? 'نوع النشاط' : 'Activity Type'}</Label>
                      <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
                         <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs"><SelectValue placeholder="..." /></SelectTrigger>
                         <SelectContent className="rounded-xl">
@@ -400,7 +400,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                      </Select>
                   </div>
                   <div className="space-y-2">
-                     <Label className="text-[10px] font-black uppercase text-slate-500">Main Service</Label>
+                     <Label className="text-[10px] font-black uppercase text-slate-500">{isRtl ? 'الخدمة الرئيسية' : 'Main Service'}</Label>
                      <Select disabled={!formData.activityTypeId} value={formData.serviceId} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
                         <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs">
                            {servicesLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <SelectValue placeholder="..." />}
@@ -411,7 +411,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                      </Select>
                   </div>
                   <div className="space-y-2">
-                     <Label className="text-[10px] font-black uppercase text-slate-500">Specific Technical Path</Label>
+                     <Label className="text-[10px] font-black uppercase text-slate-500">{isRtl ? 'المسار التشغيلي' : 'Specific Technical Path'}</Label>
                      <Select disabled={!formData.serviceId} value={formData.subServiceId} onValueChange={v => {
                         const sub = activeSubs.find(s => s.id === v);
                         setFormData({...formData, subServiceId: v, subServiceName: sub?.name || ''});
