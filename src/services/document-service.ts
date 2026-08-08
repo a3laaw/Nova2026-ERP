@@ -217,7 +217,6 @@ export class DocumentService {
     userName: string
   ) {
     ensureActionPermission(this.permissions, 'projects:create');
-    // FIX: Path was pointing to quotationTemplates, corrected to contractTemplates
     const templateRef = doc(this.db, paths.contractTemplates(this.companyId), templateId);
     const templateSnap = await getDoc(templateRef);
     if (!templateSnap.exists()) throw new Error('TEMPLATE_NOT_FOUND');

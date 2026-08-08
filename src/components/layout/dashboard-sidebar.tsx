@@ -1,6 +1,6 @@
 
 /**
- * @fileOverview القائمة الجانبية (Sidebar) بتصميم الكبسولات البرتقالية المدمجة.
+ * @fileOverview القائمة الجانبية (Sidebar) المحصنة لغوياً وبصرياً.
  */
 
 "use client"
@@ -13,7 +13,7 @@ import {
   ShoppingCart, Sparkles, Clock, ShieldCheck,
   Calendar, FileText, Package,
   Layers, FileSearch, Truck,
-  Building2, ChevronLeft, Settings2, ChevronDown,
+  Building2, Settings2, ChevronDown,
   Database, FileSpreadsheet, CalendarDays, Gavel,
   MapPinned, Hammer, MapPin, Landmark, Receipt,
   GitBranch, BarChart3, Wallet
@@ -49,82 +49,80 @@ export function DashboardSidebar() {
     const isHrManager = hrAccess.can && hrAccess.scope !== 'own';
 
     return [
-      { title: t('common.dashboard'), icon: LayoutDashboard, url: "/dashboard", resource: 'dashboard' },
+      { title: t('dashboard'), icon: LayoutDashboard, url: "/dashboard", resource: 'dashboard' },
       { 
-        title: t('common.crm'), 
+        title: t('crm'), 
         icon: Users, 
         url: "/dashboard/crm", 
         resource: 'crm',
         subItems: [
-          { title: t('common.leads'), url: "/dashboard/crm", icon: Users },
-          { title: t('common.clients'), url: "/dashboard/clients", icon: UserCircle },
+          { title: t('leads'), url: "/dashboard/crm", icon: Users },
+          { title: t('clients'), url: "/dashboard/clients", icon: UserCircle },
           { title: isRtl ? 'المواعيد والزيارات' : 'Appointments', url: "/dashboard/appointments", icon: CalendarDays },
           { title: isRtl ? 'حجز القاعات والاجتماعات' : 'Halls & Meetings', url: "/dashboard/meetings", icon: Landmark },
           { title: isRtl ? 'سجل تفاعل العملاء' : 'Visits Dossier', url: "/dashboard/projects/reports/client-visits", icon: MapPinned },
         ]
       },
       { 
-        title: t('common.projects'), 
+        title: t('projects'), 
         icon: HardHat, 
         url: "/dashboard/projects", 
         resource: 'projects',
         subItems: [
-          { title: t('dashboard.stats.activeProjects'), url: "/dashboard/projects", icon: Layers },
-          { title: t('projects.boqExplorer.title'), url: "/dashboard/projects/boqs", icon: FileSpreadsheet },
-          { title: t('common.reports'), url: "/dashboard/reports", icon: FileText },
+          { title: isRtl ? 'المشاريع الجارية' : 'Active Projects', url: "/dashboard/projects", icon: Layers },
+          { title: t('boqExplorer'), url: "/dashboard/projects/boqs", icon: FileSpreadsheet },
+          { title: t('reports'), url: "/dashboard/reports", icon: FileText },
         ]
       },
       { 
-        title: t('common.construction'), 
+        title: t('construction') || (isRtl ? 'العمليات الميدانية' : 'Field Ops'), 
         icon: Hammer, 
         url: "/dashboard/construction/bookings", 
         resource: 'projects',
         subItems: [
-          { title: t('construction.radar'), url: "/dashboard/construction/bookings", icon: MapPin },
-          { title: t('construction.groups'), url: "/dashboard/construction/groups", icon: Users },
-          { title: t('construction.equipment'), url: "/dashboard/equipment", icon: Truck },
-          { title: t('construction.reports'), url: "/dashboard/construction/field-visits", icon: FileText },
+          { title: isRtl ? 'الرادار الميداني' : 'Field Radar', url: "/dashboard/construction/bookings", icon: MapPin },
+          { title: isRtl ? 'مجموعات العمل' : 'Work Groups', url: "/dashboard/construction/groups", icon: Users },
+          { title: isRtl ? 'سجل المعدات' : 'Equipment', url: "/dashboard/equipment", icon: Truck },
+          { title: isRtl ? 'تقارير الميدان' : 'Field Logs', url: "/dashboard/construction/field-visits", icon: FileText },
         ]
       },
       { 
-        title: t('common.procurement'), 
+        title: t('procurement'), 
         icon: ShoppingCart, 
         url: "/dashboard/procurement", 
         resource: 'procurement',
         subItems: [
           { title: isRtl ? 'الموردين' : 'Suppliers', url: "/dashboard/procurement/suppliers", icon: Truck },
           { title: isRtl ? 'العقود' : 'Contracts', url: "/dashboard/procurement/contracts", icon: Gavel },
-          { title: isRtl ? 'تحليل العروض' : 'Quotes', url: "/dashboard/ai", icon: FileSearch },
+          { title: isRtl ? 'تحليل العروض' : 'AI Analysis', url: "/dashboard/ai", icon: FileSearch },
         ]
       },
       { 
-        title: isHrManager ? t('common.hr') : (isRtl ? 'شؤوني الوظيفية' : 'Personal Workspace'), 
+        title: isHrManager ? t('hr') : (isRtl ? 'شؤوني الوظيفية' : 'Personal Workspace'), 
         icon: UserCircle, 
         url: "/dashboard/hr", 
         resource: 'hr',
         subItems: [
-          { title: isRtl ? 'ملفي الشخصي' : 'My Profile', url: globalUser?.employeeId ? `/dashboard/hr/reports/dossier/${globalUser.employeeId}` : '/dashboard/hr', icon: ShieldCheck },
-          { title: t('hr.staff'), url: "/dashboard/hr/employees", icon: Users, hideIfOwnScope: true },
-          { title: t('hr.leaves'), url: "/dashboard/hr/leaves", icon: Calendar },
-          { title: t('hr.payroll'), url: "/dashboard/hr/payroll", icon: Calculator, requiredAction: 'approve', hideIfOwnScope: true },
+          { title: t('staffRecords'), url: "/dashboard/hr/employees", icon: Users, hideIfOwnScope: true },
+          { title: t('leaveRequests'), url: "/dashboard/hr/leaves", icon: Calendar },
+          { title: t('payrollBatches'), url: "/dashboard/hr/payroll", icon: Calculator, requiredAction: 'approve', hideIfOwnScope: true },
         ]
       },
       { 
-        title: t('common.accounting'), 
+        title: t('accounting'), 
         icon: Calculator, 
         url: "/dashboard/accounting", 
         resource: 'accounting',
         subItems: [
-          { title: isRtl ? 'دليل الحسابات' : 'Chart of Accounts', url: "/dashboard/accounting/coa", icon: GitBranch },
-          { title: isRtl ? 'سندات القبض' : 'Receipts', url: "/dashboard/accounting/vouchers/receipt", icon: Receipt },
-          { title: isRtl ? 'سندات الصرف' : 'Payments', icon: Wallet, url: "/dashboard/accounting/vouchers/payment" },
-          { title: isRtl ? 'قيود اليومية' : 'Journal Entries', url: "/dashboard/accounting/journals", icon: FileText },
-          { title: isRtl ? 'التقارير المالية' : 'Financial Reports', url: "/dashboard/accounting/reports", icon: BarChart3 },
-          { title: isRtl ? 'المطابقة البنكية' : 'Reconciliation', url: "/dashboard/accounting", icon: Sparkles },
+          { title: t('chartOfAccounts'), url: "/dashboard/accounting/coa", icon: GitBranch },
+          { title: t('receiptVouchers'), url: "/dashboard/accounting/vouchers/receipt", icon: Receipt },
+          { title: t('paymentVouchers'), icon: Wallet, url: "/dashboard/accounting/vouchers/payment" },
+          { title: t('journalEntries'), url: "/dashboard/accounting/journals", icon: FileText },
+          { title: t('financialReports'), url: "/dashboard/accounting/reports", icon: BarChart3 },
         ]
       },
       { 
-        title: t('common.inventory'), 
+        title: t('inventory'), 
         icon: Package, 
         url: "/dashboard/inventory", 
         resource: 'inventory',
@@ -133,17 +131,17 @@ export function DashboardSidebar() {
         ]
       },
       { 
-        title: t('common.settings'), 
+        title: t('settings'), 
         icon: Settings2, 
         url: "/dashboard/settings", 
         resource: 'settings',
         subItems: [
-          { title: isRtl ? 'المستخدمين' : 'Users', url: "/dashboard/settings/users", icon: Users },
-          { title: isRtl ? 'هوية الشركة' : 'Identity', url: "/dashboard/settings/company", icon: Building2 },
-          { title: isRtl ? 'الدستور التشغيلي' : 'Lists', url: "/dashboard/settings/checklists", icon: Database },
-          { title: isRtl ? 'صلاحيات الأدوار' : 'Roles', url: "/dashboard/settings/roles", icon: ShieldCheck },
-          { title: isRtl ? 'مواعيد العمل' : 'Work Hours', url: "/dashboard/settings/work-hours", icon: Clock },
-          { title: isRtl ? 'الملف الشخصي' : 'Profile', url: "/dashboard/settings/profile", icon: UserCircle },
+          { title: t('usersManagement'), url: "/dashboard/settings/users", icon: Users },
+          { title: t('companyIdentity'), url: "/dashboard/settings/company", icon: Building2 },
+          { title: t('checklists'), url: "/dashboard/settings/checklists", icon: Database },
+          { title: t('rolesPermissions'), url: "/dashboard/settings/roles", icon: ShieldCheck },
+          { title: t('workHours'), url: "/dashboard/settings/work-hours", icon: Clock },
+          { title: t('userProfile'), url: "/dashboard/settings/profile", icon: UserCircle },
         ]
       }
     ];
@@ -196,7 +194,7 @@ export function DashboardSidebar() {
           <SidebarGroupContent>
             <SidebarMenu className="gap-4">
               {visibleItems.map((item) => (
-                <NavItemRenderer key={item.url} item={item} isCollapsed={isCollapsed} isRtl={isRtl} pathname={pathname} />
+                <NavItemRenderer key={item.url} item={item} isCollapsed={isCollapsed} isRtl={isRtl} pathname={pathname} t={t} />
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -206,7 +204,7 @@ export function DashboardSidebar() {
       <SidebarFooter className="p-4 mt-auto">
         {!isCollapsed && (
           <div className="p-4 rounded-3xl bg-white border border-orange-100 shadow-xl ring-1 ring-black/[0.02] flex justify-between items-center">
-             <Badge className="bg-[#e87c24] text-white text-[8px] font-black uppercase h-5 px-2 rounded-full">V2.5</Badge>
+             <Badge className="bg-[#e87c24] text-white text-[8px] font-black uppercase h-5 px-2 rounded-full">V2.8</Badge>
              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">KUWAIT CLOUD</span>
           </div>
         )}
@@ -215,7 +213,7 @@ export function DashboardSidebar() {
   )
 }
 
-function NavItemRenderer({ item, isCollapsed, isRtl, pathname }: any) {
+function NavItemRenderer({ item, isCollapsed, isRtl, pathname, t }: any) {
   const isGroupActive = item.subItems?.some((sub: any) => pathname === sub.url)
   const isSelfActive = pathname === item.url
   const isActive = isSelfActive || isGroupActive

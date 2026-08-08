@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -16,43 +17,46 @@ export function BreadcrumbNav() {
 
   const segments = pathname.split('/').filter(Boolean);
 
-  // خريطة ترجمة المسارات لضمان ظهورها بشكل احترافي
+  // خريطة ترجمة المسارات السيادية لضمان مظهر احترافي 100%
   const routeMap: Record<string, string> = {
-    dashboard: t('common.dashboard'),
-    crm: t('common.crm'),
-    clients: t('common.clients'),
-    projects: t('common.projects'),
-    hr: t('common.hr'),
-    employees: t('hr.staff'),
-    leaves: t('hr.leaves'),
-    permissions: t('hr.permissions'),
-    attendance: t('hr.attendance'),
-    payroll: t('hr.payroll'),
-    gratuity: t('hr.gratuity'),
-    accounting: t('common.accounting'),
-    inventory: t('common.inventory'),
-    procurement: t('common.procurement'),
-    suppliers: t('common.suppliers'),
-    settings: t('common.settings'),
-    profile: t('common.profile'),
-    company: t('common.companyIdentity'),
-    checklists: t('common.checklists'),
-    roles: t('common.rolesRef'),
-    'work-hours': t('common.workHours'),
-    templates: t('common.templates'),
-    quotes: t('common.quoteAnalysis'),
-    'field-visits': t('construction.reports'),
-    construction: t('common.construction'),
-    bookings: t('construction.radar'),
-    new: t('common.new'),
-    edit: t('common.edit'),
-    boqs: t('projects.boqExplorer'),
-    groups: t('construction.groups'),
-    equipment: t('construction.equipment')
+    dashboard: t('dashboard'),
+    crm: t('crm'),
+    clients: t('clients'),
+    projects: t('projects'),
+    hr: t('hr'),
+    employees: t('staffRecords'),
+    leaves: t('leaveRequests'),
+    permissions: t('permissions'),
+    attendance: t('attendanceLogs'),
+    payroll: t('payrollBatches'),
+    gratuity: t('indemnity'),
+    accounting: t('accounting'),
+    inventory: t('inventory'),
+    procurement: t('procurement'),
+    suppliers: t('suppliers') || 'الموردين',
+    settings: t('settings'),
+    profile: t('userProfile'),
+    company: t('companyIdentity'),
+    checklists: t('checklists'),
+    roles: t('rolesPermissions'),
+    'work-hours': t('workHours'),
+    templates: t('templatesLibrary'),
+    quotes: t('quotationTemplates'),
+    'field-visits': t('construction.reports') || 'زيارات الميدان',
+    construction: t('construction'),
+    bookings: t('construction.radar') || 'الرادار الميداني',
+    new: t('new'),
+    edit: t('edit'),
+    boqs: t('boqExplorer'),
+    coa: t('chartOfAccounts'),
+    vouchers: isRtl ? 'السندات' : 'Vouchers',
+    receipt: t('receiptVouchers'),
+    payment: t('paymentVouchers'),
+    journals: t('journalEntries'),
+    reports: t('reports')
   };
 
   const formatSegment = (segment: string) => {
-    // إذا كان المقطع عبارة عن معرف (ID) طويل
     if (segment.length > 15 || /\d/.test(segment)) {
       return isRtl ? 'تفاصيل' : 'Details';
     }
@@ -100,7 +104,7 @@ export function BreadcrumbNav() {
                 <Link
                   href={href}
                   className={cn(
-                    "text-[10px] font-bold uppercase tracking-wider transition-all px-2 py-1 rounded-md",
+                    "text-[10px] font-black uppercase tracking-widest transition-all px-2 py-1 rounded-md",
                     isLast 
                       ? "text-slate-900 bg-slate-100/50 cursor-default pointer-events-none" 
                       : "text-slate-400 hover:text-primary hover:bg-primary/5"
