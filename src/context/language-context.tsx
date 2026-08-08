@@ -12,7 +12,7 @@ interface LanguageContextType {
   t: (key: string) => string;
 }
 
-// القاموس السيادي - نظام المفاتيح المسطحة (Flat Keys) لضمان الوصول بنسبة 100%
+// القاموس السيادي الموحد - نظام المفاتيح المسطحة (Flat Keys Only) لضمان الاستقرار المطلق
 const translations: Record<Language, Record<string, string>> = {
   ar: {
     // الأقسام الرئيسية
@@ -27,92 +27,120 @@ const translations: Record<Language, Record<string, string>> = {
     'settings': 'إعدادات النظام',
     'profile': 'الملف الشخصي',
 
-    // سجل العملاء (الظاهر في الصورة)
-    'clients.title': 'سجل العملاء',
-    'clients.addNew': 'تسجيل عميل جديد',
-    'clients.table.profile': 'ملف العميل',
-    'clients.table.staff': 'المهندس المسؤول',
-    'clients.table.contact': 'الاتصال',
-    'clients.table.status': 'الحالة',
-    'clients.details.transactions': 'المعاملات الفنية',
-    'clients.details.location': 'إحداثيات الموقع',
-    'clients.details.history': 'سجل الحركات',
+    // لوحة التحكم
+    'dashboard.title': 'لوحة التحكم القيادية',
+    'dashboard.export': 'تصدير التقارير',
+    'dashboard.recent': 'آخر النشاطات',
+    'dashboard.missions': 'مهمات ميدانية متأخرة',
+    'dashboard.stats.revenue': 'إجمالي الإيرادات',
+    'dashboard.stats.activeProjects': 'المشاريع الجارية',
+    'dashboard.stats.workforce': 'القوى العاملة',
+    'dashboard.stats.completion': 'معدل الإنجاز',
 
-    // القائمة الجانبية (Sidebar)
-    'leads': 'الفرص البيعية',
-    'clients': 'سجل العملاء',
-    'appointments': 'المواعيد والزيارات',
-    'halls': 'حجز القاعات والاجتماعات',
-    'visitsDossier': 'سجل تفاعل العملاء',
-    'activeProjects': 'المشاريع الجارية',
-    'boqExplorer': 'مستكشف المقايسات',
-    'reports': 'التقارير الهندسية',
-    'fieldRadar': 'الرادار الميداني',
-    'workGroups': 'مجموعات العمل',
-    'equipment': 'سجل المعدات والآليات',
-    'fieldLogs': 'تقارير الميدان',
+    // المشاريع والمعاملات
+    'projects.title': 'المشاريع والمعاملات الفنية',
+    'projects.radar': 'رادار تتبع العمليات المفتوحة',
+    'projects.addNew': 'فتح معاملة جديدة',
+    'projects.contracting': 'قسم المقاولات فقط',
+    'projects.boqExplorer': 'مستكشف المقايسات والميزانيات',
+    'projects.stats.portfolio': 'قيمة المحفظة الجارية',
+    'projects.stats.claims': 'المطالبات المالية',
+    'projects.stats.collection': 'نسبة التحصيل',
+    'projects.table.project': 'المشروع / العميل',
+    'projects.table.progress': 'الإنجاز الفني',
+    'projects.table.billing': 'الموقف المالي',
+    'projects.table.status': 'الحالة',
+
+    // العمليات الميدانية
+    'construction.radar': 'رادار العمليات الميدانية',
+    'construction.groups': 'مجموعات وأطقم العمل',
+    'construction.equipment': 'سجل المعدات والآليات',
+    'construction.reports': 'تقارير الإنجاز الميداني',
+    'construction.siteProgress': 'إنجازات بنود الموقع',
+    'construction.context': 'سياق العملية الميدانية',
+
+    // المشتريات
     'suppliers': 'الموردين المعتمدين',
-    'contracts': 'العقود الرسمية',
-    'aiAnalysis': 'تحليل العروض (AI)',
-    'staffRecords': 'شؤون الموظفين',
-    'leaveRequests': 'طلبات الإجازات',
-    'payrollBatches': 'مسيرات الرواتب',
-    'chartOfAccounts': 'دليل الحسابات',
-    'receiptVouchers': 'سندات القبض',
-    'paymentVouchers': 'سندات الصرف',
-    'journalEntries': 'قيود اليومية',
-    'financialReports': 'التقارير المالية',
-    'usersManagement': 'إدارة المستخدمين',
-    'companyIdentity': 'هوية المنشأة',
-    'checklists': 'الدستور التشغيلي',
-    'rolesPermissions': 'مصفوفة الصلاحيات',
-    'workHours': 'مواعيد العمل',
-    'userProfile': 'ملفي الشخصي',
+    'contracts': 'العقود الرسمية والملاحق',
+    'aiAnalysis': 'ذكاء Nova لتحليل العروض',
+    'purchaseOrders': 'أوامر الشراء (POs)',
 
-    // تفاصيل المشروع
-    'projects.details.radar': 'رادار التنفيذ الميداني',
-    'projects.details.finance': 'المالية والوثائق',
-    'projects.details.locked': 'المسار الفني مقفل: يتطلب عقد معتمد ومقايسة ميزانية معتمدة للبدء.',
-    'projects.boqExplorer.noBoqs': 'لا توجد مقايسات مسجلة حالياً لهذه المعاملة.',
-    'projects.boqNumber': 'رقم المقايسة',
-    'projects.clientName': 'اسم العميل',
-    'projects.budget': 'الميزانية',
-    'projects.status': 'الحالة',
+    // الموارد البشرية
+    'staffRecords': 'سجل شؤون الموظفين',
+    'leaveRequests': 'طلبات الإجازات السنوية',
+    'payrollBatches': 'مسيرات الرواتب الشهرية',
+    'payroll': 'نظام الرواتب والامتثال',
 
-    // شريط المسار (Breadcrumb)
-    'details': 'تفاصيل',
-    'transactions': 'المعاملات',
+    // المحاسبة
+    'chartOfAccounts': 'دليل الحسابات السيادي',
+    'receiptVouchers': 'سندات القبض المالية',
+    'paymentVouchers': 'سندات الصرف والمدفوعات',
+    'journalEntries': 'قيود اليومية المزدوجة',
+    'financialReports': 'التقارير والقوائم المالية',
+
+    // الإعدادات
+    'usersManagement': 'إدارة مستخدمي النظام',
+    'companyIdentity': 'هوية المنشأة والمظهر',
+    'checklists': 'الدستور التشغيلي (المرجعيات)',
+    'rolesPermissions': 'مصفوفة الصلاحيات والأدوار',
+    'workHours': 'مواعيد العمل والعطلات',
+    'userProfile': 'إعدادات ملفي الشخصي',
+    'systemSetup': 'تهيئة النظام (Seed)',
+    'templates': 'مكتبة القوالب الفنية',
+    'templatesDesc': 'إدارة قوالب العقود، العروض، والمقايسات.',
+    'referenceLists': 'القوائم المرجعية الموحدة',
+    'boqMasterTree': 'شجرة بنود الأعمال المرجعية',
+    'halls': 'إدارة قاعات الاجتماعات',
+    'orgRef': 'الهيكل التنظيمي المرجعي',
+    'techRef': 'هندسة المسارات الفنية',
+    'geoRef': 'المرجع الجغرافي (الكويت)',
+
+    // CRM والعملاء
+    'leads': 'الفرص والعملاء المحتملين',
+    'clients': 'سجل العملاء المعتمدين',
+    'appointments': 'رادار المواعيد والزيارات',
+    'meetings': 'حجز القاعات والاجتماعات',
+    'visitsDossier': 'سجل تفاعل العملاء (Dossier)',
+
+    // الذكاء الاصطناعي
+    'ai.hub': 'مركز Nova للذكاء الهندسي',
+    'ai.desc': 'تحليلات GenAI المتقدمة للمشتريات والمالية والميدان.',
 
     // كلمات عامة
-    'common.search': 'بحث...',
+    'common.search': 'بحث سريع في السجلات...',
     'common.filter': 'تصفية',
     'common.save': 'حفظ البيانات',
     'common.cancel': 'إلغاء',
-    'common.delete': 'حذف',
+    'common.delete': 'حذف نهائي',
     'common.edit': 'تعديل',
-    'common.saved': 'تم الحفظ بنجاح',
-    'common.error': 'خطأ في النظام',
+    'common.viewAll': 'عرض الكل',
+    'common.pending': 'قيد الانتظار',
+    'common.saved': 'تم حفظ البيانات بنجاح',
+    'common.error': 'خطأ في النظام السحابي',
     'common.close': 'إغلاق',
 
-    // أنماط التسعير
-    'itemized': 'تسعير بنود',
-    'fixed': 'مبلغ مقطوع',
-    'percentage': 'نسبة مئوية',
-    'pricingMode': 'نمط التسعير'
+    // تفاصيل المشروع
+    'projects.details.radar': 'رادار التنفيذ الميداني',
+    'projects.details.finance': 'المالية والوثائق الرسمية',
+    'projects.details.locked': 'المسار الفني مقفل: يتطلب عقد معتمد ومقايسة ميزانية معتمدة لبدء الرادار.',
+    'projects.boqExplorer.noBoqs': 'لا توجد مقايسات مسجلة حالياً لهذه المعاملة.',
+    'projects.boqNumber': 'رقم المقايسة المرجعي',
+    'projects.clientName': 'اسم العميل',
+    'projects.budget': 'الميزانية التقديرية',
+    'projects.status': 'الحالة الميدانية'
   },
   en: {
     'dashboard': 'Dashboard',
-    'crm': 'CRM',
-    'clients.title': 'Clients List',
-    'clients.addNew': 'Add New Client',
+    'dashboard.title': 'Executive Dashboard',
+    'projects.title': 'Projects & Transactions',
+    'projects.boqExplorer': 'BOQ Explorer',
+    'construction.radar': 'Field Radar',
+    'construction.equipment': 'Equipment Master',
+    'construction.reports': 'Field Reports',
+    'staffRecords': 'Staff Records',
+    'payroll': 'Payroll System',
     'common.search': 'Search...',
-    'common.filter': 'Filter',
-    'checklists': 'Constitution',
-    'templates': 'Templates',
-    'rolesRef': 'Permissions',
-    'profile': 'Profile',
-    'details': 'Details',
-    'transactions': 'Transactions'
+    'common.filter': 'Filter'
   }
 };
 

@@ -218,7 +218,7 @@ export default function DashboardPage() {
         <Card className="lg:col-span-2 rounded-lg border-slate-100 shadow-sm overflow-hidden bg-white">
           <CardHeader className="flex flex-row items-center justify-between px-6 py-4 border-b bg-slate-50/50">
             <div className="text-start">
-              <CardTitle className="text-sm font-bold text-slate-900">{t('accounting.title')}</CardTitle>
+              <CardTitle className="text-sm font-bold text-slate-900">{t('accounting')}</CardTitle>
             </div>
             <Activity className="h-4 w-4 text-slate-300" />
           </CardHeader>
