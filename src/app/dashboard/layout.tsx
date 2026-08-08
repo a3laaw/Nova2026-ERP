@@ -34,14 +34,11 @@ export default function DashboardLayout({
 
   const isSovereignDev = globalUser?.isDeveloper === true;
   
-  // منطق القفل السيادي
   const isSuspended = company?.status === 'suspended';
   const isInactive = company?.status === 'inactive';
   const isExpired = subscription.isExpired;
   
   const isStuck = user && !globalUser && !authLoading;
-  
-  // المنع فقط للمستخدمين العاديين، المطور له وصول مطلق دائماً
   const needsLock = !isSovereignDev && (isExpired || isSuspended || isInactive);
 
   if (authLoading || companyLoading) {
@@ -61,10 +58,10 @@ export default function DashboardLayout({
         <div className="max-w-md space-y-6">
            <div className="h-20 w-20 bg-rose-50 text-rose-500 rounded-3xl flex items-center justify-center mx-auto shadow-inner"><ShieldAlert className="h-10 w-10" /></div>
            <div className="space-y-2">
-              <h1 className="text-2xl font-black text-slate-900">{isRtl ? 'تعذر تحميل ملف الصلاحيات' : 'Profile Link Failed'}</h1>
-              <p className="text-sm font-bold text-slate-400 leading-relaxed">عذراً، لم نتمكن من العثور على سجل الموظف المرتبط بهذا الحساب. قد يكون حسابك قيد الإعداد أو بانتظار التفعيل من المطور.</p>
+              <h1 className="text-2xl font-black text-slate-900">{t('inline.profile.link.failed')}</h1>
+              <p className="text-sm font-bold text-slate-400 leading-relaxed">عذراً، لم نتمكن من العثور على سجل الموظف المرتبط بهذا الحساب.</p>
            </div>
-           <Button onClick={logout} variant="outline" className="w-full rounded-xl h-12 gap-2"><LogOut className="h-4 w-4" /> تسجيل الخروج</Button>
+           <Button onClick={logout} variant="outline" className="w-full rounded-xl h-12 gap-2"><LogOut className="h-4 w-4" /> {t('logout')}</Button>
         </div>
       </div>
     );
@@ -87,22 +84,16 @@ export default function DashboardLayout({
            
            <div className="space-y-4">
               <h1 className="text-4xl font-black text-slate-900 font-headline leading-tight">
-                {isSuspended ? (isRtl ? 'المنشأة مجمدة مؤقتاً' : 'Account Frozen') : 
-                 isInactive ? (isRtl ? 'بانتظار تفعيل المنشأة' : 'Awaiting Activation') :
-                 (isRtl ? 'انتهت صلاحية الوصول' : 'Subscription Expired')}
+                {isSuspended ? t('inline.account.frozen') : 
+                 isInactive ? t('inline.awaiting.activation') :
+                 t('inline.subscription.expired')}
               </h1>
               <p className="text-slate-500 font-bold text-lg leading-relaxed">
-                 {isSuspended 
-                   ? (isRtl ? `عذراً، تم إيقاف الوصول لمنشأة ${company?.name} مؤقتاً بقرار إداري سيادي من قبل المطور.` : `Access for ${company?.name} has been temporarily suspended by the platform developer.`)
-                   : isInactive
-                   ? (isRtl ? `شكراً لطلبكم. منشأة ${company?.name} قيد المراجعة الفنية حالياً، سيتم تفعيل حسابكم قريباً.` : `Thank you. ${company?.name} is currently under technical review. You will be notified once active.`)
-                   : (isRtl ? `عذراً، انتهت فترة الاشتراك لمنشأة ${company?.name}. يرجى التواصل مع الإدارة للتجديد.` : `The subscription for ${company?.name} has expired. Please contact support to renew.`)
-                 }
+                 {company?.name} - {t('inline.subscription.expired')}
               </p>
            </div>
 
            <div className="mt-12 pt-8 border-t space-y-4">
-              <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.3em]">Sovereign Cloud Guard Engine</p>
               <Button onClick={logout} className="w-full h-16 rounded-2xl bg-slate-900 text-white font-black text-xl hover:bg-slate-800 transition-all gap-3 shadow-xl">
                  <LogOut className="h-6 w-6" /> {t('logout')}
               </Button>

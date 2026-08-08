@@ -93,7 +93,7 @@ export function DashboardSidebar() {
         ]
       },
       { 
-        title: isHrManager ? t('hr') : (isRtl ? 'شؤوني الوظيفية' : 'Personal Workspace'), 
+        title: isHrManager ? t('hr') : t('inline.personal.workspace'), 
         icon: UserCircle, 
         url: "/dashboard/hr", 
         resource: 'hr',
@@ -140,7 +140,7 @@ export function DashboardSidebar() {
         ]
       }
     ];
-  }, [t, isRtl, globalUser, check]);
+  }, [t, check, globalUser]);
 
   const visibleItems = React.useMemo(() => {
     const finalItems: any[] = [];

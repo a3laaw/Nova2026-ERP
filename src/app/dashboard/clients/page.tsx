@@ -20,14 +20,17 @@ import { paths } from '@/firebase/multi-tenant';
 import { Client } from '@/types/client';
 import { cn } from '@/lib/utils';
 
+/**
+ * صفحة سجل العملاء المعتمدين - Nova2026-ERP
+ * تم تطهير النصوص والمنطق الثنائي واعتماد القاموس الموحد.
+ */
 export default function ClientsListPage() {
   const { globalUser } = useAuthContext();
-  const { lang, dir, t } = useLanguage();
+  const { t, isRtl, dir } = useLanguage();
   const { isAdmin, check } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
-  const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
   const canRegisterClient = check('crm', 'create').can;
@@ -71,10 +74,10 @@ export default function ClientsListPage() {
            {!isAdmin && (
              <div className="flex items-center gap-2 mt-1">
                 <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 font-bold text-[9px] px-2 h-4 rounded-md">
-                   {isRtl ? 'عرض معزول' : 'Isolated View'}
+                   {t('inline.isolated.view')}
                 </Badge>
                 <p className="text-[10px] font-medium text-slate-400 uppercase">
-                   {isRtl ? 'تظهر ملفاتك المنسوبة فقط' : 'Your assigned files only'}
+                   {t('inline.your.assigned.files.only')}
                 </p>
              </div>
            )}
@@ -123,7 +126,7 @@ export default function ClientsListPage() {
                 <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></TableCell></TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 font-black italic">
-                  {isRtl ? 'لا يوجد عملاء مطابقين للبحث.' : 'No matching clients found.'}
+                  {t('inline.no.matching.clients.found')}
                 </TableCell></TableRow>
               ) : filtered.map((client) => (
                 <TableRow key={client.id} className="cursor-pointer group hover:bg-slate-50 transition-colors border-b-slate-100" onClick={() => router.push(`/dashboard/clients/${client.id}`)}>

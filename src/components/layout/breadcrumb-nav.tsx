@@ -8,6 +8,10 @@ import { useLanguage } from '@/context/language-context';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
+/**
+ * شريط المسار (Breadcrumb) المطور - Nova2026-ERP
+ * تم تطهيره من كافة النصوص المباشرة والاعتماد على القاموس الموحد.
+ */
 export function BreadcrumbNav() {
   const pathname = usePathname();
   const router = useRouter();
@@ -15,48 +19,17 @@ export function BreadcrumbNav() {
 
   const segments = pathname.split('/').filter(Boolean);
 
-  // خريطة المسارات الموحدة لضمان التعريب في شريط المسار
-  const routeMap: Record<string, string> = {
-    dashboard: t('dashboard'),
-    crm: t('crm'),
-    clients: t('clients'),
-    projects: t('projects'),
-    hr: t('hr'),
-    accounting: t('accounting'),
-    inventory: t('inventory'),
-    procurement: t('procurement'),
-    settings: t('settings'),
-    profile: t('profile'),
-    company: t('companyIdentity'),
-    checklists: t('checklists'),
-    roles: t('rolesPermissions'),
-    'work-hours': t('workHours'),
-    templates: t('templates'),
-    details: t('details'),
-    transactions: t('transactions'),
-    employees: t('staffRecords'),
-    leaves: t('leaveRequests'),
-    payroll: t('payrollBatches'),
-    coa: t('chartOfAccounts'),
-    vouchers: t('receiptVouchers'),
-    journals: t('journalEntries'),
-    boqs: t('boqExplorer'),
-    orders: t('purchaseOrders') || 'أوامر الشراء',
-    suppliers: t('suppliers'),
-    users: t('usersManagement')
-  };
-
   const formatSegment = (segment: string) => {
     const sLower = segment.toLowerCase();
     
-    if (sLower === 'details') return t('details');
-    
-    // التعامل مع الـ IDs والمسارات الطويلة (تحويلها لـ "تفاصيل")
+    // التعامل مع المعرفات الطويلة
     if (segment.length > 15 || /\d/.test(segment)) {
       return t('details');
     }
     
-    return routeMap[sLower] || segment;
+    // البحث المباشر في القاموس الموحد
+    const translated = t(sLower);
+    return translated !== sLower ? translated : segment;
   };
 
   if (segments.length <= 1 && segments[0] === 'dashboard') return null;

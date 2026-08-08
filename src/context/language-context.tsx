@@ -12,10 +12,13 @@ interface LanguageContextType {
   t: (key: string) => string;
 }
 
-// القاموس السيادي الموحد - نظام المفاتيح المسطحة (Flat Keys Only) لضمان الاستقرار المطلق
+/**
+ * القاموس الشامل والمسطح (Flat Master Dictionary) - إصدار Nova2026-ERP
+ * تم اعتماده بناءً على المواصفات القياسية (Odoo Style).
+ */
 const translations: Record<Language, Record<string, string>> = {
   ar: {
-    // الأقسام الرئيسية (Sidebar & Titles)
+    // 📁 1. الهيكل العام والملاحة
     'dashboard': 'لوحة التحكم',
     'crm': 'العملاء والفرص',
     'leads': 'الفرص والعملاء المحتملين',
@@ -41,7 +44,7 @@ const translations: Record<Language, Record<string, string>> = {
     'leaveRequests': 'طلبات الإجازات السنوية',
     'payrollBatches': 'مسيرات الرواتب الشهرية',
     'accounting': 'المحاسبة والمالية',
-    'chartOfAccounts': 'دليل الحسابات السيادي',
+    'chartOfAccounts': 'دليل الحسابات الموحد',
     'receiptVouchers': 'سندات القبض المالية',
     'paymentVouchers': 'سندات الصرف والمدفوعات',
     'journalEntries': 'قيود اليومية المزدوجة',
@@ -50,7 +53,7 @@ const translations: Record<Language, Record<string, string>> = {
     'settings': 'إعدادات النظام',
     'usersManagement': 'إدارة مستخدمي النظام',
     'companyIdentity': 'هوية المنشأة والمظهر',
-    'checklists': 'الدستور التشغيلي (المرجعيات)',
+    'checklists': 'الدستور التشغيلي',
     'rolesPermissions': 'مصفوفة الصلاحيات والأدوار',
     'workHours': 'مواعيد العمل والعطلات',
     'userProfile': 'إعدادات ملفي الشخصي',
@@ -62,8 +65,12 @@ const translations: Record<Language, Record<string, string>> = {
     'orgRef': 'الهيكل التنظيمي المرجعي',
     'techRef': 'هندسة المسارات الفنية',
     'geoRef': 'المرجع الجغرافي (الكويت)',
+    'logout': 'تسجيل الخروج',
+    'devConsole': 'لوحة تحكم المطور',
+    'details': 'تفاصيل',
+    'transactions': 'المعاملات',
 
-    // لوحة التحكم
+    // 📁 2. لوحة التحكم (Dashboard)
     'dashboard.title': 'لوحة التحكم القيادية',
     'dashboard.export': 'تصدير التقارير',
     'dashboard.recent': 'آخر النشاطات',
@@ -73,40 +80,79 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.stats.workforce': 'القوى العاملة',
     'dashboard.stats.completion': 'معدل الإنجاز',
 
-    // المشاريع
+    // 📁 3. المشاريع والـ BOQ
     'projects.title': 'المشاريع والمعاملات الفنية',
     'projects.radar': 'رادار تتبع العمليات المفتوحة',
     'projects.addNew': 'فتح معاملة جديدة',
     'projects.contracting': 'قسم المقاولات فقط',
     'projects.boqExplorer': 'مستكشف المقايسات والميزانيات',
-    'projects.stats.portfolio': 'قيمة المحفظة الجارية',
-    'projects.stats.claims': 'المطالبات المالية',
-    'projects.stats.collection': 'نسبة التحصيل',
+    'projects.boqExplorer.noBoqs': 'لا توجد مقايسات مسجلة حالياً لهذه المعاملة',
+    'projects.details.radar': 'رادار التنفيذ الميداني',
+    'projects.details.finance': 'المالية والوثائق',
+    'projects.details.locked': 'المسار الفني مقفل (يتطلب عقداً ومقايسة معتمدة)',
+    'projects.boqNumber': 'رقم المقايسة',
+    'projects.clientName': 'اسم العميل',
+    'projects.budget': 'الميزانية',
+    'projects.status': 'الحالة',
 
-    // العمليات الميدانية
-    'construction.radar': 'رادار العمليات الميدانية',
-    'construction.reports': 'تقارير الإنجاز الميداني',
-    'construction.equipment': 'سجل المعدات والآليات',
-    'construction.siteProgress': 'إنجازات بنود الموقع',
+    // 📁 4. العملاء (CRM)
+    'clients.title': 'سجل العملاء المعتمدين',
+    'clients.addNew': 'تسجيل عميل جديد',
+    'clients.table.profile': 'ملف العميل',
+    'clients.table.staff': 'المهندس المسؤول',
+    'clients.table.contact': 'الاتصال',
+    'clients.table.status': 'الحالة',
+    'clients.details.transactions': 'المعاملات الجارية',
+    'clients.details.location': 'الموقع والعنوان',
+    'clients.details.history': 'سجل التفاعلات',
 
-    // HR & Payroll
+    // 📁 5. الشؤون الإدارية (HR)
     'payroll': 'نظام الرواتب والامتثال',
     'staff.records': 'سجل شؤون الموظفين',
     'leave.requests': 'طلبات الإجازات',
+    'addLead': 'إضافة فرصة',
+    'company': 'المنشأة',
+    'status': 'الحالة',
+    'name': 'الاسم',
+    'code': 'الكود',
+    'order': 'الترتيب',
+    'symbol': 'الرمز',
+    'category': 'الفئة',
+    'isActive': 'نشط؟',
 
-    // AI
-    'ai.hub': 'مركز Nova للذكاء الهندسي',
-    'ai.desc': 'تحليلات GenAI المتقدمة للمشتريات والمالية والميدان.',
-
-    // Common
+    // 📁 6. Common
     'common.search': 'بحث سريع في السجلات...',
     'common.filter': 'تصفية',
     'common.save': 'حفظ البيانات',
     'common.cancel': 'إلغاء',
     'common.delete': 'حذف نهائي',
     'common.edit': 'تعديل',
-    'details': 'تفاصيل',
-    'transactions': 'المعاملات'
+    'common.addLabel': 'إضافة بند',
+    'common.quantity': 'الكمية',
+    'common.notes': 'ملاحظات',
+    'common.labor': 'العمالة',
+    'common.loadFromGroup': 'تحميل من مجموعة',
+    'common.equipment': 'المعدات',
+    'common.close': 'إغلاق',
+    'common.confirm': 'تأكيد',
+    'common.active': 'نشط',
+    'common.completed': 'مكتمل',
+    'common.saved': 'تم الحفظ بنجاح',
+    'common.deleted': 'تم الحذف بنجاح',
+    'common.error': 'حدث خطأ غير متوقع',
+    'common.pending': 'قيد الانتظار',
+
+    // 📁 7. المساعد الذكي
+    'ai.hub': 'مركز Nova للذكاء الهندسي',
+    'ai.desc': 'تحليلات GenAI المتقدمة للمشتريات والمالية والميدان.',
+
+    // 📁 8. Inline Keys (Required for UI logic)
+    'inline.account.frozen': 'المنشأة مجمدة مؤقتاً',
+    'inline.awaiting.activation': 'بانتظار تفعيل المنشأة',
+    'inline.subscription.expired': 'انتهت صلاحية الوصول',
+    'inline.personal.workspace': 'شؤوني الوظيفية',
+    'inline.official.engineering.contract': 'عقد خدمات هندسية رسمي',
+    'inline.contract.signing': 'توقيع العقد'
   },
   en: {
     'dashboard': 'Dashboard',
@@ -120,7 +166,8 @@ const translations: Record<Language, Record<string, string>> = {
     'inventory': 'Inventory',
     'settings': 'Settings',
     'common.search': 'Search...',
-    'common.filter': 'Filter'
+    'common.filter': 'Filter',
+    'logout': 'Logout'
   }
 };
 
