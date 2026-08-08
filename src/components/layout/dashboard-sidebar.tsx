@@ -1,7 +1,6 @@
 
 /**
  * @fileOverview القائمة الجانبية (Sidebar) بتصميم الكبسولات البرتقالية المدمجة.
- * تم إصلاح خطأ الـ Unique Keys عبر استخدام الروابط كمعرفات.
  */
 
 "use client"
@@ -71,7 +70,7 @@ export function DashboardSidebar() {
         resource: 'projects',
         subItems: [
           { title: t('dashboard.stats.activeProjects'), url: "/dashboard/projects", icon: Layers },
-          { title: t('projects.boqExplorer'), url: "/dashboard/projects/boqs", icon: FileSpreadsheet },
+          { title: t('projects.boqExplorer.title'), url: "/dashboard/projects/boqs", icon: FileSpreadsheet },
           { title: t('common.reports'), url: "/dashboard/reports", icon: FileText },
         ]
       },
