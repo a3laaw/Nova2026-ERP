@@ -60,7 +60,7 @@ export default function AccountingPage() {
           </CardHeader>
           <CardContent className="p-0">
             <Table>
-              <TableHeader className="bg-slate-50/50"><TableRow><TableHead className="ps-4">Date</TableHead><TableHead>Summary</TableHead><TableHead className="text-end pe-4">Value</TableHead></TableRow></TableHeader>
+              <TableHeader className="bg-slate-50/50"><TableRow><TableHead className="ps-4">{t('common.date')}</TableHead><TableHead>{t('common.notes')}</TableHead><TableHead className="text-end pe-4">{t('common.amount')}</TableHead></TableRow></TableHeader>
               <TableBody>
                 {initialBankEntries.map(e => (
                   <TableRow key={e.id} className="border-b-slate-50"><TableCell className="ps-4 py-2 text-xs font-mono">{e.date}</TableCell><TableCell className="text-xs font-medium">{e.description}</TableCell><TableCell className="pe-4 text-end font-mono font-bold text-xs">{e.amount.toLocaleString()}</TableCell></TableRow>
@@ -76,7 +76,7 @@ export default function AccountingPage() {
           </CardHeader>
           <CardContent className="p-0">
             <Table>
-              <TableHeader className="bg-slate-50/50"><TableRow><TableHead className="ps-4">Date</TableHead><TableHead>Account</TableHead><TableHead className="text-end pe-4">Value</TableHead></TableRow></TableHeader>
+              <TableHeader className="bg-slate-50/50"><TableRow><TableHead className="ps-4">{t('common.date')}</TableHead><TableHead>{t('common.name')}</TableHead><TableHead className="text-end pe-4">{t('common.amount')}</TableHead></TableRow></TableHeader>
               <TableBody>
                 {initialLedgerEntries.map(e => (
                   <TableRow key={e.id} className="border-b-slate-50"><TableCell className="ps-4 py-2 text-xs font-mono">{e.date}</TableCell><TableCell className="text-xs font-black text-blue-600 uppercase">{e.accountName}</TableCell><TableCell className="pe-4 text-end font-mono font-bold text-xs">{e.amount.toLocaleString()}</TableCell></TableRow>

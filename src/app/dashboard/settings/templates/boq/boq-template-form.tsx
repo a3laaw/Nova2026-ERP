@@ -553,8 +553,8 @@ export function BOQTemplateForm({ template, onClose }: Props) {
               <Table>
                 <TableHeader className="bg-slate-50 sticky top-0 z-20 border-b">
                   <TableRow className="hover:bg-slate-50 border-0">
-                    <TableHead className="ps-6 w-[80px] text-slate-400 font-mono text-[10px] text-start">S.No</TableHead>
-                    <TableHead className="w-[100px] text-slate-400 font-mono text-[10px] text-start">Code</TableHead>
+  <TableHead className="ps-6 w-[80px] text-slate-400 font-mono text-[10px] text-start">#</TableHead>
+  <TableHead className="w-[100px] text-slate-400 font-mono text-[10px] text-start">{t('common.code')}</TableHead>
                     <TableHead className="text-slate-900 font-black text-xs text-start">{isRtl ? 'وصف بند العمل' : 'Work Item Description'}</TableHead>
                     <TableHead className="text-slate-900 font-black text-xs text-start">{isRtl ? 'المواصفة الفنية' : 'Technical Specification'}</TableHead>
                     <TableHead className="text-slate-900 font-black text-xs text-start">{isRtl ? 'الارتباط المالي' : 'Financial Trigger'}</TableHead>

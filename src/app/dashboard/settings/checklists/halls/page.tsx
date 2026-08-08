@@ -143,7 +143,7 @@ export default function HallsManagementPage() {
             <TableHeader className="bg-muted/30">
               <TableRow>
                 <TableHead className="py-6 ps-8 text-start">{t('name')}</TableHead>
-                <TableHead className="text-start">Name (EN)</TableHead>
+                <TableHead className="text-start">{isRtl ? 'الاسم (إنجليزي)' : 'Name (EN)'}</TableHead>
                 <TableHead className="text-center">{isRtl ? 'السعة' : 'Capacity'}</TableHead>
                 <TableHead className="text-center">{t('order')}</TableHead>
                 <TableHead className="text-start">{t('status')}</TableHead>

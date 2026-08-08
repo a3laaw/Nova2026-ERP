@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   Users, UserPlus, Search, Loader2, ArrowRight, 
-  Filter, Briefcase, Trash2, AlertTriangle
+  Filter, Briefcase
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -23,7 +23,7 @@ import { Employee } from '@/types/hr';
 export default function EmployeesPage() {
   const { globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { check } = usePermissions();
+  const { check, isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
@@ -66,7 +66,7 @@ export default function EmployeesPage() {
 
       <Card className="rounded-2xl shadow-sm border border-slate-100 overflow-hidden bg-white">
         <div className="p-4 flex flex-row items-center justify-between gap-4 bg-slate-50/30 border-b">
-          <div className="relative w-full max-w-md">
+          <div className="relative w-full max-md">
             <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input placeholder={t('common.search')} className="ps-11 h-11 border-slate-200 bg-white font-bold text-sm rounded-xl shadow-inner" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
           </div>
@@ -76,10 +76,10 @@ export default function EmployeesPage() {
           <Table>
             <TableHeader className="bg-slate-50/50">
               <TableRow>
-                <TableHead className="py-5 ps-8 text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('hr')}</TableHead>
-                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('jobTitle') || 'Job Title'}</TableHead>
+                <TableHead className="py-5 ps-8 text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'الموظف' : 'Employee'}</TableHead>
+                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'المسمى الوظيفي' : 'Job Title'}</TableHead>
                 <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('common.status')}</TableHead>
-                {canSeeSalaries && <TableHead className="text-end text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('payroll')}</TableHead>}
+                {canSeeSalaries && <TableHead className="text-end text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'الراتب الأساسي' : 'Basic Salary'}</TableHead>}
                 <TableHead className="pe-8"></TableHead>
               </TableRow>
             </TableHeader>

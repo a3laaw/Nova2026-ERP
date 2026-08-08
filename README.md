@@ -2,30 +2,33 @@
 
 هذا المشروع مبني باستخدام **NextJS**, **Firebase**, و **Genkit AI**. اتبع هذه التعليمات لإدارة الكود الخاص بك بكفاءة سيادية.
 
+## ⚠️ حل مشكلة تعارض الملفات (Git Conflict Resolution)
+إذا ظهر لك خطأ `Committing is not possible because you have unmerged files` في السجلات، نفذ الأوامر التالية في الـ Terminal بالترتيب:
+
+```bash
+# 1. إضافة كافة الملفات بعد الإصلاح الآلي
+git add .
+
+# 2. إتمام عملية الدمج/التعديل برسالة واضحة
+git commit -m "Fix: Resolve conflicts and apply Odoo-style dictionary"
+
+# 3. الرفع للسحاب
+git push origin main
+```
+
 ## 1. الإعداد الأولي (لأول مرة فقط)
 افتح الـ Terminal في المجلد الرئيسي للمشروع ونفذ الأوامر التالية:
 
 ```bash
-# تهيئة Git في المشروع
 git init
-
-# إضافة كافة الملفات للتجهيز
 git add .
-
-# تسجيل أول "Commit" للتغييرات
 git commit -m "Initial commit: NovaFlow ERP with Sovereign Core"
-
-# ربط المشروع بالمستودع السحابي (استبدل الرابط برابط مستودعك)
 git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git
-
-# تسمية الفرع الرئيسي والرفع
 git branch -M main
 git push -u origin main
 ```
 
 ## 2. رفع التعديلات الجديدة (Push)
-في كل مرة تقوم فيها بتعديل الكود هنا وتريد رفعه إلى GitHub:
-
 ```bash
 git add .
 git commit -m "وصف التعديل الجديد"
@@ -33,26 +36,8 @@ git push origin main
 ```
 
 ## 3. جلب التحديثات من GitHub (Pull)
-**سؤال: "لو عدلت على GitHub.. أجيب التعديلات هنا إزاي؟"**
-إذا قمت بتعديل الكود مباشرة على موقع GitHub أو من جهاز آخر، اتبع الخطوات التالية لمزامنة بيئة العمل الحالية:
-
 ```bash
-# جلب التعديلات ودمجها فوراً
 git pull origin main
-```
-
-### 💡 نصيحة تقنية (في حال وجود تعارض):
-إذا كان لديك تعديلات هنا لم ترفعها بعد، وحدث تعارض عند عمل Pull، يمكنك استخدام "المخزن المؤقت":
-
-```bash
-# 1. تخزين تعديلاتك المحلية مؤقتاً
-git stash
-
-# 2. جلب التحديثات من السحاب
-git pull origin main
-
-# 3. استعادة تعديلاتك المحلية لدمجها
-git stash pop
 ```
 
 ---

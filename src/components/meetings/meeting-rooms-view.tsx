@@ -301,7 +301,7 @@ function HallGridSection({ title, slots, rooms, appts, onAction, onDelete, isRtl
           <table className="w-full border-collapse">
              <thead>
                 <tr className="bg-slate-50/50 print:bg-white">
-                   <th className="w-16 p-2 border-b border-slate-100 font-black text-[9px] text-slate-400 uppercase tracking-tighter bg-slate-50/50 print:p-1 print:w-10">Time</th>
+                   <th className="w-16 p-2 border-b border-slate-100 font-black text-[9px] text-slate-400 uppercase tracking-tighter bg-slate-50/50 print:p-1 print:w-10">{isRtl ? 'الوقت' : 'Time'}</th>
                    {rooms.map((room: MeetingRoom) => (
                       <th key={room.id} className="p-3 border-b border-slate-100 border-s border-s-slate-50 min-w-[120px] print:p-1">
                          <div className="flex flex-col items-center text-center">

@@ -486,7 +486,7 @@ function GridSection({ title, slots, engineers, gridMap, meta, onAction, onDelet
           <table className="w-full border-collapse">
              <thead>
                 <tr className="bg-slate-50/50 print:bg-white">
-                   <th className="w-16 p-2 border-b border-slate-100 font-black text-[9px] text-slate-400 uppercase tracking-tighter bg-slate-50/50 print:p-1 print:w-10">Time</th>
+                   <th className="w-16 p-2 border-b border-slate-100 font-black text-[9px] text-slate-400 uppercase tracking-tighter bg-slate-50/50 print:p-1 print:w-10">{isRtl ? 'الوقت' : 'Time'}</th>
                    {visibleEngineers.map((eng: Employee) => {
                       const engAppts = gridMap.get(eng.id!) || [];
                       let v1 = 0, follow = 0, cont = 0;
