@@ -1,41 +1,33 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useMemo, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCollection, useFirestore } from '@/firebase';
-import { collection, query, doc, updateDoc, serverTimestamp, writeBatch, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, doc, updateDoc, serverTimestamp, writeBatch, getDocs, setDoc, deleteDoc, where, limit } from 'firebase/firestore';
 import { 
   Loader2, CheckCircle2, RefreshCw, 
   Save, Building2, ShieldCheck, Trash2, 
   Power, Search, Key, Copy, Eye, EyeOff,
   Settings2, Zap, Rocket, AlertTriangle,
   Clock, CalendarClock, Ban, CheckCircle,
-  X
+  X, Fingerprint, Database, SearchCode,
+  ArrowRight, ShieldAlert, GitBranch
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { addDays, format, parseISO } from 'date-fns';
 import { UserService } from '@/services/user-service';
+import { SeedService } from '@/services/seed-service';
 
 export default function DeveloperDashboard() {
   const { lang, dir, t } = useLanguage(); 
@@ -43,12 +35,14 @@ export default function DeveloperDashboard() {
   const db = useFirestore();
   const isRtl = lang === 'ar';
   
-  const [activeTab, setActiveTab] = useState("requests");
+  const [activeTab, setActiveTab] = useState("integrity"); // الافتراضي هو الفحص الذي طلبته
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [editingCompany, setEditingCompany] = useState<any>(null);
   const [deletingContext, setDeletingContext] = useState<{ id: string, type: 'request' | 'company' } | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [migrating, setMigrating] = useState(false);
 
+  // استعلامات البيانات العامة
   const companiesQuery = useMemo(() => 
     (db && globalUser?.isDeveloper) ? query(collection(db, 'companies')) : null, 
   [db, globalUser?.isDeveloper]);
@@ -60,188 +54,83 @@ export default function DeveloperDashboard() {
   const { data: companies, loading: companiesLoading } = useCollection<any>(companiesQuery);
   const { data: requests, loading: requestsLoading } = useCollection<any>(requestsQuery);
 
-  const handleDelete = async () => {
-    if (!db || !deletingContext) return;
-    const { id, type } = deletingContext;
-    setProcessingId(id);
+  // --- أداة فحص مطابقة البيانات السيادية (Path Integrity Tool) ---
+  const [diagTransaction, setDiagTransaction] = useState<any>(null);
+  const [diagTemplates, setDiagTemplates] = useState<any[]>([]);
+  const [loadingDiag, setLoadingDiag] = useState(false);
+
+  const runDiagnostics = async () => {
+    if (!db) return;
+    setLoadingDiag(true);
     try {
-      const path = type === 'request' ? 'company_requests' : 'companies';
-      await deleteDoc(doc(db, path, id));
-      toast({ title: isRtl ? "تم الحذف بنجاح" : "Deleted Successfully" });
-      setDeletingContext(null);
+      const targetCompanyId = 'comp_x898l4i70';
+      const targetClientId = '8MbfW3Aexh8Nkz2adHOI';
+
+      // 1. جلب المعاملة
+      const transQ = query(
+        collection(db, 'companies', targetCompanyId, 'transactions'),
+        where('clientId', '==', targetClientId),
+        limit(1)
+      );
+      const transSnap = await getDocs(transQ);
+      const trans = transSnap.empty ? null : transSnap.docs[0].data();
+      setDiagTransaction(trans);
+
+      // 2. جلب القوالب
+      const tempsQ = collection(db, 'companies', targetCompanyId, 'boqTemplates');
+      const tempsSnap = await getDocs(tempsQ);
+      const temps = tempsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setDiagTemplates(temps);
+
+      toast({ title: "اكتمل الفحص الميداني" });
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Error", description: e.message });
+      toast({ variant: "destructive", title: "Diagnostic Error", description: e.message });
     } finally {
-      setProcessingId(null);
+      setLoadingDiag(false);
     }
   };
 
-  // محرك التأسيس السيادي (Provisioning Engine)
+  const handleIdentityMigration = async () => {
+    if (!db || !globalUser?.companyId) return;
+    setMigrating(true);
+    const service = new SeedService(db, globalUser.companyId);
+    try {
+      const count = await service.runIdentityMigration();
+      toast({ title: isRtl ? "تم إصلاح الهويات" : "Identity Fixed", description: `Updated ${count} users.` });
+    } finally { setMigrating(false); }
+  };
+
   const handleActivate = async (req: any) => {
     if (!db) return;
     setProcessingId(req.id);
-    
-    // إنشاء معرف منشأة سيادي
     const companyId = `comp_${Math.random().toString(36).substr(2, 9)}`;
     const userService = new UserService(db, companyId);
-    
     try {
       const batch = writeBatch(db);
-
-      // 1. تأسيس ملف الشركة بنظام "تجريبي" لمدة 7 أيام
       const companyRef = doc(db, 'companies', companyId);
       const expiry = addDays(new Date(), 7).toISOString();
       batch.set(companyRef, {
-        id: companyId,
-        name: req.companyName,
-        status: 'active',
-        subscriptionType: 'trial',
-        expiryDate: expiry,
-        activity: req.activity,
-        maxUsers: 5,
-        ownerEmail: req.email,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        id: companyId, name: req.companyName, status: 'active',
+        subscriptionType: 'trial', expiryDate: expiry, activity: req.activity,
+        maxUsers: 5, ownerEmail: req.email, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
       });
-
-      // 2. إنشاء الدور الأمني الافتراضي (ADMIN)
       const roleRef = doc(collection(db, 'companies', companyId, 'roles'));
       batch.set(roleRef, {
-        code: 'ADMIN',
-        name: 'مدير النظام',
-        nameEn: 'System Admin',
-        permissions: ['*'],
-        matrix: [{ resourceId: '*', action: 'view', scope: 'all' }],
-        isSystemRole: true,
-        isActive: true,
-        order: 1,
-        companyId: companyId,
-        createdAt: serverTimestamp()
+        code: 'ADMIN', name: 'مدير النظام', nameEn: 'System Admin',
+        permissions: ['*'], matrix: [{ resourceId: '*', action: 'view', scope: 'all' }],
+        isSystemRole: true, isActive: true, order: 1, companyId: companyId, createdAt: serverTimestamp()
       });
-
-      // 3. إنشاء القسم الأول (الإدارة العليا)
       const deptRef = doc(collection(db, 'companies', companyId, 'departments'));
-      batch.set(deptRef, {
-        name: 'الإدارة العليا',
-        nameEn: 'General Management',
-        isActive: true,
-        order: 1,
-        companyId: companyId,
-        createdAt: serverTimestamp()
-      });
-
-      // 4. إنشاء الوظيفة الأولى (المدير العام) مربوطة بدور ADMIN
+      batch.set(deptRef, { name: 'الإدارة العليا', nameEn: 'General Management', isActive: true, order: 1, companyId: companyId, createdAt: serverTimestamp() });
       const jobRef = doc(collection(db, 'companies', companyId, 'departments', deptRef.id, 'jobs'));
-      batch.set(jobRef, {
-        name: 'المدير العام',
-        nameEn: 'General Manager',
-        roleId: roleRef.id,
-        roleCode: 'ADMIN',
-        hourlyCost: 0,
-        isActive: true,
-        order: 1,
-        companyId: companyId,
-        createdAt: serverTimestamp()
-      });
-
+      batch.set(jobRef, { name: 'المدير العام', nameEn: 'General Manager', roleId: roleRef.id, roleCode: 'ADMIN', hourlyCost: 0, isActive: true, order: 1, companyId: companyId, createdAt: serverTimestamp() });
       await batch.commit();
-
-      // 5. إنشاء حساب الدخول الفعلي (Auth + Global Identity)
       const empId = `emp_1001`;
-      const uid = await userService.createUserAccount({
-        employeeId: empId,
-        employeeName: req.contactName,
-        email: req.email,
-        username: req.proposedUsername || req.email.split('@')[0],
-        password: req.proposedPassword,
-        roleId: roleRef.id,
-        roleCode: 'ADMIN',
-        departmentId: deptRef.id
-      });
-
-      // 6. إنشاء سجل الموظف الموازي لضمان عمل الـ HR فورياً
-      await setDoc(doc(db, 'companies', companyId, 'employees', empId), {
-        id: empId,
-        employeeNumber: '1001',
-        fullName: req.contactName,
-        email: req.email,
-        mobile: req.phone,
-        departmentId: deptRef.id,
-        departmentName: 'الإدارة العليا',
-        jobId: jobRef.id,
-        jobTitle: 'المدير العام',
-        status: 'active',
-        employeeType: 'internal',
-        hireDate: new Date().toISOString().split('T')[0],
-        basicSalary: 0,
-        annualLeaveBalance: 30,
-        isActive: true,
-        companyId: companyId,
-        createdAt: serverTimestamp()
-      });
-
-      // 7. تحديث الطلب بالنتيجة
-      await updateDoc(doc(db, 'company_requests', req.id), { 
-        status: 'activated', 
-        activatedAt: serverTimestamp(),
-        companyId: companyId,
-        ownerUid: uid
-      });
-
-      toast({ title: isRtl ? "تم التأسيس والتفعيل بنجاح" : "Company Provisioned Successfully" });
-    } catch (e: any) {
-      console.error(e);
-      toast({ variant: "destructive", title: "Provisioning Error", description: e.message });
-    } finally {
-      setProcessingId(null);
-    }
-  };
-
-  const handleSubscriptionChange = (type: string) => {
-    let days = 7;
-    if (type === 'monthly') days = 30;
-    if (type === 'annual') days = 365;
-    const newExpiry = addDays(new Date(), days).toISOString();
-    setEditingCompany({ ...editingCompany, subscriptionType: type, expiryDate: newExpiry });
-  };
-
-  const handleSendPasswordReset = async () => {
-    if (!db || !editingCompany) return;
-    const userService = new UserService(db, editingCompany.id);
-    try {
-      await userService.sendPasswordReset(editingCompany.ownerEmail);
-      toast({ title: isRtl ? "تم إرسال رابط إعادة التعيين لبريد المالك" : "Password Reset Sent" });
-    } catch (e) {
-      toast({ variant: "destructive", title: "Error" });
-    }
-  };
-
-  const handleApplyUpdate = async () => {
-    if (!db || !editingCompany) return;
-    setProcessingId(editingCompany.id);
-    try {
-      const ref = doc(db, 'companies', editingCompany.id);
-      await updateDoc(ref, {
-        status: editingCompany.status,
-        subscriptionType: editingCompany.subscriptionType,
-        expiryDate: editingCompany.expiryDate,
-        updatedAt: serverTimestamp()
-      });
-
-      // مزامنة حالة الدخول في السجل العالمي (دقة الإنفاذ)
-      if (editingCompany.ownerUid) {
-        await updateDoc(doc(db, 'global_users', editingCompany.ownerUid), {
-          isActive: editingCompany.status === 'active'
-        });
-      }
-
-      toast({ title: isRtl ? "تم تحديث الترخيص بنجاح" : "License Updated" });
-      setEditingCompany(null);
-    } catch (e: any) {
-      toast({ variant: "destructive", title: "Error", description: e.message });
-    } finally {
-      setProcessingId(null);
-    }
+      const uid = await userService.createUserAccount({ employeeId: empId, employeeName: req.contactName, email: req.email, username: req.proposedUsername || req.email.split('@')[0], password: req.proposedPassword, roleId: roleRef.id, roleCode: 'ADMIN', departmentId: deptRef.id });
+      await setDoc(doc(db, 'companies', companyId, 'employees', empId), { id: empId, employeeNumber: '1001', fullName: req.contactName, email: req.email, mobile: req.phone, departmentId: deptRef.id, departmentName: 'الإدارة العليا', jobId: jobRef.id, jobTitle: 'المدير العام', status: 'active', employeeType: 'internal', hireDate: new Date().toISOString().split('T')[0], basicSalary: 0, annualLeaveBalance: 30, isActive: true, companyId: companyId, createdAt: serverTimestamp() });
+      await updateDoc(doc(db, 'company_requests', req.id), { status: 'activated', activatedAt: serverTimestamp(), companyId: companyId, ownerUid: uid });
+      toast({ title: "Provisioning Success" });
+    } finally { setProcessingId(null); }
   };
 
   if (authLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
@@ -250,17 +139,22 @@ export default function DeveloperDashboard() {
     <div className="space-y-6 text-start" dir={dir}>
       <header className="flex justify-between items-end border-b pb-6">
         <div className="text-start">
-          <h2 className="text-2xl font-black font-headline text-slate-900">{isRtl ? 'رادار تأسيس المنشآت' : 'Sovereign Provisioning'}</h2>
-          <Badge className="bg-primary text-white border-0 text-[8px] uppercase px-3 rounded-full mt-2">Core Developer Hub</Badge>
+          <h2 className="text-2xl font-black font-headline text-slate-900">{isRtl ? 'لوحة تحكم المطور السيادية' : 'Sovereign Dev Console'}</h2>
+          <Badge className="bg-primary text-white border-0 text-[8px] uppercase px-3 rounded-full mt-2">Core Kernel Maintenance</Badge>
         </div>
-        <div className="relative w-full max-w-xs">
-           <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-           <Input placeholder={t('search')} className="ps-9 h-10 rounded-xl bg-white border-2" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+        <div className="flex gap-3">
+           <Button onClick={handleIdentityMigration} disabled={migrating} variant="outline" className="h-10 rounded-xl border-2 font-black gap-2">
+              {migrating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Fingerprint className="h-4 w-4" />}
+              {isRtl ? 'إصلاح الهويات' : 'Fix Identities'}
+           </Button>
         </div>
       </header>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-white border h-12 rounded-xl p-1.5 gap-2 mb-6 shadow-sm inline-flex">
+           <TabsTrigger value="integrity" className="rounded-lg px-8 font-black text-xs data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2">
+              <SearchCode className="h-4 w-4" /> فحص مطابقة المسارات
+           </TabsTrigger>
            <TabsTrigger value="requests" className="rounded-lg px-8 font-black text-xs data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2">
               <Zap className="h-4 w-4" /> طلبات التأسيس
            </TabsTrigger>
@@ -269,6 +163,77 @@ export default function DeveloperDashboard() {
            </TabsTrigger>
         </TabsList>
 
+        <TabsContent value="integrity" className="animate-in slide-in-from-bottom-2 space-y-6">
+           <Card className="border-0 shadow-2xl rounded-3xl bg-white overflow-hidden ring-1 ring-black/5">
+              <CardHeader className="bg-slate-50 p-8 border-b flex flex-row items-center justify-between">
+                 <div className="text-start">
+                    <CardTitle className="text-xl font-black">أداة فحص سلامة الربط (Diagnostic Tool)</CardTitle>
+                    <p className="text-xs font-bold text-slate-400 mt-1">تقوم هذه الأداة بالتحقق من مطابقة `subServiceId` بين المعاملة والقوالب.</p>
+                 </div>
+                 <Button onClick={runDiagnostics} disabled={loadingDiag} className="h-12 px-8 rounded-xl bg-slate-900 text-white font-black gap-2 shadow-xl">
+                    {loadingDiag ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
+                    تشغيل الفحص الآن
+                 </Button>
+              </CardHeader>
+              <CardContent className="p-10 space-y-8">
+                 {loadingDiag ? (
+                   <div className="py-20 text-center"><Loader2 className="h-10 w-10 animate-spin mx-auto text-primary/20" /></div>
+                 ) : !diagTransaction ? (
+                   <div className="py-20 text-center opacity-30 italic font-bold">لا يوجد بيانات للعرض. اضغط على تشغيل الفحص.</div>
+                 ) : (
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                      {/* عرض المعاملة */}
+                      <div className="space-y-4">
+                         <h4 className="text-sm font-black text-primary uppercase tracking-widest border-b pb-2 flex items-center gap-2">
+                            <ShieldCheck className="h-4 w-4" /> بيانات المعاملة المستهدفة
+                         </h4>
+                         <div className="p-6 rounded-2xl bg-slate-50 border-2 border-slate-100 space-y-4 text-start">
+                            <div className="space-y-1">
+                               <p className="text-[10px] font-black text-slate-400 uppercase">Transaction ID</p>
+                               <p className="text-xs font-mono font-bold bg-white p-2 rounded border truncate">{diagTransaction.id}</p>
+                            </div>
+                            <div className="space-y-1">
+                               <p className="text-[10px] font-black text-primary uppercase">subServiceId (The Key)</p>
+                               <div className="bg-primary/10 text-primary p-3 rounded-xl border-2 border-primary/20 font-mono text-sm font-black break-all">
+                                  {diagTransaction.subServiceId}
+                               </div>
+                            </div>
+                         </div>
+                      </div>
+
+                      {/* عرض القوالب */}
+                      <div className="space-y-4">
+                         <h4 className="text-sm font-black text-blue-600 uppercase tracking-widest border-b pb-2 flex items-center gap-2">
+                            <Database className="h-4 w-4" /> القوالب المتوفرة (boqTemplates)
+                         </h4>
+                         <div className="space-y-3">
+                            {diagTemplates.map(t => {
+                               const isMatch = t.subServiceId === diagTransaction.subServiceId;
+                               return (
+                                 <div key={t.id} className={cn(
+                                   "p-5 rounded-2xl border-2 transition-all",
+                                   isMatch ? "bg-emerald-50 border-emerald-500 shadow-lg" : "bg-rose-50 border-rose-200"
+                                 )}>
+                                    <div className="flex justify-between items-start mb-2">
+                                       <p className="font-black text-xs text-slate-800">{t.name}</p>
+                                       <Badge className={isMatch ? "bg-emerald-600" : "bg-rose-600"}>
+                                          {isMatch ? "MATCHED ✅" : "MISMATCH ❌"}
+                                       </Badge>
+                                    </div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase mb-1">subServiceId in Template:</p>
+                                    <p className="text-xs font-mono font-bold bg-white/50 p-2 rounded truncate">{t.subServiceId}</p>
+                                 </div>
+                               );
+                            })}
+                            {diagTemplates.length === 0 && <p className="text-xs font-bold text-rose-500 italic">No templates found in boqTemplates collection.</p>}
+                         </div>
+                      </div>
+                   </div>
+                 )}
+              </CardContent>
+           </Card>
+        </TabsContent>
+
         <TabsContent value="requests" className="animate-in slide-in-from-bottom-2">
            <Card className="border-0 shadow-xl rounded-2xl bg-white overflow-hidden ring-1 ring-black/5">
               <Table>
@@ -276,44 +241,24 @@ export default function DeveloperDashboard() {
                   <TableRow>
                     <TableHead className="py-4 ps-8">المنشأة</TableHead>
                     <TableHead>النشاط</TableHead>
-                    <TableHead>كلمة المرور</TableHead>
                     <TableHead className="pe-8 text-end">الإجراء السيادي</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {requestsLoading ? (
-                    <TableRow><TableCell colSpan={4} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></TableCell></TableRow>
-                  ) : requests?.filter(r => r.status === 'pending').length === 0 ? (
-                    <TableRow><TableCell colSpan={4} className="text-center py-20 text-slate-300 font-bold italic">لا يوجد طلبات تأسيس جديدة.</TableCell></TableRow>
-                  ) : requests?.filter(r => r.status === 'pending').map((req: any) => (
+                  {requests?.filter(r => r.status === 'pending').map((req: any) => (
                     <TableRow key={req.id} className="hover:bg-primary/[0.01] group border-b-slate-50">
                       <TableCell className="ps-8 py-4">
                          <div className="text-start">
                             <p className="font-black text-slate-800 text-sm">{req.companyName}</p>
-                            <div className="flex items-center gap-2 mt-1">
-                               <p className="text-[10px] text-slate-400 font-mono">{req.email}</p>
-                               <span className="text-slate-200">|</span>
-                               <p className="text-[10px] font-bold text-primary">{req.phone}</p>
-                            </div>
+                            <p className="text-[10px] text-slate-400 font-mono mt-1">{req.email}</p>
                          </div>
                       </TableCell>
-                      <TableCell><Badge variant="outline" className="text-[8px] font-black uppercase border-primary/20 text-primary">{req.activity}</Badge></TableCell>
-                      <TableCell><code className="text-[10px] bg-slate-100 px-2 py-1 rounded font-mono font-bold">********</code></TableCell>
+                      <TableCell><Badge variant="outline" className="text-[8px] font-black uppercase">{req.activity}</Badge></TableCell>
                       <TableCell className="pe-8 text-end">
-                         <div className="flex items-center justify-end gap-2">
-                            <Button 
-                              onClick={() => setDeletingContext({ id: req.id, type: 'request' })}
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8 text-rose-300 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                               <Trash2 className="h-4 w-4" />
-                            </Button>
-                            <Button onClick={() => handleActivate(req)} disabled={!!processingId} size="sm" className="h-10 px-6 gap-2 bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-100 border-b-4 border-emerald-800 transition-all active:scale-95">
-                               {processingId === req.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Rocket className="h-4 w-4" />}
-                               تأسيس وتفعيل الآن
-                            </Button>
-                         </div>
+                         <Button onClick={() => handleActivate(req)} disabled={!!processingId} size="sm" className="h-10 px-6 gap-2 bg-emerald-600 text-white font-black shadow-lg shadow-emerald-100">
+                            {processingId === req.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Rocket className="h-4 w-4" />}
+                            تأسيس وتفعيل
+                         </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -329,58 +274,30 @@ export default function DeveloperDashboard() {
                   <TableRow>
                     <TableHead className="py-4 ps-8">المنشأة</TableHead>
                     <TableHead>الحالة</TableHead>
-                    <TableHead>الاشتراك / الانتهاء</TableHead>
                     <TableHead className="pe-8 text-end">التحكم</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {companiesLoading ? (
-                    <TableRow><TableCell colSpan={4} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
-                  ) : companies?.length === 0 ? (
-                    <TableRow><TableCell colSpan={4} className="text-center py-20 text-slate-300 italic">لا يوجد منشآت مفعلة.</TableCell></TableRow>
-                  ) : companies?.map((comp: any) => (
+                  {companies?.map((comp: any) => (
                     <TableRow key={comp.id} className="hover:bg-primary/[0.01] group border-b-slate-50">
                       <TableCell className="ps-8 py-4">
                          <div className="text-start">
                             <p className="font-black text-slate-900 text-sm">{comp.name}</p>
-                            <div className="flex items-center gap-2 mt-1">
-                               <p className="text-[8px] font-mono text-slate-400 uppercase tracking-tighter">ID: {comp.id}</p>
-                               <span className="text-slate-100">•</span>
-                               <p className="text-[8px] font-bold text-slate-300">{comp.ownerEmail}</p>
-                            </div>
+                            <p className="text-[8px] font-mono text-slate-400 uppercase tracking-tighter">ID: {comp.id}</p>
                          </div>
                       </TableCell>
                       <TableCell>
                          <Badge className={cn(
                            "font-black text-[9px] uppercase px-3 py-1 rounded-md border-0 shadow-sm",
-                           comp.status === 'active' ? "bg-emerald-500 text-white" : 
-                           comp.status === 'suspended' ? "bg-rose-500 text-white" : "bg-slate-400 text-white"
+                           comp.status === 'active' ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
                          )}>
                             {comp.status}
                          </Badge>
                       </TableCell>
-                      <TableCell>
-                         <div className="text-start space-y-1">
-                            <Badge variant="outline" className="text-[8px] font-black border-primary/20 text-primary">{comp.subscriptionType?.toUpperCase()}</Badge>
-                            <p className="text-[10px] font-mono font-bold text-slate-400 flex items-center gap-1">
-                               <Clock className="h-3 w-3" /> {comp.expiryDate ? format(parseISO(comp.expiryDate), 'dd/MM/yyyy') : '---'}
-                            </p>
-                         </div>
-                      </TableCell>
                       <TableCell className="pe-8 text-end">
-                        <div className="flex items-center justify-end gap-2">
-                           <Button 
-                             onClick={() => setDeletingContext({ id: comp.id, type: 'company' })}
-                             variant="ghost" 
-                             size="icon" 
-                             className="h-8 w-8 text-rose-300 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                           >
-                              <Trash2 className="h-4 w-4" />
-                           </Button>
-                           <Button variant="outline" size="sm" onClick={() => setEditingCompany(comp)} className="h-9 gap-2 border-2 border-slate-100 hover:bg-slate-50 font-bold text-xs rounded-xl shadow-sm">
-                              <Settings2 className="h-3.5 w-3.5" /> إدارة التراخيص
-                           </Button>
-                        </div>
+                        <Button variant="outline" size="sm" onClick={() => setEditingCompany(comp)} className="h-9 gap-2 border-2 font-bold text-xs rounded-xl shadow-sm">
+                           <Settings2 className="h-3.5 w-3.5" /> إدارة التراخيص
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -389,119 +306,7 @@ export default function DeveloperDashboard() {
            </Card>
         </TabsContent>
       </Tabs>
-
-      {/* مودال إدارة المنشأة السيادي */}
-      <Dialog open={!!editingCompany} onOpenChange={v => !v && setEditingCompany(null)}>
-         <DialogContent className="rounded-[2.5rem] max-w-xl p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
-            <div className="bg-slate-50 p-8 border-b text-start flex justify-between items-center">
-               <div>
-                  <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3 text-slate-900">
-                     <CalendarClock className="h-7 w-7 text-primary" /> إدارة التراخيص والاشتراك
-                  </DialogTitle>
-                  <p className="text-sm font-bold text-slate-400 mt-1">{editingCompany?.name}</p>
-               </div>
-               <Button variant="ghost" size="icon" onClick={() => setEditingCompany(null)} className="rounded-full"><X className="h-5 w-5" /></Button>
-            </div>
-            
-            <div className="p-10 space-y-8 text-start bg-white">
-               <div className="grid grid-cols-2 gap-8">
-                  <div className="space-y-2">
-                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">نوع الاشتراك</Label>
-                     <Select 
-                        value={editingCompany?.subscriptionType} 
-                        onValueChange={handleSubscriptionChange}
-                     >
-                        <SelectTrigger className="h-12 border-2 rounded-xl font-black">
-                           <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl border-2 shadow-2xl">
-                           <SelectItem value="trial" className="font-bold">Trial (تجريبي)</SelectItem>
-                           <SelectItem value="monthly" className="font-bold">Monthly (شهري)</SelectItem>
-                           <SelectItem value="annual" className="font-bold">Annual (سنوي)</SelectItem>
-                        </SelectContent>
-                     </Select>
-                  </div>
-                  <div className="space-y-2">
-                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">تاريخ الانتهاء</Label>
-                     <Input 
-                       type="date" 
-                       value={editingCompany?.expiryDate?.split('T')[0] || ''} 
-                       onChange={e => setEditingCompany({...editingCompany, expiryDate: e.target.value ? new Date(e.target.value).toISOString() : ''})} 
-                       className="h-12 border-2 rounded-xl font-black text-center" 
-                     />
-                  </div>
-               </div>
-
-               <div className="space-y-4 pt-4 border-t">
-                  <div className="flex items-center justify-between">
-                     <Label className="font-black text-sm text-slate-800">الأمان وكلمات المرور</Label>
-                     <Button 
-                       onClick={handleSendPasswordReset}
-                       variant="outline" 
-                       size="sm" 
-                       className="h-9 rounded-xl font-bold border-primary/20 text-primary gap-2"
-                     >
-                        <Key className="h-3.5 w-3.5" /> إعادة تعيين كلمة مرور المالك
-                     </Button>
-                  </div>
-                  <p className="text-[9px] text-slate-400 font-bold italic">سيتم إرسال رابط آمن للبريد {editingCompany?.ownerEmail}</p>
-               </div>
-
-               <div className="p-8 rounded-[2rem] bg-slate-50 border-2 border-white shadow-inner space-y-6">
-                  <Label className="font-black text-lg text-slate-800">الحالة التشغيلية</Label>
-                  <div className="grid grid-cols-2 gap-4">
-                     <Button 
-                       onClick={() => setEditingCompany({...editingCompany, status: 'active'})} 
-                       variant={editingCompany?.status === 'active' ? 'default' : 'outline'} 
-                       className={cn("h-14 rounded-2xl font-black gap-2", editingCompany?.status === 'active' ? "bg-emerald-600 shadow-emerald-100" : "bg-white")}
-                     >
-                        <CheckCircle className="h-5 w-5" /> فعال
-                     </Button>
-                     <Button 
-                       onClick={() => setEditingCompany({...editingCompany, status: 'suspended'})} 
-                       variant={editingCompany?.status === 'suspended' ? 'destructive' : 'outline'} 
-                       className={cn("h-14 rounded-2xl font-black gap-2", editingCompany?.status === 'suspended' ? "bg-rose-600 shadow-rose-100" : "bg-white")}
-                     >
-                        <Ban className="h-5 w-5" /> تجميد
-                     </Button>
-                  </div>
-               </div>
-            </div>
-
-            <DialogFooter className="p-8 bg-slate-50 border-t">
-               <Button onClick={handleApplyUpdate} disabled={!!processingId} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 gap-3 border-b-8 border-orange-700">
-                  {processingId ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
-                  حفظ وتطبيق التعديلات السيادية
-               </Button>
-            </DialogFooter>
-         </DialogContent>
-      </Dialog>
-
-      <AlertDialog open={!!deletingContext} onOpenChange={v => !v && setDeletingContext(null)}>
-         <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white" dir={dir}>
-            <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
-               <Trash2 className="h-10 w-10" />
-            </div>
-            <AlertDialogHeader className="text-center">
-               <AlertDialogTitle className="font-black text-3xl font-headline text-slate-900 leading-tight">
-                  حذف السجل نهائياً
-               </AlertDialogTitle>
-               <AlertDialogDescription className="text-center font-bold text-slate-400 mt-4 text-lg leading-relaxed">
-                  تحذير سيادي: هذا الإجراء سيمحو كافة البيانات المرتبطة بهذا السجل من قاعدة البيانات السحابية فوراً. لا يمكن التراجع.
-               </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="mt-12 gap-4 flex flex-row items-center justify-center">
-               <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white">إلغاء</AlertDialogCancel>
-               <AlertDialogAction 
-                  onClick={handleDelete} 
-                  disabled={!!processingId}
-                  className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200"
-               >
-                  {processingId ? <Loader2 className="animate-spin h-5 w-5" /> : 'نعم، احذف نهائياً'}
-               </AlertDialogAction>
-            </AlertDialogFooter>
-         </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
+

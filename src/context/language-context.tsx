@@ -96,9 +96,11 @@ const translations: Record<Language, Record<string, string>> = {
     'projects.table.progress': 'نسبة الإنجاز',
     'projects.table.billing': 'المطالبات المالية',
     'projects.table.status': 'الحالة التشغيلية',
+    
+    // تفاصيل المشروع الموحدة
     'projects.details.radar': 'رادار التنفيذ الميداني',
     'projects.details.finance': 'المالية والوثائق',
-    'projects.details.locked': 'المسار الفني مقفل: يتطلب عقد ومقايسة معتمدة',
+    'projects.details.locked': 'المسار الفني مقفل: يتطلب عقد ومقايسة معتمدة للبدء.',
 
     // Engineering & BOQ Master
     'boqExplorer': 'مستكشف المقايسات',
@@ -163,15 +165,13 @@ const translations: Record<Language, Record<string, string>> = {
     // Reports
     'reports': 'التقارير والرقابة',
 
-    // Settings
+    // Settings (Flat Keys Protection)
     'settings': 'إعدادات النظام',
     'settings.title': 'إعدادات النظام',
-    'settings.checklists': 'الدستور التشغيلي',
     'checklists': 'الدستور التشغيلي',
     'templates': 'مكتبة القوالب',
     'rolesRef': 'مصفوفة الصلاحيات',
     'profile': 'الملف الشخصي',
-    'userProfile': 'الملف الشخصي',
     'companyIdentity': 'هوية الشركة',
     'usersManagement': 'إدارة المستخدمين',
     'workHours': 'مواعيد العمل',
@@ -348,12 +348,10 @@ const translations: Record<Language, Record<string, string>> = {
     // Settings
     'settings': 'Settings',
     'settings.title': 'System Settings',
-    'settings.checklists': 'Operational Constitution',
     'checklists': 'Constitution',
     'templates': 'Template Library',
     'rolesRef': 'Permissions Matrix',
     'profile': 'Profile',
-    'userProfile': 'User Profile',
     'companyIdentity': 'Company Profile',
     'usersManagement': 'User Mgmt',
     'workHours': 'Work Hours',
