@@ -98,7 +98,7 @@ const translations: Record<Language, Record<string, string>> = {
     'projects.table.billing': 'المطالبات المالية',
     'projects.table.status': 'الحالة التشغيلية',
     
-    // تفاصيل المشروع الموحدة
+    // تفاصيل المشروع الموحدة (Flat Keys Protection)
     'projects.details.radar': 'رادار التنفيذ الميداني',
     'projects.details.finance': 'المالية والوثائق',
     'projects.details.locked': 'المسار الفني مقفل: يتطلب عقد ومقايسة معتمدة للبدء.',
@@ -166,7 +166,7 @@ const translations: Record<Language, Record<string, string>> = {
     // Reports
     'reports': 'التقارير والرقابة',
 
-    // Settings (Flat Keys Protection)
+    // Settings (Sovereign Flat Translation Keys)
     'settings': 'إعدادات النظام',
     'settings.title': 'إعدادات النظام',
     'checklists': 'الدستور التشغيلي',
@@ -191,9 +191,7 @@ const translations: Record<Language, Record<string, string>> = {
     'personalInfo': 'البيانات الشخصية',
     'saveChanges': 'حفظ التغييرات',
     'username': 'اسم المستخدم',
-    'referenceLists': 'القوائم المرجعية',
-    'boqMasterTree': 'شجرة الأعمال المرجعية',
-    'halls': 'إدارة القاعات',
+    'userProfile': 'الملف الشخصي',
     
     // Breadcrumb Special
     'details': 'تفاصيل',
@@ -375,9 +373,7 @@ const translations: Record<Language, Record<string, string>> = {
     'personalInfo': 'Personal Information',
     'saveChanges': 'Save Changes',
     'username': 'Username',
-    'referenceLists': 'Reference Lists',
-    'boqMasterTree': 'Work Items Registry',
-    'halls': 'Meetings Halls',
+    'userProfile': 'User Profile',
     
     // Breadcrumb Special
     'details': 'Details',

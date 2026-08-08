@@ -53,14 +53,17 @@ export function BreadcrumbNav() {
   };
 
   const formatSegment = (segment: string) => {
+    const sLower = segment.toLowerCase();
+    
     // تعريب "details" التي تظهر كجزء من مسار المشروع
-    if (segment.toLowerCase() === 'details') return t('details');
+    if (sLower === 'details') return t('details');
     
     // التعامل مع الـ IDs والمسارات الطويلة
     if (segment.length > 15 || /\d/.test(segment)) {
       return t('details');
     }
-    return routeMap[segment] || segment;
+    
+    return routeMap[sLower] || segment;
   };
 
   if (segments.length <= 1 && segments[0] === 'dashboard') return null;

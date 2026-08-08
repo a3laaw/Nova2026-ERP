@@ -32,6 +32,8 @@ import { VariationService } from '@/services/variation-service';
 import { DocumentService } from '@/services/document-service';
 import { toast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BOQReferenceSelector } from '@/components/settings/checklists/boq-reference/boq-reference-selector';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 
@@ -50,31 +52,18 @@ export default function TransactionBOQProgressPage() {
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isBoqInitOpen, setIsBoqInitOpen] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
-  const [processingVOId, setProcessingVOId] = useState<string | null>(null);
-  const [isEditingBaseline, setIsEditingBaseline] = useState(false);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   
-  const [reviewVO, setReviewVO] = useState<BOQVariation | null>(null);
-  const [reviewItems, setReviewItems] = useState<BOQVariationItem[]>([]);
-  const [loadingReview, setLoadingReview] = useState(false);
-
-  useEffect(() => {
-    const isModalOpen = isVOOpen || isPickerOpen || !!reviewVO || isEditingBaseline || isBoqInitOpen;
-    if (!isModalOpen && typeof document !== 'undefined') {
-       document.body.style.pointerEvents = 'auto';
-       document.body.style.overflow = 'auto';
-    }
-  }, [isVOOpen, isPickerOpen, reviewVO, isEditingBaseline, isBoqInitOpen]);
-
   const transRef = useMemo(() => (companyId && db && transactionId) ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction } = useDoc<Transaction>(transRef);
 
-  const stagesQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.transactionStages(companyId, transactionId))) : null, [db, companyId, transactionId]);
+  const stagesQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order')) : null, [db, companyId, transactionId]);
   const { data: stages } = useCollection<StageInstance>(stagesQuery);
 
   const boqQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqs(companyId))) : null, [db, companyId]);
   const { data: allBoqs, loading: boqLoading } = useCollection<BOQ>(boqQuery);
 
+  // حماية سيادية: البحث عن المقايسة بتنظيف المعرفات (Trim) لمنع فشل المطابقة
   const activeBoq = useMemo(() => {
     const tid = transactionId?.trim();
     return allBoqs?.find(b => b.transactionId?.trim() === tid);
@@ -148,7 +137,6 @@ export default function TransactionBOQProgressPage() {
       const currentTotal = items.reduce((acc, i) => acc + (i.plannedQuantity * (i.estimatedRate || 0)), 0);
       await service.approveBOQ(activeBoq.id, currentTotal, transactionId, user.uid, globalUser?.fullName || 'Admin');
       toast({ title: t('common.saved') });
-      setIsEditingBaseline(false);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
@@ -184,7 +172,7 @@ export default function TransactionBOQProgressPage() {
             <TableCell className="text-xs font-bold text-slate-700 text-start">{item.referenceTitle}</TableCell>
             <TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || '-'}</TableCell>
             <TableCell className="text-center">
-               {isEditingBaseline || activeBoq?.status === 'draft' ? (
+               {activeBoq?.status === 'draft' ? (
                  <Input 
                    type="number" 
                    className="h-8 text-center text-xs font-black" 
@@ -288,9 +276,6 @@ export default function TransactionBOQProgressPage() {
               </div>
            ) : (
              <div className="flex gap-2">
-                <Button onClick={() => setIsEditingBaseline(!isEditingBaseline)} variant="outline" className="h-9 px-4 rounded-lg font-bold text-xs gap-2 border-slate-200">
-                  {isEditingBaseline ? t('common.cancel') : t('common.edit')}
-                </Button>
                 <Button onClick={() => setIsVOOpen(true)} className="h-9 px-6 rounded-lg bg-primary text-white font-bold text-xs gap-2 shadow-sm shadow-primary/10"><PlusCircle className="h-3.5 w-3.5" /> {isRtl ? 'أمر تغييري' : 'New VO'}</Button>
              </div>
            )}
