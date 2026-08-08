@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -6,48 +5,43 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   LayoutTemplate, FileText, Gavel, FileSpreadsheet, 
-  Sparkles, ChevronRight, Plus,
-  ShieldCheck, Zap, Layers
+  ChevronRight, ArrowUpRight
 } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/context/language-context';
 import { cn } from '@/lib/utils';
 
 export default function TemplatesHubPage() {
-  const { t, lang, dir } = useLanguage();
+  const { t, dir } = useLanguage();
   const router = useRouter();
-  const isRtl = lang === 'ar';
 
   const templateModules = [
     {
       id: 'quotations',
       title: t('quotationTemplates'),
-      desc: isRtl ? 'بناء قوالب تسعير مرنة مع صلاحيات العرض وشروط الدفع.' : 'Build flexible pricing templates with validity and payment terms.',
+      desc: t('settings.templates.quotations.desc') || 'بناء قوالب تسعير مرنة مع صلاحيات العرض وشروط الدفع.',
       icon: FileText,
       color: 'text-blue-600',
       bg: 'bg-blue-50',
-      path: '/dashboard/settings/templates/quotations',
-      count: isRtl ? '8 نشط' : '8 Active'
+      path: '/dashboard/settings/templates/quotations'
     },
     {
       id: 'contracts',
       title: t('contractTemplates'),
-      desc: isRtl ? 'صياغة العقود القانونية وربط الدفعات المالية بالمراحل الفنية.' : 'Draft legal contracts and link installments to technical stages.',
+      desc: t('settings.templates.contracts.desc') || 'صياغة العقود القانونية وربط الدفعات المالية بالمراحل الفنية.',
       icon: Gavel,
       color: 'text-indigo-600',
       bg: 'bg-indigo-50',
-      path: '/dashboard/settings/templates/contracts',
-      count: isRtl ? '5 قانوني' : '5 Legal'
+      path: '/dashboard/settings/templates/contracts'
     },
     {
       id: 'boq',
       title: t('boqTemplates'),
-      desc: isRtl ? 'توصيف بنود الأعمال الهندسية، الكميات، والأسعار المرجعية.' : 'Define engineering work items, quantities, and reference rates.',
+      desc: t('settings.templates.boq.desc') || 'توصيف بنود الأعمال الهندسية، الكميات، والأسعار المرجعية.',
       icon: FileSpreadsheet,
       color: 'text-emerald-600',
       bg: 'bg-emerald-50',
-      path: '/dashboard/settings/templates/boq',
-      count: isRtl ? '12 مقايسة' : '12 Estim.'
+      path: '/dashboard/settings/templates/boq'
     }
   ];
 
@@ -77,17 +71,15 @@ export default function TemplatesHubPage() {
                <div className={cn("w-16 h-16 rounded-[1.5rem] flex items-center justify-center mb-6 transition-transform group-hover:scale-110 shadow-lg", module.bg, module.color)}>
                   <module.icon className="h-8 w-8" />
                </div>
-               <div className="flex justify-between items-start">
-                  <CardTitle className="text-2xl font-black font-headline text-slate-900">{module.title}</CardTitle>
-               </div>
+               <CardTitle className="text-2xl font-black font-headline text-slate-900">{module.title}</CardTitle>
                <CardDescription className="text-base font-bold leading-relaxed mt-4">
                   {module.desc}
                </CardDescription>
             </CardHeader>
             <CardContent className="p-10 pt-0 text-start">
                <div className={cn("flex items-center gap-2 font-black text-xs transition-all mt-8", module.color)}>
-                  {isRtl ? 'إدارة المكتبة' : 'Manage Library'}
-                  <ChevronRight className={cn("h-4 w-4", isRtl && "rotate-180")} />
+                  {t('manageLibrary') || 'إدارة المكتبة'}
+                  <ChevronRight className="h-4 w-4" />
                </div>
             </CardContent>
           </Card>

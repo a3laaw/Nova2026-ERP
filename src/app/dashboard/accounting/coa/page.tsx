@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { 
   GitBranch, Plus, Loader2, Folder, 
   FileText, Search, ChevronRight, ChevronDown,
-  ShieldCheck, Sparkles, DatabaseZap, X, Save
+  Sparkles, DatabaseZap, Save
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -69,9 +69,9 @@ export default function ChartOfAccountsPage() {
     try {
       const service = new SeedService(db, companyId);
       await service.seedConstructionCOA(user.uid);
-      toast({ title: t('saved') });
+      toast({ title: t('common.saved') });
     } catch (e: any) {
-      toast({ variant: "destructive", title: t('common.error'), description: e.message });
+      toast({ variant: "destructive", title: t('common.error') });
     } finally {
       setInitializing(false);
     }
@@ -99,7 +99,7 @@ export default function ChartOfAccountsPage() {
       toast({ title: t('common.saved') });
       setIsAdding(false);
     } catch (e: any) {
-      toast({ variant: "destructive", title: t('common.error'), description: e.message });
+      toast({ variant: "destructive", title: t('common.error') });
     } finally {
       setSaving(false);
     }
@@ -108,7 +108,7 @@ export default function ChartOfAccountsPage() {
   const renderTree = (parentId: string | null = null, level = 0) => {
     return accounts
       ?.filter(a => a.parentId === parentId)
-      .filter(a => searchTerm === "" || a.nameAr.includes(searchTerm) || a.nameEn.toLowerCase().includes(searchTerm.toLowerCase()) || a.code.includes(searchTerm))
+      .filter(a => searchTerm === "" || a.nameAr.includes(searchTerm) || a.code.includes(searchTerm))
       .map(account => {
         const isExpanded = expanded[account.id];
 
@@ -116,24 +116,24 @@ export default function ChartOfAccountsPage() {
           <div key={account.id} className="select-none">
             <div 
               className={cn(
-                "flex items-center gap-2 p-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-all border-b border-slate-50 group",
+                "flex items-center gap-2 p-3 hover:bg-slate-50 rounded-xl cursor-pointer transition-all border-b border-slate-50 group",
                 account.isGroup ? "font-black text-slate-900" : "font-medium text-slate-600"
               )}
-              style={{ paddingInlineStart: `${level * 24 + 8}px` }}
+              style={{ paddingInlineStart: `${level * 24 + 12}px` }}
               onClick={() => account.isGroup && toggleExpand(account.id)}
             >
               {account.isGroup ? (
-                isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-slate-400" /> : <ChevronRight className={cn("h-3.5 w-3.5 text-slate-400", isRtl && "rotate-180")} />
+                isExpanded ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className={cn("h-4 w-4 text-slate-400", isRtl && "rotate-180")} />
               ) : (
-                <div className="w-3.5" />
+                <div className="w-4" />
               )}
               
-              {account.isGroup ? <Folder className="h-3.5 w-3.5 text-amber-500" /> : <FileText className="h-3.5 w-3.5 text-blue-400" />}
+              {account.isGroup ? <Folder className="h-4 w-4 text-amber-500" /> : <FileText className="h-4 w-4 text-blue-400" />}
               
-              <span className="text-[9px] font-mono bg-slate-100 px-1.5 py-0.5 rounded text-slate-500">{account.code}</span>
+              <span className="text-[10px] font-mono bg-slate-100 px-2 py-0.5 rounded font-black text-primary">{account.code}</span>
               <span className="text-xs truncate">{isRtl ? account.nameAr : account.nameEn}</span>
               
-              <Badge variant="outline" className="ms-auto text-[7px] uppercase h-4 px-1 opacity-40">
+              <Badge variant="outline" className="ms-auto text-[8px] uppercase font-black border-2 h-5">
                 {account.type}
               </Badge>
 
@@ -141,10 +141,10 @@ export default function ChartOfAccountsPage() {
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="h-6 w-6 rounded-md text-primary opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/10"
+                  className="h-8 w-8 rounded-lg text-primary opacity-0 group-hover:opacity-100"
                   onClick={(e) => { e.stopPropagation(); openAddDialog(account); }}
                 >
-                  <Plus className="h-3 w-3" />
+                  <Plus className="h-4 w-4" />
                 </Button>
               )}
             </div>
@@ -156,67 +156,51 @@ export default function ChartOfAccountsPage() {
   };
 
   return (
-    <div className="space-y-4 animate-in fade-in" dir={dir}>
+    <div className="space-y-6 animate-in fade-in" dir={dir}>
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
-          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2 text-slate-900">
-            <GitBranch className="h-6 w-6 text-primary" /> {t('chartOfAccounts')}
+          <h1 className="text-2xl font-black font-headline flex items-center gap-3 text-slate-900">
+            <GitBranch className="h-7 w-7 text-primary" /> {t('chartOfAccounts')}
           </h1>
+          <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{t('accounting.coa.title')}</p>
         </div>
         
-        <div className="flex gap-2">
-           {accounts?.length === 0 && (
-              <Button 
-                onClick={handleInitCOA} 
-                disabled={initializing}
-                variant="outline" 
-                size="sm" 
-                className="h-9 px-4 font-black border-primary text-primary hover:bg-primary/5 gap-2 shadow-xl animate-pulse"
-              >
-                {initializing ? <Loader2 className="animate-spin h-4 w-4" /> : <DatabaseZap className="h-4 w-4" />}
-                {t('accounting.coa.title')}
-              </Button>
-           )}
-           <Button onClick={() => openAddDialog()} size="sm" className="h-9 px-6 font-bold gap-2">
-              <Plus className="h-4 w-4" /> {t('inline.add.root.account')}
+        <div className="flex gap-3">
+           <Button onClick={() => openAddDialog()} size="sm" className="h-10 px-6 font-black rounded-xl shadow-lg gap-2">
+              <Plus className="h-4 w-4" /> {t('accounting.coa.addAccount')}
            </Button>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <Card className="lg:col-span-8 rounded-xl shadow-sm border bg-white overflow-hidden">
-          <CardHeader className="bg-slate-50/50 p-4 border-b text-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <Card className="lg:col-span-8 rounded-[2rem] shadow-2xl border-0 bg-white overflow-hidden ring-1 ring-black/5">
+          <CardHeader className="bg-slate-50/50 p-6 border-b text-start">
             <div className="relative">
-              <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+              <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <Input 
                 placeholder={t('common.search')} 
-                className="ps-10 h-9 bg-white border-slate-200" 
+                className="ps-12 h-12 rounded-2xl bg-white border-slate-200 text-lg font-bold" 
                 value={searchTerm} 
                 onChange={e => setSearchTerm(e.target.value)} 
               />
             </div>
           </CardHeader>
-          <CardContent className="p-2 min-h-[500px]">
+          <CardContent className="p-4 min-h-[600px]">
             {loading ? (
-              <div className="py-20 text-center"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></div>
+              <div className="py-40 text-center"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/20" /></div>
             ) : accounts?.length === 0 ? (
-              <div className="py-20 text-center space-y-6">
-                 <div className="h-20 w-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto text-slate-200">
-                    <GitBranch className="h-10 w-10" />
-                 </div>
+              <div className="py-32 text-center space-y-8">
+                 <GitBranch className="h-24 w-24 text-slate-100 mx-auto" />
                  <div className="space-y-2">
-                    <h3 className="font-black text-slate-400">{t('inline.coa.is.empty')}</h3>
+                    <h3 className="text-xl font-black text-slate-400 italic">لا يوجد حسابات معرفة</h3>
                  </div>
-                 <Button 
-                   onClick={handleInitCOA} 
-                   disabled={initializing}
-                   className="h-12 px-8 rounded-xl font-black gap-2"
-                 >
-                    <Sparkles className="h-5 w-5" /> {t('inline.activate.construction.coa')}
+                 <Button onClick={handleInitCOA} disabled={initializing} className="h-16 px-12 rounded-2xl bg-primary text-white font-black shadow-xl border-b-8 border-orange-700">
+                    {initializing ? <Loader2 className="animate-spin h-6 w-6" /> : <Sparkles className="h-6 w-6" />}
+                    تفعيل دليل الحسابات القياسي
                  </Button>
               </div>
             ) : (
-              <div className="rounded-xl overflow-hidden bg-white">
+              <div className="space-y-1">
                 {renderTree(null)}
               </div>
             )}
@@ -225,59 +209,59 @@ export default function ChartOfAccountsPage() {
       </div>
 
       <Dialog open={isAdding} onOpenChange={setIsAdding}>
-        <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
-           <div className="bg-slate-50 p-6 border-b text-start">
-              <DialogTitle className="text-lg font-black flex items-center gap-3">
-                 <Plus className="h-5 w-5 text-primary" />
-                 {t('inline.add.new.account')}
+        <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl" dir={dir}>
+           <div className="bg-primary/5 p-10 text-slate-900 text-start border-b">
+              <DialogTitle className="text-3xl font-black font-headline flex items-center gap-4">
+                 <Plus className="h-8 w-8 text-primary" />
+                 {t('accounting.coa.addAccount')}
               </DialogTitle>
            </div>
            
-           <div className="p-8 space-y-6 text-start">
-              <div className="grid grid-cols-2 gap-4">
-                 <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">{t('common.code')}</Label>
-                    <Input value={form.code} onChange={e => setForm({...form, code: e.target.value})} className="h-10 border-2 font-mono font-black text-primary" />
+           <div className="p-10 space-y-8 text-start">
+              <div className="grid grid-cols-2 gap-8">
+                 <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.code')}</Label>
+                    <Input value={form.code} onChange={e => setForm({...form, code: e.target.value})} className="h-12 rounded-xl border-2 font-mono font-black text-xl text-primary" />
                  </div>
-                 <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">{t('common.status')}</Label>
+                 <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('category')}</Label>
                     <Select value={form.type} onValueChange={(v: any) => setForm({...form, type: v})}>
-                       <SelectTrigger className="h-10 border-2 font-bold"><SelectValue /></SelectTrigger>
-                       <SelectContent>
-                          <SelectItem value="asset" className="font-bold">أصول (Asset)</SelectItem>
-                          <SelectItem value="liability" className="font-bold">التزامات (Liability)</SelectItem>
-                          <SelectItem value="equity" className="font-bold">حقوق ملكية (Equity)</SelectItem>
-                          <SelectItem value="revenue" className="font-bold">إيرادات (Revenue)</SelectItem>
-                          <SelectItem value="expense" className="font-bold">مصروفات (Expense)</SelectItem>
+                       <SelectTrigger className="h-12 rounded-xl border-2 font-black text-base"><SelectValue /></SelectTrigger>
+                       <SelectContent className="rounded-xl border-0 shadow-2xl">
+                          <SelectItem value="asset" className="font-bold py-3 border-b last:border-0">أصول (Asset)</SelectItem>
+                          <SelectItem value="liability" className="font-bold py-3 border-b last:border-0">التزامات (Liability)</SelectItem>
+                          <SelectItem value="equity" className="font-bold py-3 border-b last:border-0">حقوق ملكية (Equity)</SelectItem>
+                          <SelectItem value="revenue" className="font-bold py-3 border-b last:border-0">إيرادات (Revenue)</SelectItem>
+                          <SelectItem value="expense" className="font-bold py-3 border-b last:border-0">مصروفات (Expense)</SelectItem>
                        </SelectContent>
                     </Select>
                  </div>
               </div>
 
-              <div className="space-y-4">
-                 <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">{t('name')} (AR)</Label>
-                    <Input value={form.nameAr} onChange={e => setForm({...form, nameAr: e.target.value})} className="h-11 border-2 font-bold" />
+              <div className="space-y-6">
+                 <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.nameAr')}</Label>
+                    <Input value={form.nameAr} onChange={e => setForm({...form, nameAr: e.target.value})} className="h-14 rounded-2xl border-2 font-black text-lg" />
                  </div>
-                 <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">{t('name')} (EN)</Label>
-                    <Input value={form.nameEn} onChange={e => setForm({...form, nameEn: e.target.value})} className="h-11 border-2 font-bold text-start" dir="ltr" />
+                 <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.nameEn')}</Label>
+                    <Input value={form.nameEn} onChange={e => setForm({...form, nameEn: e.target.value})} className="h-14 rounded-2xl border-2 font-black text-lg text-start" dir="ltr" />
                  </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-50 border-2 border-slate-100 flex items-center justify-between">
-                 <div className="space-y-0.5">
-                    <Label className="font-black text-xs text-slate-800">{t('inline.is.it.a.group')}</Label>
-                    <p className="text-[9px] font-bold text-slate-400">{t('inline.enable.to.allow.children.accounts')}</p>
+              <div className="p-8 rounded-[2rem] bg-slate-50 border-2 border-white shadow-inner flex items-center justify-between">
+                 <div className="space-y-1">
+                    <Label className="font-black text-slate-800 text-sm">حساب تجميعي (Group Account)</Label>
+                    <p className="text-[10px] font-bold text-slate-400">تفعيل هذا الخيار يسمح بإضافة حسابات فرعية تحته.</p>
                  </div>
                  <Switch checked={form.isGroup} onCheckedChange={v => setForm({...form, isGroup: v})} />
               </div>
            </div>
 
-           <DialogFooter className="p-6 bg-slate-50 border-t">
-              <Button onClick={handleSaveAccount} disabled={saving || !form.nameAr || !form.code} className="w-full h-12 rounded-xl font-black gap-2 shadow-lg shadow-primary/20 border-b-4 border-orange-700">
-                 {saving ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
-                 {t('inline.commit.account')}
+           <DialogFooter className="p-10 bg-slate-50 border-t">
+              <Button onClick={handleSaveAccount} disabled={saving || !form.nameAr || !form.code} className="w-full h-20 rounded-[2rem] bg-primary text-white font-black text-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all border-b-8 border-orange-700">
+                 {saving ? <Loader2 className="animate-spin h-8 w-8" /> : <Save className="h-8 w-8" />}
+                 {t('common.save')}
               </Button>
            </DialogFooter>
         </DialogContent>
