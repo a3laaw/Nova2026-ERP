@@ -15,6 +15,16 @@ import {
   CheckCircle2, Sparkles, FileSearch, 
   LayoutGrid, X, Clock, FilePlus
 } from "lucide-react";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from '@/components/ui/input';
 import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, query, where, doc, getDocs, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
@@ -29,11 +39,7 @@ import { cn } from '@/lib/utils';
 import { VOManagerDialog } from '@/components/transactions/vo-manager-dialog';
 import { DocumentService } from '@/services/document-service';
 import { toast } from '@/hooks/use-toast';
-import { Input } from '@/components/ui/input';
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BOQReferenceSelector } from '@/components/settings/checklists/boq-reference/boq-reference-selector';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 
 export default function TransactionBOQProgressPage() {
   const params = useParams();
@@ -62,8 +68,7 @@ export default function TransactionBOQProgressPage() {
   const { data: allBoqs, loading: boqLoading } = useCollection<BOQ>(boqQuery);
 
   const activeBoq = useMemo(() => {
-    const tid = transactionId?.trim();
-    return allBoqs?.find(b => b.transactionId?.trim() === tid);
+    return (allBoqs || []).find(b => b.transactionId?.trim() === transactionId?.trim());
   }, [allBoqs, transactionId]);
 
   const itemsQuery = useMemo(() => (companyId && db && activeBoq?.id) ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
@@ -76,8 +81,7 @@ export default function TransactionBOQProgressPage() {
 
   const templates = useMemo(() => {
      if (!allTemplates || !transaction?.subServiceId) return [];
-     const subId = transaction.subServiceId.trim();
-     return allTemplates.filter(temp => temp.subServiceId?.trim() === subId && temp.isActive !== false);
+     return allTemplates.filter(temp => temp.subServiceId?.trim() === transaction.subServiceId.trim() && temp.isActive !== false);
   }, [allTemplates, transaction?.subServiceId]);
 
   const executionsQuery = useMemo(() => {
@@ -163,7 +167,7 @@ export default function TransactionBOQProgressPage() {
         const totalPct = Math.round(((metrics.prev + metrics.current) / planned) * 100);
 
         return (
-          <TableRow key={item.id || `${item.boqReferenceNodeId}-${iIdx}`} className="hover:bg-primary/[0.02] border-b-slate-50">
+          <TableRow key={item.id || `${item.boqReferenceNodeId}-${iIdx}`} className="hover:bg-primary/[0.02] border-b-slate-50 text-start">
             <TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8 text-start">{itemPrefix}</TableCell>
             <TableCell className="font-mono text-[10px] font-black text-primary/60 text-start">{item.referenceCode}</TableCell>
             <TableCell className="text-xs font-bold text-slate-700 text-start">{item.referenceTitle}</TableCell>

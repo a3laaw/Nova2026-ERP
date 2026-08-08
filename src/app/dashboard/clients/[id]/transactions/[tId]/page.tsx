@@ -88,7 +88,7 @@ function TransactionDetailsContent() {
   
   const activeBoq = useMemo(() => {
     const tid = transactionId?.trim();
-    return allBoqs?.find(b => b.transactionId?.trim() === tid);
+    return (allBoqs || []).find(b => b.transactionId?.trim() === tid);
   }, [allBoqs, transactionId]);
 
   const allTemplatesQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqTemplates(companyId))) : null, [db, companyId]);
@@ -97,7 +97,7 @@ function TransactionDetailsContent() {
   const templates = useMemo(() => {
      if (!allTemplates || !transaction?.subServiceId) return [];
      const subId = transaction.subServiceId.trim();
-     return allTemplates.filter(temp => (temp.subServiceId?.trim() === subId) && temp.isActive !== false);
+     return allTemplates.filter(temp => temp.subServiceId?.trim() === subId && temp.isActive !== false);
   }, [allTemplates, transaction?.subServiceId]);
 
   const isFinancialLockActive = useMemo(() => {
@@ -256,9 +256,6 @@ function TransactionDetailsContent() {
                          <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto"><Lock className="h-8 w-8 text-slate-200" /></div>
                          <div className="space-y-1">
                             <h3 className="text-sm font-black text-slate-900">{t('projects.details.locked')}</h3>
-                            <p className="text-[10px] text-slate-400 max-w-xs mx-auto leading-relaxed font-bold italic">
-                               يتطلب المسار الفني وجود عقد معتمد ومقايسة ميزانية معتمدة للبدء في مراحل التنفيذ الميداني.
-                            </p>
                          </div>
                          <div className="flex justify-center gap-3 pt-4">
                             <Button onClick={() => setActiveTab('documents')} variant="outline" size="sm" className="h-8 font-bold px-6 text-[10px] rounded-md shadow-sm border-2">
@@ -345,7 +342,7 @@ function TransactionDetailsContent() {
                   </SelectContent>
                </Select>
                <Button onClick={handleCreateBOQ} disabled={!selectedTemplateId || !!loadingAction} className="w-full h-14 rounded-2xl font-black text-sm shadow-xl shadow-primary/20 border-b-4 border-orange-700 mt-4 transition-all active:scale-95">
-                  {loadingAction === 'creating_boq' ? <Loader2 className="animate-spin h-4 w-4" /> : <CheckCircle2 className="h-4 w-4 me-2" />} {isRtl ? 'تنشيط وبدء الدراسة' : 'Instantiate & Start Study'}
+                  {loadingAction === 'creating_boq' ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4 me-2" />} {isRtl ? 'تنشيط وبدء الدراسة' : 'Instantiate & Start Study'}
                </Button>
             </div>
          </DialogContent>
