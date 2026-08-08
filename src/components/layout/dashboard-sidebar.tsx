@@ -17,7 +17,7 @@ import {
   Building2, ChevronLeft, Settings2, ChevronDown,
   Database, FileSpreadsheet, CalendarDays, Gavel,
   MapPinned, Hammer, MapPin, Landmark, Receipt,
-  GitBranch, BarChart3
+  GitBranch, BarChart3, Wallet
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
