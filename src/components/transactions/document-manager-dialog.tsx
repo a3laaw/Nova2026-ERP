@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -92,12 +93,10 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
 
   const { data: documents, loading: docsLoading } = useCollection<any>(docsQuery);
 
-  // تحديث استعلام القوالب ليكون سيادياً مفلتراً حسب نوع النشاط والمسار
   const templatesQuery = useMemo(() => {
     if (!companyId || !db || !transaction.activityTypeId) return null;
     const path = type === 'quotation' ? paths.quotationTemplates(companyId) : paths.contractTemplates(companyId);
     
-    // فلترة حصرية حسب النشاط لضمان عدم خلط قوالب المقاولات مع الاستشارات
     return query(
       collection(db, path), 
       where('isActive', '==', true),
@@ -107,7 +106,6 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
 
   const { data: rawTemplates } = useCollection<any>(templatesQuery);
 
-  // إعطاء الأولوية للقالب المطابق للمسار الفني الدقيق
   const templates = useMemo(() => {
     if (!rawTemplates) return [];
     return [...rawTemplates].sort((a, b) => {
@@ -143,7 +141,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
         router.push(`/dashboard/clients/${clientId}/contracts/${docId}`);
       }
     } catch (e: any) {
-      toast({ variant: "destructive", title: t('error'), description: e.message });
+      toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
       setLoading(false);
     }
@@ -163,7 +161,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
       setDeletingId(null);
       forceThaw();
     } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+      toast({ variant: "destructive", title: t('common.error') });
     } finally {
       setLoading(false);
     }
@@ -181,7 +179,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
       });
       toast({ title: isRtl ? "تم توثيق السداد" : "Payment Confirmed" });
     } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+      toast({ variant: "destructive", title: t('common.error') });
     } finally {
       setLoading(false);
     }
@@ -201,7 +199,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
     <>
       <Dialog open={isOpen} onOpenChange={(v) => { if(!v) onClose(); }}>
         <DialogContent className="max-w-4xl rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
-          <div className="bg-primary/5 p-8 text-slate-900 text-start border-b flex justify-between items-center shrink-0">
+          <div className="bg-slate-50 p-8 text-slate-900 text-start border-b flex justify-between items-center shrink-0">
              <div className="flex items-center gap-4">
                 <div className="h-14 w-14 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg ring-4 ring-primary/5">
                    {type === 'quotation' ? <FileText className="h-7 w-7" /> : <Gavel className="h-7 w-7" />}
@@ -226,7 +224,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
                 <div className="p-8 rounded-[2rem] bg-slate-50 border-2 border-slate-100 space-y-6 shadow-inner">
                    <div className="space-y-2">
                       <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">
-                         {isRtl ? `القوالب المتوافقة مع (${transaction.activityTypeName})` : `Templates matching ${transaction.activityTypeName}`}
+                         {isRtl ? `اختر القالب المرجعي (${transaction.activityTypeName})` : `Choose Template (${transaction.activityTypeName})`}
                       </Label>
                       <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
                          <SelectTrigger className="h-12 rounded-xl border-2 bg-white font-bold text-sm">
@@ -340,7 +338,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
              <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
                 <AlertTriangle className="h-10 w-10" />
              </div>
-             <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">{t('confirmDelete')}</AlertDialogTitle>
+             <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">{t('common.confirmDelete')}</AlertDialogTitle>
              <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
                 {isRtl 
                   ? 'سيتم حذف هذا المستند نهائياً من الأرشيف السحابي ولا يمكن التراجع عن هذا الإجراء.' 

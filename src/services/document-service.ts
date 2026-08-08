@@ -57,7 +57,7 @@ export class DocumentService {
        const clientRef = doc(this.db, paths.clients(this.companyId), currentData.clientId);
        await updateDoc(clientRef, { status: 'contracted', updatedAt: serverTimestamp() });
 
-       // 2. الأتمتة المحاسبية: إنشاء حساب ذمة للعميل تلقائياً (Trigger 1)
+       // 2. الأتمتة المحاسبية: إنشاء حساب ذمة للعميل تلقائياً
        const accService = new AccountingService(this.db, this.companyId);
        await accService.ensureControlAccount('1201', 'ذمم العملاء', 'Accounts Receivable', 'asset');
        await accService.createAutomaticSubAccount('1201', currentData.clientId, currentData.clientName, 'asset');
@@ -217,7 +217,8 @@ export class DocumentService {
     userName: string
   ) {
     ensureActionPermission(this.permissions, 'projects:create');
-    const templateRef = doc(this.db, paths.quotationTemplates(this.companyId), templateId);
+    // FIX: Path was pointing to quotationTemplates, corrected to contractTemplates
+    const templateRef = doc(this.db, paths.contractTemplates(this.companyId), templateId);
     const templateSnap = await getDoc(templateRef);
     if (!templateSnap.exists()) throw new Error('TEMPLATE_NOT_FOUND');
     const template = templateSnap.data() as ContractTemplate;

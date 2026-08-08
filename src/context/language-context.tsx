@@ -70,7 +70,18 @@ const translations: Record<Language, Record<string, any>> = {
       notes: 'ملاحظات',
       photos: 'الصور',
       workGroups: 'مجموعات العمل',
-      loadFromGroup: 'تحميل طاقم كامل'
+      loadFromGroup: 'تحميل طاقم كامل',
+      companyIdentity: 'هوية الشركة',
+      manageCompanyData: 'إدارة بيانات المنشأة',
+      referenceLists: 'القوائم المرجعية',
+      templates: 'مكتبة القوالب',
+      workHours: 'مواعيد العمل',
+      profile: 'الملف الشخصي',
+      rolesRef: 'الأدوار والصلاحيات',
+      systemSetup: 'تأسيس النظام',
+      personalInfo: 'المعلومات الشخصية',
+      username: 'اسم المستخدم',
+      saveChanges: 'حفظ التغييرات'
     },
     dashboard: {
       title: 'نظرة عامة على العمليات',
@@ -240,7 +251,18 @@ const translations: Record<Language, Record<string, any>> = {
       notes: 'Notes',
       photos: 'Photos',
       workGroups: 'Work Crews',
-      loadFromGroup: 'Load Whole Crew'
+      loadFromGroup: 'Load Whole Crew',
+      companyIdentity: 'Company Identity',
+      manageCompanyData: 'Manage Organization Data',
+      referenceLists: 'Reference Lists',
+      templates: 'Templates Library',
+      workHours: 'Work Hours',
+      profile: 'User Profile',
+      rolesRef: 'Roles & Permissions',
+      systemSetup: 'System Setup',
+      personalInfo: 'Personal Information',
+      username: 'Username',
+      saveChanges: 'Save Changes'
     },
     dashboard: {
       title: 'Operations Overview',
@@ -394,4 +416,3 @@ export const useLanguage = () => {
   if (!context) throw new Error('useLanguage must be used within LanguageProvider');
   return context;
 };
-
