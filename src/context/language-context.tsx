@@ -61,6 +61,17 @@ const translations: Record<Language, Record<string, any>> = {
     description: 'الوصف',
     logout: 'تسجيل الخروج',
     
+    // Core Navigation Keys (Requested Fixes)
+    checklists: 'الدستور التشغيلي',
+    templates: 'مكتبة القوالب',
+    rolesRef: 'مصفوفة الصلاحيات',
+    profile: 'الملف الشخصي',
+    userProfile: 'الملف الشخصي',
+    companyIdentity: 'هوية الشركة',
+    usersManagement: 'إدارة المستخدمين',
+    workHours: 'مواعيد العمل',
+    systemSetup: 'تأسيس النظام',
+
     // Checklists & Settings Tabs
     referenceLists: 'القوائم المرجعية',
     boqMasterTree: 'شجرة الأعمال',
@@ -68,13 +79,8 @@ const translations: Record<Language, Record<string, any>> = {
     orgRef: 'الهيكل التنظيمي',
     techRef: 'المسارات الفنية',
     geoRef: 'البيانات الجغرافية',
-    systemSetup: 'تأسيس النظام',
-    companyIdentity: 'هوية الشركة',
-    usersManagement: 'إدارة المستخدمين',
     templatesLibrary: 'مكتبة القوالب',
     rolesPermissions: 'مصفوفة الصلاحيات',
-    workHours: 'مواعيد العمل',
-    userProfile: 'الملف الشخصي',
 
     // Specific Modules
     unitTypes: 'وحدات القياس',
@@ -120,6 +126,11 @@ const translations: Record<Language, Record<string, any>> = {
     indemnity: 'نهاية الخدمة',
     attendanceLogs: 'البصمة والحضور',
     permissions: 'الاستئذانات',
+
+    // New Keys
+    manageCompanyData: 'إدارة بيانات المنشأة والهوية البصرية',
+    templatesDesc: 'نماذج العقود، عروض الأسعار، وجداول الكميات المرجعية.',
+    workHoursDesc: 'ضبط فترات الدوام، العطلات الرسمية، وقواعد البصمة.'
   },
   en: {
     dashboard: 'Dashboard',
@@ -167,19 +178,24 @@ const translations: Record<Language, Record<string, any>> = {
     description: 'Description',
     logout: 'Logout',
 
+    checklists: 'Checklists',
+    templates: 'Templates',
+    rolesRef: 'Roles Matrix',
+    profile: 'Profile',
+    userProfile: 'User Profile',
+    companyIdentity: 'Company Identity',
+    usersManagement: 'Users Management',
+    workHours: 'Work Hours',
+    systemSetup: 'System Setup',
+
     referenceLists: 'Reference Lists',
     boqMasterTree: 'BOQ Master Tree',
     halls: 'Halls',
     orgRef: 'Org Structure',
     techRef: 'Technical Paths',
     geoRef: 'Geographic Data',
-    systemSetup: 'System Setup',
-    companyIdentity: 'Company Identity',
-    usersManagement: 'Users Management',
     templatesLibrary: 'Templates Library',
     rolesPermissions: 'Roles & Permissions',
-    workHours: 'Work Hours',
-    userProfile: 'User Profile',
 
     unitTypes: 'Unit Types',
     paymentMethods: 'Payment Methods',
@@ -221,6 +237,10 @@ const translations: Record<Language, Record<string, any>> = {
     indemnity: 'Indemnity',
     attendanceLogs: 'Attendance Logs',
     permissions: 'Permissions',
+
+    manageCompanyData: 'Manage company data and branding.',
+    templatesDesc: 'Contract, Quotation, and BOQ reference templates.',
+    workHoursDesc: 'Set shifts, public holidays, and attendance rules.'
   }
 };
 
