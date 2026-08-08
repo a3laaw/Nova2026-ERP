@@ -48,12 +48,17 @@ export function BreadcrumbNav() {
     receipt: t('receiptVouchers'),
     payment: t('paymentVouchers'),
     journals: t('journalEntries'),
-    reports: t('reports')
+    reports: t('reports'),
+    transactions: t('transactions')
   };
 
   const formatSegment = (segment: string) => {
+    // تعريب "details" التي تظهر كجزء من مسار المشروع
+    if (segment.toLowerCase() === 'details') return t('details');
+    
+    // التعامل مع الـ IDs والمسارات الطويلة
     if (segment.length > 15 || /\d/.test(segment)) {
-      return isRtl ? 'تفاصيل' : 'Details';
+      return t('details');
     }
     return routeMap[segment] || segment;
   };

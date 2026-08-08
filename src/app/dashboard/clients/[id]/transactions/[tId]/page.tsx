@@ -85,9 +85,13 @@ function TransactionDetailsContent() {
   const contractsQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.contracts(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
   const { data: contracts } = useCollection<Contract>(contractsQuery);
   
-  const boqQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId), limit(1)) : null, [db, companyId, transactionId]);
-  const { data: boqs } = useCollection<BOQ>(boqQuery);
-  const activeBoq = boqs?.[0];
+  // استخدام "الفلترة في الذاكرة" لضمان ظهور المقايسة فوراً وتجاوز مشاكل الفهارس
+  const boqQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqs(companyId))) : null, [db, companyId]);
+  const { data: allBoqs } = useCollection<BOQ>(boqQuery);
+  
+  const activeBoq = useMemo(() => {
+    return allBoqs?.find(b => b.transactionId === transactionId);
+  }, [allBoqs, transactionId]);
 
   const isFinancialLockActive = useMemo(() => {
      const hasApprovedContract = contracts?.some(c => ['approved', 'paid', 'active', 'signed'].includes(c.status || '') || c.isPaid);
@@ -225,7 +229,7 @@ function TransactionDetailsContent() {
              <div className="flex gap-2">
                 {activeBoq ? (
                   <Button onClick={() => safePush(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} variant="outline" size="sm" className={cn("h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border-slate-200 shadow-sm", activeBoq.status !== 'approved' && "border-amber-200 bg-amber-50 text-amber-600")}>
-                      <FileSpreadsheet className="h-3 w-3" /> {activeBoq.status === 'approved' ? (isRtl ? 'المقايسة' : 'BOQ') : (isRtl ? 'بانتظار الاعتماد' : 'Awaiting Approval')}
+                      <FileSpreadsheet className="h-3 w-3" /> {activeBoq.status === 'approved' ? (isRtl ? 'المقايسة المعتمدة' : 'BOQ') : (isRtl ? 'بانتظار الاعتماد' : 'Awaiting Approval')}
                   </Button>
                 ) : (
                   <Button onClick={() => setIsBoqInitOpen(true)} variant="outline" size="sm" className="h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border-slate-200 shadow-sm">
@@ -338,7 +342,9 @@ function TransactionDetailsContent() {
             <div className="p-8 space-y-4 text-start">
                <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'اختر القالب الهندسي' : 'Select Template'}</Label>
                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                  <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                  <SelectTrigger className="h-12 rounded-xl border-2 font-black text-lg">
+                     <SelectValue placeholder="..." />
+                  </SelectTrigger>
                   <SelectContent className="rounded-xl border-2 shadow-2xl">
                      {templates?.map(t => <SelectItem key={t.id} value={t.id!} className="font-bold py-3">{t.name}</SelectItem>)}
                   </SelectContent>

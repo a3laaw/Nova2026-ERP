@@ -189,7 +189,11 @@ const translations: Record<Language, Record<string, string>> = {
     'companyProfile': 'ملف تعريف المنشأة',
     'personalInfo': 'البيانات الشخصية',
     'saveChanges': 'حفظ التغييرات',
-    'username': 'اسم المستخدم'
+    'username': 'اسم المستخدم',
+    
+    // Breadcrumb Special
+    'details': 'تفاصيل',
+    'transactions': 'المعاملات'
   },
   en: {
     // Common
@@ -367,7 +371,11 @@ const translations: Record<Language, Record<string, string>> = {
     'companyProfile': 'Enterprise Profile',
     'personalInfo': 'Personal Information',
     'saveChanges': 'Save Changes',
-    'username': 'Username'
+    'username': 'Username',
+    
+    // Breadcrumb Special
+    'details': 'Details',
+    'transactions': 'Transactions'
   }
 };
 
