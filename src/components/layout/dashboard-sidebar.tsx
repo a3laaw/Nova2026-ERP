@@ -1,8 +1,3 @@
-
-/**
- * @fileOverview القائمة الجانبية (Sidebar) المحصنة لغوياً وبصرياً.
- */
-
 "use client"
 
 import * as React from "react"
@@ -58,9 +53,9 @@ export function DashboardSidebar() {
         subItems: [
           { title: t('leads'), url: "/dashboard/crm", icon: Users },
           { title: t('clients'), url: "/dashboard/clients", icon: UserCircle },
-          { title: isRtl ? 'المواعيد والزيارات' : 'Appointments', url: "/dashboard/appointments", icon: CalendarDays },
-          { title: isRtl ? 'حجز القاعات والاجتماعات' : 'Halls & Meetings', url: "/dashboard/meetings", icon: Landmark },
-          { title: isRtl ? 'سجل تفاعل العملاء' : 'Visits Dossier', url: "/dashboard/projects/reports/client-visits", icon: MapPinned },
+          { title: t('appointments'), url: "/dashboard/appointments", icon: CalendarDays },
+          { title: t('halls'), url: "/dashboard/meetings", icon: Landmark },
+          { title: t('visitsDossier'), url: "/dashboard/projects/reports/client-visits", icon: MapPinned },
         ]
       },
       { 
@@ -69,21 +64,21 @@ export function DashboardSidebar() {
         url: "/dashboard/projects", 
         resource: 'projects',
         subItems: [
-          { title: isRtl ? 'المشاريع الجارية' : 'Active Projects', url: "/dashboard/projects", icon: Layers },
+          { title: t('activeProjects'), url: "/dashboard/projects", icon: Layers },
           { title: t('boqExplorer'), url: "/dashboard/projects/boqs", icon: FileSpreadsheet },
           { title: t('reports'), url: "/dashboard/reports", icon: FileText },
         ]
       },
       { 
-        title: t('construction') || (isRtl ? 'العمليات الميدانية' : 'Field Ops'), 
+        title: t('construction'), 
         icon: Hammer, 
         url: "/dashboard/construction/bookings", 
         resource: 'projects',
         subItems: [
-          { title: isRtl ? 'الرادار الميداني' : 'Field Radar', url: "/dashboard/construction/bookings", icon: MapPin },
-          { title: isRtl ? 'مجموعات العمل' : 'Work Groups', url: "/dashboard/construction/groups", icon: Users },
-          { title: isRtl ? 'سجل المعدات' : 'Equipment', url: "/dashboard/equipment", icon: Truck },
-          { title: isRtl ? 'تقارير الميدان' : 'Field Logs', url: "/dashboard/construction/field-visits", icon: FileText },
+          { title: t('fieldRadar'), url: "/dashboard/construction/bookings", icon: MapPin },
+          { title: t('workGroups'), url: "/dashboard/construction/groups", icon: Users },
+          { title: t('equipment'), url: "/dashboard/equipment", icon: Truck },
+          { title: t('fieldLogs'), url: "/dashboard/construction/field-visits", icon: FileText },
         ]
       },
       { 
@@ -92,9 +87,9 @@ export function DashboardSidebar() {
         url: "/dashboard/procurement", 
         resource: 'procurement',
         subItems: [
-          { title: isRtl ? 'الموردين' : 'Suppliers', url: "/dashboard/procurement/suppliers", icon: Truck },
-          { title: isRtl ? 'العقود' : 'Contracts', url: "/dashboard/procurement/contracts", icon: Gavel },
-          { title: isRtl ? 'تحليل العروض' : 'AI Analysis', url: "/dashboard/ai", icon: FileSearch },
+          { title: t('suppliers'), url: "/dashboard/procurement/suppliers", icon: Truck },
+          { title: t('contracts'), url: "/dashboard/procurement/contracts", icon: Gavel },
+          { title: t('aiAnalysis'), url: "/dashboard/ai", icon: FileSearch },
         ]
       },
       { 
@@ -127,7 +122,7 @@ export function DashboardSidebar() {
         url: "/dashboard/inventory", 
         resource: 'inventory',
         subItems: [
-          { title: isRtl ? 'المخازن' : 'Warehouses', url: "/dashboard/inventory", icon: Building2 },
+          { title: t('inventory'), url: "/dashboard/inventory", icon: Building2 },
         ]
       },
       { 

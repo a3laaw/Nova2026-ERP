@@ -15,6 +15,7 @@ export function BreadcrumbNav() {
 
   const segments = pathname.split('/').filter(Boolean);
 
+  // خريطة المسارات الموحدة لضمان التعريب في شريط المسار
   const routeMap: Record<string, string> = {
     dashboard: t('dashboard'),
     crm: t('crm'),
@@ -32,7 +33,17 @@ export function BreadcrumbNav() {
     'work-hours': t('workHours'),
     templates: t('templates'),
     details: t('details'),
-    transactions: t('transactions')
+    transactions: t('transactions'),
+    employees: t('staffRecords'),
+    leaves: t('leaveRequests'),
+    payroll: t('payrollBatches'),
+    coa: t('chartOfAccounts'),
+    vouchers: t('receiptVouchers'),
+    journals: t('journalEntries'),
+    boqs: t('boqExplorer'),
+    orders: t('purchaseOrders') || 'أوامر الشراء',
+    suppliers: t('suppliers'),
+    users: t('usersManagement')
   };
 
   const formatSegment = (segment: string) => {
@@ -40,7 +51,7 @@ export function BreadcrumbNav() {
     
     if (sLower === 'details') return t('details');
     
-    // التعامل مع الـ IDs والمسارات الطويلة
+    // التعامل مع الـ IDs والمسارات الطويلة (تحويلها لـ "تفاصيل")
     if (segment.length > 15 || /\d/.test(segment)) {
       return t('details');
     }

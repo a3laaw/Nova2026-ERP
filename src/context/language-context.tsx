@@ -14,21 +14,70 @@ interface LanguageContextType {
 
 const translations: Record<Language, Record<string, string>> = {
   ar: {
-    // الكلمات السيادية (Sovereign Core)
-    'checklists': 'الدستور التشغيلي',
-    'templates': 'مكتبة القوالب',
-    'rolesRef': 'مصفوفة الصلاحيات',
+    // الكلمات السيادية (Core)
+    'dashboard': 'لوحة التحكم',
+    'crm': 'العملاء والفرص',
+    'projects': 'المشاريع والمعاملات',
+    'construction': 'العمليات الميدانية',
+    'procurement': 'المشتريات والتوريد',
+    'hr': 'الموارد البشرية',
+    'accounting': 'المحاسبة والمالية',
+    'inventory': 'المخازن والعهد',
+    'settings': 'إعدادات النظام',
     'profile': 'الملف الشخصي',
     'details': 'تفاصيل',
     'transactions': 'المعاملات',
 
-    // تفاصيل المشروع والقفول (Project Details & Locks)
+    // العملاء والفرص (CRM)
+    'leads': 'الفرص البيعية',
+    'clients': 'سجل العملاء',
+    'appointments': 'المواعيد والزيارات',
+    'halls': 'حجز القاعات والاجتماعات',
+    'visitsDossier': 'سجل تفاعل العملاء',
+
+    // المشاريع (Projects)
+    'activeProjects': 'المشاريع الجارية',
+    'boqExplorer': 'مستكشف المقايسات',
+    'reports': 'التقارير الهندسية',
+
+    // العمليات الميدانية (Field Ops)
+    'fieldRadar': 'الرادار الميداني',
+    'workGroups': 'مجموعات العمل',
+    'equipment': 'سجل المعدات',
+    'fieldLogs': 'تقارير الميدان',
+
+    // المشتريات (Procurement)
+    'suppliers': 'الموردين',
+    'contracts': 'العقود',
+    'aiAnalysis': 'تحليل العروض (AI)',
+
+    // الموارد البشرية (HR)
+    'staffRecords': 'شؤون الموظفين',
+    'leaveRequests': 'طلبات الإجازات',
+    'payrollBatches': 'مسيرات الرواتب',
+
+    // المحاسبة (Accounting)
+    'chartOfAccounts': 'دليل الحسابات',
+    'receiptVouchers': 'سندات القبض',
+    'paymentVouchers': 'سندات الصرف',
+    'journalEntries': 'قيود اليومية',
+    'financialReports': 'التقارير المالية',
+
+    // الإعدادات (Settings)
+    'usersManagement': 'إدارة المستخدمين',
+    'companyIdentity': 'هوية المنشأة',
+    'checklists': 'الدستور التشغيلي',
+    'rolesPermissions': 'الأدوار والصلاحيات',
+    'workHours': 'مواعيد العمل',
+    'userProfile': 'ملفي الشخصي',
+
+    // رسائل النظام والقفل
     'projects.details.radar': 'رادار التنفيذ الميداني',
     'projects.details.finance': 'المالية والوثائق',
     'projects.details.locked': 'المسار الفني مقفل: يتطلب عقد معتمد ومقايسة ميزانية معتمدة للبدء.',
     'projects.boqExplorer.noBoqs': 'لا توجد مقايسات مسجلة حالياً لهذه المعاملة.',
     
-    // الأزرار والعمليات (Common Actions)
+    // الأزرار
     'common.save': 'حفظ البيانات',
     'common.cancel': 'إلغاء',
     'common.edit': 'تعديل',
@@ -39,50 +88,25 @@ const translations: Record<Language, Record<string, string>> = {
     'common.pending': 'قيد الانتظار',
     'common.error': 'خطأ في النظام',
     'common.saved': 'تم الحفظ بنجاح',
-    'common.confirm': 'تأكيد وحفظ',
-    'common.close': 'إغلاق',
-    'common.order': 'الترتيب',
-    'common.code': 'الكود',
-    'common.unit': 'الوحدة',
-    'common.quantity': 'الكمية',
-    'common.all': 'الكل',
-
-    // الوحدات الإدارية (Dashboard & Modules)
-    'dashboard': 'لوحة التحكم',
-    'crm': 'العملاء والفرص',
-    'projects': 'المشاريع والمعاملات',
-    'construction': 'العمليات الميدانية',
-    'procurement': 'المشتريات والتوريد',
-    'hr': 'الموارد البشرية',
-    'accounting': 'المحاسبة والمالية',
-    'inventory': 'المخازن والعهد',
-    'settings': 'إعدادات النظام',
-
-    // التبويبات الفنية (UI Tabs)
-    'active': 'النشاط',
-    'timeline': 'الزمني',
-    'chat_archive': 'الأرشيف',
-    'time_archive': 'الوقت',
-
-    // أنماط التسعير (Pricing Modes)
+    
+    // أنماط التسعير
     'itemized': 'تسعير بنود',
     'fixed': 'مبلغ مقطوع',
     'percentage': 'نسبة مئوية',
     'pricingMode': 'نمط التسعير'
   },
   en: {
+    'dashboard': 'Dashboard',
+    'crm': 'CRM',
+    'leads': 'Leads',
+    'clients': 'Clients',
+    'projects': 'Projects',
     'checklists': 'Constitution',
     'templates': 'Templates',
     'rolesRef': 'Permissions',
     'profile': 'Profile',
     'details': 'Details',
-    'transactions': 'Transactions',
-    'projects.details.radar': 'Execution Radar',
-    'projects.details.finance': 'Finance & Docs',
-    'projects.details.locked': 'Path Locked: Contract & BOQ Required',
-    'projects.boqExplorer.noBoqs': 'No BOQs found for this transaction.',
-    'common.save': 'Save',
-    'common.cancel': 'Cancel'
+    'transactions': 'Transactions'
   }
 };
 
