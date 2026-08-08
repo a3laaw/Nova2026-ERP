@@ -33,10 +33,8 @@ import {
 export function DashboardSidebar() {
   const pathname = usePathname()
   const { state } = useSidebar()
-  const { t, lang } = useLanguage()
+  const { t, isRtl } = useLanguage()
   const { canAccess, check } = usePermissions()
-  const { globalUser } = useAuthContext()
-  const isRtl = lang === 'ar'
   const isCollapsed = state === "collapsed"
 
   const menuItems = React.useMemo(() => {
@@ -54,7 +52,7 @@ export function DashboardSidebar() {
           { title: t('leads'), url: "/dashboard/crm", icon: Users },
           { title: t('clients'), url: "/dashboard/clients", icon: UserCircle },
           { title: t('appointments'), url: "/dashboard/appointments", icon: CalendarDays },
-          { title: t('halls'), url: "/dashboard/meetings", icon: Landmark },
+          { title: t('meetings'), url: "/dashboard/meetings", icon: Landmark },
           { title: t('visitsDossier'), url: "/dashboard/projects/reports/client-visits", icon: MapPinned },
         ]
       },
@@ -93,7 +91,7 @@ export function DashboardSidebar() {
         ]
       },
       { 
-        title: isHrManager ? t('hr') : (isRtl ? 'شؤوني الوظيفية' : 'Personal Workspace'), 
+        title: isHrManager ? t('hr') : t('inline.personal.workspace'), 
         icon: UserCircle, 
         url: "/dashboard/hr", 
         resource: 'hr',
@@ -140,7 +138,7 @@ export function DashboardSidebar() {
         ]
       }
     ];
-  }, [t, isRtl, globalUser, check]);
+  }, [t, check]);
 
   const visibleItems = React.useMemo(() => {
     const finalItems: any[] = [];
@@ -173,7 +171,7 @@ export function DashboardSidebar() {
           <div className="flex flex-col text-start px-2 border-b-2 border-orange-50 pb-4">
             <span className="font-headline font-black text-2xl text-slate-900 tracking-tighter leading-none">NovaFlow</span>
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-[8px] uppercase font-black tracking-[0.3em] text-[#e87c24]">ENTERPRISE</span>
+              <span className="text-[8px] uppercase font-black tracking-[0.3em] text-[#e87c24]">ERP SYSTEM</span>
               <div className="h-[1.5px] w-8 bg-[#e87c24] rounded-full" />
             </div>
           </div>
@@ -200,7 +198,7 @@ export function DashboardSidebar() {
         {!isCollapsed && (
           <div className="p-4 rounded-3xl bg-white border border-orange-100 shadow-xl ring-1 ring-black/[0.02] flex justify-between items-center">
              <Badge className="bg-[#e87c24] text-white text-[8px] font-black uppercase h-5 px-2 rounded-full">V2.8</Badge>
-             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">KUWAIT CLOUD</span>
+             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">ERP CLOUD</span>
           </div>
         )}
       </SidebarFooter>

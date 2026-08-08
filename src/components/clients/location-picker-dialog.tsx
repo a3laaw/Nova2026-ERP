@@ -32,7 +32,7 @@ const MapView = dynamic(() => import('./map-view'), {
     <div className="h-[400px] w-full rounded-[2.5rem] bg-slate-50 flex items-center justify-center border-4 border-slate-100">
       <div className="flex flex-col items-center gap-3">
          <Loader2 className="h-10 w-10 animate-spin text-primary/30" />
-         <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Initializing Smart Radar...</p>
+         <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Initializing Map...</p>
       </div>
     </div>
   )
@@ -46,7 +46,7 @@ interface Props {
 }
 
 export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: Props) {
-  const { lang, dir } = useLanguage();
+  const { lang, dir, t } = useLanguage();
   const isRtl = lang === 'ar';
   
   const [position, setPosition] = useState<[number, number]>([29.3759, 47.9774]);
@@ -54,7 +54,6 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
   const [isSearching, setIsSearching] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
 
-  // استخراج الإحداثيات من الرابط عند الفتح (Sovereign Parser)
   useEffect(() => {
     if (initialUrl && isOpen) {
       const match = initialUrl.match(/q=([-+]?\d+\.\d+),([-+]?\d+\.\d+)/) || initialUrl.match(/@([-+]?\d+\.\d+),([-+]?\d+\.\d+)/);
@@ -80,7 +79,7 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
       const lng = parseFloat(coordMatch[2]);
       if (!isNaN(lat) && !isNaN(lng)) {
         setPosition([lat, lng]);
-        toast({ title: isRtl ? "تم اكتشاف إحداثيات مباشرة" : "Coordinates Detected" });
+        toast({ title: t('common.confirm') });
         return;
       }
     }
@@ -95,17 +94,14 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
         const lat = parseFloat(data[0].lat);
         const lng = parseFloat(data[0].lon);
         setPosition([lat, lng]);
-        toast({ title: isRtl ? "تم العثور على الموقع" : "Location Found" });
       } else {
         toast({ 
           variant: "destructive", 
-          title: isRtl ? "لم يتم العثور على الموقع" : "Location Not Found",
-          description: isRtl ? "حاول كتابة اسم المنطقة والقطعة بشكل أوضح." : "Try adding area and block details."
+          title: t('common.error')
         });
       }
     } catch (e) {
       console.error("Search failed", e);
-      toast({ variant: "destructive", title: isRtl ? "fشل محرك البحث" : "Search Engine Failure" });
     } finally {
       setIsSearching(false);
     }
@@ -113,7 +109,6 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
 
   const handleLocateMe = () => {
     if (typeof window === 'undefined' || !navigator.geolocation) {
-      toast({ variant: "destructive", title: "GPS Not Supported" });
       return;
     }
     setIsLocating(true);
@@ -121,11 +116,9 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
       (pos) => {
         setPosition([pos.coords.latitude, pos.coords.longitude]);
         setIsLocating(false);
-        toast({ title: isRtl ? "تم تحديد موقعك الحالي" : "Location Fixed" });
       },
       () => {
         setIsLocating(false);
-        toast({ variant: "destructive", title: isRtl ? "تم رفض الوصول للموقع" : "GPS Access Denied" });
       }
     );
   };
@@ -145,8 +138,8 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
                  <LocateFixed className="h-7 w-7" />
               </div>
               <div>
-                 <DialogTitle className="text-2xl font-black font-headline">رادار المواقع الذكي</DialogTitle>
-                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">ابحث بالمنطقة والقطعة أو الصق الإحداثيات مباشرة</p>
+                 <DialogTitle className="text-2xl font-black font-headline">Location Radar</DialogTitle>
+                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">Select site location on map</p>
               </div>
            </div>
            <Button variant="ghost" onClick={onClose} className="rounded-full h-10 w-10 text-slate-400 relative z-10"><X className="h-6 w-6" /></Button>
@@ -160,12 +153,12 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
                    value={searchQuery}
                    onChange={e => setSearchQuery(e.target.value)}
                    onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                   placeholder={isRtl ? "مثال: الروضة قطعة 2، أو 29.3, 47.9" : "e.g. Rawda Block 2, or 29.3, 47.9"}
+                   placeholder={t('common.search')}
                    className="h-14 rounded-2xl border-2 ps-12 font-bold text-lg bg-slate-50/50 focus:bg-white transition-all shadow-inner"
                  />
                  {isSearching && <Loader2 className="absolute end-4 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-primary" />}
               </div>
-              <Button onClick={handleSearch} disabled={isSearching} className="h-14 px-10 rounded-2xl bg-slate-900 text-white font-black shadow-xl hover:scale-105 transition-all">بحث ذكي</Button>
+              <Button onClick={handleSearch} disabled={isSearching} className="h-14 px-10 rounded-2xl bg-slate-900 text-white font-black shadow-xl hover:scale-105 transition-all">{t('common.search')}</Button>
               <Button 
                 variant="outline" 
                 onClick={handleLocateMe} 
@@ -196,11 +189,11 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
 
         <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4 shrink-0">
            <Button variant="outline" onClick={onClose} className="flex-1 h-16 rounded-2xl border-2 font-black text-lg bg-white shadow-sm">
-              إلغاء
+              {t('common.cancel')}
            </Button>
            <Button onClick={handleConfirm} className="flex-[2] h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-8 border-orange-700">
               <CheckCircle2 className="h-7 w-7" />
-              تثبيت الموقع واعتماده
+              {t('common.confirm')}
            </Button>
         </DialogFooter>
       </DialogContent>

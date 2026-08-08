@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect, Suspense } from 'react';
+import { useMemo, useState, useEffect, Suspense, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,10 +56,9 @@ function TransactionDetailsContent() {
   const transactionId = params?.tId as string;
   
   const { globalUser, user } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
+  const { t, lang, dir, isRtl } = useLanguage();
   const { permissions, isAdmin, check } = usePermissions();
   const db = useFirestore();
-  const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
   const [activeTab, setActiveTab] = useState('pipeline');
@@ -75,7 +74,7 @@ function TransactionDetailsContent() {
   }, [searchParams]);
 
   const canSeeFinance = check('accounting', 'view').can || check('procurement', 'view').can;
-  const currentUserName = useMemo(() => globalUser?.fullName || user?.displayName || 'Engineer', [globalUser, user]);
+  const currentUserName = useMemo(() => globalUser?.fullName || user?.displayName || 'User', [globalUser, user]);
 
   const transRef = useMemo(() => (companyId && db && transactionId) ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction, loading: transLoading } = useDoc<Transaction>(transRef);
@@ -140,43 +139,6 @@ function TransactionDetailsContent() {
     finally { setProcessingId(null); }
   };
 
-  const handleRevertStage = async (stage: StageInstance) => {
-    if (!db || !companyId || !user || !stage.id) return;
-    const reason = prompt(isRtl ? "سبب التراجع عن اكتمال المرحلة:" : "Reason for reverting stage:");
-    if (!reason) return;
-
-    setProcessingId(stage.id);
-    try {
-      const stageRef = doc(db, paths.transactionStages(companyId, transactionId), stage.id);
-      await updateDoc(stageRef, {
-        status: 'in-progress',
-        completedAt: null,
-        completedBy: null,
-        revertedAt: serverTimestamp(),
-        reversionReason: reason,
-        updatedAt: serverTimestamp()
-      });
-
-      const timelineRef = collection(db, paths.transactionTimeline(companyId, transactionId));
-      await addDoc(timelineRef, {
-        transactionId,
-        stageId: stage.id,
-        type: 'revision_logged',
-        content: `[تراجع إداري] إعادة فتح المرحلة "${stage.name}". السبب: ${reason}`,
-        userId: user.uid,
-        userName: currentUserName,
-        companyId,
-        createdAt: serverTimestamp()
-      });
-
-      toast({ title: isRtl ? "تم التراجع" : "Reverted" });
-    } catch (e: any) {
-      toast({ variant: "destructive", title: t('common.error') });
-    } finally {
-      setProcessingId(null);
-    }
-  };
-
   const handleCreateBOQ = async () => {
     if (!db || !companyId || !user || !selectedTemplateId || !transaction) return;
     setLoadingAction('creating_boq');
@@ -200,12 +162,6 @@ function TransactionDetailsContent() {
     finally { setLoadingAction(null); }
   };
 
-  const safePush = (path: string) => {
-    if (clientId && transactionId) {
-      router.push(path);
-    }
-  };
-
   if (transLoading || stagesLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
 
   return (
@@ -224,12 +180,12 @@ function TransactionDetailsContent() {
         <div className="flex gap-2">
            <div className="flex gap-2">
               {activeBoq ? (
-                <Button onClick={() => safePush(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} variant="outline" size="sm" className={cn("h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border-slate-200 shadow-sm", activeBoq.status !== 'approved' && "border-amber-200 bg-amber-50 text-amber-600")}>
-                    <FileSpreadsheet className="h-3 w-3" /> {activeBoq.status === 'approved' ? (isRtl ? 'المقايسة المعتمدة' : 'BOQ') : (isRtl ? 'بانتظار الاعتماد' : 'Pending')}
+                <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} variant="outline" size="sm" className={cn("h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border-slate-200 shadow-sm", activeBoq.status !== 'approved' && "border-amber-200 bg-amber-50 text-amber-600")}>
+                    <FileSpreadsheet className="h-3 w-3" /> {activeBoq.status === 'approved' ? t('projects.boqExplorer') : t('common.pending')}
                 </Button>
               ) : (
                 <Button onClick={() => setIsBoqInitOpen(true)} variant="outline" size="sm" className="h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border-slate-200 shadow-sm">
-                   <FilePlus className="h-3.5 w-3.5" /> {isRtl ? 'إنشاء مقايسة' : 'Create BOQ'}
+                   <FilePlus className="h-3.5 w-3.5" /> {t('common.add')}
                 </Button>
               )}
            </div>
@@ -259,25 +215,25 @@ function TransactionDetailsContent() {
                          </div>
                          <div className="flex justify-center gap-3 pt-4">
                             <Button onClick={() => setActiveTab('documents')} variant="outline" size="sm" className="h-8 font-bold px-6 text-[10px] rounded-md shadow-sm border-2">
-                               <Gavel className="h-3.5 w-3.5 me-2" /> {isRtl ? 'إصدار العقد' : 'Contracts'}
+                               <Gavel className="h-3.5 w-3.5 me-2" /> {t('contracts')}
                             </Button>
-                            <Button onClick={() => safePush(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} size="sm" className="h-8 font-bold px-6 text-[10px] rounded-md shadow-sm">
-                               <FileSpreadsheet className="h-3.5 w-3.5 me-2" /> {isRtl ? 'اعتماد المقايسة' : 'BOQ Baseline'}
+                            <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} size="sm" className="h-8 font-bold px-6 text-[10px] rounded-md shadow-sm">
+                               <FileSpreadsheet className="h-3.5 w-3.5 me-2" /> {t('projects.boqExplorer')}
                             </Button>
                          </div>
                       </Card>
                    ) : !stages.length ? (
                       <Card className="py-20 text-center bg-white rounded-lg border-2 border-dashed space-y-4 shadow-none">
                         <Workflow className="h-8 w-8 text-slate-100 mx-auto" />
-                        <h3 className="text-xs font-bold text-slate-900">{isRtl ? 'بانتظار إطلاق المسار' : 'Awaiting Launch'}</h3>
+                        <h3 className="text-xs font-bold text-slate-900">{t('common.pending')}</h3>
                         <Button onClick={() => transactionService?.initializeTechnicalPath(transactionId, transaction?.activityTypeId || '', transaction?.serviceId || '', transaction?.subServiceId || '', user!.uid)} disabled={loadingAction === 'init'} size="sm" className="h-8 font-bold px-6 text-[10px] rounded-md shadow-sm">
-                           <Zap className="h-3.5 w-3.5 me-2" /> {isRtl ? 'تفعيل المسار' : 'Launch Path'}
+                           <Zap className="h-3.5 w-3.5 me-2" /> {t('common.confirm')}
                         </Button>
                       </Card>
                    ) : (
                      <div className="space-y-3 text-start animate-in slide-in-from-bottom-4">
                         <div className="flex justify-between items-end px-1">
-                           <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><Workflow className="h-3.5 w-3.5 text-primary" /> المسار الفني التنفيذي</h3>
+                           <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><Workflow className="h-3.5 w-3.5 text-primary" /> {t('checklists')}</h3>
                            <span className="text-sm font-black text-primary">{progressPercent}%</span>
                         </div>
                         <div className="space-y-1.5">
@@ -294,17 +250,12 @@ function TransactionDetailsContent() {
                                            {isOperationalFrontier && (
                                               <>
                                                 {stage.status === 'pending' && <Button onClick={(e) => { e.stopPropagation(); handleStartStage(stage.id!); }} size="sm" className="h-7 px-3 rounded-md text-[10px] font-bold bg-primary shadow-sm hover:brightness-105">
-                                                  {processingId === stage.id ? <Loader2 className="h-3 w-3 animate-spin" /> : (isRtl ? 'بدء' : 'Start')}
+                                                  {processingId === stage.id ? <Loader2 className="h-3 w-3 animate-spin" /> : t('common.confirm')}
                                                 </Button>}
                                                 {stage.status === 'in-progress' && <Button onClick={(e) => { e.stopPropagation(); handleCompleteStage(stage); }} size="sm" className="h-7 px-3 rounded-md text-[10px] font-bold bg-emerald-600 shadow-sm hover:brightness-105">
-                                                  {processingId === stage.id ? <Loader2 className="animate-spin h-3 w-3" /> : (isRtl ? 'إنهاء' : 'Finish')}
+                                                  {processingId === stage.id ? <Loader2 className="animate-spin h-3 w-3" /> : t('common.completed')}
                                                 </Button>}
                                               </>
-                                           )}
-                                           {(isAdmin) && stage.status === 'completed' && (
-                                              <Button onClick={(e) => { e.stopPropagation(); handleRevertStage(stage); }} variant="ghost" size="icon" className="h-7 w-7 rounded-md text-slate-300 hover:text-rose-500 hover:bg-rose-50">
-                                                {processingId === stage.id ? <Loader2 className="animate-spin h-3 w-3" /> : <RotateCcw className="h-3.5 w-3.5" />}
-                                              </Button>
                                            )}
                                      </div>
                                   </CardContent>
@@ -330,9 +281,9 @@ function TransactionDetailsContent() {
 
       <Dialog open={isBoqInitOpen} onOpenChange={setIsBoqInitOpen}>
          <DialogContent className="rounded-xl max-w-md p-0 overflow-hidden border shadow-3xl bg-white" dir={dir}>
-            <div className="bg-slate-50 p-6 border-b text-start"><DialogTitle className="text-base font-black flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> {isRtl ? 'تنشيط المقايسة المرجعية' : 'Activate BOQ Template'}</DialogTitle></div>
+            <div className="bg-slate-50 p-6 border-b text-start"><DialogTitle className="text-base font-black flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> {t('common.confirm')}</DialogTitle></div>
             <div className="p-8 space-y-4 text-start">
-               <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'اختر القالب الهندسي' : 'Select Template'}</Label>
+               <Label className="text-[10px] font-black uppercase text-slate-400">{t('templates')}</Label>
                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
                   <SelectTrigger className="h-12 rounded-xl border-2 font-black text-lg">
                      <SelectValue placeholder="..." />
@@ -342,7 +293,7 @@ function TransactionDetailsContent() {
                   </SelectContent>
                </Select>
                <Button onClick={handleCreateBOQ} disabled={!selectedTemplateId || !!loadingAction} className="w-full h-14 rounded-2xl font-black text-sm shadow-xl shadow-primary/20 border-b-4 border-orange-700 mt-4 transition-all active:scale-95">
-                  {loadingAction === 'creating_boq' ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4 me-2" />} {isRtl ? 'تنشيط وبدء الدراسة' : 'Instantiate & Start Study'}
+                  {loadingAction === 'creating_boq' ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4 me-2" />} {t('common.save')}
                </Button>
             </div>
          </DialogContent>

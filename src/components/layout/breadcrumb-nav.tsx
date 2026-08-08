@@ -11,52 +11,18 @@ import { Button } from '@/components/ui/button';
 export function BreadcrumbNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const { t, lang, isRtl } = useLanguage();
+  const { t, isRtl } = useLanguage();
 
   const segments = pathname.split('/').filter(Boolean);
-
-  // خريطة المسارات الموحدة لضمان التعريب في شريط المسار
-  const routeMap: Record<string, string> = {
-    dashboard: t('dashboard'),
-    crm: t('crm'),
-    clients: t('clients'),
-    projects: t('projects'),
-    hr: t('hr'),
-    accounting: t('accounting'),
-    inventory: t('inventory'),
-    procurement: t('procurement'),
-    settings: t('settings'),
-    profile: t('profile'),
-    company: t('companyIdentity'),
-    checklists: t('checklists'),
-    roles: t('rolesPermissions'),
-    'work-hours': t('workHours'),
-    templates: t('templates'),
-    details: t('details'),
-    transactions: t('transactions'),
-    employees: t('staffRecords'),
-    leaves: t('leaveRequests'),
-    payroll: t('payrollBatches'),
-    coa: t('chartOfAccounts'),
-    vouchers: t('receiptVouchers'),
-    journals: t('journalEntries'),
-    boqs: t('boqExplorer'),
-    orders: t('purchaseOrders') || 'أوامر الشراء',
-    suppliers: t('suppliers'),
-    users: t('usersManagement')
-  };
 
   const formatSegment = (segment: string) => {
     const sLower = segment.toLowerCase();
     
-    if (sLower === 'details') return t('details');
-    
-    // التعامل مع الـ IDs والمسارات الطويلة (تحويلها لـ "تفاصيل")
     if (segment.length > 15 || /\d/.test(segment)) {
       return t('details');
     }
     
-    return routeMap[sLower] || segment;
+    return t(sLower);
   };
 
   if (segments.length <= 1 && segments[0] === 'dashboard') return null;
