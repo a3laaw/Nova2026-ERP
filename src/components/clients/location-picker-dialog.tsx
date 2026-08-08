@@ -19,7 +19,8 @@ import {
   Map as MapIcon,
   CheckCircle2,
   MapPin,
-  LocateFixed
+  LocateFixed,
+  X
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import dynamic from 'next/dynamic';
@@ -67,15 +68,10 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
     }
   }, [initialUrl, isOpen]);
 
-  /**
-   * خوارزمية البحث الذكية (Smart Search & Coordinate Detection)
-   */
   const handleSearch = async () => {
     const queryStr = searchQuery.trim();
     if (!queryStr) return;
 
-    // 1. فحص ما إذا كان المدخل عبارة عن إحداثيات (Lat, Lng)
-    // يدعم الصيغ: 29.3, 47.9 أو 29.3 47.9
     const coordRegex = /^([-+]?\d+\.\d+)[,\s]+([-+]?\d+\.\d+)$/;
     const coordMatch = queryStr.match(coordRegex);
 
@@ -89,10 +85,8 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
       }
     }
 
-    // 2. البحث النصي المتقدم (منطقة، قطعة، شارع)
     setIsSearching(true);
     try {
-      // تعزيز البحث بكلمة الكويت لضمان دقة النتائج المحلية
       const searchUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(queryStr + ' Kuwait')}&limit=1`;
       const res = await fetch(searchUrl);
       const data = await res.json();
@@ -111,7 +105,7 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
       }
     } catch (e) {
       console.error("Search failed", e);
-      toast({ variant: "destructive", title: isRtl ? "فشل محرك البحث" : "Search Engine Failure" });
+      toast({ variant: "destructive", title: isRtl ? "fشل محرك البحث" : "Search Engine Failure" });
     } finally {
       setIsSearching(false);
     }
@@ -137,7 +131,6 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
   };
 
   const handleConfirm = () => {
-    // توليد رابط جوجل ماب سيادي دقيق للاستخدام في الملاحة
     const googleUrl = `https://www.google.com/maps?q=${position[0]},${position[1]}`;
     onSelect(googleUrl);
     onClose();
@@ -152,8 +145,8 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
                  <LocateFixed className="h-7 w-7" />
               </div>
               <div>
-                 <DialogTitle className="text-2xl font-black font-headline">{isRtl ? 'رادار المواقع الذكي' : 'Smart Location Radar'}</DialogTitle>
-                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">{isRtl ? 'ابحث بالمنطقة والقطعة أو الصق الإحداثيات مباشرة' : 'Search by Area/Block or Paste Coordinates'}</p>
+                 <DialogTitle className="text-2xl font-black font-headline">رادار المواقع الذكي</DialogTitle>
+                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">ابحث بالمنطقة والقطعة أو الصق الإحداثيات مباشرة</p>
               </div>
            </div>
            <Button variant="ghost" onClick={onClose} className="rounded-full h-10 w-10 text-slate-400 relative z-10"><X className="h-6 w-6" /></Button>
@@ -172,7 +165,7 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
                  />
                  {isSearching && <Loader2 className="absolute end-4 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-primary" />}
               </div>
-              <Button onClick={handleSearch} disabled={isSearching} className="h-14 px-10 rounded-2xl bg-slate-900 text-white font-black shadow-xl hover:scale-105 transition-all">{isRtl ? 'بحث ذكي' : 'Smart Search'}</Button>
+              <Button onClick={handleSearch} disabled={isSearching} className="h-14 px-10 rounded-2xl bg-slate-900 text-white font-black shadow-xl hover:scale-105 transition-all">بحث ذكي</Button>
               <Button 
                 variant="outline" 
                 onClick={handleLocateMe} 
@@ -203,11 +196,11 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
 
         <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4 shrink-0">
            <Button variant="outline" onClick={onClose} className="flex-1 h-16 rounded-2xl border-2 font-black text-lg bg-white shadow-sm">
-              {isRtl ? 'إلغاء' : 'Cancel'}
+              إلغاء
            </Button>
            <Button onClick={handleConfirm} className="flex-[2] h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-8 border-orange-700">
               <CheckCircle2 className="h-7 w-7" />
-              {isRtl ? 'تثبيت الموقع واعتماده' : 'Pin & Confirm Location'}
+              تثبيت الموقع واعتماده
            </Button>
         </DialogFooter>
       </DialogContent>

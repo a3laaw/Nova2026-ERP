@@ -138,7 +138,6 @@ export default function ChartOfAccountsPage() {
                 {account.type}
               </Badge>
 
-              {/* زر الإضافة السياقي - يظهر فقط للمجموعات */}
               {account.isGroup && (
                 <Button 
                   variant="ghost" 
@@ -188,7 +187,7 @@ export default function ChartOfAccountsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <Card className="lg:col-span-8 rounded-xl shadow-sm border bg-white overflow-hidden">
-          <CardHeader className="bg-slate-50/50 p-4 border-b">
+          <CardHeader className="bg-slate-50/50 p-4 border-b text-start">
             <div className="relative">
               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
               <Input 
