@@ -109,11 +109,11 @@ export default function CRMPage() {
                    </div>
                 </div>
                 <div className="space-y-2">
-                   <Label className="text-xs font-black uppercase text-slate-400">{t('common.email')}</Label>
+                   <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'البريد الإلكتروني' : 'Email'}</Label>
                    <Input value={newLead.email} onChange={e => setNewLead({...newLead, email: e.target.value})} className="h-11 border-2 rounded-xl text-start" dir="ltr" />
                 </div>
                 <div className="space-y-2">
-                   <Label className="text-xs font-black uppercase text-slate-400">{t('common.value')}</Label>
+                   <Label className="text-xs font-black uppercase text-slate-400">{t('common.amount')}</Label>
                    <Input value={newLead.value} onChange={e => setNewLead({...newLead, value: e.target.value})} className="h-11 border-2 rounded-xl" type="number" />
                 </div>
               </div>

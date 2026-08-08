@@ -59,7 +59,7 @@ const chartConfig = {
 export default function DashboardPage() {
   const { company } = useCompanyContext();
   const { globalUser } = useAuthContext();
-  const { t, isRtl } = useLanguage();
+  const { t, isRtl, dir } = useLanguage();
   const db = useFirestore();
   const router = useRouter();
 
@@ -79,7 +79,7 @@ export default function DashboardPage() {
 
   const overdueMissions = useMemo(() => {
     const today = startOfDay(new Date());
-    let list = allScheduled.filter(a => isBefore(parseISO(a.start), today));
+    let list = (allScheduled || []).filter(a => isBefore(parseISO(a.start), today));
     if (!isAdmin && globalUser?.employeeId) {
       list = list.filter(a => a.engineerId === globalUser.employeeId);
     }
@@ -126,7 +126,7 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div className="space-y-6 w-full animate-in fade-in duration-500">
+    <div className="space-y-6 w-full animate-in fade-in duration-500" dir={dir}>
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="text-start">
           <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">{t('dashboard.title')}</h1>
@@ -192,7 +192,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, i) => (
-          <Card key={i} className="rounded-lg shadow-sm border-slate-100 bg-white">
+          <Card key={i} className="rounded-lg shadow-sm border-slate-100 bg-white text-start">
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <div className={cn("p-1.5 rounded-md", stat.bg)}>

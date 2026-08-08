@@ -23,7 +23,7 @@ export function BreadcrumbNav() {
       return t('details');
     }
     
-    // Map system segments to Odoo dictionary keys
+    // Map system segments to dictionary keys
     const segmentMap: Record<string, string> = {
       'dashboard': 'dashboard',
       'clients': 'clients',

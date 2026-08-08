@@ -63,7 +63,7 @@ export function DashboardSidebar() {
         subItems: [
           { title: t('projects.title'), url: "/dashboard/projects", icon: Layers },
           { title: t('projects.boqExplorer'), url: "/dashboard/projects/boqs", icon: FileSpreadsheet },
-          { title: t('reports.title'), url: "/dashboard/reports", icon: FileText },
+          { title: t('reports'), url: "/dashboard/reports", icon: FileText },
         ]
       },
       { 
