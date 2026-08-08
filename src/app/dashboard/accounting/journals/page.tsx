@@ -134,10 +134,10 @@ export default function JournalEntriesPage() {
                  <Table>
                     <TableHeader className="bg-slate-50/50">
                        <TableRow>
-                          <TableHead className="w-[300px]">الحساب</TableHead>
-                          <TableHead className="text-center">مدين</TableHead>
-                          <TableHead className="text-center">دائن</TableHead>
-                          <TableHead>شرح السطر</TableHead>
+                          <TableHead className="w-[300px]">{isRtl ? 'الحساب' : 'Account'}</TableHead>
+                          <TableHead className="text-center">{isRtl ? 'مدين' : 'Debit'}</TableHead>
+                          <TableHead className="text-center">{isRtl ? 'دائن' : 'Credit'}</TableHead>
+                          <TableHead>{isRtl ? 'شرح السطر' : 'Memo'}</TableHead>
                           <TableHead className="w-[50px]"></TableHead>
                        </TableRow>
                     </TableHeader>
@@ -190,10 +190,10 @@ export default function JournalEntriesPage() {
               <Table>
                  <TableHeader className="bg-slate-50">
                     <TableRow>
-                       <TableHead className="py-3 ps-6 text-start">رقم القيد / التاريخ</TableHead>
-                       <TableHead className="text-start">البيان</TableHead>
-                       <TableHead className="text-end">القيمة (مدين/دائن)</TableHead>
-                       <TableHead className="text-center">الحالة</TableHead>
+                       <TableHead className="py-3 ps-6 text-start">{isRtl ? 'رقم القيد / التاريخ' : 'Entry No. / Date'}</TableHead>
+                       <TableHead className="text-start">{isRtl ? 'البيان' : 'Description'}</TableHead>
+                       <TableHead className="text-end">{isRtl ? 'القيمة (مدين/دائن)' : 'Amount (Debit/Credit)'}</TableHead>
+                       <TableHead className="text-center">{isRtl ? 'الحالة' : 'Status'}</TableHead>
                        <TableHead className="pe-6"></TableHead>
                     </TableRow>
                  </TableHeader>

@@ -78,10 +78,10 @@ export default function EmployeesPage() {
           <Table>
             <TableHeader className="bg-slate-50/50">
               <TableRow>
-                <TableHead className="py-5 ps-8 text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">Employee</TableHead>
-                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Job Title</TableHead>
-                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Status</TableHead>
-                {canSeeSalaries && <TableHead className="text-end text-[10px] font-black uppercase text-slate-500 tracking-widest">Basic Salary</TableHead>}
+                <TableHead className="py-5 ps-8 text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'الموظف' : 'Employee'}</TableHead>
+                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'المسمى الوظيفي' : 'Job Title'}</TableHead>
+                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('common.status')}</TableHead>
+                {canSeeSalaries && <TableHead className="text-end text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'الراتب الأساسي' : 'Basic Salary'}</TableHead>}
                 <TableHead className="pe-8"></TableHead>
               </TableRow>
             </TableHeader>
