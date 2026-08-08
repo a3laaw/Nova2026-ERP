@@ -272,4 +272,81 @@ export class SeedService {
     const snap = await getDocs(q);
     return !snap.empty;
   }
+
+  /**
+   * ضخ دليل حسابات سيادي مخصص لشركات المقاولات في الكويت.
+   * يتبع معايير IFRS وقواعد WIP والمحتجزات.
+   */
+  async seedConstructionCOA(userId: string) {
+    const batch = writeBatch(this.db);
+    const coaRef = collection(this.db, paths.accounts(this.companyId));
+    
+    // تعريف الشجرة المحاسبية (Sovereign Construction COA)
+    const tree = [
+      // 1. الأصول (Assets)
+      { code: '1', nameAr: 'الأصول', nameEn: 'Assets', type: 'asset', isGroup: true, parentId: null, level: 1 },
+      { code: '11', nameAr: 'الأصول غير المتداولة', nameEn: 'Non-Current Assets', type: 'asset', isGroup: true, parentId: '1', level: 2 },
+      { code: '1101', nameAr: 'آليات ومعدات ثقيلة', nameEn: 'Heavy Machinery & Equipment', type: 'asset', isGroup: true, parentId: '11', level: 3 },
+      { code: '1102', nameAr: 'مجمع إهلاك المعدات', nameEn: 'Accumulated Depreciation', type: 'asset', isGroup: true, parentId: '11', level: 3 },
+      
+      { code: '12', nameAr: 'الأصول المتداولة', nameEn: 'Current Assets', type: 'asset', isGroup: true, parentId: '1', level: 2 },
+      { code: '1201', nameAr: 'الصناديق والبنوك', nameEn: 'Cash & Banks', type: 'asset', isGroup: true, parentId: '12', level: 3 },
+      { code: '1202', nameAr: 'ذمم العملاء', nameEn: 'Accounts Receivable', type: 'asset', isGroup: true, parentId: '12', level: 3 },
+      { code: '1203', nameAr: 'محتجزات لدى العملاء', nameEn: 'Retentions Receivable', type: 'asset', isGroup: true, parentId: '12', level: 3 },
+      { code: '1204', nameAr: 'مخزون مواد البناء', nameEn: 'Inventory - Raw Materials', type: 'asset', isGroup: true, parentId: '12', level: 3 },
+      { code: '1205', nameAr: 'أعمال تحت التنفيذ (WIP)', nameEn: 'Work In Progress', type: 'asset', isGroup: true, parentId: '12', level: 3 },
+      { code: '1206', nameAr: 'عهد موظفين', nameEn: 'Employee Advances', type: 'asset', isGroup: true, parentId: '12', level: 3 },
+
+      // 2. الالتزامات (Liabilities)
+      { code: '2', nameAr: 'الالتزامات', nameEn: 'Liabilities', type: 'liability', isGroup: true, parentId: null, level: 1 },
+      { code: '22', nameAr: 'الالتزامات المتداولة', nameEn: 'Current Liabilities', type: 'liability', isGroup: true, parentId: '2', level: 2 },
+      { code: '2201', nameAr: 'ذمم الموردين', nameEn: 'Accounts Payable', type: 'liability', isGroup: true, parentId: '22', level: 3 },
+      { code: '2202', nameAr: 'محتجزات لمقاولي الباطن', nameEn: 'Retentions Payable', type: 'liability', isGroup: true, parentId: '22', level: 3 },
+      { code: '2203', nameAr: 'دفعات مقدمة من العملاء', nameEn: 'Advanced Payments (Clients)', type: 'liability', isGroup: true, parentId: '22', level: 3 },
+      { code: '2204', nameAr: 'مستحقات رواتب وأجور', nameEn: 'Accrued Salaries', type: 'liability', isGroup: true, parentId: '22', level: 3 },
+
+      // 3. حقوق الملكية (Equity)
+      { code: '3', nameAr: 'حقوق الملكية', nameEn: 'Equity', type: 'equity', isGroup: true, parentId: null, level: 1 },
+      { code: '301', nameAr: 'رأس المال', nameEn: 'Capital', type: 'equity', isGroup: false, parentId: '3', level: 2 },
+      { code: '302', nameAr: 'الأرباح والخسائر المدورة', nameEn: 'Retained Earnings', type: 'equity', isGroup: false, parentId: '3', level: 2 },
+
+      // 4. الإيرادات (Revenue)
+      { code: '4', nameAr: 'الإيرادات', nameEn: 'Revenue', type: 'revenue', isGroup: true, parentId: null, level: 1 },
+      { code: '401', nameAr: 'إيرادات عقود المقاولات', nameEn: 'Construction Contracts Revenue', type: 'revenue', isGroup: false, parentId: '4', level: 2 },
+      { code: '402', nameAr: 'إيرادات أوامر تغييرية', nameEn: 'Variation Orders Revenue', type: 'revenue', isGroup: false, parentId: '4', level: 2 },
+
+      // 5. المصروفات (Expenses)
+      { code: '5', nameAr: 'المصروفات', nameEn: 'Expenses', type: 'expense', isGroup: true, parentId: null, level: 1 },
+      { code: '501', nameAr: 'تكاليف تشغيلية مباشرة', nameEn: 'Direct Operational Costs', type: 'expense', isGroup: true, parentId: '5', level: 2 },
+      { code: '50101', nameAr: 'تكاليف مواد', nameEn: 'Material Costs', type: 'expense', isGroup: false, parentId: '501', level: 3 },
+      { code: '50102', nameAr: 'تكاليف عمالة موقع', nameEn: 'Site Labor Costs', type: 'expense', isGroup: false, parentId: '501', level: 3 },
+      { code: '50103', nameAr: 'إيجار آليات ومعدات', nameEn: 'Equipment Rental Costs', type: 'expense', isGroup: false, parentId: '501', level: 3 },
+      { code: '50104', nameAr: 'تكاليف مقاولي باطن', nameEn: 'Subcontractor Costs', type: 'expense', isGroup: false, parentId: '501', level: 3 },
+      
+      { code: '502', nameAr: 'مصاريف إدارية وعمومية', nameEn: 'General & Admin Expenses', type: 'expense', isGroup: true, parentId: '5', level: 2 },
+      { code: '50201', nameAr: 'رواتب إدارية', nameEn: 'Admin Salaries', type: 'expense', isGroup: false, parentId: '502', level: 3 },
+      { code: '50202', nameAr: 'إيجار مكتب', nameEn: 'Office Rent', type: 'expense', isGroup: false, parentId: '502', level: 3 },
+    ];
+
+    // خريطة لتخزين المعرفات المولدة لربط الأباء
+    const idMap: Record<string, string> = {};
+
+    for (const item of tree) {
+      const newRef = doc(coaRef);
+      idMap[item.code] = newRef.id;
+      
+      batch.set(newRef, {
+        ...item,
+        id: newRef.id,
+        parentId: item.parentId ? idMap[item.parentId] : null,
+        companyId: this.companyId,
+        isActive: true,
+        createdBy: userId,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+    }
+
+    await batch.commit();
+  }
 }

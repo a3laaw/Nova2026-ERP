@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -9,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { 
   GitBranch, Plus, Loader2, Folder, 
   FileText, Search, ChevronRight, ChevronDown,
-  ShieldCheck 
+  ShieldCheck, Sparkles, DatabaseZap
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -18,15 +17,18 @@ import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { Account } from '@/types/accounting';
 import { cn } from '@/lib/utils';
+import { SeedService } from '@/services/seed-service';
+import { toast } from '@/hooks/use-toast';
 
 export default function ChartOfAccountsPage() {
-  const { globalUser } = useAuthContext();
+  const { globalUser, user } = useAuthContext();
   const { t, dir, isRtl } = useLanguage();
   const db = useFirestore();
   const companyId = globalUser?.companyId;
 
   const [searchTerm, setSearchTerm] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [initializing, setInitializing] = useState(false);
 
   const accountsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.accounts(companyId)), orderBy('code')) : null, 
@@ -36,6 +38,20 @@ export default function ChartOfAccountsPage() {
 
   const toggleExpand = (id: string) => {
     setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleInitCOA = async () => {
+    if (!db || !companyId || !user) return;
+    setInitializing(true);
+    try {
+      const service = new SeedService(db, companyId);
+      await service.seedConstructionCOA(user.uid);
+      toast({ title: isRtl ? "تمت تهيئة الدليل المحاسبي بنجاح" : "COA Initialized Successfully" });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Error", description: e.message });
+    } finally {
+      setInitializing(false);
+    }
   };
 
   const renderTree = (parentId: string | null = null, level = 0) => {
@@ -80,16 +96,31 @@ export default function ChartOfAccountsPage() {
 
   return (
     <div className="space-y-4 animate-in fade-in" dir={dir}>
-      <header className="flex justify-between items-center">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2 text-slate-900">
             <GitBranch className="h-6 w-6 text-primary" /> {isRtl ? 'دليل الحسابات' : 'Chart of Accounts'}
           </h1>
           <p className="text-muted-foreground text-xs font-medium">إدارة الهيكل المالي الشجري للمنشأة</p>
         </div>
-        <Button size="sm" className="h-9 px-6 font-bold gap-2">
-           <Plus className="h-4 w-4" /> {isRtl ? 'إضافة حساب' : 'Add Account'}
-        </Button>
+        
+        <div className="flex gap-2">
+           {accounts?.length === 0 && (
+              <Button 
+                onClick={handleInitCOA} 
+                disabled={initializing}
+                variant="outline" 
+                size="sm" 
+                className="h-9 px-4 font-black border-primary text-primary hover:bg-primary/5 gap-2 shadow-xl animate-pulse"
+              >
+                {initializing ? <Loader2 className="animate-spin h-4 w-4" /> : <DatabaseZap className="h-4 w-4" />}
+                {isRtl ? 'تهيئة الدليل الإنشائي (الكويت)' : 'Init Construction COA'}
+              </Button>
+           )}
+           <Button size="sm" className="h-9 px-6 font-bold gap-2">
+              <Plus className="h-4 w-4" /> {isRtl ? 'إضافة حساب' : 'Add Account'}
+           </Button>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -108,6 +139,23 @@ export default function ChartOfAccountsPage() {
           <CardContent className="p-2 min-h-[500px]">
             {loading ? (
               <div className="py-20 text-center"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></div>
+            ) : accounts?.length === 0 ? (
+              <div className="py-20 text-center space-y-6">
+                 <div className="h-20 w-20 bg-slate-50 rounded-3xl flex items-center justify-center mx-auto text-slate-200">
+                    <GitBranch className="h-10 w-10" />
+                 </div>
+                 <div className="space-y-2">
+                    <h3 className="font-black text-slate-400">{isRtl ? 'الدليل المحاسبي فارغ' : 'COA is Empty'}</h3>
+                    <p className="text-xs text-slate-400 max-w-xs mx-auto">قم بتهيئة الدليل المخصص لشركات المقاولات للبدء فوراً في إدارة أموالك.</p>
+                 </div>
+                 <Button 
+                   onClick={handleInitCOA} 
+                   disabled={initializing}
+                   className="h-12 px-8 rounded-xl font-black gap-2"
+                 >
+                    <Sparkles className="h-5 w-5" /> {isRtl ? 'تفعيل الدليل الإنشائي الكويتي' : 'Activate Construction COA'}
+                 </Button>
+              </div>
             ) : (
               <div className="border rounded-xl overflow-hidden bg-white">
                 {renderTree(null)}
@@ -124,6 +172,17 @@ export default function ChartOfAccountsPage() {
               <p className="text-[10px] font-bold text-slate-500 leading-relaxed">
                  هذا الدليل مصمم وفقاً لمعايير المحاسبة الدولية (IFRS). لا يسمح بحذف الحسابات التي تحتوي على حركات مالية مسجلة، بل يمكن تجميدها فقط لضمان سلامة الأرشيف.
               </p>
+           </Card>
+           
+           <Card className="rounded-lg shadow-sm border bg-white p-6 text-start space-y-4">
+              <h3 className="font-black text-xs text-slate-400 uppercase tracking-widest">مفاتيح الدليل</h3>
+              <div className="space-y-2">
+                 <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-amber-500" /> <span className="text-[10px] font-bold">1 - الأصول (Assets)</span></div>
+                 <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-blue-500" /> <span className="text-[10px] font-bold">2 - الالتزامات (Liabilities)</span></div>
+                 <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-emerald-500" /> <span className="text-[10px] font-bold">3 - حقوق الملكية (Equity)</span></div>
+                 <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-indigo-500" /> <span className="text-[10px] font-bold">4 - الإيرادات (Revenue)</span></div>
+                 <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-rose-500" /> <span className="text-[10px] font-bold">5 - المصروفات (Expenses)</span></div>
+              </div>
            </Card>
         </aside>
       </div>
