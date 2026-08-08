@@ -153,10 +153,10 @@ export default function SuppliersPage() {
           <Table>
             <TableHeader className="bg-slate-50">
               <TableRow>
-                <TableHead className="py-3 ps-6 text-start text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'المورد' : 'Supplier'}</TableHead>
-                <TableHead className="text-start text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'التصنيف' : 'Category'}</TableHead>
-                <TableHead className="text-start text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'الاتصال' : 'Contact'}</TableHead>
-                <TableHead className="text-center text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'التقييم' : 'Rating'}</TableHead>
+                <TableHead className="py-3 ps-6 text-start text-[10px] font-bold uppercase text-slate-500">{t('suppliers')}</TableHead>
+                <TableHead className="text-start text-[10px] font-bold uppercase text-slate-500">{t('category')}</TableHead>
+                <TableHead className="text-start text-[10px] font-bold uppercase text-slate-500">{t('common.contact')}</TableHead>
+                <TableHead className="text-center text-[10px] font-bold uppercase text-slate-500">{t('common.rating')}</TableHead>
                 <TableHead className="pe-6"></TableHead>
               </TableRow>
             </TableHeader>
