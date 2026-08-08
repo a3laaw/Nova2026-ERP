@@ -8,28 +8,21 @@ import { useLanguage } from '@/context/language-context';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
-/**
- * شريط المسار (Breadcrumb) المطور - Nova2026-ERP
- * تم تطهيره من كافة النصوص المباشرة والاعتماد على القاموس الموحد.
- */
 export function BreadcrumbNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const { t, lang, isRtl } = useLanguage();
+  const { t, isRtl } = useLanguage();
 
   const segments = pathname.split('/').filter(Boolean);
 
   const formatSegment = (segment: string) => {
     const sLower = segment.toLowerCase();
     
-    // التعامل مع المعرفات الطويلة
     if (segment.length > 15 || /\d/.test(segment)) {
       return t('details');
     }
     
-    // البحث المباشر في القاموس الموحد
-    const translated = t(sLower);
-    return translated !== sLower ? translated : segment;
+    return t(sLower);
   };
 
   if (segments.length <= 1 && segments[0] === 'dashboard') return null;

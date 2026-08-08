@@ -41,16 +41,12 @@ import { DocumentService } from '@/services/document-service';
 import { toast } from '@/hooks/use-toast';
 import { BOQReferenceSelector } from '@/components/settings/checklists/boq-reference/boq-reference-selector';
 
-/**
- * صفحة دراسة الكميات ومتابعة الإنجاز - Nova2026-ERP
- * تم تطهير النصوص والمنطق الثنائي وتثبيت الاستيرادات.
- */
 export default function TransactionBOQProgressPage() {
   const params = useParams();
   const clientId = params.id as string;
   const transactionId = params.tId as string;
   const { globalUser, user } = useAuthContext();
-  const { t, lang, dir, isRtl } = useLanguage();
+  const { t, dir, isRtl } = useLanguage();
   const { permissions, isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
@@ -125,7 +121,7 @@ export default function TransactionBOQProgressPage() {
         serviceId: transaction.serviceId, 
         subServiceId: transaction.subServiceId, 
         name: template?.name || "" 
-      }, user.uid, globalUser?.fullName || 'Engineer');
+      }, user.uid, globalUser?.fullName || 'User');
       toast({ title: t('common.saved') });
       setIsBoqInitOpen(false);
     } catch (e: any) { 
@@ -195,37 +191,27 @@ export default function TransactionBOQProgressPage() {
   
   if (!activeBoq) return (
     <div className="flex flex-col h-full space-y-4 animate-in fade-in" dir={dir}>
-      <header className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white p-4 rounded-lg shadow-sm border border-primary/10">
-        <div className="flex items-center gap-4 text-start">
-           <button onClick={() => router.back()} className="h-9 w-9 border rounded-lg flex items-center justify-center hover:bg-slate-50 transition-colors text-slate-400"><ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} /></button>
-           <div className="text-start">
-             <h1 className="text-lg font-black text-slate-900 leading-none">{t('inline.boq.study')}</h1>
-             <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">{transaction?.clientName}</p>
-           </div>
-        </div>
-      </header>
-
       <div className="flex-1 flex flex-col items-center justify-center p-20 bg-white rounded-xl border-4 border-dashed border-slate-100 text-center space-y-6">
           <div className="w-24 h-24 bg-primary/5 rounded-[2.5rem] flex items-center justify-center text-primary/30 shadow-inner">
              <FileSpreadsheet className="h-12 w-12" />
           </div>
           <div className="space-y-2">
-             <h2 className="text-xl font-black text-slate-400">{t('projects.boqExplorer.noBoqs')}</h2>
+             <h2 className="text-xl font-black text-slate-400">{t('projects.boqExplorer')}</h2>
              <p className="text-xs font-bold text-slate-300 max-w-sm mx-auto leading-relaxed">
-                {t('inline.please.activate.a.boq.template.for.this.project.to.start.tracking.site.progress')}
+                {t('common.confirm')}
              </p>
           </div>
-          <Button onClick={() => setIsBoqInitOpen(true)} className="h-14 rounded-2xl px-10 bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 gap-3 border-b-4 border-orange-700">
+          <Button onClick={() => setIsBoqInitOpen(true)} className="h-14 rounded-2xl px-10 bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 gap-3">
              <FilePlus className="h-5 w-5" />
-             {t('inline.activate.new.boq')}
+             {t('common.add')}
           </Button>
       </div>
 
       <Dialog open={isBoqInitOpen} onOpenChange={setIsBoqInitOpen}>
          <DialogContent className="rounded-xl max-w-md p-0 overflow-hidden border shadow-3xl bg-white" dir={dir}>
-            <div className="bg-slate-50 p-6 border-b text-start"><DialogTitle className="text-base font-black flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> {t('inline.activate.boq.template')}</DialogTitle></div>
+            <div className="bg-slate-50 p-6 border-b text-start"><DialogTitle className="text-base font-black flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> {t('common.confirm')}</DialogTitle></div>
             <div className="p-8 space-y-4 text-start">
-               <Label className="text-[10px] font-black uppercase text-slate-400">{t('inline.select.template')}</Label>
+               <Label className="text-[10px] font-black uppercase text-slate-400">{t('templates')}</Label>
                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
                   <SelectTrigger className="h-12 rounded-xl border-2 font-black text-lg">
                      <SelectValue placeholder="..." />
@@ -235,7 +221,7 @@ export default function TransactionBOQProgressPage() {
                   </SelectContent>
                </Select>
                <Button onClick={handleCreateBOQ} disabled={!selectedTemplateId || !!loadingAction} className="w-full h-14 rounded-2xl font-black text-sm shadow-xl shadow-primary/20 border-b-4 border-orange-700 mt-4 transition-all active:scale-95">
-                  {loadingAction === 'creating_boq' ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4 me-2" />} {t('inline.instantiate...start.study')}
+                  {loadingAction === 'creating_boq' ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4 me-2" />} {t('common.save')}
                </Button>
             </div>
          </DialogContent>
@@ -256,19 +242,11 @@ export default function TransactionBOQProgressPage() {
         <div className="flex items-center gap-2">
            {activeBoq.status === 'draft' ? (
               <div className="flex gap-2">
-                 <Dialog open={isPickerOpen} onOpenChange={setIsPickerOpen}>
-                    <DialogTrigger asChild><Button variant="outline" className="h-9 px-4 rounded-lg font-bold text-xs gap-2 border-slate-200"><LayoutGrid className="h-3.5 w-3.5" /> {t('inline.registry')}</Button></DialogTrigger>
-                    <DialogContent className="max-w-4xl rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white text-start"><DialogHeader className="bg-slate-50 p-6"><DialogTitle className="text-xl font-black flex items-center gap-3"><Sparkles className="text-primary h-6 w-6" /> {t('inline.sovereign.registry')}</DialogTitle></DialogHeader><div className="py-6 px-6"><BOQReferenceSelector onSelect={(node) => {
-                       const service = new DocumentService(db, companyId!, permissions);
-                       service.addBOQItemFromNode(activeBoq.id, transactionId, node, user!.uid);
-                       toast({ title: t('common.saved') });
-                    }} /></div><DialogFooter className="p-4 bg-slate-50"><Button variant="outline" onClick={() => setIsPickerOpen(false)} className="rounded-lg px-8">{t('common.close')}</Button></DialogFooter></DialogContent>
-                 </Dialog>
                  <Button onClick={handleApproveBaseline} disabled={!!loadingAction} className="h-9 px-6 rounded-lg bg-emerald-600 text-white font-bold text-xs gap-2">{t('common.confirm')}</Button>
               </div>
            ) : (
              <div className="flex gap-2">
-                <Button onClick={() => setIsVOOpen(true)} className="h-9 px-6 rounded-lg bg-primary text-white font-bold text-xs gap-2 shadow-sm shadow-primary/10"><PlusCircle className="h-3.5 w-3.5" /> {t('inline.new.vo')}</Button>
+                <Button onClick={() => setIsVOOpen(true)} className="h-9 px-6 rounded-lg bg-primary text-white font-bold text-xs gap-2 shadow-sm shadow-primary/10"><PlusCircle className="h-3.5 w-3.5" /> {t('projects.voManager.title')}</Button>
              </div>
            )}
            <Button variant="outline" className="h-9 px-4 rounded-lg font-bold text-xs border-slate-200"><Printer className="h-3.5 w-3.5" /></Button>
@@ -281,18 +259,16 @@ export default function TransactionBOQProgressPage() {
              <TableRow className="hover:bg-slate-50 border-0">
                <TableHead className="ps-6 text-slate-500 font-bold text-[10px] text-start">{t('common.order')}</TableHead>
                <TableHead className="text-slate-500 font-bold text-[10px] text-start">{t('common.code')}</TableHead>
-               <TableHead className="text-slate-900 font-black text-[10px] text-start uppercase">{t('inline.work.item')}</TableHead>
+               <TableHead className="text-slate-900 font-black text-[10px] text-start uppercase">{t('common.add')}</TableHead>
                <TableHead className="text-center text-slate-500 font-bold text-[10px]">{t('common.unit')}</TableHead>
-               <TableHead className="text-center text-slate-900 font-black text-[10px] uppercase">{t('inline.planned')}</TableHead>
-               <TableHead className="text-center text-slate-500 font-bold text-[10px]">{t('inline.prev')}</TableHead>
-               <TableHead className="text-center text-slate-500 font-bold text-[10px]">{t('inline.curr')}</TableHead>
-               <TableHead className="text-center text-slate-900 font-black text-[10px] uppercase">{t('common.all')}</TableHead>
-               <TableHead className="text-center text-slate-500 font-bold text-[10px]">{t('inline.rate')}</TableHead>
-               <TableHead className="text-end text-slate-900 font-black text-[10px] uppercase">{t('inline.subtotal')}</TableHead>
-               <TableHead className="pe-6 text-slate-500 font-bold text-[10px] text-end">{t('inline.progress')}</TableHead>
+               <TableHead className="text-center text-slate-900 font-black text-[10px] uppercase">{t('common.quantity')}</TableHead>
+               <TableHead colSpan={3} className="text-center text-slate-900 font-black text-[10px] uppercase">{t('common.total')}</TableHead>
+               <TableHead className="text-center text-slate-500 font-bold text-[10px]">{t('projects.boqExplorer.rate')}</TableHead>
+               <TableHead className="text-end text-slate-900 font-black text-[10px] uppercase">{t('common.total')}</TableHead>
+               <TableHead className="pe-6 text-slate-500 font-bold text-[10px] text-end">{t('common.status')}</TableHead>
              </TableRow>
            </TableHeader>
-           <TableBody>{boqTree.length === 0 ? <TableRow><TableCell colSpan={11} className="py-40 text-center opacity-30"><Calculator className="h-10 w-10 mx-auto text-slate-200" /><p className="text-sm font-black mt-4">Empty BOQ</p></TableCell></TableRow> : boqTree.map((node, idx) => renderBOQTreeRows(node, (idx + 1).toString() + ".0"))}</TableBody>
+           <TableBody>{boqTree.length === 0 ? <TableRow><TableCell colSpan={11} className="py-40 text-center opacity-30"><Calculator className="h-10 w-10 mx-auto text-slate-200" /><p className="text-sm font-black mt-4">Empty</p></TableCell></TableRow> : boqTree.map((node, idx) => renderBOQTreeRows(node, (idx + 1).toString() + ".0"))}</TableBody>
          </Table>
       </div>
 
