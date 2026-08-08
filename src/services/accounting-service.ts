@@ -12,7 +12,8 @@ import {
   where, 
   orderBy, 
   serverTimestamp,
-  writeBatch
+  writeBatch,
+  limit
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { 
@@ -27,7 +28,74 @@ export class AccountingService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * إنشاء حساب جديد في شجرة الحسابات
+   * التأكد من وجود حساب أب، وإذا لم يوجد يتم إنشاؤه (لضمان سلامة الشجرة)
+   */
+  async ensureControlAccount(code: string, nameAr: string, nameEn: string, type: any, parentId: string | null = null) {
+    const q = query(collection(this.db, paths.accounts(this.companyId)), where('code', '==', code), limit(1));
+    const snap = await getDocs(q);
+    if (!snap.empty) return snap.docs[0].id;
+
+    const ref = doc(collection(this.db, paths.accounts(this.companyId)));
+    await setDoc(ref, {
+      id: ref.id,
+      code,
+      nameAr,
+      nameEn,
+      type,
+      parentId,
+      isGroup: true,
+      level: parentId ? 2 : 1,
+      isActive: true,
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
+    });
+    return ref.id;
+  }
+
+  /**
+   * الأتمتة السيادية: إنشاء حساب فرعي تلقائي (Sub-Ledger)
+   */
+  async createAutomaticSubAccount(parentCode: string, referenceId: string, referenceName: string, type: any) {
+    // 1. فحص ما إذا كان الحساب موجوداً مسبقاً لهذا المرجع
+    const q = query(
+      collection(this.db, paths.accounts(this.companyId)), 
+      where('referenceId', '==', referenceId),
+      limit(1)
+    );
+    const snap = await getDocs(q);
+    if (!snap.empty) return snap.docs[0].id;
+
+    // 2. الحصول على الحساب الأب
+    const parentQuery = query(collection(this.db, paths.accounts(this.companyId)), where('code', '==', parentCode), limit(1));
+    const parentSnap = await getDocs(parentQuery);
+    const parent = parentSnap.empty ? null : parentSnap.docs[0].data();
+
+    // 3. توليد كود فرعي متسلسل (مثلاً: 12010001)
+    const subCode = await nextSequential(this.db, this.companyId, `acc_${parentCode}`, parentCode, 4);
+
+    const ref = doc(collection(this.db, paths.accounts(this.companyId)));
+    const accountData = {
+      id: ref.id,
+      code: subCode,
+      nameAr: referenceName,
+      nameEn: referenceName, // يمكن ترجمته لاحقاً عبر AI
+      type,
+      parentId: parentSnap.empty ? null : parentSnap.docs[0].id,
+      isGroup: false,
+      level: parent ? (parent.level + 1) : 1,
+      isActive: true,
+      referenceId: referenceId, // الربط بالكيان التشغيلي (عميل، موظف، أصل)
+      companyId: this.companyId,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+
+    await setDoc(ref, accountData);
+    return ref.id;
+  }
+
+  /**
+   * إنشاء حساب جديد يدوي
    */
   async createAccount(data: Partial<Account>, userId: string) {
     const ref = doc(collection(this.db, paths.accounts(this.companyId)));
@@ -44,20 +112,7 @@ export class AccountingService {
     return ref.id;
   }
 
-  /**
-   * جلب دليل الحسابات كشجرة
-   */
-  async getChartOfAccounts(): Promise<Account[]> {
-    const q = query(collection(this.db, paths.accounts(this.companyId)), orderBy('code'));
-    const snap = await getDocs(q);
-    return snap.docs.map(d => d.data() as Account);
-  }
-
-  /**
-   * توليد قيد يومية يدوي
-   */
   async createJournalEntry(data: Partial<JournalEntry>, userId: string) {
-    // التحقق من توازن القيد
     const totalDebit = data.lines?.reduce((sum, l) => sum + (l.debit || 0), 0) || 0;
     const totalCredit = data.lines?.reduce((sum, l) => sum + (l.credit || 0), 0) || 0;
 
@@ -83,9 +138,6 @@ export class AccountingService {
     return ref.id;
   }
 
-  /**
-   * إنشاء سند مالي وتوليد قيده تلقائياً
-   */
   async createVoucher(data: Partial<Voucher>, userId: string) {
     const batch = writeBatch(this.db);
     const voucherRef = doc(collection(this.db, paths.vouchers(this.companyId)));
@@ -95,14 +147,11 @@ export class AccountingService {
     const voucherNumber = await nextSequential(this.db, this.companyId, `voucher_${data.type}`, prefix, 5);
     const entryNumber = await nextSequential(this.db, this.companyId, 'journal_entry', 'JV-', 5);
 
-    // بناء سطور القيد التلقائي
     const lines: JournalEntryLine[] = [];
     if (data.type === 'receipt') {
-      // قبض: من حساب النقدية إلى حساب العميل/الإيراد
       lines.push({ accountId: data.cashAccountId!, accountName: 'حساب النقدية', debit: data.amount!, credit: 0 });
       lines.push({ accountId: data.accountId!, accountName: 'حساب الطرف الآخر', debit: 0, credit: data.amount!, projectId: data.projectId });
     } else {
-      // صرف: من حساب المصروف/المورد إلى حساب النقدية
       lines.push({ accountId: data.accountId!, accountName: 'حساب الطرف الآخر', debit: data.amount!, credit: 0, projectId: data.projectId });
       lines.push({ accountId: data.cashAccountId!, accountName: 'حساب النقدية', debit: 0, credit: data.amount! });
     }

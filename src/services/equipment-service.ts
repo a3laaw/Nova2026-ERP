@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -12,18 +13,12 @@ import { paths } from '@/firebase/multi-tenant';
 import { Equipment } from '@/types/equipment';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
+import { AccountingService } from './accounting-service';
 
-/**
- * خدمة إدارة المعدات والآليات (Equipment Service).
- * تتبع نمط Pattern 1 (Non-blocking) لضمان سلاسة تجربة المستخدم.
- */
 export class EquipmentService {
   constructor(private db: Firestore, private companyId: string) {}
 
-  /**
-   * إنشاء معدة جديدة - يتم الحفظ دون انتظار (Optimistic)
-   */
-  createEquipment(data: Partial<Equipment>, userId: string) {
+  async createEquipment(data: Partial<Equipment>, userId: string) {
     if (!this.db || !this.companyId) return;
 
     const path = paths.equipment(this.companyId);
@@ -40,25 +35,25 @@ export class EquipmentService {
       updatedAt: serverTimestamp()
     };
     
-    // تنفيذ الكتابة دون await (Pattern 1) لضمان استجابة الواجهة
-    setDoc(equipRef, docData)
+    await setDoc(equipRef, docData)
       .catch((serverError) => {
-        console.error("Firestore Write Error:", serverError);
-        const permissionError = new FirestorePermissionError({
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: equipRef.path,
           operation: 'create',
           requestResourceData: docData
-        } satisfies SecurityRuleContext);
-
-        errorEmitter.emit('permission-error', permissionError);
+        } satisfies SecurityRuleContext));
       });
+
+    // الأتمتة المحاسبية: إنشاء حساب أصل ثابت تلقائياً (Trigger 2)
+    if (data.ownershipType === 'owned') {
+       const accService = new AccountingService(this.db, this.companyId);
+       await accService.ensureControlAccount('1101', 'آليات ومعدات ثقيلة', 'Heavy Machinery & Equipment', 'asset');
+       await accService.createAutomaticSubAccount('1101', equipRef.id, data.name || 'معدة جديدة', 'asset');
+    }
       
     return equipRef.id;
   }
 
-  /**
-   * تحديث معدة موجودة
-   */
   updateEquipment(id: string, data: Partial<Equipment>, userId: string) {
     const ref = doc(this.db, paths.equipment(this.companyId), id);
     const docData = {

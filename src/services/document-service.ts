@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -25,6 +26,7 @@ import { ensureActionPermission } from '@/lib/permissions';
 import { TransactionService } from './transaction-service';
 import { BOQReferenceNode } from '@/types/reference';
 import { ClientService } from './client-service';
+import { AccountingService } from './accounting-service';
 
 export class DocumentService {
   constructor(
@@ -32,6 +34,47 @@ export class DocumentService {
     private companyId: string,
     private permissions: string[] = []
   ) {}
+
+  async updateContract(id: string, data: Partial<Contract>, userId: string) {
+    ensureActionPermission(this.permissions, 'projects:edit');
+    const docRef = doc(this.db, paths.contracts(this.companyId), id);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) return;
+    const currentData = snap.data() as Contract;
+
+    const updates: any = {
+      ...data,
+      isHistoryRecorded: true,
+      updatedBy: userId,
+      updatedAt: serverTimestamp()
+    };
+
+    await updateDoc(docRef, updates);
+
+    const finalStatus = data.status || currentData.status;
+    if (['approved', 'paid', 'active'].includes(finalStatus)) {
+       // 1. ترقية العميل إلى "متعاقد"
+       const clientRef = doc(this.db, paths.clients(this.companyId), currentData.clientId);
+       await updateDoc(clientRef, { status: 'contracted', updatedAt: serverTimestamp() });
+
+       // 2. الأتمتة المحاسبية: إنشاء حساب ذمة للعميل تلقائياً (Trigger 1)
+       const accService = new AccountingService(this.db, this.companyId);
+       await accService.ensureControlAccount('1201', 'ذمم العملاء', 'Accounts Receivable', 'asset');
+       await accService.createAutomaticSubAccount('1201', currentData.clientId, currentData.clientName, 'asset');
+
+       // 3. تفعيل المسار الفني المرتبط
+       if (currentData.transactionId) {
+          const transService = new TransactionService(this.db, this.companyId, this.permissions);
+          await transService.initializeTechnicalPath(
+            currentData.transactionId,
+            currentData.activityTypeId || '',
+            currentData.serviceId || '',
+            currentData.subServiceId || '',
+            userId
+          );
+       }
+    }
+  }
 
   async getNextBOQNumber(): Promise<string> {
     const year = new Date().getFullYear();
@@ -174,7 +217,7 @@ export class DocumentService {
     userName: string
   ) {
     ensureActionPermission(this.permissions, 'projects:create');
-    const templateRef = doc(this.db, paths.contractTemplates(this.companyId), templateId);
+    const templateRef = doc(this.db, paths.quotationTemplates(this.companyId), templateId);
     const templateSnap = await getDoc(templateRef);
     if (!templateSnap.exists()) throw new Error('TEMPLATE_NOT_FOUND');
     const template = templateSnap.data() as ContractTemplate;
@@ -199,54 +242,6 @@ export class DocumentService {
 
     await setDoc(contractRef, contractData);
     return contractRef.id;
-  }
-
-  async updateContract(id: string, data: Partial<Contract>, userId: string) {
-    ensureActionPermission(this.permissions, 'projects:edit');
-    const docRef = doc(this.db, paths.contracts(this.companyId), id);
-    const snap = await getDoc(docRef);
-    if (!snap.exists()) return;
-    const currentData = snap.data() as Contract;
-
-    const updates: any = {
-      ...data,
-      isHistoryRecorded: true,
-      updatedBy: userId,
-      updatedAt: serverTimestamp()
-    };
-
-    await updateDoc(docRef, updates);
-
-    // --- الإنفاذ السيادي (Sovereign Enforcement) ---
-    const finalStatus = data.status || currentData.status;
-    if (['approved', 'paid', 'active'].includes(finalStatus)) {
-       // 1. ترقية العميل إلى "متعاقد" لفتح رادار الميدان فوراً
-       const clientRef = doc(this.db, paths.clients(this.companyId), currentData.clientId);
-       await updateDoc(clientRef, { status: 'contracted', updatedAt: serverTimestamp() });
-
-       // 2. تفعيل المسار الفني المرتبط
-       if (currentData.transactionId) {
-          const transService = new TransactionService(this.db, this.companyId, this.permissions);
-          await transService.initializeTechnicalPath(
-            currentData.transactionId,
-            currentData.activityTypeId || '',
-            currentData.serviceId || '',
-            currentData.subServiceId || '',
-            userId
-          );
-       }
-    }
-
-    if (currentData && !currentData.isHistoryRecorded) {
-      const clientService = new ClientService(this.db, this.companyId);
-      await clientService.addHistory(currentData.clientId, {
-        type: 'system_log',
-        content: `تم اعتماد وحفظ العقد النهائي وتفعيل الحالة التعاقدية للعميل.`,
-        userId, 
-        userName: data.updatedBy || 'System Admin', 
-        companyId: this.companyId
-      });
-    }
   }
 
   async deleteContract(id: string) {
