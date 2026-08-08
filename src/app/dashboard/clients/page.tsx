@@ -67,16 +67,6 @@ export default function ClientsListPage() {
            <h1 className="text-xl md:text-2xl font-black text-slate-900">
              {t('clients.title')}
            </h1>
-           {!isAdmin && (
-             <div className="flex items-center gap-2 mt-1">
-                <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 font-bold text-[9px] px-2 h-4 rounded-md">
-                   {t('inline.isolated.view')}
-                </Badge>
-                <p className="text-[10px] font-medium text-slate-400 uppercase">
-                   {t('inline.your.assigned.files.only')}
-                </p>
-             </div>
-           )}
         </div>
         
         {canRegisterClient && (
@@ -113,7 +103,7 @@ export default function ClientsListPage() {
                 <TableHead className="py-5 ps-10 text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('clients.table.profile')}</TableHead>
                 <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('clients.table.staff')}</TableHead>
                 <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('clients.table.contact')}</TableHead>
-                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('clients.table.status')}</TableHead>
+                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('common.status')}</TableHead>
                 <TableHead className="pe-10"></TableHead>
               </TableRow>
             </TableHeader>
@@ -122,7 +112,7 @@ export default function ClientsListPage() {
                 <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></TableCell></TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 font-black italic">
-                  {t('inline.no.matching.clients.found')}
+                   {isRtl ? 'لا يوجد نتائج.' : 'No results found.'}
                 </TableCell></TableRow>
               ) : filtered.map((client) => (
                 <TableRow key={client.id} className="cursor-pointer group hover:bg-slate-50 transition-colors border-b-slate-100" onClick={() => router.push(`/dashboard/clients/${client.id}`)}>
@@ -139,7 +129,7 @@ export default function ClientsListPage() {
                   <TableCell className="py-5 text-start">
                      <Badge className={cn(
                        "font-black px-3 py-1 rounded-lg border-0 shadow-sm text-[9px] uppercase", 
-                       client.status === 'contracted' ? 'bg-emerald-50 text-white' : 'bg-orange-50 text-white'
+                       client.status === 'contracted' ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'
                      )}>
                         {client.status}
                      </Badge>

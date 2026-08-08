@@ -42,7 +42,7 @@ export default function SuppliersPage() {
 
   const stats = useMemo(() => ({
     total: suppliers?.length || 0,
-    activeOrders: 12 // Placeholder or dynamic if needed
+    activeOrders: 12
   }), [suppliers]);
 
   const handleAdd = async () => {
@@ -78,16 +78,13 @@ export default function SuppliersPage() {
             <Truck className="h-6 w-6 text-primary" />
             {t('suppliers')}
           </h1>
-          <p className="text-muted-foreground text-xs font-medium">
-            {isRtl ? 'إدارة قاعدة بيانات الموردين وتقييم الأداء.' : 'Manage supplier database and performance.'}
-          </p>
         </div>
 
         <Dialog>
           <DialogTrigger asChild>
             <Button size="sm" className="h-9 px-6 font-bold rounded-md shadow-sm">
               <Plus className="h-4 w-4 me-2" />
-              {isRtl ? 'مورد جديد' : 'New Supplier'}
+              {t('common.add')}
             </Button>
           </DialogTrigger>
           <DialogContent className="rounded-lg p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
@@ -117,7 +114,7 @@ export default function SuppliersPage() {
              <DialogFooter className="p-6 bg-slate-50 border-t">
                 <Button onClick={handleAdd} disabled={isAdding} size="sm" className="w-full h-9 font-bold">
                    {isAdding ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="me-2 h-4 w-4" />}
-                   {isRtl ? 'حفظ المورد' : 'Register Supplier'}
+                   {t('common.save')}
                 </Button>
              </DialogFooter>
           </DialogContent>
@@ -126,7 +123,7 @@ export default function SuppliersPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
          {[
-           { label: isRtl ? 'إجمالي الموردين' : 'Suppliers', val: stats.total, icon: Building2 },
+           { label: t('suppliers'), val: stats.total, icon: Building2 },
            { label: isRtl ? 'طلبات نشطة' : 'Active Orders', val: stats.activeOrders, icon: ShoppingBag },
          ].map((stat, i) => (
            <Card key={i} className="border shadow-sm rounded-lg p-4 flex items-center justify-between bg-white">
@@ -167,7 +164,7 @@ export default function SuppliersPage() {
               {loading ? (
                 <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-400 font-bold italic">{isRtl ? 'لا يوجد موردين.' : 'No suppliers found.'}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-400 font-bold italic">{isRtl ? 'لا يوجد نتائج.' : 'No results found.'}</TableCell></TableRow>
               ) : (
                 filtered.map((supplier) => (
                   <TableRow key={supplier.id} className="hover:bg-slate-50 transition-colors group border-b-slate-50 cursor-pointer">

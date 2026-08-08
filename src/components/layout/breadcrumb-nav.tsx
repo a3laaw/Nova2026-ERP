@@ -18,12 +18,30 @@ export function BreadcrumbNav() {
   const formatSegment = (segment: string) => {
     const sLower = segment.toLowerCase();
     
-    // Check if segment is a dynamic ID
+    // Check for explicit ID or long hash
     if (segment.length > 15 || /\d/.test(segment)) {
       return t('details');
     }
     
-    return t(sLower);
+    // Map system segments to Odoo dictionary keys
+    const segmentMap: Record<string, string> = {
+      'dashboard': 'dashboard',
+      'clients': 'clients',
+      'projects': 'projects',
+      'hr': 'hr',
+      'accounting': 'accounting',
+      'procurement': 'procurement',
+      'inventory': 'inventory',
+      'settings': 'settings',
+      'transactions': 'transactions',
+      'employees': 'staffRecords',
+      'payroll': 'payroll',
+      'boqs': 'boqExplorer',
+      'leaves': 'leaveRequests'
+    };
+    
+    const key = segmentMap[sLower] || sLower;
+    return t(key);
   };
 
   if (segments.length <= 1 && segments[0] === 'dashboard') return null;

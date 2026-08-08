@@ -16,7 +16,6 @@ import {
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
 import { usePermissions } from "@/hooks/use-permissions"
-import { useAuthContext } from "@/context/auth-context"
 import { Badge } from "@/components/ui/badge"
 import {
   Sidebar, SidebarHeader, SidebarContent, SidebarGroup,
@@ -62,8 +61,8 @@ export function DashboardSidebar() {
         url: "/dashboard/projects", 
         resource: 'projects',
         subItems: [
-          { title: t('activeProjects'), url: "/dashboard/projects", icon: Layers },
-          { title: t('boqExplorer'), url: "/dashboard/projects/boqs", icon: FileSpreadsheet },
+          { title: t('projects.title'), url: "/dashboard/projects", icon: Layers },
+          { title: t('projects.boqExplorer'), url: "/dashboard/projects/boqs", icon: FileSpreadsheet },
           { title: t('reports'), url: "/dashboard/reports", icon: FileText },
         ]
       },
@@ -73,10 +72,10 @@ export function DashboardSidebar() {
         url: "/dashboard/construction/bookings", 
         resource: 'projects',
         subItems: [
-          { title: t('fieldRadar'), url: "/dashboard/construction/bookings", icon: MapPin },
-          { title: t('workGroups'), url: "/dashboard/construction/groups", icon: Users },
-          { title: t('equipment'), url: "/dashboard/equipment", icon: Truck },
-          { title: t('fieldLogs'), url: "/dashboard/construction/field-visits", icon: FileText },
+          { title: t('construction.radar'), url: "/dashboard/construction/bookings", icon: MapPin },
+          { title: t('construction.groups'), url: "/dashboard/construction/groups", icon: Users },
+          { title: t('construction.equipment'), url: "/dashboard/equipment", icon: Truck },
+          { title: t('construction.reports'), url: "/dashboard/construction/field-visits", icon: FileText },
         ]
       },
       { 
@@ -91,7 +90,7 @@ export function DashboardSidebar() {
         ]
       },
       { 
-        title: isHrManager ? t('hr') : t('inline.personal.workspace'), 
+        title: isHrManager ? t('hr') : t('userProfile'), 
         icon: UserCircle, 
         url: "/dashboard/hr", 
         resource: 'hr',

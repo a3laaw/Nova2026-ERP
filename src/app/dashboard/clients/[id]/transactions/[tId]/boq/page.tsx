@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Label } from "@/components/ui/label";
 import { 
   FileSpreadsheet, ArrowRight, Loader2, 
   ChevronDown, ChevronRight,
@@ -22,7 +23,6 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
 import { useFirestore, useCollection, useDoc } from '@/firebase';
@@ -85,7 +85,7 @@ export default function TransactionBOQProgressPage() {
 
   const executionsQuery = useMemo(() => {
     if (!companyId || !db || !transactionId) return null;
-    return query(collection(db, paths.executions(companyId)), where('transactionId', '==', transactionId));
+    return query(collection(this.db, paths.executions(this.companyId)), where('transactionId', '==', transactionId));
   }, [db, companyId, transactionId]);
 
   const { data: rawExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
