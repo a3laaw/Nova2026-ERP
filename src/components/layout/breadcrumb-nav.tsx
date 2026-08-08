@@ -16,46 +16,28 @@ export function BreadcrumbNav() {
   const segments = pathname.split('/').filter(Boolean);
 
   const routeMap: Record<string, string> = {
-    dashboard: t('dashboard.title'),
+    dashboard: t('dashboard'),
     crm: t('crm'),
     clients: t('clients'),
     projects: t('projects'),
     hr: t('hr'),
-    employees: t('staffRecords'),
-    leaves: t('leaveRequests'),
-    permissions: t('permissions'),
-    attendance: t('attendanceLogs'),
-    payroll: t('payrollBatches'),
     accounting: t('accounting'),
     inventory: t('inventory'),
     procurement: t('procurement'),
-    suppliers: t('suppliers'),
     settings: t('settings'),
     profile: t('profile'),
     company: t('companyIdentity'),
     checklists: t('checklists'),
-    roles: t('rolesRef'),
+    roles: t('rolesPermissions'),
     'work-hours': t('workHours'),
     templates: t('templates'),
-    quotes: t('quotationTemplates'),
-    'field-visits': t('construction.reports'),
-    construction: t('construction'),
-    bookings: t('construction.radar'),
-    new: t('common.new'),
-    edit: t('common.edit'),
-    boqs: t('boqExplorer'),
-    coa: t('chartOfAccounts'),
-    receipt: t('receiptVouchers'),
-    payment: t('paymentVouchers'),
-    journals: t('journalEntries'),
-    reports: t('reports'),
+    details: t('details'),
     transactions: t('transactions')
   };
 
   const formatSegment = (segment: string) => {
     const sLower = segment.toLowerCase();
     
-    // تعريب "details" التي تظهر كجزء من مسار المشروع
     if (sLower === 'details') return t('details');
     
     // التعامل مع الـ IDs والمسارات الطويلة

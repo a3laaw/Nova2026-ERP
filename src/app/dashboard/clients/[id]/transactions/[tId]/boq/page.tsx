@@ -16,19 +16,17 @@ import {
   LayoutGrid, X, Clock, FilePlus
 } from "lucide-react";
 import { useFirestore, useCollection, useDoc } from '@/firebase';
-import { collection, query, where, doc, getDocs } from 'firebase/firestore';
+import { collection, query, where, doc, getDocs, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
-import { BOQ, BOQItem, BOQItemExecutionEntry, BOQVariation, BOQVariationItem } from '@/types/documents';
-import { BOQTemplate, BOQTemplateItem } from '@/types/templates';
+import { BOQ, BOQItem, BOQItemExecutionEntry } from '@/types/documents';
+import { BOQTemplate, BOQTemplateItem, BOQTreeNode } from '@/types/templates';
 import { Transaction, StageInstance } from '@/types/transaction';
 import { transformToBOQTree } from '@/lib/boq-tree-utils';
-import { BOQTreeNode } from '@/types/templates';
 import { cn } from '@/lib/utils';
 import { VOManagerDialog } from '@/components/transactions/vo-manager-dialog';
-import { VariationService } from '@/services/variation-service';
 import { DocumentService } from '@/services/document-service';
 import { toast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
@@ -63,14 +61,13 @@ export default function TransactionBOQProgressPage() {
   const boqQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqs(companyId))) : null, [db, companyId]);
   const { data: allBoqs, loading: boqLoading } = useCollection<BOQ>(boqQuery);
 
-  // حماية سيادية: البحث عن المقايسة بتنظيف المعرفات (Trim) لمنع فشل المطابقة
   const activeBoq = useMemo(() => {
     const tid = transactionId?.trim();
     return allBoqs?.find(b => b.transactionId?.trim() === tid);
   }, [allBoqs, transactionId]);
 
   const itemsQuery = useMemo(() => (companyId && db && activeBoq?.id) ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
-  const { data: rawItems, loading: itemsLoading } = useCollection<BOQItem>(itemsQuery);
+  const { data: rawItems } = useCollection<BOQItem>(itemsQuery);
 
   const items = useMemo(() => (rawItems || []).filter(i => (i.plannedQuantity || 0) > 0), [rawItems]);
 
