@@ -57,6 +57,7 @@ const translations: Record<Language, Record<string, string>> = {
     'common.loadFromGroup': 'تحميل طاقم عمل',
 
     // Dashboard
+    'dashboard': 'لوحة التحكم',
     'dashboard.title': 'لوحة التحكم المركزية',
     'dashboard.export': 'تصدير البيانات',
     'dashboard.stats.revenue': 'إجمالي الإيرادات',
@@ -190,6 +191,9 @@ const translations: Record<Language, Record<string, string>> = {
     'personalInfo': 'البيانات الشخصية',
     'saveChanges': 'حفظ التغييرات',
     'username': 'اسم المستخدم',
+    'referenceLists': 'القوائم المرجعية',
+    'boqMasterTree': 'شجرة الأعمال المرجعية',
+    'halls': 'إدارة القاعات',
     
     // Breadcrumb Special
     'details': 'تفاصيل',
@@ -239,6 +243,7 @@ const translations: Record<Language, Record<string, string>> = {
     'common.loadFromGroup': 'Load Work Group',
 
     // Dashboard
+    'dashboard': 'Dashboard',
     'dashboard.title': 'Central Dashboard',
     'dashboard.export': 'Export Data',
     'dashboard.stats.revenue': 'Total Revenue',
@@ -370,6 +375,9 @@ const translations: Record<Language, Record<string, string>> = {
     'personalInfo': 'Personal Information',
     'saveChanges': 'Save Changes',
     'username': 'Username',
+    'referenceLists': 'Reference Lists',
+    'boqMasterTree': 'Work Items Registry',
+    'halls': 'Meetings Halls',
     
     // Breadcrumb Special
     'details': 'Details',
