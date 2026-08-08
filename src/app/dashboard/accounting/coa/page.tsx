@@ -4,9 +4,12 @@
 import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from '@/components/ui/badge';
 import { 
   GitBranch, Plus, Loader2, Folder, 
-  FileText, Search, ChevronRight, ChevronDown 
+  FileText, Search, ChevronRight, ChevronDown,
+  ShieldCheck 
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -38,6 +41,7 @@ export default function ChartOfAccountsPage() {
   const renderTree = (parentId: string | null = null, level = 0) => {
     return accounts
       ?.filter(a => a.parentId === parentId)
+      .filter(a => searchTerm === "" || a.nameAr.includes(searchTerm) || a.nameEn.toLowerCase().includes(searchTerm.toLowerCase()) || a.code.includes(searchTerm))
       .map(account => {
         const hasChildren = accounts.some(a => a.parentId === account.id);
         const isExpanded = expanded[account.id];
@@ -68,7 +72,7 @@ export default function ChartOfAccountsPage() {
               </Badge>
             </div>
             
-            {isExpanded && renderTree(account.id, level + 1)}
+            {(isExpanded || searchTerm !== "") && renderTree(account.id, level + 1)}
           </div>
         );
       });
@@ -78,7 +82,7 @@ export default function ChartOfAccountsPage() {
     <div className="space-y-4 animate-in fade-in" dir={dir}>
       <header className="flex justify-between items-center">
         <div className="text-start">
-          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2 text-slate-900">
             <GitBranch className="h-6 w-6 text-primary" /> {isRtl ? 'دليل الحسابات' : 'Chart of Accounts'}
           </h1>
           <p className="text-muted-foreground text-xs font-medium">إدارة الهيكل المالي الشجري للمنشأة</p>
@@ -113,7 +117,7 @@ export default function ChartOfAccountsPage() {
         </Card>
 
         <aside className="lg:col-span-4 space-y-4">
-           <Card className="rounded-lg shadow-sm border-2 border-primary/10 bg-primary/5 p-6">
+           <Card className="rounded-lg shadow-sm border-2 border-primary/10 bg-primary/5 p-6 text-start">
               <h3 className="font-black text-sm mb-2 flex items-center gap-2 text-primary">
                  <ShieldCheck className="h-4 w-4" /> السيادة المالية
               </h3>
@@ -126,5 +130,3 @@ export default function ChartOfAccountsPage() {
     </div>
   );
 }
-
-import { Badge } from '@/components/ui/badge';
