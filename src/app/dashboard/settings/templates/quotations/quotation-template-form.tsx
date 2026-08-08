@@ -18,7 +18,7 @@ import {
   Save, X, Plus, Trash2, Loader2, ArrowRight,
   Calculator, ShieldCheck, FileText,
   DollarSign, AlertTriangle, Target, Percent,
-  Workflow, LayoutGrid, Clock
+  Workflow, LayoutGrid, Clock, GitBranch, Sparkles
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -27,12 +27,14 @@ import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, getDocs } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { QuotationTemplate, QuotationItem, PricingMode, MilestoneTiming } from '@/types/templates';
-import { ActivityType, Service, SubService, TechnicalStage } from '@/types/reference';
+import { ActivityType, Service, SubService, TechnicalStage, BOQReferenceNode } from '@/types/reference';
 import { TemplateService } from '@/services/template-service';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
+import { BOQReferenceSelector } from '@/components/settings/checklists/boq-reference/boq-reference-selector';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 
 interface Props {
   template: QuotationTemplate | null;
@@ -51,6 +53,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
   const [pathStages, setPathStages] = useState<TechnicalStage[]>([]);
   const [loadingStages, setLoadingStages] = useState(false);
   const [activeSubs, setActiveSubs] = useState<SubService[]>([]);
+  const [isRegistryOpen, setIsRegistryOpen] = useState(false);
 
   const [formData, setFormData] = useState<Partial<QuotationTemplate>>(
     template || {
@@ -64,18 +67,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
       defaultTerms: '',
       validDays: 30,
       pricingMode: 'itemized',
-      items: [
-        { 
-          description: '', 
-          label: isRtl ? 'الدفعة الأولى' : '1st Installment',
-          unit: 'batch', 
-          quantity: 1, 
-          unitPrice: 0, 
-          percentage: 0,
-          timing: 'at',
-          technicalStageId: 'SIGNING'
-        }
-      ],
+      items: [],
       isDefault: false,
       isActive: true
     }
@@ -162,7 +154,25 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
     setFormData({ ...formData, items: newItems });
   };
 
-  const addItem = () => {
+  const addItemFromRegistry = (node: BOQReferenceNode) => {
+    const nextIdx = (formData.items || []).length;
+    const newItem: QuotationItem = {
+      label: node.title,
+      description: node.description || '',
+      boqReferenceNodeId: node.id,
+      unit: node.unitSymbol || 'unit',
+      unitPrice: node.estimatedRate || 0,
+      quantity: 1,
+      percentage: 0,
+      timing: 'at',
+      technicalStageId: node.technicalStageId || ''
+    };
+    setFormData({ ...formData, items: [...(formData.items || []), newItem] });
+    setIsRegistryOpen(false);
+    toast({ title: isRtl ? "تم ربط البند المرجعي" : "Registry Item Linked" });
+  };
+
+  const addItemManual = () => {
     const nextIdx = (formData.items || []).length;
     setFormData({
       ...formData, 
@@ -203,7 +213,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
            </div>
            <Button onClick={handleSave} disabled={loading} size="sm" className="h-10 px-8 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 gap-2 border-b-4 border-orange-700 hover:scale-[1.02] transition-all">
               {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
-              {t('save')}
+              {t('common.save')}
            </Button>
         </div>
       </header>
@@ -213,7 +223,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
             <Card className="border-0 shadow-sm rounded-xl bg-white ring-1 ring-black/5">
                <CardContent className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 text-start">
                   <div className="space-y-1">
-                     <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{t('name')}</Label>
+                     <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{t('common.name')}</Label>
                      <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-10 rounded-lg border-2 font-bold text-xs" />
                   </div>
                   <div className="space-y-1">
@@ -270,9 +280,25 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                         <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                            <LayoutGrid className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'بنود التسعير والارتباط الفني' : 'Pricing Items & Pipeline Links'}
                         </h4>
-                        <Button variant="outline" size="sm" onClick={addItem} className="rounded-lg font-black text-[9px] border-2 h-7 px-4 gap-2 hover:bg-slate-50 transition-all shadow-sm">
-                           <Plus className="h-3 w-3" /> {isRtl ? 'إضافة بند' : 'Add Item'}
-                        </Button>
+                        <div className="flex gap-2">
+                           <Dialog open={isRegistryOpen} onOpenChange={setIsRegistryOpen}>
+                              <DialogTrigger asChild>
+                                 <Button variant="outline" size="sm" className="rounded-lg font-black text-[9px] border-2 h-7 px-4 gap-2 bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-sm">
+                                    <GitBranch className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'القاموس السيادي' : 'Registry Link'}
+                                 </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-4xl rounded-3xl p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
+                                 <div className="bg-slate-50 p-8 text-slate-900 text-start border-b">
+                                    <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3"><Sparkles className="h-7 w-7 text-primary" /> {isRtl ? 'ربط بنود العرض بالقاموس الموحد' : 'Link Offer Items to Registry'}</DialogTitle>
+                                 </div>
+                                 <div className="p-8"><BOQReferenceSelector onSelect={addItemFromRegistry} /></div>
+                                 <DialogFooter className="p-4 bg-slate-50"><Button variant="outline" onClick={() => setIsRegistryOpen(false)}>{t('common.close')}</Button></DialogFooter>
+                              </DialogContent>
+                           </Dialog>
+                           <Button onClick={addItemManual} variant="outline" size="sm" className="rounded-lg font-black text-[9px] border-2 h-7 px-4 gap-2 hover:bg-slate-50 transition-all shadow-sm">
+                              <Plus className="h-3.5 w-3.5" /> {isRtl ? 'بند يدوي' : 'Manual Item'}
+                           </Button>
+                        </div>
                      </div>
 
                      <div className="border-2 border-slate-900 rounded-xl overflow-hidden bg-white shadow-lg">
@@ -292,7 +318,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                               {(formData.items || []).map((m, idx) => {
                                  const lineAmount = formData.pricingMode === 'percentage' 
                                    ? ((formData.baseAmount || 0) * (m.percentage || 0)) / 100 
-                                   : (m.unitPrice || 0);
+                                   : (m.unitPrice || 0) * (m.quantity || 1);
                                  
                                  const linkedStageName = pathStages.find(s => s.id === m.technicalStageId)?.name;
 
@@ -301,7 +327,10 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                       <td className="p-3 font-black text-slate-300 text-start">{idx + 1}</td>
                                       <td className="p-2">
                                          <div className="space-y-1">
-                                            <Input value={m.label} onChange={e => updateItem(idx, 'label', e.target.value)} className="h-8 rounded-lg font-bold text-[10px] bg-slate-50/50" />
+                                            <div className="flex items-center gap-1">
+                                               {m.boqReferenceNodeId && <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[6px] h-3 px-1">LINKED</Badge>}
+                                               <Input value={m.label} onChange={e => updateItem(idx, 'label', e.target.value)} className="h-8 rounded-lg font-bold text-[10px] bg-slate-50/50" />
+                                            </div>
                                             {m.technicalStageId && m.technicalStageId !== 'NONE' && (
                                               <p className="text-[7px] text-slate-400 italic">
                                                 {t(m.timing || 'at')} {m.technicalStageId === 'SIGNING' ? t('contractSigning') : linkedStageName}
@@ -349,7 +378,11 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                       </td>
                                       <td className="p-2 text-end pe-6 w-32">
                                          {formData.pricingMode === 'itemized' ? (
-                                            <Input type="number" step="0.001" value={m.unitPrice === 0 ? "" : m.unitPrice} onChange={e => updateItem(idx, 'unitPrice', e.target.value === "" ? 0 : Number(e.target.value))} className="h-8 w-24 ms-auto text-end font-black text-emerald-600 text-[10px]" />
+                                            <div className="flex items-center gap-1 justify-end">
+                                               <Input type="number" step="1" value={m.quantity || 1} onChange={e => updateItem(idx, 'quantity', Number(e.target.value))} className="h-7 w-10 text-center text-[8px] border-2" />
+                                               <X className="h-2 w-2 opacity-20" />
+                                               <Input type="number" step="0.001" value={m.unitPrice === 0 ? "" : m.unitPrice} onChange={e => updateItem(idx, 'unitPrice', e.target.value === "" ? 0 : Number(e.target.value))} className="h-8 w-16 text-end font-black text-emerald-600 text-[9px] bg-slate-50 border-2" />
+                                            </div>
                                          ) : (
                                             <span className="font-mono font-black text-emerald-600 text-xs">{(lineAmount || 0).toLocaleString()} <span className="text-[8px] opacity-40">KWD</span></span>
                                          )}
@@ -440,8 +473,8 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                <p className="text-[10px] text-amber-800 font-bold leading-relaxed">
                   {isRtl 
-                    ? 'ربط بنود التسعير بالمراحل الفنية يضمن انتقال البيانات بدقة عند تحويل العرض إلى عقد رسمي، ويسمح بتتبع التحصيل المالي الميداني لاحقاً. الدفعة الأولى عند التوقيع هي دفعة حرة لا تتطلب اكتمال مرحلة ميدانية.' 
-                    : 'Linking pricing items to technical stages ensures data accuracy when converting quotes to contracts and enables field billing tracking. The first installment is a free trigger.'}
+                    ? 'ربط بنود التسعير بالقاموس الموحد يضمن تماثل التوصيف الفني بين العرض والمقايسة الميدانية. عند استخدام القاموس، يتم توريث السعر المرجعي والارتباط الفني بالمرحلة تلقائياً.' 
+                    : 'Linking offer items to the Sovereign Registry ensures technical consistency between quotes and field BOQs. Prices and stage links are auto-inherited.'}
                </p>
             </div>
          </aside>

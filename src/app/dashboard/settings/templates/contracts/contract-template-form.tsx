@@ -129,7 +129,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
     if (formData.pricingMode === 'percentage' && !stats.isValid) {
       toast({ 
         variant: "destructive", 
-        title: t('error'), 
+        title: t('common.error'), 
         description: isRtl ? `يجب أن يكون مجموع الحصص 100% (الحالي: ${stats.totalPercentage}%)` : `Total percentage must be 100%` 
       });
       return;
@@ -146,10 +146,10 @@ export function ContractTemplateForm({ template, onClose }: Props) {
       if (template?.id) await service.updateTemplate('contract', template.id, payload, user.uid);
       else await service.addTemplate('contract', payload, user.uid);
       
-      toast({ title: t('saved') });
+      toast({ title: t('common.saved') });
       onClose();
     } catch (e: any) {
-      toast({ variant: "destructive", title: t('error'), description: e.message });
+      toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
       setLoading(false);
     }
@@ -200,7 +200,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
            </div>
            <Button onClick={handleSave} disabled={loading} size="sm" className="h-9 px-8 rounded-lg shadow-lg gap-2 border-b-4 border-orange-700 hover:scale-[1.02] transition-all">
               {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
-              {t('save')}
+              {t('common.save')}
            </Button>
         </div>
       </header>
@@ -210,7 +210,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
             <Card className="border-0 shadow-sm rounded-xl bg-white ring-1 ring-black/5">
                <CardContent className="p-5 grid grid-cols-1 md:grid-cols-3 gap-4 text-start">
                   <div className="space-y-1">
-                     <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{t('name')}</Label>
+                     <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{t('common.name')}</Label>
                      <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-9 rounded-lg border-2 font-bold text-xs" />
                   </div>
                   <div className="space-y-1">
@@ -429,7 +429,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                <div className="absolute top-0 right-0 p-4 opacity-10"><ShieldCheck className="h-12 w-12 text-primary" /></div>
                <h5 className="font-black text-xs uppercase tracking-widest text-primary">{isRtl ? 'حالة القالب' : 'Template Status'}</h5>
                <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
-                  <Label className="text-[10px] font-bold text-slate-300 uppercase">{t('isActive')}</Label>
+                  <Label className="text-[10px] font-bold text-slate-300 uppercase">{t('common.isActive')}</Label>
                   <Switch checked={formData.isActive !== false} onCheckedChange={v => setFormData({...formData, isActive: v})} />
                </div>
             </div>

@@ -24,6 +24,7 @@ export interface QuotationItem {
   notes?: string;
   timing?: MilestoneTiming;
   technicalStageId?: string;
+  boqReferenceNodeId?: string; // الرابط الجوهري بالقاموس الموحد
   contractualEvent?: 'SIGNING' | 'CONTRACTING' | 'MANUAL';
   deleted?: boolean;
 }
@@ -126,7 +127,6 @@ export interface BOQTemplate extends BaseTemplate {
   itemsCount?: number;    
   sectionsCount?: number; 
   items?: BOQTemplateItem[];
-  // حقول المطابقة المتعددة (للعرض والفلترة)
   activityTypeIds?: string[];
   serviceIds?: string[];
 }
