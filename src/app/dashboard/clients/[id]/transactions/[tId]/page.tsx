@@ -93,6 +93,15 @@ function TransactionDetailsContent() {
     return allBoqs?.find(b => b.transactionId === transactionId);
   }, [allBoqs, transactionId]);
 
+  // 4. جلب القوالب بالاعتماد على الفلترة في الذاكرة لضمان الاستقرار الفوري (ID: ca9)
+  const allTemplatesQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqTemplates(companyId))) : null, [db, companyId]);
+  const { data: allTemplates } = useCollection<BOQTemplate>(allTemplatesQuery);
+
+  const templates = useMemo(() => {
+     if (!allTemplates || !transaction?.subServiceId) return [];
+     return allTemplates.filter(temp => temp.subServiceId === transaction.subServiceId && temp.isActive !== false);
+  }, [allTemplates, transaction?.subServiceId]);
+
   // منطق القفل المالي الصارم
   const isFinancialLockActive = useMemo(() => {
      const hasApprovedContract = contracts?.some(c => ['approved', 'paid', 'active', 'signed'].includes(c.status || '') || c.isPaid);
@@ -100,15 +109,19 @@ function TransactionDetailsContent() {
      return !hasApprovedContract || !hasApprovedBOQ;
   }, [contracts, activeBoq]);
 
-  const isFieldProject = useMemo(() => transaction?.activityTypeName?.includes('مقاولات') || transaction?.activityTypeName?.includes('Construction'), [transaction]);
+  // توسيع نطاق التعرف على المشاريع الميدانية ليشمل Design & Build وكافة مشتقات المقاولات
+  const isFieldProject = useMemo(() => {
+    if (!transaction) return false;
+    const name = transaction.activityTypeName || '';
+    return name.includes('مقاولات') || 
+           name.includes('Construction') || 
+           name.includes('Design') || 
+           name.includes('تصميم');
+  }, [transaction]);
 
-  // 4. جلب مراحل التنفيذ
+  // 5. جلب مراحل التنفيذ
   const stagesQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order', 'asc')) : null, [db, companyId, transactionId]);
   const { data: rawStages, loading: stagesLoading } = useCollection<StageInstance>(stagesQuery);
-
-  // 5. جلب قوالب المقايسات المتاحة لهذا المسار
-  const templatesQuery = useMemo(() => (companyId && db && transaction?.subServiceId) ? query(collection(db, paths.boqTemplates(companyId)), where('subServiceId', '==', transaction.subServiceId)) : null, [db, companyId, transaction]);
-  const { data: templates } = useCollection<BOQTemplate>(templatesQuery);
 
   const stages = useMemo(() => (rawStages || []).sort((a, b) => (a.order || 0) - (b.order || 0)), [rawStages]);
   const progressPercent = useMemo(() => stages.length ? Math.round((stages.filter(s => s.status === 'completed').length / stages.length) * 100) : 0, [stages]);
