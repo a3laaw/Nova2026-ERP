@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -38,7 +38,12 @@ export default function SuppliersPage() {
     companyId && db ? query(collection(db, paths.suppliers(companyId)), orderBy('name')) : null, 
   [db, companyId]);
 
-  const { data: suppliers, loading } = useCollection(suppliersQuery);
+  const { data: suppliers, loading } = useCollection<any>(suppliersQuery);
+
+  const stats = useMemo(() => ({
+    total: suppliers?.length || 0,
+    activeOrders: 12 // Placeholder or dynamic if needed
+  }), [suppliers]);
 
   const handleAdd = async () => {
     if (!db || !companyId || !newSupplier.name) return;
@@ -50,10 +55,11 @@ export default function SuppliersPage() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
-      toast({ title: t('saved') });
+      toast({ title: t('common.saved') });
       setNewSupplier({ name: '', category: '', phone: '', email: '', rating: 5 });
+      setIsAdding(false);
     } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+      toast({ variant: "destructive", title: t('common.error') });
     } finally {
       setIsAdding(false);
     }
@@ -90,20 +96,20 @@ export default function SuppliersPage() {
              </div>
              <div className="p-6 space-y-4 text-start">
                 <div className="space-y-1.5">
-                   <Label className="text-[10px] font-bold uppercase text-slate-400">الاسم</Label>
+                   <Label className="text-[10px] font-bold uppercase text-slate-400">{isRtl ? 'الاسم' : 'Name'}</Label>
                    <Input value={newSupplier.name} onChange={e => setNewSupplier({...newSupplier, name: e.target.value})} className="h-9 text-xs font-medium" />
                 </div>
                 <div className="space-y-1.5">
-                   <Label className="text-[10px] font-bold uppercase text-slate-400">التصنيف</Label>
+                   <Label className="text-[10px] font-bold uppercase text-slate-400">{isRtl ? 'التصنيف' : 'Category'}</Label>
                    <Input value={newSupplier.category} onChange={e => setNewSupplier({...newSupplier, category: e.target.value})} className="h-9 text-xs" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase text-slate-400">الهاتف</Label>
+                      <Label className="text-[10px] font-bold uppercase text-slate-400">{isRtl ? 'الهاتف' : 'Phone'}</Label>
                       <Input value={newSupplier.phone} onChange={e => setNewSupplier({...newSupplier, phone: e.target.value})} className="h-9 text-xs" />
                    </div>
                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase text-slate-400">البريد</Label>
+                      <Label className="text-[10px] font-bold uppercase text-slate-400">{isRtl ? 'البريد' : 'Email'}</Label>
                       <Input value={newSupplier.email} onChange={e => setNewSupplier({...newSupplier, email: e.target.value})} className="h-9 text-xs" />
                    </div>
                 </div>
@@ -121,7 +127,7 @@ export default function SuppliersPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
          {[
            { label: isRtl ? 'إجمالي الموردين' : 'Suppliers', val: stats.total, icon: Building2 },
-           { label: isRtl ? 'طلبات نشطة' : 'Active Orders', val: 12, icon: ShoppingBag },
+           { label: isRtl ? 'طلبات نشطة' : 'Active Orders', val: stats.activeOrders, icon: ShoppingBag },
          ].map((stat, i) => (
            <Card key={i} className="border shadow-sm rounded-lg p-4 flex items-center justify-between bg-white">
               <div className="text-start">
@@ -138,13 +144,13 @@ export default function SuppliersPage() {
            <div className="relative w-full max-w-sm">
               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input 
-                placeholder={isRtl ? 'بحث...' : 'Search suppliers...'} 
+                placeholder={t('common.search')} 
                 className="ps-9 h-9 border-slate-200 bg-white font-medium text-sm" 
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
            </div>
-           <Button variant="outline" size="sm" className="h-9 px-4 border-slate-200 font-bold text-xs"><Filter className="h-3.5 w-3.5 me-2" /> {isRtl ? 'تصفية' : 'Filter'}</Button>
+           <Button variant="outline" size="sm" className="h-9 px-4 border-slate-200 font-bold text-xs"><Filter className="h-3.5 w-3.5 me-2" /> {t('common.filter')}</Button>
         </div>
         <CardContent className="p-0 overflow-x-auto">
           <Table>

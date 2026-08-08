@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Plus, Search, Loader2, ArrowRight,
   TrendingUp, Building2, CheckCircle2,
-  Wallet, Activity
+  Wallet, Activity, Filter
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -59,9 +59,6 @@ export default function ProjectsPage() {
           <h1 className="text-xl md:text-2xl font-bold text-slate-900">
             {t('projects.title')}
           </h1>
-          <p className="text-[10px] font-medium text-slate-400 uppercase">
-            {t('projects.radar')}
-          </p>
         </div>
 
         <div className="flex gap-2">
@@ -72,7 +69,7 @@ export default function ProjectsPage() {
             className={cn("h-9 px-4 rounded-md font-bold text-xs border-slate-200", activeFilter === 'contracting' ? "bg-primary/10 border-primary text-primary" : "bg-white")}
           >
             <TrendingUp className="h-4 w-4 me-2" />
-            {t('projects.contracting')}
+            {t('projects.contracting') || 'Field Service'}
           </Button>
           <Button onClick={() => router.push('/dashboard/clients')} size="sm" className="h-9 px-4 rounded-md font-bold text-xs shadow-sm">
             <Plus className="h-4 w-4 me-2" /> {t('projects.addNew')}
@@ -105,20 +102,21 @@ export default function ProjectsPage() {
       </div>
 
       <Card className="rounded-lg shadow-sm border overflow-hidden bg-white">
-        <div className="p-3 bg-slate-50/30 border-b">
+        <div className="p-3 bg-slate-50/30 border-b flex items-center justify-between">
            <div className="relative w-full max-w-sm">
               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
               <Input placeholder={t('common.search')} className="ps-9 h-9 rounded-md bg-white border-slate-200 text-sm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
            </div>
+           <Button variant="outline" size="sm" className="h-9 px-4 border-slate-200 font-bold text-xs"><Filter className="h-3.5 w-3.5 me-2" /> {t('common.filter')}</Button>
         </div>
         <CardContent className="p-0">
           <Table>
             <TableHeader className="bg-slate-50/50">
               <TableRow className="border-b-0">
-                <TableHead className="py-3 ps-6 text-[10px] font-bold uppercase text-slate-500">{t('projects.table.project')}</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{t('projects.table.progress')}</TableHead>
-                <TableHead className="text-end text-[10px] font-bold uppercase text-slate-500">{t('projects.table.billing')}</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{t('projects.table.status')}</TableHead>
+                <TableHead className="py-3 ps-6 text-[10px] font-bold uppercase text-slate-500">{t('projects.table.project') || 'Project'}</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{t('projects.table.progress') || 'Progress'}</TableHead>
+                <TableHead className="text-end text-[10px] font-bold uppercase text-slate-500">{t('projects.table.billing') || 'Billing'}</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{t('common.status')}</TableHead>
                 <TableHead className="pe-6"></TableHead>
               </TableRow>
             </TableHeader>
