@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,7 +39,6 @@ import { cn } from '@/lib/utils';
 import { VOManagerDialog } from '@/components/transactions/vo-manager-dialog';
 import { DocumentService } from '@/services/document-service';
 import { toast } from '@/hooks/use-toast';
-import { BOQReferenceSelector } from '@/components/settings/checklists/boq-reference/boq-reference-selector';
 
 export default function TransactionBOQProgressPage() {
   const params = useParams();

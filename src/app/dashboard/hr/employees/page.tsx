@@ -17,15 +17,13 @@ import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
-import { HRService } from '@/services/hr-service';
 import { cn } from '@/lib/utils';
 import { Employee } from '@/types/hr';
-import { toast } from '@/hooks/use-toast';
 
 export default function EmployeesPage() {
   const { globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { check, permissions } = usePermissions();
+  const { check } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
@@ -61,7 +59,7 @@ export default function EmployeesPage() {
         </div>
         {createAccess.can && (
           <Button onClick={() => router.push('/dashboard/hr/employees/new')} size="sm" className="h-10 font-black px-8 rounded-xl shadow-lg shadow-primary/20">
-            <UserPlus className="me-2 h-4 w-4" /> {isRtl ? 'توظيف جديد' : 'New Hire'}
+            <UserPlus className="me-2 h-4 w-4" /> {t('common.add')}
           </Button>
         )}
       </div>
@@ -78,10 +76,10 @@ export default function EmployeesPage() {
           <Table>
             <TableHeader className="bg-slate-50/50">
               <TableRow>
-                <TableHead className="py-5 ps-8 text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">Employee</TableHead>
-                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Job Title</TableHead>
-                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Status</TableHead>
-                {canSeeSalaries && <TableHead className="text-end text-[10px] font-black uppercase text-slate-500 tracking-widest">Basic Salary</TableHead>}
+                <TableHead className="py-5 ps-8 text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('hr')}</TableHead>
+                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('jobTitle') || 'Job Title'}</TableHead>
+                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('common.status')}</TableHead>
+                {canSeeSalaries && <TableHead className="text-end text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('payroll')}</TableHead>}
                 <TableHead className="pe-8"></TableHead>
               </TableRow>
             </TableHeader>

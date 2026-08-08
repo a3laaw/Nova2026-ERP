@@ -1,24 +1,23 @@
 'use client';
 
-import { useMemo, useState, useEffect, Suspense, useCallback } from 'react';
+import { useMemo, useState, useEffect, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Activity, Clock, Loader2, 
-  CheckCircle2, Check,
+  Loader2, 
+  Check,
   FileSpreadsheet,
   Zap, Workflow,
-  PlusCircle, ArrowRight,
-  Info, Sparkles, FilePlus, ShieldCheck,
-  Lock, Wallet,
-  Gavel, Trash2, RotateCcw,
-  LayoutGrid
+  ArrowRight,
+  Sparkles, FilePlus,
+  Lock,
+  Plus, Save, CheckCircle2
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { collection, query, orderBy, where, limit, doc, updateDoc, serverTimestamp, addDoc } from 'firebase/firestore';
+import { collection, query, orderBy, where, doc, serverTimestamp, addDoc } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -215,7 +214,7 @@ function TransactionDetailsContent() {
                          </div>
                          <div className="flex justify-center gap-3 pt-4">
                             <Button onClick={() => setActiveTab('documents')} variant="outline" size="sm" className="h-8 font-bold px-6 text-[10px] rounded-md shadow-sm border-2">
-                               <Gavel className="h-3.5 w-3.5 me-2" /> {t('contracts')}
+                               <Plus className="h-3.5 w-3.5 me-2" /> {t('contracts')}
                             </Button>
                             <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} size="sm" className="h-8 font-bold px-6 text-[10px] rounded-md shadow-sm">
                                <FileSpreadsheet className="h-3.5 w-3.5 me-2" /> {t('projects.boqExplorer')}

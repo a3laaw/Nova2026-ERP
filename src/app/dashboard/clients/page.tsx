@@ -20,10 +20,6 @@ import { paths } from '@/firebase/multi-tenant';
 import { Client } from '@/types/client';
 import { cn } from '@/lib/utils';
 
-/**
- * صفحة سجل العملاء المعتمدين - Nova2026-ERP
- * تم تطهير النصوص والمنطق الثنائي واعتماد القاموس الموحد.
- */
 export default function ClientsListPage() {
   const { globalUser } = useAuthContext();
   const { t, isRtl, dir } = useLanguage();
@@ -93,7 +89,7 @@ export default function ClientsListPage() {
       <Card className="rounded-2xl shadow-sm border border-slate-100 overflow-hidden bg-white">
         <div className="p-4 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50/30 border-b">
            <div className="relative w-full max-w-md">
-              <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input 
                 placeholder={t('common.search')} 
                 className="ps-10 h-11 rounded-xl border-slate-200 bg-white text-sm font-bold shadow-inner" 
@@ -143,7 +139,7 @@ export default function ClientsListPage() {
                   <TableCell className="py-5 text-start">
                      <Badge className={cn(
                        "font-black px-3 py-1 rounded-lg border-0 shadow-sm text-[9px] uppercase", 
-                       client.status === 'contracted' ? 'bg-emerald-500 text-white' : 'bg-orange-500 text-white'
+                       client.status === 'contracted' ? 'bg-emerald-50 text-white' : 'bg-orange-50 text-white'
                      )}>
                         {client.status}
                      </Badge>

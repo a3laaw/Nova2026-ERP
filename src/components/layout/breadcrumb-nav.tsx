@@ -18,6 +18,7 @@ export function BreadcrumbNav() {
   const formatSegment = (segment: string) => {
     const sLower = segment.toLowerCase();
     
+    // Check if segment is a dynamic ID
     if (segment.length > 15 || /\d/.test(segment)) {
       return t('details');
     }

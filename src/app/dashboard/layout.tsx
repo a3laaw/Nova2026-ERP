@@ -10,7 +10,6 @@ import { DashboardSidebar } from "@/components/layout/dashboard-sidebar"
 import { UserNav } from "@/components/layout/user-nav"
 import { NotificationBell } from "@/components/layout/notification-bell"
 import { BreadcrumbNav } from "@/components/layout/breadcrumb-nav"
-import { Badge } from "@/components/ui/badge"
 import { Loader2, LogOut, Lock, Clock, ShieldAlert, AlertTriangle, Languages } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -22,9 +21,8 @@ export default function DashboardLayout({
 }) {
   const { user, globalUser, loading: authLoading, logout } = useAuthContext();
   const { company, loading: companyLoading, subscription } = useCompanyContext();
-  const { lang, setLang, t, dir } = useLanguage();
+  const { lang, setLang, t, dir, isRtl } = useLanguage();
   const router = useRouter();
-  const isRtl = lang === 'ar';
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -59,7 +57,6 @@ export default function DashboardLayout({
            <div className="h-20 w-20 bg-rose-50 text-rose-500 rounded-3xl flex items-center justify-center mx-auto shadow-inner"><ShieldAlert className="h-10 w-10" /></div>
            <div className="space-y-2">
               <h1 className="text-2xl font-black text-slate-900">{t('inline.profile.link.failed')}</h1>
-              <p className="text-sm font-bold text-slate-400 leading-relaxed">عذراً، لم نتمكن من العثور على سجل الموظف المرتبط بهذا الحساب.</p>
            </div>
            <Button onClick={logout} variant="outline" className="w-full rounded-xl h-12 gap-2"><LogOut className="h-4 w-4" /> {t('logout')}</Button>
         </div>
@@ -88,9 +85,6 @@ export default function DashboardLayout({
                  isInactive ? t('inline.awaiting.activation') :
                  t('inline.subscription.expired')}
               </h1>
-              <p className="text-slate-500 font-bold text-lg leading-relaxed">
-                 {company?.name} - {t('inline.subscription.expired')}
-              </p>
            </div>
 
            <div className="mt-12 pt-8 border-t space-y-4">

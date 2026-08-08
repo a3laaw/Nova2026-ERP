@@ -11,7 +11,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { 
   Search, 
   Loader2, 
@@ -47,7 +46,6 @@ interface Props {
 
 export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: Props) {
   const { lang, dir, t } = useLanguage();
-  const isRtl = lang === 'ar';
   
   const [position, setPosition] = useState<[number, number]>([29.3759, 47.9774]);
   const [searchQuery, setSearchQuery] = useState("");

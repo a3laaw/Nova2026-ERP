@@ -15,7 +15,7 @@ import { collection, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
-import { Account, AccountType } from '@/types/accounting';
+import { Account } from '@/types/accounting';
 import { cn } from '@/lib/utils';
 import { SeedService } from '@/services/seed-service';
 import { AccountingService } from '@/services/accounting-service';
@@ -69,9 +69,9 @@ export default function ChartOfAccountsPage() {
     try {
       const service = new SeedService(db, companyId);
       await service.seedConstructionCOA(user.uid);
-      toast({ title: isRtl ? "تمت تهيئة الدليل بنجاح" : "COA Initialized" });
+      toast({ title: t('saved') });
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Error", description: e.message });
+      toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
       setInitializing(false);
     }
@@ -96,10 +96,10 @@ export default function ChartOfAccountsPage() {
     try {
       const service = new AccountingService(db, companyId);
       await service.createAccount(form, user.uid);
-      toast({ title: t('saved') });
+      toast({ title: t('common.saved') });
       setIsAdding(false);
     } catch (e: any) {
-      toast({ variant: "destructive", title: t('error'), description: e.message });
+      toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
       setSaving(false);
     }
@@ -110,7 +110,6 @@ export default function ChartOfAccountsPage() {
       ?.filter(a => a.parentId === parentId)
       .filter(a => searchTerm === "" || a.nameAr.includes(searchTerm) || a.nameEn.toLowerCase().includes(searchTerm.toLowerCase()) || a.code.includes(searchTerm))
       .map(account => {
-        const hasChildren = accounts.some(a => a.parentId === account.id);
         const isExpanded = expanded[account.id];
 
         return (
@@ -161,9 +160,8 @@ export default function ChartOfAccountsPage() {
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2 text-slate-900">
-            <GitBranch className="h-6 w-6 text-primary" /> {isRtl ? 'دليل الحسابات السيادي' : 'Sovereign COA'}
+            <GitBranch className="h-6 w-6 text-primary" /> {t('chartOfAccounts')}
           </h1>
-          <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest mt-1 opacity-70">Hierarchical Financial Architecture</p>
         </div>
         
         <div className="flex gap-2">
@@ -176,11 +174,11 @@ export default function ChartOfAccountsPage() {
                 className="h-9 px-4 font-black border-primary text-primary hover:bg-primary/5 gap-2 shadow-xl animate-pulse"
               >
                 {initializing ? <Loader2 className="animate-spin h-4 w-4" /> : <DatabaseZap className="h-4 w-4" />}
-                {isRtl ? 'تهيئة الدليل الإنشائي' : 'Init Construction COA'}
+                {t('accounting.coa.title')}
               </Button>
            )}
            <Button onClick={() => openAddDialog()} size="sm" className="h-9 px-6 font-bold gap-2">
-              <Plus className="h-4 w-4" /> {isRtl ? 'حساب رئيسي' : 'Add Root Account'}
+              <Plus className="h-4 w-4" /> {t('inline.add.root.account')}
            </Button>
         </div>
       </header>
@@ -191,7 +189,7 @@ export default function ChartOfAccountsPage() {
             <div className="relative">
               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
               <Input 
-                placeholder={t('search')} 
+                placeholder={t('common.search')} 
                 className="ps-10 h-9 bg-white border-slate-200" 
                 value={searchTerm} 
                 onChange={e => setSearchTerm(e.target.value)} 
@@ -207,15 +205,14 @@ export default function ChartOfAccountsPage() {
                     <GitBranch className="h-10 w-10" />
                  </div>
                  <div className="space-y-2">
-                    <h3 className="font-black text-slate-400">{isRtl ? 'الدليل المحاسبي فارغ' : 'COA is Empty'}</h3>
-                    <p className="text-[10px] text-slate-400 max-w-xs mx-auto font-bold">ابدأ بتهيئة الدليل الإنشائي الكويتي المعتمد للبدء فوراً.</p>
+                    <h3 className="font-black text-slate-400">{t('inline.coa.is.empty')}</h3>
                  </div>
                  <Button 
                    onClick={handleInitCOA} 
                    disabled={initializing}
                    className="h-12 px-8 rounded-xl font-black gap-2"
                  >
-                    <Sparkles className="h-5 w-5" /> {isRtl ? 'تفعيل الدليل الإنشائي' : 'Activate Construction COA'}
+                    <Sparkles className="h-5 w-5" /> {t('inline.activate.construction.coa')}
                  </Button>
               </div>
             ) : (
@@ -225,28 +222,6 @@ export default function ChartOfAccountsPage() {
             )}
           </CardContent>
         </Card>
-
-        <aside className="lg:col-span-4 space-y-4 text-start">
-           <Card className="rounded-xl shadow-sm border-2 border-primary/10 bg-primary/5 p-6 space-y-3">
-              <h3 className="font-black text-xs mb-2 flex items-center gap-2 text-primary uppercase tracking-widest">
-                 <ShieldCheck className="h-4 w-4" /> المحاسبة السيادية
-              </h3>
-              <p className="text-[10px] font-bold text-slate-500 leading-relaxed italic">
-                 "لا يسمح بتفريع أي حسابات تحت حسابات الحركة (Leaf Nodes) لضمان سلامة ميزان المراجعة. يمكنك فقط إضافة حسابات تحت المجموعات (Groups)."
-              </p>
-           </Card>
-           
-           <Card className="rounded-xl shadow-sm border bg-white p-6 space-y-4">
-              <h3 className="font-black text-[10px] text-slate-400 uppercase tracking-widest">مفاتيح الدليل الموحد</h3>
-              <div className="space-y-2.5">
-                 <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-amber-500" /> <span className="text-[10px] font-black uppercase">1 - الأصول (Assets)</span></div>
-                 <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-blue-500" /> <span className="text-[10px] font-black uppercase">2 - الالتزامات (Liabilities)</span></div>
-                 <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-emerald-500" /> <span className="text-[10px] font-black uppercase">3 - حقوق الملكية (Equity)</span></div>
-                 <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-indigo-500" /> <span className="text-[10px] font-black uppercase">4 - الإيرادات (Revenue)</span></div>
-                 <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-rose-500" /> <span className="text-[10px] font-black uppercase">5 - المصروفات (Expenses)</span></div>
-              </div>
-           </Card>
-        </aside>
       </div>
 
       <Dialog open={isAdding} onOpenChange={setIsAdding}>
@@ -254,18 +229,18 @@ export default function ChartOfAccountsPage() {
            <div className="bg-slate-50 p-6 border-b text-start">
               <DialogTitle className="text-lg font-black flex items-center gap-3">
                  <Plus className="h-5 w-5 text-primary" />
-                 {isRtl ? 'إضافة حساب جديد' : 'Add New Account'}
+                 {t('inline.add.new.account')}
               </DialogTitle>
            </div>
            
            <div className="p-8 space-y-6 text-start">
               <div className="grid grid-cols-2 gap-4">
                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">{t('code')}</Label>
+                    <Label className="text-[10px] font-black uppercase text-slate-400">{t('common.code')}</Label>
                     <Input value={form.code} onChange={e => setForm({...form, code: e.target.value})} className="h-10 border-2 font-mono font-black text-primary" />
                  </div>
                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'النوع' : 'Type'}</Label>
+                    <Label className="text-[10px] font-black uppercase text-slate-400">{t('common.status')}</Label>
                     <Select value={form.type} onValueChange={(v: any) => setForm({...form, type: v})}>
                        <SelectTrigger className="h-10 border-2 font-bold"><SelectValue /></SelectTrigger>
                        <SelectContent>
@@ -281,19 +256,19 @@ export default function ChartOfAccountsPage() {
 
               <div className="space-y-4">
                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'اسم الحساب (عربي)' : 'Name (AR)'}</Label>
+                    <Label className="text-[10px] font-black uppercase text-slate-400">{t('name')} (AR)</Label>
                     <Input value={form.nameAr} onChange={e => setForm({...form, nameAr: e.target.value})} className="h-11 border-2 font-bold" />
                  </div>
                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'اسم الحساب (English)' : 'Name (EN)'}</Label>
+                    <Label className="text-[10px] font-black uppercase text-slate-400">{t('name')} (EN)</Label>
                     <Input value={form.nameEn} onChange={e => setForm({...form, nameEn: e.target.value})} className="h-11 border-2 font-bold text-start" dir="ltr" />
                  </div>
               </div>
 
               <div className="p-4 rounded-xl bg-slate-50 border-2 border-slate-100 flex items-center justify-between">
                  <div className="space-y-0.5">
-                    <Label className="font-black text-xs text-slate-800">{isRtl ? 'حساب مجموعة؟' : 'Is it a Group?'}</Label>
-                    <p className="text-[9px] font-bold text-slate-400">{isRtl ? 'تفعيل هذا الخيار يسمح بإضافة حسابات فرعية تحته.' : 'Enable to allow children accounts.'}</p>
+                    <Label className="font-black text-xs text-slate-800">{t('inline.is.it.a.group')}</Label>
+                    <p className="text-[9px] font-bold text-slate-400">{t('inline.enable.to.allow.children.accounts')}</p>
                  </div>
                  <Switch checked={form.isGroup} onCheckedChange={v => setForm({...form, isGroup: v})} />
               </div>
@@ -302,7 +277,7 @@ export default function ChartOfAccountsPage() {
            <DialogFooter className="p-6 bg-slate-50 border-t">
               <Button onClick={handleSaveAccount} disabled={saving || !form.nameAr || !form.code} className="w-full h-12 rounded-xl font-black gap-2 shadow-lg shadow-primary/20 border-b-4 border-orange-700">
                  {saving ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
-                 {isRtl ? 'اعتماد الحساب' : 'Commit Account'}
+                 {t('inline.commit.account')}
               </Button>
            </DialogFooter>
         </DialogContent>

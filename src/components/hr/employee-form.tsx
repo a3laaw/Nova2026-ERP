@@ -16,23 +16,16 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { 
-  UserPlus, 
-  Briefcase, 
-  DollarSign, 
   Loader2, 
   Save, 
-  Phone, 
-  Mail, 
-  CreditCard, 
   ShieldCheck,
   Building2,
-  RefreshCw,
-  Lock,
   Construction,
   Wallet,
   Landmark,
   UserCircle,
-  Key
+  Key,
+  Briefcase
 } from "lucide-react";
 import { Employee } from '@/types/hr';
 import { SmartDateInput } from '@/components/ui/smart-date-input';
@@ -166,7 +159,6 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
       const job = jobs.find(j => j.id === selectedJobId);
       if (job) {
         form.setValue('jobTitle', isRtl ? job.name : job.nameEn);
-        // استحقاق آلي للدور الأمني من الوظيفة المرجعية
         if (job.roleId) {
           form.setValue('roleId', job.roleId);
           form.setValue('roleName', job.roleName || '');
@@ -200,11 +192,10 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
       {readOnly && (
         <div className="bg-amber-50 border-2 border-amber-100 rounded-2xl p-4 flex items-center gap-3 text-amber-800 mb-6 text-start">
            <Lock className="h-5 w-5 shrink-0" />
-           <p className="text-xs font-bold">{isRtl ? 'هذا الملف معلق للعرض فقط.' : 'This profile is read-only.'}</p>
+           <p className="text-xs font-bold">{t('inline.this.profile.is.read.only')}</p>
         </div>
       )}
 
-      {/* نوع التوظيف */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
          <Card 
            onClick={() => !readOnly && form.setValue('employeeType', 'internal')}
@@ -218,11 +209,9 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
                   <ShieldCheck className="h-6 w-6" />
                </div>
                <div>
-                  <h4 className="font-black text-lg leading-none">{isRtl ? 'موظف داخلي (رسمي)' : 'Internal Staff'}</h4>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Full Identity & Residency</p>
+                  <h4 className="font-black text-lg leading-none">{t('inline.internal.staff')}</h4>
                </div>
             </div>
-            {employeeType === 'internal' && <div className="absolute top-2 right-6"><Badge className="bg-primary text-white text-[8px] font-black uppercase">Standard</Badge></div>}
          </Card>
 
          <Card 
@@ -237,56 +226,54 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
                   <Construction className="h-6 w-6" />
                </div>
                <div>
-                  <h4 className="font-black text-lg leading-none">{isRtl ? 'عامل خارجي (ميداني)' : 'External Labor'}</h4>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Daily / Site Based</p>
+                  <h4 className="font-black text-lg leading-none">{t('inline.external.labor')}</h4>
                </div>
             </div>
-            {employeeType === 'external' && <div className="absolute top-2 right-6"><Badge className="bg-slate-900 text-primary text-[8px] font-black uppercase">Simplified</Badge></div>}
          </Card>
       </div>
 
       <Card className="border-0 shadow-lg rounded-[1.5rem] bg-white ring-1 ring-black/5">
         <CardContent className="p-8 space-y-6">
           <div className="flex items-center justify-end gap-3 text-primary mb-4 border-b pb-4">
-             <h3 className="text-xl font-black font-headline">{isRtl ? 'بيانات الهوية' : 'Personal Identity'}</h3>
+             <h3 className="text-xl font-black font-headline">{t('inline.personal.identity')}</h3>
              <UserCircle className="h-6 w-6" />
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2 text-start">
-              <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'رقم الموظف' : 'Emp #'}</Label>
+              <Label className="font-black text-xs text-slate-400 uppercase">{t('inline.emp')}</Label>
               <div className="relative">
                 <Input {...form.register('employeeNumber')} readOnly className="h-12 rounded-xl bg-slate-100 font-black text-primary border-0" />
                 {generatingNum && <Loader2 className="absolute end-4 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary/30" />}
               </div>
             </div>
             <div className="space-y-2 text-start">
-              <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'الاسم الكامل' : 'Full Name'}</Label>
+              <Label className="font-black text-xs text-slate-400 uppercase">{t('inline.full.name')}</Label>
               <Input {...form.register('fullName')} readOnly={readOnly} className="h-12 rounded-xl border-2 font-bold bg-slate-50/30" />
             </div>
             
             {!isExternal && (
                <div className="space-y-2 text-start animate-in zoom-in-95">
-                 <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'الاسم بالإنجليزية' : 'Name (EN)'}</Label>
+                 <Label className="font-black text-xs text-slate-400 uppercase">{t('inline.name..en')}</Label>
                  <Input {...form.register('nameEn')} readOnly={readOnly} className="h-12 rounded-xl border-2 font-bold bg-slate-50/30 text-start" dir="ltr" />
                </div>
             )}
 
             {!isExternal && (
                <div className="space-y-2 text-start animate-in zoom-in-95">
-                 <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'الرقم المدني' : 'Civil ID'}</Label>
+                 <Label className="font-black text-xs text-slate-400 uppercase">{t('inline.civil.id')}</Label>
                  <Input {...form.register('civilId')} readOnly={readOnly} maxLength={12} className="h-12 rounded-xl font-mono border-2 bg-slate-50/30" />
                </div>
             )}
 
             <div className="space-y-2 text-start">
-              <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'رقم الهاتف' : 'Mobile'}</Label>
+              <Label className="font-black text-xs text-slate-400 uppercase">{t('inline.mobile')}</Label>
               <Input {...form.register('mobile')} readOnly={readOnly} className="h-12 rounded-xl border-2 font-bold bg-slate-50/30" />
             </div>
 
             {!isExternal && (
                <div className="space-y-2 text-start animate-in zoom-in-95">
-                 <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'البريد الإلكتروني' : 'Email'}</Label>
+                 <Label className="font-black text-xs text-slate-400 uppercase">{t('inline.email')}</Label>
                  <Input {...form.register('email')} type="email" readOnly={readOnly} className="h-12 rounded-xl border-2 font-bold bg-slate-50/30 text-start" dir="ltr" />
                </div>
             )}
@@ -297,19 +284,19 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
       <Card className="border-0 shadow-lg rounded-[1.5rem] bg-white ring-1 ring-black/5">
         <CardContent className="p-8 space-y-6">
           <div className="flex items-center justify-end gap-3 text-primary mb-4 border-b pb-4">
-             <h3 className="text-xl font-black font-headline">{isRtl ? 'البيانات الوظيفية والصلاحيات' : 'Work Context & Roles'}</h3>
+             <h3 className="text-xl font-black font-headline">{t('inline.work.context...roles')}</h3>
              <Briefcase className="h-6 w-6" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2 text-start">
-              <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'القسم المسؤول' : 'Department'}</Label>
+              <Label className="font-black text-xs text-slate-400 uppercase">{t('orgRef')}</Label>
               <Select disabled={readOnly} value={selectedDeptId} onValueChange={(v) => { form.setValue('departmentId', v); form.setValue('jobId', ''); }}>
                 <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/30"><SelectValue placeholder="..." /></SelectTrigger>
                 <SelectContent className="rounded-xl">{departments?.map(d => <SelectItem key={d.id} value={d.id!} className="font-bold">{isRtl ? d.name : d.nameEn}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-2 text-start">
-              <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'المسمى الوظيفي (المهنة المرجعية)' : 'Official Job Title'}</Label>
+              <Label className="font-black text-xs text-slate-400 uppercase">{t('inline.official.job.title')}</Label>
               <Select disabled={readOnly || !selectedDeptId} value={selectedJobId} onValueChange={(v) => form.setValue('jobId', v)}>
                 <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/30"><SelectValue placeholder="..." /></SelectTrigger>
                 <SelectContent className="rounded-xl">{jobs?.map(j => <SelectItem key={j.id} value={j.id!} className="font-bold">{isRtl ? j.name : j.nameEn}</SelectItem>)}</SelectContent>
@@ -320,7 +307,7 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-50">
              <div className="space-y-2 text-start">
                 <Label className="font-black text-[10px] text-primary uppercase tracking-widest flex items-center gap-1.5">
-                   <Key className="h-3 w-3" /> {isRtl ? 'الدور الأمني (صلاحيات النظام)' : 'Security Access Role'}
+                   <Key className="h-3 w-3" /> {t('inline.security.access.role')}
                 </Label>
                 <Select disabled={readOnly || !isAdmin} value={selectedRoleId || 'NONE'} onValueChange={(v) => form.setValue('roleId', v === 'NONE' ? '' : v)}>
                    <SelectTrigger className="h-12 rounded-xl border-2 font-black bg-slate-50/50 shadow-inner">
@@ -328,7 +315,7 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
                    </SelectTrigger>
                    <SelectContent className="rounded-xl border-0 shadow-2xl">
                       <SelectItem value="NONE" className="font-bold text-xs py-3 border-b text-slate-400 italic">
-                         {isRtl ? '--- لا يوجد وصول للنظام (ميداني فقط) ---' : '--- No System Access (Field only) ---'}
+                         {t('inline.no.system.access..field.only')}
                       </SelectItem>
                       {roles?.map(r => (
                         <SelectItem key={r.id} value={r.id!} className="font-bold py-3 border-b last:border-0">
@@ -337,21 +324,14 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
                       ))}
                    </SelectContent>
                 </Select>
-                <p className="text-[9px] text-slate-400 font-bold italic">{isRtl ? '* تعيين دور هنا يسمح للموظف بالدخول للنظام لاحقاً.' : '* Assigning a role enables system login for this employee.'}</p>
+                <p className="text-[9px] text-slate-400 font-bold italic">{t('inline.assigning.a.role.enables.system.login.for.this.employee')}</p>
              </div>
 
              <div className="space-y-2 text-start">
-                <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'تاريخ المباشرة' : 'Start Date'}</Label>
+                <Label className="font-black text-xs text-slate-400 uppercase">{t('inline.start.date')}</Label>
                 <SmartDateInput value={form.watch('hireDate')} onChange={(v) => form.setValue('hireDate', v)} />
              </div>
           </div>
-
-          {!isExternal && (
-            <div className="space-y-2 text-start pt-4 border-t animate-in fade-in">
-              <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'تاريخ انتهاء الإقامة' : 'Residency Expiry'}</Label>
-              <SmartDateInput value={form.watch('residencyExpiry') || ''} onChange={(v) => form.setValue('residencyExpiry', v)} />
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -360,14 +340,14 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
           <div className="flex items-center justify-between border-b pb-4">
             <div className="flex gap-2">
                <Button type="button" onClick={() => !readOnly && form.setValue('paymentBasis', 'monthly')} variant={paymentBasis === 'monthly' ? 'default' : 'outline'} size="sm" className="rounded-xl font-bold h-9 px-6">
-                  {isRtl ? 'راتب شهري' : 'Monthly'}
+                  {t('inline.monthly')}
                </Button>
                <Button type="button" onClick={() => !readOnly && form.setValue('paymentBasis', 'daily')} variant={paymentBasis === 'daily' ? 'default' : 'outline'} size="sm" className="rounded-xl font-bold h-9 px-6">
-                  {isRtl ? 'يومية' : 'Daily'}
+                  {t('inline.daily')}
                </Button>
             </div>
             <div className="flex items-center gap-3 text-emerald-600">
-              <h3 className="text-xl font-black font-headline">{isRtl ? 'الاتفاق المالي' : 'Financial Terms'}</h3>
+              <h3 className="text-xl font-black font-headline">{t('inline.financial.terms')}</h3>
               <Wallet className="h-6 w-6" />
             </div>
           </div>
@@ -375,7 +355,7 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-start">
             <div className="space-y-2">
               <Label className="font-black text-xs text-slate-400 uppercase">
-                {paymentBasis === 'monthly' ? (isRtl ? 'قيمة الراتب (د.ك)' : 'Monthly Rate') : (isRtl ? 'قيمة اليومية (د.ك)' : 'Daily Rate')}
+                {paymentBasis === 'monthly' ? t('inline.monthly.rate') : t('inline.daily.rate')}
               </Label>
               <div className="relative">
                  <Input {...form.register('basicSalary')} type="number" step="0.001" className="h-16 rounded-2xl text-center font-black text-emerald-600 text-4xl bg-slate-50 border-2" />
@@ -384,34 +364,21 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
             </div>
 
             <div className="space-y-2">
-              <Label className="font-black text-xs text-slate-400 uppercase">{isRtl ? 'طريقة صرف المستحقات' : 'Payout Method'}</Label>
+              <Label className="font-black text-xs text-slate-400 uppercase">{t('inline.payout.method')}</Label>
               <Select value={paymentMethod} onValueChange={(v: any) => form.setValue('paymentMethod', v)} disabled={readOnly}>
                   <SelectTrigger className="h-16 rounded-2xl border-2 font-black text-lg bg-white">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-0 shadow-3xl">
-                    <SelectItem value="cash" className="font-bold py-3">{isRtl ? 'نقدي (كاش)' : 'Cash'}</SelectItem>
-                    <SelectItem value="site_petty_cash" className="font-bold py-3 text-primary">{isRtl ? 'عهدة الموقع' : 'Site Petty Cash'}</SelectItem>
-                    <SelectItem value="lead_engineer" className="font-bold py-3">{isRtl ? 'المهندس المسؤول' : 'Lead Engineer'}</SelectItem>
-                    <SelectItem value="check" className="font-bold py-3">{isRtl ? 'شيك' : 'Check'}</SelectItem>
-                    {!isExternal && <SelectItem value="payroll" className="font-bold py-3 text-blue-600">{isRtl ? 'تحويل راتب رسمي' : 'Bank Payroll'}</SelectItem>}
+                    <SelectItem value="cash" className="font-bold py-3">{t('inline.cash')}</SelectItem>
+                    <SelectItem value="site_petty_cash" className="font-bold py-3 text-primary">{t('inline.site.petty.cash')}</SelectItem>
+                    <SelectItem value="lead_engineer" className="font-bold py-3">{t('inline.lead.engineer')}</SelectItem>
+                    <SelectItem value="check" className="font-bold py-3">{t('inline.check')}</SelectItem>
+                    {!isExternal && <SelectItem value="payroll" className="font-bold py-3 text-blue-600">{t('inline.bank.payroll')}</SelectItem>}
                   </SelectContent>
               </Select>
             </div>
           </div>
-
-          {!isExternal && paymentMethod === 'payroll' && (
-            <div className="pt-8 border-t grid grid-cols-1 md:grid-cols-2 gap-8 animate-in slide-in-from-top-4 duration-500">
-              <div className="space-y-2 text-start">
-                <Label className="font-black text-xs text-slate-400 uppercase flex items-center gap-1.5"><Landmark className="h-3 w-3" /> {isRtl ? 'اسم البنك' : 'Bank'}</Label>
-                <Input {...form.register('bankName')} readOnly={readOnly} className="h-12 rounded-xl border-2 bg-slate-50/30" />
-              </div>
-              <div className="space-y-2 text-start">
-                <Label className="font-black text-xs text-slate-400 uppercase flex items-center gap-1.5"><CreditCard className="h-3 w-3" /> {isRtl ? 'رقم الحساب (IBAN)' : 'IBAN'}</Label>
-                <Input {...form.register('iban')} readOnly={readOnly} className="h-12 rounded-xl font-mono text-sm border-2 bg-slate-50/30" />
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -419,7 +386,7 @@ export function EmployeeForm({ initialData, onSubmit, loading, readOnly = false 
         <div className="flex justify-end pt-6">
           <Button type="submit" disabled={loading} className="h-20 rounded-[2.5rem] px-24 bg-primary text-white font-black text-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-4 border-b-8 border-orange-700">
             {loading ? <Loader2 className="animate-spin h-8 w-8" /> : <Save className="h-8 w-8" />}
-            {initialData ? (isRtl ? 'تحديث البيانات' : 'Update Profile') : (isRtl ? 'اعتماد التوظيف' : 'Commit Registration')}
+            {initialData ? t('inline.update.profile') : t('inline.commit.registration')}
           </Button>
         </div>
       )}
