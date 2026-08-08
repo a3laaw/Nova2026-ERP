@@ -59,7 +59,7 @@ const chartConfig = {
 export default function DashboardPage() {
   const { company } = useCompanyContext();
   const { globalUser } = useAuthContext();
-  const { t, dir, isRtl } = useLanguage();
+  const { t, isRtl } = useLanguage();
   const db = useFirestore();
   const router = useRouter();
 
@@ -75,7 +75,7 @@ export default function DashboardPage() {
     );
   }, [db, companyId]);
 
-  const { data: allScheduled, loading: apptsLoading } = useCollection<Appointment>(apptsQuery);
+  const { data: allScheduled } = useCollection<Appointment>(apptsQuery);
 
   const overdueMissions = useMemo(() => {
     const today = startOfDay(new Date());
@@ -126,14 +126,14 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div className="space-y-6 w-full px-4 md:px-6" dir={dir}>
+    <div className="space-y-6 w-full animate-in fade-in duration-500">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="text-start">
           <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">{t('dashboard.title')}</h1>
           <p className="text-xs text-muted-foreground font-medium">{company?.name || '...'}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-9 font-semibold px-4">
+          <Button variant="outline" size="sm" className="h-9 font-semibold px-4 border-slate-200">
             <FileText className="me-2 h-3.5 w-3.5" />
             {t('dashboard.export')}
           </Button>
@@ -169,7 +169,7 @@ export default function DashboardPage() {
                         <div className="flex justify-between items-start">
                            <div className="text-start">
                               <p className="text-[10px] font-bold text-rose-500 uppercase">{t('common.pending')}</p>
-                              <p className="text-xs font-bold text-slate-600">{daysLate} {t('hr.gratuity.days') || 'Days'}</p>
+                              <p className="text-xs font-bold text-slate-600">{daysLate} {isRtl ? 'أيام' : 'Days'}</p>
                            </div>
                         </div>
                         <div className="text-start space-y-0.5">
@@ -192,7 +192,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, i) => (
-          <Card key={i} className="rounded-lg shadow-sm border-slate-100">
+          <Card key={i} className="rounded-lg shadow-sm border-slate-100 bg-white">
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <div className={cn("p-1.5 rounded-md", stat.bg)}>
@@ -215,7 +215,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 rounded-lg border-slate-100 shadow-sm overflow-hidden">
+        <Card className="lg:col-span-2 rounded-lg border-slate-100 shadow-sm overflow-hidden bg-white">
           <CardHeader className="flex flex-row items-center justify-between px-6 py-4 border-b bg-slate-50/50">
             <div className="text-start">
               <CardTitle className="text-sm font-bold text-slate-900">{t('accounting.title')}</CardTitle>

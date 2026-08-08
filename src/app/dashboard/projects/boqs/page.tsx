@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -25,7 +24,7 @@ import { toast } from '@/hooks/use-toast';
 
 export default function BOQExplorerPage() {
   const { globalUser, user } = useAuthContext();
-  const { t, lang, dir, isRtl } = useLanguage();
+  const { t, isRtl } = useLanguage();
   const { isAdmin, permissions } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
@@ -34,7 +33,7 @@ export default function BOQExplorerPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // استعلام بسيط جداً لضمان ظهور البيانات فوراً دون الحاجة لفهارس معقدة
+  // استرجاع الاستعلام البسيط والمستقر لضمان ظهور كافة المقايسات
   const boqsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.boqs(companyId))) : null, 
   [db, companyId]);
@@ -46,96 +45,100 @@ export default function BOQExplorerPage() {
       (boq.boqNumber || "").toLowerCase().includes(searchTerm.toLowerCase()) || 
       (boq.clientName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (boq.name || "").toLowerCase().includes(searchTerm.toLowerCase())
-    ).sort((a,b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+    ).sort((a,b) => {
+       const dateA = a.createdAt?.toMillis?.() || 0;
+       const dateB = b.createdAt?.toMillis?.() || 0;
+       return dateB - dateA;
+    });
   }, [boqs, searchTerm]);
 
   const handleDeleteBOQ = async (id: string, transId?: string) => {
-    if (!db || !companyId || !confirm(t('confirmDelete'))) return;
+    if (!db || !companyId || !confirm(t('common.confirmDelete'))) return;
     setIsDeleting(true);
     try {
       const service = new DocumentService(db, companyId, permissions);
       await service.deleteBOQ(id, transId, user?.uid, globalUser?.fullName || 'Admin');
-      toast({ title: t('deleted') });
+      toast({ title: t('common.deleted') });
     } catch (e: any) {
-      toast({ variant: "destructive", title: t('error'), description: e.message });
+      toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
       setIsDeleting(false);
     }
   };
 
   return (
-    <div className="w-full space-y-6 text-start animate-in fade-in duration-500" dir={dir}>
+    <div className="w-full space-y-4 text-start animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
-          <h1 className="text-2xl md:text-3xl font-black font-headline flex items-center gap-3 text-slate-900">
-            <FileSpreadsheet className="h-8 w-8 text-primary" />
-            {t('boqExplorer')}
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-3 text-slate-900">
+            <FileSpreadsheet className="h-6 w-6 text-primary" />
+            {t('projects.boqExplorer')}
           </h1>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-            {isRtl ? 'إدارة واعتماد جداول الكميات والميزانيات المرجعية' : 'Manage and approve bill of quantities and baseline budgets'}
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 opacity-70">
+            {isRtl ? 'إدارة واعتماد جداول الكميات والميزانيات المرجعية' : 'Manage bill of quantities and baseline budgets'}
           </p>
         </div>
       </div>
 
-      <Card className="rounded-xl border-0 shadow-lg bg-white overflow-hidden ring-1 ring-black/5">
-         <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+      <Card className="rounded-lg border shadow-sm bg-white overflow-hidden">
+         <CardHeader className="bg-slate-50/50 border-b p-4 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="relative w-full max-w-md">
-               <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                <Input 
-                 placeholder={t('search')} 
-                 className="ps-11 h-11 rounded-xl bg-white border-2 border-slate-100 font-bold" 
+                 placeholder={t('common.search')} 
+                 className="ps-10 h-9 rounded-md bg-white border-slate-200 font-bold text-xs" 
                  value={searchTerm} 
                  onChange={e => setSearchTerm(e.target.value)} 
                />
             </div>
-            <Badge variant="outline" className="h-9 px-4 font-black border-2 border-slate-100 bg-white">
-               {filteredBoqs.length} {isRtl ? 'مقايسة' : 'BOQs'}
+            <Badge variant="outline" className="h-7 px-3 font-black border-slate-200 bg-white text-[10px]">
+               {filteredBoqs.length} {isRtl ? 'سجل' : 'Items'}
             </Badge>
          </CardHeader>
          <CardContent className="p-0 overflow-x-auto">
             <Table>
                <TableHeader className="bg-slate-50/50">
                   <TableRow className="border-b">
-                     <TableHead className="py-4 ps-8 text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('boqNumber')}</TableHead>
-                     <TableHead className="py-4 text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('clientName')}</TableHead>
-                     <TableHead className="py-4 text-end text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('budget')}</TableHead>
-                     <TableHead className="py-4 text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('status')}</TableHead>
-                     <TableHead className="py-4 pe-8 text-end"></TableHead>
+                     <TableHead className="py-3 ps-6 text-[10px] font-black uppercase text-slate-500">{t('projects.boqNumber')}</TableHead>
+                     <TableHead className="py-3 text-[10px] font-black uppercase text-slate-500">{t('projects.clientName')}</TableHead>
+                     <TableHead className="py-3 text-end text-[10px] font-black uppercase text-slate-500">{t('projects.budget')}</TableHead>
+                     <TableHead className="py-3 text-[10px] font-black uppercase text-slate-500">{t('projects.status')}</TableHead>
+                     <TableHead className="py-3 pe-6 text-end"></TableHead>
                   </TableRow>
                </TableHeader>
                <TableBody>
                   {boqLoading ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-24"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/20" /></TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></TableCell></TableRow>
                   ) : filteredBoqs.length === 0 ? (
-                     <TableRow><TableCell colSpan={5} className="text-center py-24 text-slate-300 text-sm font-black italic">{isRtl ? 'لا يوجد مقايسات مسجلة حالياً.' : 'No BOQs registered yet.'}</TableCell></TableRow>
+                     <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 text-xs font-bold italic">{isRtl ? 'لا يوجد مقايسات مسجلة حالياً.' : 'No BOQs registered yet.'}</TableCell></TableRow>
                   ) : filteredBoqs.map((boq) => (
-                    <TableRow key={boq.id} className="hover:bg-primary/[0.01] border-b-slate-50 cursor-pointer transition-colors" onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}>
-                      <TableCell className="py-5 ps-8 text-start font-black text-slate-800">
+                    <TableRow key={boq.id} className="hover:bg-slate-50/50 cursor-pointer transition-colors border-b-slate-100 group" onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}>
+                      <TableCell className="py-2.5 ps-6 text-start font-black text-slate-800 text-xs">
                          {boq.boqNumber}
                       </TableCell>
-                      <TableCell className="py-5 text-start">
+                      <TableCell className="py-2.5 text-start">
                          <div className="flex flex-col">
-                            <span className="font-bold text-sm text-slate-700">{boq.clientName}</span>
-                            <span className="text-[10px] text-slate-400 font-bold uppercase">{boq.name}</span>
+                            <span className="font-bold text-xs text-slate-700">{boq.clientName}</span>
+                            <span className="text-[9px] text-slate-400 font-bold uppercase truncate max-w-[150px]">{boq.name}</span>
                          </div>
                       </TableCell>
-                      <TableCell className="py-5 text-end font-mono font-black text-slate-700 text-base">
-                         {boq.totalAmount?.toLocaleString()} <span className="text-[9px] opacity-40">KWD</span>
+                      <TableCell className="py-2.5 text-end font-mono font-black text-slate-900 text-xs">
+                         {boq.totalAmount?.toLocaleString()} <span className="text-[8px] opacity-40">KWD</span>
                       </TableCell>
-                      <TableCell className="py-5 text-start">
+                      <TableCell className="py-2.5 text-start">
                          <Badge className={cn(
-                           "text-[9px] font-black uppercase px-3 py-1 rounded-lg border-0 shadow-sm", 
-                           boq.status === 'approved' ? 'bg-emerald-500 text-white' : 'bg-blue-500 text-white'
+                           "text-[8px] font-black uppercase px-2 h-5 rounded-md border-0 shadow-sm", 
+                           boq.status === 'approved' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
                          )}>
-                            {isRtl ? (boq.status === 'approved' ? 'معتمدة' : 'مسودة') : boq.status}
+                            {boq.status}
                          </Badge>
                       </TableCell>
-                      <TableCell className="py-5 pe-8 text-end" onClick={e => e.stopPropagation()}>
-                         <div className="flex justify-end gap-2">
+                      <TableCell className="py-2.5 pe-6 text-end" onClick={e => e.stopPropagation()}>
+                         <div className="flex justify-end gap-1">
                             <Button 
-                              variant="outline" 
+                              variant="ghost" 
                               size="icon" 
-                              className="h-9 w-9 rounded-xl text-primary border-primary/20 hover:bg-primary hover:text-white"
+                              className="h-8 w-8 rounded-md text-slate-300 group-hover:text-primary"
                               onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}
                             >
                                <ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} />
@@ -144,10 +147,10 @@ export default function BOQExplorerPage() {
                                <Button 
                                  variant="ghost" 
                                  size="icon" 
-                                 className="h-9 w-9 rounded-xl text-rose-300 hover:text-rose-600"
+                                 className="h-8 w-8 rounded-md text-rose-300 hover:text-rose-600 hover:bg-rose-50"
                                  onClick={() => handleDeleteBOQ(boq.id!, boq.transactionId)}
                                >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-3.5 w-3.5" />
                                </Button>
                             )}
                          </div>

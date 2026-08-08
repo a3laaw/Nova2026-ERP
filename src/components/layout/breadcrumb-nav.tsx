@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -12,14 +11,12 @@ import { Button } from '@/components/ui/button';
 export function BreadcrumbNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const { t, lang, dir } = useLanguage();
-  const isRtl = lang === 'ar';
+  const { t, lang, isRtl } = useLanguage();
 
   const segments = pathname.split('/').filter(Boolean);
 
-  // خريطة ترجمة المسارات السيادية لضمان مظهر احترافي 100%
   const routeMap: Record<string, string> = {
-    dashboard: t('dashboard'),
+    dashboard: t('dashboard.title'),
     crm: t('crm'),
     clients: t('clients'),
     projects: t('projects'),
@@ -29,11 +26,10 @@ export function BreadcrumbNav() {
     permissions: t('permissions'),
     attendance: t('attendanceLogs'),
     payroll: t('payrollBatches'),
-    gratuity: t('indemnity'),
     accounting: t('accounting'),
     inventory: t('inventory'),
     procurement: t('procurement'),
-    suppliers: t('suppliers') || 'الموردين',
+    suppliers: t('suppliers'),
     settings: t('settings'),
     profile: t('profile'),
     company: t('companyIdentity'),
@@ -42,14 +38,13 @@ export function BreadcrumbNav() {
     'work-hours': t('workHours'),
     templates: t('templates'),
     quotes: t('quotationTemplates'),
-    'field-visits': t('construction.reports') || 'زيارات الميدان',
+    'field-visits': t('construction.reports'),
     construction: t('construction'),
-    bookings: t('construction.radar') || 'الرادار الميداني',
-    new: t('new'),
-    edit: t('edit'),
+    bookings: t('construction.radar'),
+    new: t('common.new'),
+    edit: t('common.edit'),
     boqs: t('boqExplorer'),
     coa: t('chartOfAccounts'),
-    vouchers: isRtl ? 'السندات' : 'Vouchers',
     receipt: t('receiptVouchers'),
     payment: t('paymentVouchers'),
     journals: t('journalEntries'),
