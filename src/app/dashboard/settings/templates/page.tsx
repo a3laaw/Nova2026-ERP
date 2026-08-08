@@ -12,14 +12,15 @@ import { useLanguage } from '@/context/language-context';
 import { cn } from '@/lib/utils';
 
 export default function TemplatesHubPage() {
-  const { t, dir } = useLanguage();
+  const { t, dir, lang } = useLanguage();
   const router = useRouter();
+  const isRtl = lang === 'ar';
 
   const templateModules = [
     {
       id: 'quotations',
       title: t('quotationTemplates'),
-      desc: t('settings.templates.quotations.desc') || 'بناء قوالب تسعير مرنة مع صلاحيات العرض وشروط الدفع.',
+      desc: t('quotationTemplates.desc'),
       icon: FileText,
       color: 'text-blue-600',
       bg: 'bg-blue-50',
@@ -28,7 +29,7 @@ export default function TemplatesHubPage() {
     {
       id: 'contracts',
       title: t('contractTemplates'),
-      desc: t('settings.templates.contracts.desc') || 'صياغة العقود القانونية وربط الدفعات المالية بالمراحل الفنية.',
+      desc: t('contractTemplates.desc'),
       icon: Gavel,
       color: 'text-indigo-600',
       bg: 'bg-indigo-50',
@@ -37,7 +38,7 @@ export default function TemplatesHubPage() {
     {
       id: 'boq',
       title: t('boqTemplates'),
-      desc: t('settings.templates.boq.desc') || 'توصيف بنود الأعمال الهندسية، الكميات، والأسعار المرجعية.',
+      desc: t('boqTemplates.desc'),
       icon: FileSpreadsheet,
       color: 'text-emerald-600',
       bg: 'bg-emerald-50',
@@ -78,8 +79,8 @@ export default function TemplatesHubPage() {
             </CardHeader>
             <CardContent className="p-10 pt-0 text-start">
                <div className={cn("flex items-center gap-2 font-black text-xs transition-all mt-8", module.color)}>
-                  {t('manageLibrary') || 'إدارة المكتبة'}
-                  <ChevronRight className="h-4 w-4" />
+                  {t('manageLibrary')}
+                  <ChevronRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
                </div>
             </CardContent>
           </Card>
