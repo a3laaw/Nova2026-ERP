@@ -53,7 +53,6 @@ export default function TransactionBOQProgressPage() {
   const companyId = globalUser?.companyId;
 
   const [isVOOpen, setIsVOOpen] = useState(false);
-  const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isBoqInitOpen, setIsBoqInitOpen] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
@@ -81,7 +80,8 @@ export default function TransactionBOQProgressPage() {
 
   const templates = useMemo(() => {
      if (!allTemplates || !transaction?.subServiceId) return [];
-     return allTemplates.filter(temp => temp.subServiceId?.trim() === transaction.subServiceId.trim() && temp.isActive !== false);
+     const subId = transaction.subServiceId.trim();
+     return allTemplates.filter(temp => (temp.subServiceId?.trim() === subId) && temp.isActive !== false);
   }, [allTemplates, transaction?.subServiceId]);
 
   const executionsQuery = useMemo(() => {
@@ -198,7 +198,7 @@ export default function TransactionBOQProgressPage() {
           <div className="space-y-2">
              <h2 className="text-xl font-black text-slate-400">{t('projects.boqExplorer')}</h2>
              <p className="text-xs font-bold text-slate-300 max-w-sm mx-auto leading-relaxed">
-                {t('common.confirm')}
+                {t('projects.boqExplorer.noBoqs')}
              </p>
           </div>
           <Button onClick={() => setIsBoqInitOpen(true)} className="h-14 rounded-2xl px-10 bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 gap-3">
