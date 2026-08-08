@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -70,9 +69,14 @@ export default function TransactionBOQProgressPage() {
   const stagesQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.transactionStages(companyId, transactionId))) : null, [db, companyId, transactionId]);
   const { data: stages } = useCollection<StageInstance>(stagesQuery);
 
-  const boqQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
-  const { data: boqs, loading: boqLoading } = useCollection<BOQ>(boqQuery);
-  const activeBoq = boqs?.[0];
+  // تحديث الاستعلام السيادي: جلب المقايسات المباشرة والفلترة في الذاكرة لضمان الاستقرار الفوري (ID: ca9)
+  const boqQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqs(companyId))) : null, [db, companyId]);
+  const { data: allBoqs, loading: boqLoading } = useCollection<BOQ>(boqQuery);
+
+  // الفلترة في الذاكرة لضمان الظهور حتى لو لم يتم بناء الفهرس السحابي بعد
+  const activeBoq = useMemo(() => {
+    return allBoqs?.find(b => b.transactionId === transactionId);
+  }, [allBoqs, transactionId]);
 
   const itemsQuery = useMemo(() => (companyId && db && activeBoq?.id) ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
   const { data: rawItems, loading: itemsLoading } = useCollection<BOQItem>(itemsQuery);
@@ -258,7 +262,7 @@ export default function TransactionBOQProgressPage() {
                 <Button onClick={() => setIsEditingBaseline(!isEditingBaseline)} variant="outline" className="h-9 px-4 rounded-lg font-bold text-xs gap-2 border-slate-200">
                   {isEditingBaseline ? t('common.cancel') : t('common.edit')}
                 </Button>
-                <Button onClick={() => setIsVOOpen(true)} className="h-9 px-6 rounded-lg bg-primary text-white font-bold text-xs gap-2 shadow-sm shadow-primary/10"><PlusCircle className="h-3.5 w-3.5" /> {t('projects.boqExplorer.newVO')}</Button>
+                <Button onClick={() => setIsVOOpen(true)} className="h-9 px-6 rounded-lg bg-primary text-white font-bold text-xs gap-2 shadow-sm shadow-primary/10"><PlusCircle className="h-3.5 w-3.5" /> {t('boqExplorer.newVO')}</Button>
              </div>
            )}
            <Button variant="outline" className="h-9 px-4 rounded-lg font-bold text-xs border-slate-200"><Printer className="h-3.5 w-3.5" /></Button>

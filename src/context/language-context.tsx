@@ -46,6 +46,15 @@ const translations: Record<Language, Record<string, string>> = {
     'common.code': 'الكود',
     'common.description': 'الوصف',
     'common.logout': 'تسجيل الخروج',
+    'common.addLabel': 'إضافة بند',
+    'common.quantity': 'الكمية',
+    'common.unit': 'الوحدة',
+    'common.notes': 'ملاحظات',
+    'common.photos': 'الصور',
+    'common.labor': 'العمالة',
+    'common.equipment': 'المعدات',
+    'common.saveReport': 'حفظ التقرير الميداني',
+    'common.loadFromGroup': 'تحميل طاقم عمل',
 
     // Dashboard
     'dashboard.title': 'لوحة التحكم المركزية',
@@ -63,23 +72,35 @@ const translations: Record<Language, Record<string, string>> = {
     'clients': 'قاعدة بيانات العملاء',
     'clients.title': 'قاعدة بيانات العملاء',
     'clients.addNew': 'تسجيل عميل جديد',
+    'clients.table.profile': 'العميل / الملف',
+    'clients.table.staff': 'المهندس المسؤول',
+    'clients.table.contact': 'رقم الهاتف',
+    'clients.table.status': 'الحالة',
+    'clients.details.transactions': 'المعاملات الجارية',
+    'clients.details.location': 'الموقع الجغرافي',
+    'clients.details.history': 'سجل الحركات',
 
-    // Projects
+    // Projects & BOQ
     'projects': 'المشاريع والمعاملات',
     'projects.title': 'المشاريع والمعاملات',
     'projects.radar': 'رادار المشاريع الجارية',
     'projects.contracting': 'قسم المقاولات',
     'projects.addNew': 'فتح معاملة جديدة',
     'projects.boqExplorer': 'مستكشف المقايسات',
+    'projects.boqExplorer.noBoqs': 'لا توجد مقايسات مسجلة حالياً لهذه المعاملة.',
     'projects.boqNumber': 'رقم المقايسة',
     'projects.clientName': 'اسم العميل',
     'projects.budget': 'الميزانية',
     'projects.status': 'الحالة',
+    'projects.table.project': 'المشروع / العميل',
+    'projects.table.progress': 'نسبة الإنجاز',
+    'projects.table.billing': 'المطالبات المالية',
+    'projects.table.status': 'الحالة التشغيلية',
     'projects.details.radar': 'رادار التنفيذ الميداني',
     'projects.details.finance': 'المالية والوثائق',
     'projects.details.locked': 'المسار الفني مقفل: يتطلب عقد ومقايسة معتمدة',
 
-    // Engineering & BOQ
+    // Engineering & BOQ Master
     'boqExplorer': 'مستكشف المقايسات',
     'boqTemplates': 'قوالب المقايسات (BOQ)',
     'itemized': 'تسعير بنود',
@@ -93,6 +114,12 @@ const translations: Record<Language, Record<string, string>> = {
     'before': 'قبل',
     'during': 'أثناء',
     'after': 'بعد',
+    'totalAmount': 'القيمة الإجمالية',
+    'milestoneTiming': 'توقيت الاستحقاق',
+    'technicalLink': 'الارتباط الفني',
+    'amount': 'المبلغ',
+    'introText': 'النص التعريفي',
+    'legalText': 'البنود القانونية',
 
     // Construction
     'construction': 'العمليات الميدانية',
@@ -101,6 +128,7 @@ const translations: Record<Language, Record<string, string>> = {
     'construction.equipment': 'سجل المعدات والآليات',
     'construction.reports': 'تقارير الميدان',
     'construction.siteProgress': 'توثيق الإنجاز الميداني',
+    'construction.context': 'سياق العمل',
 
     // Procurement
     'procurement': 'المشتريات والتوريد',
@@ -157,7 +185,11 @@ const translations: Record<Language, Record<string, string>> = {
     'orgRef': 'الهيكل التنظيمي',
     'techRef': 'المسارات الفنية',
     'geoRef': 'البيانات الجغرافية',
-    'rolesPermissions': 'الأدوار والصلاحيات'
+    'rolesPermissions': 'الأدوار والصلاحيات',
+    'companyProfile': 'ملف تعريف المنشأة',
+    'personalInfo': 'البيانات الشخصية',
+    'saveChanges': 'حفظ التغييرات',
+    'username': 'اسم المستخدم'
   },
   en: {
     // Common
@@ -192,6 +224,15 @@ const translations: Record<Language, Record<string, string>> = {
     'common.code': 'Code',
     'common.description': 'Description',
     'common.logout': 'Logout',
+    'common.addLabel': 'Add Item',
+    'common.quantity': 'Quantity',
+    'common.unit': 'Unit',
+    'common.notes': 'Notes',
+    'common.photos': 'Photos',
+    'common.labor': 'Labor',
+    'common.equipment': 'Equipment',
+    'common.saveReport': 'Save Field Report',
+    'common.loadFromGroup': 'Load Work Group',
 
     // Dashboard
     'dashboard.title': 'Central Dashboard',
@@ -209,6 +250,13 @@ const translations: Record<Language, Record<string, string>> = {
     'clients': 'Client Database',
     'clients.title': 'Client Database',
     'clients.addNew': 'Register Client',
+    'clients.table.profile': 'Client / File',
+    'clients.table.staff': 'Assigned Engineer',
+    'clients.table.contact': 'Phone Number',
+    'clients.table.status': 'Status',
+    'clients.details.transactions': 'Active Transactions',
+    'clients.details.location': 'GPS Location',
+    'clients.details.history': 'Audit History',
 
     // Projects
     'projects': 'Projects & Trans.',
@@ -217,15 +265,20 @@ const translations: Record<Language, Record<string, string>> = {
     'projects.contracting': 'Contracting',
     'projects.addNew': 'New Trans.',
     'projects.boqExplorer': 'BOQ Explorer',
+    'projects.boqExplorer.noBoqs': 'No BOQs registered for this transaction yet.',
     'projects.boqNumber': 'BOQ #',
     'projects.clientName': 'Client',
     'projects.budget': 'Budget',
     'projects.status': 'Status',
+    'projects.table.project': 'Project / Client',
+    'projects.table.progress': 'Progress %',
+    'projects.table.billing': 'Billing / IPC',
+    'projects.table.status': 'Status',
     'projects.details.radar': 'Execution Radar',
     'projects.details.finance': 'Finance & Docs',
     'projects.details.locked': 'Path Locked: Contract & BOQ Required',
 
-    // Engineering & BOQ
+    // Engineering & BOQ Master
     'boqExplorer': 'BOQ Explorer',
     'boqTemplates': 'BOQ Templates',
     'itemized': 'Itemized',
@@ -239,6 +292,12 @@ const translations: Record<Language, Record<string, string>> = {
     'before': 'Before',
     'during': 'During',
     'after': 'After',
+    'totalAmount': 'Total Amount',
+    'milestoneTiming': 'Timing',
+    'technicalLink': 'Technical Link',
+    'amount': 'Amount',
+    'introText': 'Intro Text',
+    'legalText': 'Legal Text',
 
     // Construction
     'construction': 'Field Operations',
@@ -247,6 +306,7 @@ const translations: Record<Language, Record<string, string>> = {
     'construction.equipment': 'Equipment',
     'construction.reports': 'Field Logs',
     'construction.siteProgress': 'Site Progress',
+    'construction.context': 'Work Context',
 
     // Procurement
     'procurement': 'Procurement',
@@ -303,7 +363,11 @@ const translations: Record<Language, Record<string, string>> = {
     'orgRef': 'Org Structure',
     'techRef': 'Tech Paths',
     'geoRef': 'Geo Data',
-    'rolesPermissions': 'Roles & Matrix'
+    'rolesPermissions': 'Roles & Matrix',
+    'companyProfile': 'Enterprise Profile',
+    'personalInfo': 'Personal Information',
+    'saveChanges': 'Save Changes',
+    'username': 'Username'
   }
 };
 
@@ -325,7 +389,6 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   };
 
   const t = (key: string) => {
-    // استخدام الوصول المباشر للمفاتيح المسطحة لضمان السيادة اللغوية
     return translations[lang][key] || key;
   };
 
