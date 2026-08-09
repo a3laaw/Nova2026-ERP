@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -32,7 +31,7 @@ export default function AccountingPage() {
     try {
       const response = await reconcileBankStatement({ bankStatementEntries: initialBankEntries, ledgerEntries: initialLedgerEntries });
       setReconResult(response);
-      toast({ title: t('saved') });
+      toast({ title: t('common.saved') });
     } finally {
       setReconciling(false);
     }
@@ -49,14 +48,14 @@ export default function AccountingPage() {
         </div>
         <Button onClick={handleSmartReconciliation} disabled={reconciling} size="sm" className="h-9 px-6 font-bold gap-2">
            {reconciling ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-           {isRtl ? 'مطابقة ذكية' : 'Smart Recon'}
+           {t('accounting.smartRecon')}
         </Button>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="rounded-lg shadow-sm border bg-white overflow-hidden">
           <CardHeader className="bg-slate-50 p-4 border-b">
-            <CardTitle className="text-[10px] font-bold uppercase text-slate-500">Bank Statement</CardTitle>
+            <CardTitle className="text-[10px] font-bold uppercase text-slate-500">{t('accounting.bankStatement')}</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
@@ -72,7 +71,7 @@ export default function AccountingPage() {
 
         <Card className="rounded-lg shadow-sm border bg-white overflow-hidden">
           <CardHeader className="bg-slate-50 p-4 border-b">
-            <CardTitle className="text-[10px] font-bold uppercase text-slate-500">General Ledger</CardTitle>
+            <CardTitle className="text-[10px] font-bold uppercase text-slate-500">{t('accounting.generalLedger')}</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             <Table>
@@ -91,7 +90,7 @@ export default function AccountingPage() {
         <Card className="rounded-lg border-2 border-emerald-100 bg-emerald-50/30 p-6 animate-in slide-in-from-bottom-4">
            <div className="flex items-center gap-3 text-emerald-600 mb-2">
               <CheckCircle2 className="h-5 w-5" />
-              <h4 className="font-bold text-sm">AI Reconciliation Summary</h4>
+              <h4 className="font-bold text-sm">{t('accounting.aiReconSummary')}</h4>
            </div>
            <p className="text-xs font-medium leading-relaxed text-slate-700">{reconResult.summary}</p>
         </Card>

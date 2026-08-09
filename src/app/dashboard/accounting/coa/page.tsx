@@ -192,11 +192,11 @@ export default function ChartOfAccountsPage() {
               <div className="py-32 text-center space-y-8">
                  <GitBranch className="h-24 w-24 text-slate-100 mx-auto" />
                  <div className="space-y-2">
-                    <h3 className="text-xl font-black text-slate-400 italic">لا يوجد حسابات معرفة</h3>
+                    <h3 className="text-xl font-black text-slate-400 italic">{t('accounting.coa.noAccounts')}</h3>
                  </div>
                  <Button onClick={handleInitCOA} disabled={initializing} className="h-16 px-12 rounded-2xl bg-primary text-white font-black shadow-xl border-b-8 border-orange-700">
                     {initializing ? <Loader2 className="animate-spin h-6 w-6" /> : <Sparkles className="h-6 w-6" />}
-                    تفعيل دليل الحسابات القياسي
+                    {t('accounting.coa.activateStandard')}
                  </Button>
               </div>
             ) : (
@@ -217,7 +217,7 @@ export default function ChartOfAccountsPage() {
               </DialogTitle>
            </div>
            
-           <div className="p-10 space-y-8 text-start">
+           <div className="p-10 space-y-8 text-start bg-white">
               <div className="grid grid-cols-2 gap-8">
                  <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.code')}</Label>
@@ -228,11 +228,11 @@ export default function ChartOfAccountsPage() {
                     <Select value={form.type} onValueChange={(v: any) => setForm({...form, type: v})}>
                        <SelectTrigger className="h-12 rounded-xl border-2 font-black text-base"><SelectValue /></SelectTrigger>
                        <SelectContent className="rounded-xl border-0 shadow-2xl">
-                          <SelectItem value="asset" className="font-bold py-3 border-b last:border-0">أصول (Asset)</SelectItem>
-                          <SelectItem value="liability" className="font-bold py-3 border-b last:border-0">التزامات (Liability)</SelectItem>
-                          <SelectItem value="equity" className="font-bold py-3 border-b last:border-0">حقوق ملكية (Equity)</SelectItem>
-                          <SelectItem value="revenue" className="font-bold py-3 border-b last:border-0">إيرادات (Revenue)</SelectItem>
-                          <SelectItem value="expense" className="font-bold py-3 border-b last:border-0">مصروفات (Expense)</SelectItem>
+                          <SelectItem value="asset" className="font-bold py-3 border-b last:border-0">{isRtl ? 'أصول (Asset)' : 'Assets'}</SelectItem>
+                          <SelectItem value="liability" className="font-bold py-3 border-b last:border-0">{isRtl ? 'التزامات (Liability)' : 'Liabilities'}</SelectItem>
+                          <SelectItem value="equity" className="font-bold py-3 border-b last:border-0">{isRtl ? 'حقوق ملكية (Equity)' : 'Equity'}</SelectItem>
+                          <SelectItem value="revenue" className="font-bold py-3 border-b last:border-0">{isRtl ? 'إيرادات (Revenue)' : 'Revenue'}</SelectItem>
+                          <SelectItem value="expense" className="font-bold py-3 border-b last:border-0">{isRtl ? 'مصروفات (Expense)' : 'Expenses'}</SelectItem>
                        </SelectContent>
                     </Select>
                  </div>
@@ -251,8 +251,8 @@ export default function ChartOfAccountsPage() {
 
               <div className="p-8 rounded-[2rem] bg-slate-50 border-2 border-white shadow-inner flex items-center justify-between">
                  <div className="space-y-1">
-                    <Label className="font-black text-slate-800 text-sm">حساب تجميعي (Group Account)</Label>
-                    <p className="text-[10px] font-bold text-slate-400">تفعيل هذا الخيار يسمح بإضافة حسابات فرعية تحته.</p>
+                    <Label className="font-black text-slate-800 text-sm">{t('accounting.coa.isGroup')}</Label>
+                    <p className="text-[10px] font-bold text-slate-400">{t('accounting.coa.groupHint')}</p>
                  </div>
                  <Switch checked={form.isGroup} onCheckedChange={v => setForm({...form, isGroup: v})} />
               </div>
@@ -261,7 +261,7 @@ export default function ChartOfAccountsPage() {
            <DialogFooter className="p-10 bg-slate-50 border-t">
               <Button onClick={handleSaveAccount} disabled={saving || !form.nameAr || !form.code} className="w-full h-20 rounded-[2rem] bg-primary text-white font-black text-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all border-b-8 border-orange-700">
                  {saving ? <Loader2 className="animate-spin h-8 w-8" /> : <Save className="h-8 w-8" />}
-                 {t('common.save')}
+                 {t('accounting.coa.commitAccount')}
               </Button>
            </DialogFooter>
         </DialogContent>

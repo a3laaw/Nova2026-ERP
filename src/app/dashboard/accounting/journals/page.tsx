@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -88,11 +87,11 @@ export default function JournalEntriesPage() {
     try {
       const service = new AccountingService(db, companyId);
       await service.createJournalEntry(form, user.uid);
-      toast({ title: "تم ترحيل القيد بنجاح" });
+      toast({ title: t('common.saved') });
       setIsAdding(false);
       setForm({ date: new Date().toISOString().split('T')[0], description: '', lines: [{ accountId: '', accountName: '', debit: 0, credit: 0, memo: '' }, { accountId: '', accountName: '', debit: 0, credit: 0, memo: '' }] });
     } catch (e: any) {
-      toast({ variant: "destructive", title: "خطأ", description: e.message });
+      toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
       setLoading(false);
     }
@@ -103,30 +102,30 @@ export default function JournalEntriesPage() {
       <header className="flex justify-between items-center">
         <div className="text-start">
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-            <Calculator className="h-6 w-6 text-primary" /> {isRtl ? 'قيود اليومية' : 'Journal Entries'}
+            <Calculator className="h-6 w-6 text-primary" /> {t('accounting.journals.title')}
           </h1>
-          <p className="text-muted-foreground text-xs font-medium">تسجيل الحركات المالية المزدوجة</p>
+          <p className="text-muted-foreground text-xs font-medium">{t('accounting.journals.desc')}</p>
         </div>
         <Button onClick={() => setIsAdding(!isAdding)} size="sm" className="h-9 px-6 font-bold gap-2">
            {isAdding ? <ArrowRight className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-           {isAdding ? (isRtl ? 'العودة' : 'Back') : (isRtl ? 'قيد يدوي جديد' : 'New Entry')}
+           {isAdding ? t('common.back') : t('accounting.journals.newEntry')}
         </Button>
       </header>
 
       {isAdding ? (
         <Card className="rounded-xl border-0 shadow-2xl bg-white overflow-hidden animate-in slide-in-from-bottom-4">
            <CardHeader className="bg-slate-50 p-6 border-b text-start">
-              <CardTitle className="font-black text-slate-800">إعداد قيد يومية متوازن</CardTitle>
+              <CardTitle className="font-black text-slate-800">{t('accounting.journals.draftTitle')}</CardTitle>
            </CardHeader>
-           <CardContent className="p-8 space-y-6 text-start">
+           <CardContent className="p-8 space-y-6 text-start bg-white">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">تاريخ القيد</Label>
+                    <Label className="text-[10px] font-black uppercase text-slate-400">{t('common.date')}</Label>
                     <Input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
                  </div>
                  <div className="md:col-span-3 space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">البيان العام</Label>
-                    <Input value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="وصف العملية..." />
+                    <Label className="text-[10px] font-black uppercase text-slate-400">{t('common.notes')}</Label>
+                    <Input value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="..." />
                  </div>
               </div>
 
@@ -137,7 +136,7 @@ export default function JournalEntriesPage() {
                           <TableHead className="w-[300px]">{isRtl ? 'الحساب' : 'Account'}</TableHead>
                           <TableHead className="text-center">{isRtl ? 'مدين' : 'Debit'}</TableHead>
                           <TableHead className="text-center">{isRtl ? 'دائن' : 'Credit'}</TableHead>
-                          <TableHead>{isRtl ? 'شرح السطر' : 'Memo'}</TableHead>
+                          <TableHead>{t('accounting.journals.lineMemo')}</TableHead>
                           <TableHead className="w-[50px]"></TableHead>
                        </TableRow>
                     </TableHeader>
@@ -147,8 +146,8 @@ export default function JournalEntriesPage() {
                             <TableCell className="p-2">
                                <Select value={line.accountId} onValueChange={v => updateLine(idx, 'accountId', v)}>
                                   <SelectTrigger className="h-9 font-bold text-xs"><SelectValue placeholder="..." /></SelectTrigger>
-                                  <SelectContent>
-                                     {availableAccounts?.map(a => <SelectItem key={a.id} value={a.id} className="font-bold">{a.code} - {a.nameAr}</SelectItem>)}
+                                  <SelectContent className="rounded-xl">
+                                     {availableAccounts?.map(a => <SelectItem key={a.id} value={a.id} className="font-bold">{a.code} - {isRtl ? a.nameAr : a.nameEn}</SelectItem>)}
                                   </SelectContent>
                                </Select>
                             </TableCell>
@@ -161,14 +160,14 @@ export default function JournalEntriesPage() {
                     </TableBody>
                     <tfoot className="bg-slate-50">
                        <tr>
-                          <td className="p-4"><Button variant="outline" size="sm" onClick={handleAddLine} className="font-bold text-[10px] h-8 px-4 rounded-lg border-2"><Plus className="h-3 w-3 me-1" /> إضافة سطر</Button></td>
+                          <td className="p-4"><Button variant="outline" size="sm" onClick={handleAddLine} className="font-bold text-[10px] h-8 px-4 rounded-lg border-2"><Plus className="h-3 w-3 me-1" /> {t('common.add')}</Button></td>
                           <td className="p-4 text-center font-black text-blue-600 text-lg">{totals.debit.toLocaleString()}</td>
                           <td className="p-4 text-center font-black text-rose-600 text-lg">{totals.credit.toLocaleString()}</td>
                           <td colSpan={2} className="p-4">
                              {isBalanced ? (
-                               <Badge className="bg-emerald-500 text-white font-black text-[10px] px-4 py-1">قيد متوازن</Badge>
+                               <Badge className="bg-emerald-500 text-white font-black text-[10px] px-4 py-1">{t('accounting.journals.balanced')}</Badge>
                              ) : (
-                               <Badge variant="destructive" className="font-black text-[10px] px-4 py-1">غير متوازن</Badge>
+                               <Badge variant="destructive" className="font-black text-[10px] px-4 py-1">{t('accounting.journals.unbalanced')}</Badge>
                              )}
                           </td>
                        </tr>
@@ -179,7 +178,7 @@ export default function JournalEntriesPage() {
               <div className="flex justify-end gap-3 pt-6">
                  <Button onClick={handleSave} disabled={loading || !isBalanced} className="h-14 rounded-2xl px-12 bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2">
                     {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
-                    ترحيل القيد للأستاذ العام
+                    {t('accounting.journals.postToLedger')}
                  </Button>
               </div>
            </CardContent>
@@ -191,9 +190,9 @@ export default function JournalEntriesPage() {
                  <TableHeader className="bg-slate-50">
                     <TableRow>
                        <TableHead className="py-3 ps-6 text-start">{isRtl ? 'رقم القيد / التاريخ' : 'Entry No. / Date'}</TableHead>
-                       <TableHead className="text-start">{isRtl ? 'البيان' : 'Description'}</TableHead>
-                       <TableHead className="text-end">{isRtl ? 'القيمة (مدين/دائن)' : 'Amount (Debit/Credit)'}</TableHead>
-                       <TableHead className="text-center">{isRtl ? 'الحالة' : 'Status'}</TableHead>
+                       <TableHead className="text-start">{t('common.notes')}</TableHead>
+                       <TableHead className="text-end">{t('common.amount')}</TableHead>
+                       <TableHead className="text-center">{t('common.status')}</TableHead>
                        <TableHead className="pe-6"></TableHead>
                     </TableRow>
                  </TableHeader>
@@ -201,7 +200,7 @@ export default function JournalEntriesPage() {
                     {journalsLoading ? (
                       <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></TableCell></TableRow>
                     ) : journals?.length === 0 ? (
-                      <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 font-bold italic">لا يوجد قيود مسجلة.</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 font-bold italic">{t('common.noResults')}</TableCell></TableRow>
                     ) : journals?.map(j => {
                       const total = j.lines.reduce((sum, l) => sum + (l.debit || 0), 0);
                       return (
@@ -215,7 +214,7 @@ export default function JournalEntriesPage() {
                            <TableCell className="text-start font-bold text-slate-600 text-xs truncate max-w-[200px]">{j.description}</TableCell>
                            <TableCell className="text-end font-mono font-black text-primary">{total.toLocaleString()} <span className="text-[8px] opacity-40">KWD</span></TableCell>
                            <TableCell className="text-center">
-                              <Badge variant="outline" className="text-[8px] font-black uppercase px-2">{j.status}</Badge>
+                              <Badge variant="outline" className="text-[8px] font-black uppercase px-2">{t('status.' + j.status)}</Badge>
                            </TableCell>
                            <TableCell className="pe-6 text-end">
                               <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-slate-300 hover:text-primary"><FileText className="h-4 w-4" /></Button>
