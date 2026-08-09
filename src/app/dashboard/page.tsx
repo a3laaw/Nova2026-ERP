@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -11,7 +12,8 @@ import {
   Plus,
   Activity,
   FileText,
-  LayoutDashboard
+  LayoutDashboard,
+  ArrowUpRight
 } from "lucide-react";
 import { 
   Bar, 

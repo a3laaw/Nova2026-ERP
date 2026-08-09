@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -58,7 +59,7 @@ export default function ReportsHubPage() {
           <div className="text-start">
             <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{t('reports.hub.title')}</h1>
             <p className="text-xs font-bold text-muted-foreground italic mt-0.5 text-start">
-               {t('reports.hub.description')}
+               {isRtl ? 'أدوات تحليلية متقدمة لربط الميدان بالمركز المالي والإداري.' : 'Advanced analytics linking field logs to financial center.'}
             </p>
           </div>
         </div>

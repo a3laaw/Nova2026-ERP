@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -51,7 +52,9 @@ export default function BOQExplorerPage() {
           </div>
           <div className="text-start">
             <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{t('boqexplorer')}</h1>
-            <p className="text-xs font-bold text-muted-foreground italic mt-0.5">{t('projects.boqexplorer.desc')}</p>
+            <p className="text-xs font-bold text-muted-foreground italic mt-0.5">
+               {isRtl ? 'إدارة واعتماد جداول الكميات والميزانيات المرجعية للمشاريع.' : 'Manage bill of quantities and baseline budgets for projects.'}
+            </p>
           </div>
         </div>
       </header>

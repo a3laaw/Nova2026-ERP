@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -61,7 +62,7 @@ export default function ProjectsPage() {
             <HardHat className="h-8 w-8" />
           </div>
           <div className="text-start">
-            <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{t('projects.title')}</h1>
+            <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{t('projects')}</h1>
             <p className="text-xs font-bold text-muted-foreground italic mt-0.5">
                {isRtl ? 'إدارة المشاريع الهندسية والعمليات التنفيذية' : 'Manage engineering projects and executive operations'}
             </p>
@@ -81,7 +82,7 @@ export default function ProjectsPage() {
             {t('projects.contracting')}
           </button>
           <Button onClick={() => router.push('/dashboard/clients')} size="sm" className="h-11 px-6 rounded-xl font-black shadow-lg shadow-primary/20 transition-all">
-            <Plus className="h-4 w-4 me-2" /> {t('projects.addnew')}
+            <Plus className="h-4 w-4 me-2" /> {t('common.add')}
           </Button>
         </div>
       </header>
@@ -89,21 +90,21 @@ export default function ProjectsPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
          <Card className="rounded-xl shadow-sm border p-6 bg-white flex items-center justify-between group hover:shadow-md transition-all text-start">
             <div className="text-start">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('projects.stats.portfolio')}</p>
+               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('reports.stats.portfolio')}</p>
                <h3 className="text-2xl font-black text-slate-900 mt-1">2.4M <span className="text-xs font-bold text-slate-400">{t('dashboard.units.kwd')}</span></h3>
             </div>
             <div className="h-12 w-12 rounded-2xl bg-primary/5 text-primary flex items-center justify-center shrink-0"><Wallet className="h-6 w-6" /></div>
          </Card>
          <Card className="rounded-xl shadow-sm border p-6 bg-white flex items-center justify-between group hover:shadow-md transition-all text-start">
             <div className="text-start">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('projects.stats.claims')}</p>
+               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('reports.stats.activeprojects')}</p>
                <h3 className="text-2xl font-black text-blue-600 mt-1">12</h3>
             </div>
             <div className="h-12 w-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0"><Activity className="h-6 w-6" /></div>
          </Card>
          <Card className="rounded-xl shadow-sm border p-6 bg-white flex items-center justify-between group hover:shadow-md transition-all text-start">
             <div className="text-start">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('projects.stats.collection')}</p>
+               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('reports.stats.attendance')}</p>
                <h3 className="text-2xl font-black text-emerald-600 mt-1">88%</h3>
             </div>
             <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"><CheckCircle2 className="h-6 w-6" /></div>
@@ -122,9 +123,9 @@ export default function ProjectsPage() {
           <Table>
             <TableHeader className="bg-slate-50/50">
               <TableRow className="border-b-0">
-                <TableHead className="py-5 ps-8 text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('projects.table.project')}</TableHead>
-                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('projects.table.progress')}</TableHead>
-                <TableHead className="text-end text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('projects.table.billing')}</TableHead>
+                <TableHead className="py-5 ps-8 text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'المشروع' : 'Project'}</TableHead>
+                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'الإنجاز' : 'Progress'}</TableHead>
+                <TableHead className="text-end text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'الفوترة' : 'Billing'}</TableHead>
                 <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('common.status')}</TableHead>
                 <TableHead className="pe-8"></TableHead>
               </TableRow>
@@ -133,7 +134,7 @@ export default function ProjectsPage() {
               {loading ? (
                 <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
               ) : filteredProjects.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-24 italic text-slate-300 font-black">{t('projects.noactiveprojects')}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-24 italic text-slate-300 font-black">{t('common.noresults')}</TableCell></TableRow>
               ) : filteredProjects.map((proj) => (
                 <TableRow key={proj.id} className="hover:bg-primary/[0.01] cursor-pointer border-b-slate-100 group" onClick={() => router.push(`/dashboard/clients/${proj.clientId}/transactions/${proj.id}`)}>
                     <TableCell className="py-5 ps-8 text-start">
