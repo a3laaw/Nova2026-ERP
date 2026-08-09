@@ -65,16 +65,18 @@ function extractDict(content, lang) {
   const startMarker = `${lang}: {`;
   const start = content.indexOf(startMarker);
   if (start === -1) throw new Error(`Could not find '${lang}: {' block`);
-  // find matching closing brace by counting depth
-  let depth = 0, i = start + startMarker.length - 1;
-  for (; i < content.length; i++) {
-    if (content[i] === '{') depth++;
-    if (content[i] === '}') {
-      depth--;
-      if (depth === 0) break;
-    }
+  const otherLang = lang === 'ar' ? 'en' : 'ar';
+  const endMarker = `\n  ${otherLang}: {`;
+  let end = content.indexOf(endMarker, start);
+  let block;
+  if (end !== -1 && lang === 'ar') {
+    block = content.slice(start + startMarker.length, end);
+  } else {
+    // en block: goes from start to the closing "\n  };" of the translations object
+    const closeMarker = '\n};';
+    end = content.indexOf(closeMarker, start);
+    block = content.slice(start + startMarker.length, end);
   }
-  const block = content.slice(start + startMarker.length, i);
   const keys = new Set();
   const keyRegex = /^\s*'([^']+)'\s*:/gm;
   let m;
