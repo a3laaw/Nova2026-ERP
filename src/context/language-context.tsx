@@ -14,11 +14,11 @@ interface LanguageContextType {
 
 /**
  * القاموس الموحد والنهائي (Master Dictionary) - الإصدار الشامل.
- * يحتوي على كافة مفاتيح النظام لضمان عدم حدوث تراجع نصي.
+ * تم دمج كافة المفاتيح لضمان عدم حدوث تراجع نصي في أي صفحة.
  */
 const translations: Record<Language, Record<string, string>> = {
   ar: {
-    // 1. الهيكل والتنقل
+    // 1. الهيكل والتنقل (Navigation)
     'dashboard': 'لوحة التحكم',
     'crm': 'العملاء والفرص',
     'projects': 'المشاريع',
@@ -28,7 +28,6 @@ const translations: Record<Language, Record<string, string>> = {
     'procurement': 'المشتريات والتوريد',
     'inventory': 'المخازن والعهد',
     'ai.hub': 'ذكاء Nova الاصطناعي',
-    'ai.desc': 'استخدم قوة الذكاء الاصطناعي لتحليل البيانات والعمليات المالية والهندسية.',
     'settings': 'الإعدادات',
     'logout': 'تسجيل الخروج',
     'userprofile': 'ملفي الشخصي',
@@ -37,10 +36,10 @@ const translations: Record<Language, Record<string, string>> = {
     'reports': 'التقارير والرقابة',
     'activeprojects': 'المشاريع النشطة',
     'boqexplorer': 'جدول الكميات والميزانية',
-    'fieldradar': 'رادار العمليات الميدانية',
-    'workgroups': 'فرق وأطقم العمل',
+    'fieldradar': 'رادار الميدان',
+    'workgroups': 'أطقم العمل',
     'equipment': 'المعدات والآليات',
-    'fieldlogs': 'سجلات الإنجاز الميداني',
+    'fieldlogs': 'سجلات الإنجاز',
     'visitsdossier': 'سجل تفاعل العملاء',
     'leads': 'الفرص والطلبات',
     'clients': 'إدارة العملاء',
@@ -59,7 +58,8 @@ const translations: Record<Language, Record<string, string>> = {
     'rolespermissions': 'الأدوار والمسؤوليات',
     'workhours': 'ساعات الدوام',
     'templates': 'مكتبة القوالب',
-    
+    'templatesdesc': 'إدارة النماذج المرجعية لعروض الأسعار، العقود، وجداول الكميات.',
+
     // 2. الداشبورد (Dashboard)
     'dashboard.stats.revenue': 'إجمالي الإيرادات',
     'dashboard.stats.activeprojects': 'المشاريع الجارية',
@@ -73,20 +73,21 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.units.employee': 'موظف',
     'dashboard.recent': 'العمليات الأخيرة',
     'dashboard.export': 'تصدير البيانات',
+    'dashboard.description': 'نظرة عامة على أداء المنشأة وسير العمل التشغيلي والمالي.',
 
-    // 3. الرادار والمواعيد (Appointments & Radar)
+    // 3. المواعيد والرادار (Appointments)
     'appointments.radar': 'رادار المواعيد والزيارات',
     'appointments.radardesc': 'جدولة اللقاءات مع العملاء والزيارات الميدانية للمهندسين.',
-    'appointments.printschedule': 'طباعة الجدول',
     'appointments.morningsession': 'الفترة الصباحية ☀️',
     'appointments.eveningsession': 'الفترة المسائية 🌆',
+    'appointments.printschedule': 'طباعة الجدول',
     'appointments.hallradar': 'رادار حجز القاعات',
     'appointments.hallradardesc': 'تنظيم إشغال قاعات الاجتماعات والورش الفنية داخل المنشأة.',
     'appointments.printoccupancy': 'طباعة تقرير الإشغال',
     'appointments.busy': 'مشغول / محجوز',
     'appointments.activehalls': 'قاعات مفعلة',
 
-    // 4. الميدان والإنشاءات (Field & Construction)
+    // 4. الميدان والإنشاءات (Field)
     'construction.radar': 'رادار الميدان الإنشائي',
     'construction.radar.desc': 'تنسيق أطقم العمل والمعدات وتتبع حركة المهندسين في المواقع.',
     'construction.groups': 'تكوين أطقم العمل',
@@ -96,13 +97,24 @@ const translations: Record<Language, Record<string, string>> = {
     'construction.reportsdesc': 'أرشيف تقارير الإنجاز الميداني الموثقة بالموارد.',
     'construction.newreport': 'تقرير جديد',
 
-    // 5. المحاسبة (Accounting)
+    // 5. الموارد البشرية (HR)
+    'hr.title': 'الموارد البشرية والامتثال',
+    'hr.description': 'إدارة القوى العاملة، الرواتب، الإجازات، والامتثال لقانون العمل الكويتي.',
+    'staffrecords': 'سجل الموظفين',
+    'hr.hire': 'توظيف جديد',
+    'hr.leaveRequestsTitle': 'طلبات الإجازات',
+    'hr.manageAbsences': 'إدارة الغيابات والأرصدة القانونية.',
+    'hr.ownRecordsOnly': 'عرض سجلاتك الشخصية فقط.',
+    'hr.workDays': 'يوم عمل',
+
+    // 6. المحاسبة والمالية (Accounting)
     'accounting.coa.title': 'دليل الحسابات والترميز المالي',
     'accounting.journals.title': 'دفاتر قيود اليومية',
+    'accounting.journals.desc': 'تسجيل ومراجعة كافة العمليات المالية بنظام القيد المزدوج.',
     'accounting.vouchers.paymenttitle': 'سندات الصرف المعتمدة',
     'accounting.vouchers.receipttitle': 'سندات القبض المعتمدة',
 
-    // 6. الكلمات الشائعة (Common & UI)
+    // 7. الكلمات الشائعة (Common)
     'common.search': 'بحث...',
     'common.filter': 'تصفية',
     'common.save': 'حفظ البيانات',
@@ -122,24 +134,7 @@ const translations: Record<Language, Record<string, string>> = {
     'common.error': 'فشل في تنفيذ العملية',
     'common.saved': 'تم حفظ التغييرات بنجاح',
 
-    // 7. إدارة العملاء (CRM)
-    'clients.title': 'قاعدة بيانات العملاء',
-    'clients.addnew': 'تسجيل عميل جديد',
-    'clients.table.profile': 'ملف العميل',
-    'clients.table.staff': 'المهندس المسؤول',
-    'clients.table.contact': 'الاتصال',
-    'clients.table.status': 'الحالة التقديرية',
-
-    // 8. المشاريع (Projects)
-    'projects.title': 'سجل المشاريع الهندسية',
-    'projects.addnew': 'فتح معاملة جديدة',
-    'projects.table.project': 'المشروع / العميل',
-    'projects.table.progress': 'الإنجاز الفني',
-    'projects.table.billing': 'المطالبات المالية',
-    'projects.noactiveprojects': 'لا يوجد مشاريع جارية حالياً.',
-    'projects.boqexplorer.desc': 'إدارة واعتماد جداول الكميات والميزانيات المرجعية للمشاريع.',
-
-    // 9. التقارير (Reports)
+    // 8. التقارير (Reports Hub)
     'reports.hub.title': 'مركز التقارير والرقابة',
     'reports.hub.description': 'أدوات تحليلية متقدمة لربط الميدان بالمركز المالي والإداري.',
     'reports.executive.title': 'التقرير التنفيذي الشامل',
@@ -150,6 +145,12 @@ const translations: Record<Language, Record<string, string>> = {
     'reports.stats.activeprojects': 'المشاريع الجارية',
     'reports.stats.staff': 'القوى العاملة',
     'reports.stats.attendance': 'انضباط الحضور',
+
+    // 9. القالب الهندسي والمقايسات (BOQ)
+    'projects.boqexplorer.desc': 'إدارة واعتماد جداول الكميات والميزانيات المرجعية للمشاريع.',
+    'boqtemplates': 'قوالب المقايسات',
+    'quotationtemplates': 'قوالب عروض الأسعار',
+    'contracttemplates': 'قوالب العقود الرسمية',
   },
   en: {
     'dashboard': 'Dashboard',
@@ -160,7 +161,7 @@ const translations: Record<Language, Record<string, string>> = {
     'hr': 'Human Resources',
     'procurement': 'Procurement',
     'inventory': 'Inventory',
-    'ai.hub': 'AI Assistant',
+    'ai.hub': 'AI Intelligence',
     'settings': 'Settings',
     'logout': 'Logout',
     'userprofile': 'Profile',
@@ -192,18 +193,16 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   };
 
   /**
-   * دالة الترجمة الذكية والمحصنة:
-   * تقوم بتحويل المفتاح إلى حروف صغيرة (lowercase) قبل البحث عنه،
-   * مما يمنع ظهور الأكواد البرمجية في الواجهة في حال اختلاف حالة الأحرف.
+   * دالة الترجمة المحصنة (Hardened Translation):
+   * تحول المفتاح إلى حروف صغيرة (lowercase) وتزيل أي مسافات زائدة لضمان الربط دائماً.
    */
   const t = (key: string) => {
     if (!key) return '';
-    const lowerKey = key.toLowerCase();
+    const cleanKey = key.trim().toLowerCase();
     
-    // البحث في القاموس عن المفتاح (سواء كان بشكله الحالي أو بحروف صغيرة)
-    return translations[lang][lowerKey] || 
+    return translations[lang][cleanKey] || 
            translations[lang][key] || 
-           key; // العودة للمفتاح الأصلي في حال عدم وجود ترجمة
+           key; 
   };
 
   return (

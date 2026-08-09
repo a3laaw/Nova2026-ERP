@@ -18,60 +18,12 @@ export function BreadcrumbNav() {
   const formatSegment = (segment: string) => {
     const sLower = segment.toLowerCase();
     
-    // في حال كان الجزء عبارة عن معرف (ID) طويل أو يحتوي أرقاماً، نعطيه تسمية "تفاصيل"
     if (segment.length > 15 || /\d/.test(segment)) {
       return t('details');
     }
     
-    // خريطة المسارات الموحدة لربطها بمفاتيح القاموس
-    const segmentMap: Record<string, string> = {
-      'dashboard': 'dashboard',
-      'clients': 'clients',
-      'projects': 'projects',
-      'hr': 'hr',
-      'accounting': 'accounting',
-      'procurement': 'procurement',
-      'inventory': 'inventory',
-      'settings': 'settings',
-      'transactions': 'transactions',
-      'employees': 'staffrecords',
-      'payroll': 'payroll',
-      'boqs': 'boqexplorer',
-      'leaves': 'leaverequests',
-      'reports': 'reports',
-      'client-visits': 'visitsdossier',
-      'crm': 'crm',
-      'equipment': 'equipment',
-      'groups': 'workgroups',
-      'attendance': 'attendance',
-      'vouchers': 'paymentvouchers',
-      'coa': 'chartofaccounts',
-      'journals': 'journalentries',
-      'receipt': 'receiptvouchers',
-      'payment': 'paymentvouchers',
-      'construction': 'construction',
-      'bookings': 'construction.radar',
-      'field-visits': 'construction.reports',
-      'quotes': 'ai.hub',
-      'orders': 'purchaseorders',
-      'suppliers': 'suppliers',
-      'roles': 'rolespermissions',
-      'company': 'companyidentity',
-      'profile': 'userprofile',
-      'checklists': 'settings.checklists',
-      'work-hours': 'workhours',
-      'analytics': 'reports.analytics.title',
-      'executive': 'reports.executive.title',
-      'ai': 'ai.hub',
-      'new': 'common.add',
-      'edit': 'common.edit',
-      'boq': 'boqexplorer'
-    };
-    
-    const key = segmentMap[sLower] || sLower;
-    const translated = t(key);
-    // العودة للمفتاح الأصلي في حال عدم وجود ترجمة
-    return translated !== key ? translated : sLower.charAt(0).toUpperCase() + sLower.slice(1);
+    const translated = t(sLower);
+    return translated !== sLower ? translated : sLower.charAt(0).toUpperCase() + sLower.slice(1);
   };
 
   if (segments.length <= 1 && segments[0] === 'dashboard') return null;
@@ -117,7 +69,7 @@ export function BreadcrumbNav() {
                   className={cn(
                     "text-[10px] font-black uppercase tracking-widest transition-all px-2 py-1 rounded-md",
                     isLast 
-                      ? "text-slate-900 bg-slate-100/50 cursor-default pointer-events-none" 
+                      ? "text-slate-900 bg-slate-100/50 cursor-default" 
                       : "text-slate-400 hover:text-primary hover:bg-primary/5"
                   )}
                   aria-current={isLast ? 'page' : undefined}

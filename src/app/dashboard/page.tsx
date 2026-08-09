@@ -19,14 +19,15 @@ import {
   XAxis, 
   YAxis, 
   CartesianGrid,
-  ResponsiveContainer
+  ResponsiveContainer,
+  Tooltip
 } from "recharts";
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/language-context";
 import { useRouter } from 'next/navigation';
 
-const data = [
+const chartData = [
   { name: "Jan", revenue: 4500, expenses: 2400 },
   { name: "Feb", revenue: 5200, expenses: 2800 },
   { name: "Mar", revenue: 4800, expenses: 3200 },
@@ -42,11 +43,11 @@ export default function DashboardPage() {
   const chartConfig = {
     revenue: {
       label: "Revenue",
-      color: "hsl(var(--primary))",
+      color: "#ffa000",
     },
     expenses: {
       label: "Expenses",
-      color: "hsl(var(--secondary))",
+      color: "#039be5",
     },
   } satisfies ChartConfig;
 
@@ -91,7 +92,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 w-full animate-in fade-in duration-700" dir={dir}>
-      {/* Header section - Unified Sovereign Design */}
+      {/* Sovereign Header Design (H-14) */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-6 text-start">
         <div className="flex items-center gap-4 text-start">
           <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/5">
@@ -99,8 +100,8 @@ export default function DashboardPage() {
           </div>
           <div className="text-start">
             <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{t('dashboard')}</h1>
-            <p className="text-xs font-bold text-muted-foreground italic mt-0.5 text-start">
-               {isRtl ? 'نظرة عامة على أداء المنشأة وسير العمل التشغيلي' : 'Overview of organization performance and operational workflow'}
+            <p className="text-xs font-bold text-muted-foreground italic mt-0.5">
+               {t('dashboard.description')}
             </p>
           </div>
         </div>
@@ -118,10 +119,10 @@ export default function DashboardPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, i) => (
-          <Card key={i} className="rounded-2xl shadow-sm border-slate-100 bg-white text-start">
+          <Card key={i} className="rounded-2xl shadow-sm border-slate-100 bg-white text-start group hover:shadow-xl transition-all">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-4">
-                <div className={cn("p-3 rounded-2xl", stat.bg)}>
+                <div className={cn("p-3 rounded-2xl transition-transform group-hover:scale-110", stat.bg)}>
                   <stat.icon className={cn("h-6 w-6", stat.color)} />
                 </div>
                 <div className="text-end">
@@ -176,13 +177,13 @@ export default function DashboardPage() {
             <Activity className="h-4 w-4 text-slate-300" />
           </CardHeader>
           <CardContent className="p-6">
-            <ChartContainer config={chartConfig} className="h-[260px] w-full">
+            <ChartContainer config={chartConfig} className="h-[280px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data}>
+                <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#64748B", fontSize: 10, fontWeight: 700 }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: "#64748B", fontSize: 10, fontWeight: 700 }} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 10, fontWeight: 700 }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 10, fontWeight: 700 }} />
+                  <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
                   <Bar dataKey="revenue" fill="var(--color-revenue)" radius={[4, 4, 0, 0]} barSize={20} />
                   <Bar dataKey="expenses" fill="var(--color-expenses)" radius={[4, 4, 0, 0]} barSize={20} />
                 </BarChart>
