@@ -42,11 +42,11 @@ export default function DashboardPage() {
   const chartConfig = {
     revenue: {
       label: "Revenue",
-      color: "#FFA000",
+      color: "hsl(var(--primary))",
     },
     expenses: {
       label: "Expenses",
-      color: "#039BE5",
+      color: "hsl(var(--secondary))",
     },
   } satisfies ChartConfig;
 
@@ -90,8 +90,8 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="space-y-6 w-full animate-in fade-in" dir={dir}>
-      {/* Header section - Sovereign Design */}
+    <div className="space-y-6 w-full animate-in fade-in duration-700" dir={dir}>
+      {/* Header section - Unified Sovereign Design */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-6 text-start">
         <div className="flex items-center gap-4 text-start">
           <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/5">
@@ -126,9 +126,6 @@ export default function DashboardPage() {
                 </div>
                 <div className="text-end">
                    <span className={cn("text-xs font-black", stat.color)}>{stat.change}</span>
-                   <div className="h-1 w-12 bg-slate-100 rounded-full mt-1 overflow-hidden">
-                      <div className={cn("h-full", stat.color.replace('text', 'bg'))} style={{ width: '70%' }} />
-                   </div>
                 </div>
               </div>
               <div className="text-start">
@@ -149,9 +146,9 @@ export default function DashboardPage() {
           <CardContent className="p-0">
             <div className="divide-y divide-slate-50">
               {[
-                { title: isRtl ? "اعتماد ميزانية مشروع صباح السالم" : "Approve Sabah Al-Salem Budget", detail: isRtl ? "نظام المقايسات" : "BOQ System", time: "5m", color: "bg-blue-500" },
-                { title: isRtl ? "تسجيل حضور طاقم العمل الميداني" : "Record site crew attendance", detail: isRtl ? "نظام الحضور" : "Attendance System", time: "1h", color: "bg-orange-500" },
-                { title: isRtl ? "إصدار سند صرف للمورد" : "Issue payment voucher to supplier", detail: isRtl ? "النظام المالي" : "Financial System", time: "3h", color: "bg-emerald-500" },
+                { title: isRtl ? "اعتماد ميزانية مشروع صباح السالم" : "Approve Project Budget", detail: t('boqexplorer'), time: "5m", color: "bg-blue-500" },
+                { title: isRtl ? "تسجيل حضور طاقم العمل الميداني" : "Record site crew attendance", detail: t('attendance'), time: "1h", color: "bg-orange-500" },
+                { title: isRtl ? "إصدار سند صرف للمورد" : "Issue payment voucher", detail: t('accounting'), time: "3h", color: "bg-emerald-500" },
               ].map((activity, i) => (
                 <div key={i} className="flex items-start gap-3 p-4 hover:bg-slate-50/50 transition-colors">
                   <div className={cn("h-1.5 w-1.5 rounded-full mt-1.5 shrink-0", activity.color)} />
@@ -174,7 +171,7 @@ export default function DashboardPage() {
         <Card className="lg:col-span-2 rounded-2xl border-slate-100 shadow-sm overflow-hidden bg-white text-start">
           <CardHeader className="flex flex-row items-center justify-between px-6 py-4 border-b bg-slate-50/50">
             <div className="text-start">
-              <CardTitle className="text-sm font-black text-slate-900">{isRtl ? 'الأداء المالي' : 'Financial Performance'}</CardTitle>
+              <CardTitle className="text-sm font-black text-slate-900">{isRtl ? 'الأداء المالي للمشاريع' : 'Project Financial Performance'}</CardTitle>
             </div>
             <Activity className="h-4 w-4 text-slate-300" />
           </CardHeader>

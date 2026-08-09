@@ -20,7 +20,7 @@ export default function ReportsHubPage() {
     {
       id: 'executive',
       title: t('reports.executive.title'),
-      desc: isRtl ? 'ملخص الأداء العام للمنظمة والنتائج المالية والتشغيلية.' : 'Summary of overall organization performance and financial results.',
+      desc: isRtl ? 'ملخص الأداء العام للمنظمة والنتائج المالية والتشغيلية.' : 'Summary of overall organization performance.',
       icon: Landmark,
       color: 'text-primary',
       bg: 'bg-primary/5',
@@ -30,7 +30,7 @@ export default function ReportsHubPage() {
     {
       id: 'analytics',
       title: t('reports.analytics.title'),
-      desc: isRtl ? 'تحليلات ذكية لربط المقايسات الميدانية بالمصروفات المالية.' : 'Smart analytics linking field BOQs with financial expenditures.',
+      desc: isRtl ? 'تحليلات ذكية لربط المقايسات الميدانية بالمصروفات المالية.' : 'Smart analytics linking field BOQs with finance.',
       icon: TrendingUp,
       color: 'text-blue-600',
       bg: 'bg-blue-50',
@@ -38,8 +38,8 @@ export default function ReportsHubPage() {
     },
     {
       id: 'visits',
-      title: isRtl ? 'سجل تفاعل العملاء' : 'Visits Dossier',
-      desc: isRtl ? 'تتبع تاريخي لكل الزيارات والتقارير الميدانية والمكتبية.' : 'Historical tracking of all field and office visits.',
+      title: t('visitsdossier'),
+      desc: isRtl ? 'تتبع تاريخي لكل الزيارات والتقارير الميدانية والمكتبية.' : 'Historical tracking of all visits.',
       icon: MapPinned,
       color: 'text-emerald-600',
       bg: 'bg-emerald-50',
@@ -48,7 +48,7 @@ export default function ReportsHubPage() {
   ];
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-500" dir={dir}>
+    <div className="space-y-10 animate-in fade-in duration-700" dir={dir}>
       {/* Unified Header Design */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-6">
         <div className="flex items-center gap-4 text-start">

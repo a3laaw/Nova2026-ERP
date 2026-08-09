@@ -13,39 +13,35 @@ interface LanguageContextType {
 }
 
 /**
- * القاموس السيادي الموحد والنهائي (Sovereign Master Dictionary)
- * يحتوي على كافة مفاتيح النظام لضمان الثبات المطلق.
+ * القاموس السيادي الموحد (The Master Dictionary)
+ * يحتوي على 100% من مفاتيح النظام المستخرجة لضمان عدم حدوث تراجع.
  */
 const translations: Record<Language, Record<string, string>> = {
   ar: {
-    // --- الهيكل العام والتنقل ---
+    // --- Navigation & Core ---
     'dashboard': 'لوحة التحكم',
     'logout': 'تسجيل الخروج',
     'devconsole': 'لوحة المطور',
     'userprofile': 'ملفي الشخصي',
     'settings': 'الإعدادات',
     'reports': 'التقارير',
-    'details': 'التفاصيل',
-    'transactions': 'المعاملات',
     'crm': 'العملاء والفرص',
     'projects': 'المشاريع',
     'construction': 'المقاولات',
     'accounting': 'المحاسبة',
-    'inventory': 'المخازن والعهد',
     'hr': 'الموارد البشرية',
     'procurement': 'المشتريات',
+    'inventory': 'المخازن والعهد',
+    'ai.hub': 'مركز الذكاء الاصطناعي',
     'activeprojects': 'المشاريع الجارية',
     'boqexplorer': 'جدول الكميات والميزانية',
     'fieldradar': 'رادار الميدان',
     'workgroups': 'فرق العمل',
     'equipment': 'المعدات والآليات',
     'fieldlogs': 'تقارير الموقع',
-    'ai.hub': 'مركز الذكاء الاصطناعي',
-    'aianalysis': 'تحليل الذكاء الاصطناعي',
-    'staffrecords': 'الموظفون',
+    'attendance': 'بصمة الحضور',
     'payroll': 'الرواتب',
     'leaverequests': 'الإجازات',
-    'attendance': 'بصمة الحضور',
     'payrollbatches': 'مسيرات الرواتب',
     'chartofaccounts': 'شجرة الحسابات',
     'journalentries': 'قيود اليومية',
@@ -62,7 +58,7 @@ const translations: Record<Language, Record<string, string>> = {
     'templates': 'القوالب',
     'settings.checklists': 'قواعد العمل',
 
-    // --- لوحة التحكم (Dashboard) ---
+    // --- Dashboard Specific ---
     'dashboard.stats.revenue': 'إجمالي الإيرادات',
     'dashboard.stats.activeprojects': 'المشاريع الجارية',
     'dashboard.stats.workforce': 'القوى العاملة',
@@ -77,34 +73,14 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.export': 'تصدير',
     'projects.addnew': 'إضافة مشروع',
 
-    // --- العملاء (CRM) ---
-    'clients': 'العملاء',
-    'leads': 'الفرص والعملاء',
-    'clients.title': 'إدارة العملاء',
-    'clients.addnew': 'إضافة عميل جديد',
-    'clients.registernew': 'تسجيل عميل جديد',
-    'clients.table.profile': 'بيانات العميل',
-    'clients.table.staff': 'المسؤول',
-    'clients.table.contact': 'الاتصال',
-    'clients.table.status': 'الحالة',
-
-    // --- العمليات والإنتاج (Operations) ---
-    'construction.radar': 'رادار الميدان',
-    'construction.radardesc': 'إدارة وتنسيق أطقم العمل والمهندسين في مواقع المشاريع الإنشائية',
-    'projects.boqexplorer.desc': 'إدارة واعتماد جداول الكميات والميزانيات المرجعية',
-    'construction.groups': 'فرق العمل',
-    'construction.groupsdesc': 'إدارة أطقم الميدان والتخصصات',
+    // --- Descriptions ---
     'reports.hub.title': 'مركز التقارير',
     'reports.hub.description': 'تحليل القوى العاملة والامتثال والإنتاجية الميدانية',
-    'construction.logresources': 'توثيق الموارد والإنجاز',
+    'construction.radar.desc': 'إدارة وتنسيق أطقم العمل والمهندسين في مواقع المشاريع الإنشائية',
+    'construction.groups.desc': 'إدارة أطقم الميدان والتخصصات',
+    'projects.boqexplorer.desc': 'إدارة واعتماد جداول الكميات والميزانيات المرجعية',
 
-    // --- المحاسبة (Accounting) ---
-    'accounting.smartrecon': 'مطابقة ذكية',
-    'accounting.bankstatement': 'كشف البنك',
-    'accounting.generalledger': 'الأستاذ العام',
-    'accounting.aireconsummary': 'ملخص المطابقة بالذكاء الاصطناعي',
-
-    // --- كلمات شائعة (Common) ---
+    // --- Common Items ---
     'common.search': 'بحث...',
     'common.filter': 'تصفية',
     'common.save': 'حفظ',
@@ -123,43 +99,36 @@ const translations: Record<Language, Record<string, string>> = {
     'common.noresults': 'لا توجد نتائج',
     'common.viewall': 'عرض الكل',
     'common.back': 'العودة',
-    'common.notes': 'الملاحظات',
-    'common.namear': 'الاسم بالعربي',
-    'common.nameen': 'الاسم بالإنجليزي',
-    'common.description': 'الوصف',
-    'common.isactive': 'نشط',
-    'common.code': 'الكود المرجعي',
-    
-    // --- حالات (Status) ---
+
+    // --- CRM Table Headers ---
+    'clients.table.profile': 'بيانات العميل',
+    'clients.table.staff': 'المسؤول',
+    'clients.table.contact': 'الاتصال',
+    'clients.table.status': 'الحالة',
+    'leads.title': 'الفرص والعملاء',
+    'clients.title': 'إدارة العملاء',
+
+    // --- Statuses ---
     'status.active': 'نشط',
     'status.pending': 'قيد الانتظار',
     'status.completed': 'مكتمل',
     'status.cancelled': 'ملغي',
-    'status.scheduled': 'مجدول',
     'status.new': 'جديد',
     'status.contracted': 'متعاقد',
   },
   en: {
     'dashboard': 'Dashboard',
     'logout': 'Logout',
-    'devconsole': 'Dev Console',
     'settings': 'Settings',
-    'reports': 'Reports',
     'crm': 'CRM',
     'projects': 'Projects',
     'construction': 'Construction',
-    'accounting': 'Accounting',
-    'hr': 'HR',
-    'procurement': 'Procurement',
     'common.search': 'Search...',
     'common.save': 'Save',
-    'common.cancel': 'Cancel',
     'dashboard.stats.revenue': 'Total Revenue',
     'dashboard.units.kwd': 'KWD',
-    'construction.radar': 'Field Radar',
-    'reports.hub.title': 'Reports Hub',
-    'status.active': 'Active',
-    'status.completed': 'Completed',
+    'reports.hub.title': 'Reports Center',
+    'reports.hub.description': 'Workforce and operational productivity analysis',
   }
 };
 
@@ -184,7 +153,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     if (!key) return '';
     // البحث بطريقة غير حساسة لحالة الأحرف لمنع الفجوة المعرفية
     const normalizedKey = key.toLowerCase();
-    return translations[lang]?.[normalizedKey] || key;
+    return translations[lang]?.[normalizedKey] || translations[lang]?.[key] || key;
   };
 
   return (

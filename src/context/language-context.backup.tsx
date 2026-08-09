@@ -1,4 +1,4 @@
 /**
- * @fileOverview This file is empty because the master dictionary is now in language-context.tsx
+ * @fileOverview Empty file to prevent interference with Master Dictionary.
  */
 export {};
