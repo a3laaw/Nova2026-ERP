@@ -23,12 +23,11 @@ import { canPerformOnRecord } from '@/lib/permissions/engine';
 
 export default function LeaveRequestsPage() {
   const { globalUser } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
+  const { t, dir, isRtl } = useLanguage();
   const { check } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
-  const isRtl = lang === 'ar';
 
   const viewAccess = check('hr', 'view');
   const companyId = globalUser?.companyId;
@@ -89,9 +88,9 @@ export default function LeaveRequestsPage() {
             <TableHeader className="bg-slate-50">
               <TableRow>
                 <TableHead className="py-3 ps-6 text-start text-[10px] font-bold uppercase text-slate-500">{t('common.name')}</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{t('hr.type') || 'Type'}</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{t('hr.period') || 'Period'}</TableHead>
-                <TableHead className="text-center text-[10px] font-bold uppercase text-slate-500">{t('hr.workDays') || 'Work Days'}</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{t('hr.type')}</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{t('hr.period')}</TableHead>
+                <TableHead className="text-center text-[10px] font-bold uppercase text-slate-500">{t('hr.workDays')}</TableHead>
                 <TableHead className="text-[10px] font-bold uppercase text-slate-500">{t('common.status')}</TableHead>
                 <TableHead className="pe-6"></TableHead>
               </TableRow>
@@ -134,7 +133,7 @@ export default function LeaveRequestsPage() {
                     <TableCell className="text-start">
                        <Badge className={cn(
                          "font-black px-2 py-0.5 rounded-md border-0 text-[9px] uppercase",
-                         leave.status === 'approved' || leave.status === 'on-leave' || leave.status === 'returned' || leave.status === 'commenced' ? 'bg-emerald-50 text-emerald-600' : 
+                         ['approved', 'on-leave', 'returned', 'commenced'].includes(leave.status) ? 'bg-emerald-50 text-emerald-600' : 
                          leave.status === 'pending' ? 'bg-amber-50 text-amber-600' : 
                          'bg-rose-50 text-rose-600'
                        )}>

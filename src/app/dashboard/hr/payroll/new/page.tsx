@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -23,14 +22,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export default function NewPayrollBatchPage() {
   const { globalUser, user } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
+  const { t, dir, isRtl } = useLanguage();
   const { check, isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
-  const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  // القفل المالي المسبق
   const payrollAccess = check('hr', 'approve');
 
   useEffect(() => {
@@ -90,7 +87,7 @@ export default function NewPayrollBatchPage() {
     if (!dataStatus.hasData) {
       toast({
         variant: "destructive",
-        title: isRtl ? "بيانات ناقصة" : "Missing Data",
+        title: t('common.error'),
         description: isRtl ? `لا توجد سجلات بصمة لشهر ${Number(month) + 1} سنة ${year}. يرجى رفع ملف الحضور أولاً.` : `No attendance logs found for ${Number(month) + 1}/${year}.`
       });
       return;
@@ -100,9 +97,9 @@ export default function NewPayrollBatchPage() {
     try {
       const data = await payrollService.calculateDrafts(Number(month) + 1, Number(year));
       setDrafts(data);
-      toast({ title: isRtl ? 'تم توليد مسودة الرواتب' : 'Draft Batch Generated' });
+      toast({ title: t('hr.draftBatchGenerated') });
     } catch (err) {
-      toast({ variant: "destructive", title: t('error'), description: t('saveFailed') });
+      toast({ variant: "destructive", title: t('common.error'), description: t('common.error') });
     } finally {
       setLoading(false);
     }
@@ -113,10 +110,10 @@ export default function NewPayrollBatchPage() {
     setSaving(true);
     try {
       await payrollService.saveBatch(Number(month) + 1, Number(year), drafts, user.uid);
-      toast({ title: t('saved'), description: isRtl ? 'تم اعتماد وحفظ كشف الرواتب.' : 'Payroll batch saved.' });
+      toast({ title: t('common.saved'), description: t('hr.payrollBatchSaved') });
       router.push('/dashboard/hr/payroll');
     } catch (err) {
-      toast({ variant: "destructive", title: t('error') });
+      toast({ variant: "destructive", title: t('common.error') });
     } finally {
       setSaving(false);
     }
@@ -143,10 +140,10 @@ export default function NewPayrollBatchPage() {
         <div className="text-start">
           <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
             <Sparkles className="h-10 w-10 text-primary" />
-            {isRtl ? 'توليد الرواتب الذكي' : 'Smart Payroll Generator'}
+            {t('hr.smartPayrollGenerator')}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {isRtl ? 'نظام دمج بيانات الحضور والغياب في كشوف مالية دقيقة' : 'Integrate attendance data into precise financial batch'}
+            {t('hr.integrateAttendanceData')}
           </p>
         </div>
       </div>
@@ -154,7 +151,7 @@ export default function NewPayrollBatchPage() {
       <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
         <CardContent className="p-10 flex flex-col md:flex-row items-end gap-6 bg-slate-50/50">
            <div className="space-y-2 text-start flex-1">
-              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اختيار الشهر' : 'Target Month'}</label>
+              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('hr.cycle')}</label>
               <Select value={month} onValueChange={setMonth}>
                  <SelectTrigger className="h-14 rounded-2xl border-2 bg-white font-black text-lg">
                     <SelectValue />
@@ -227,15 +224,15 @@ export default function NewPayrollBatchPage() {
         <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card className="border-0 shadow-lg rounded-[2rem] p-6 text-start bg-white border-b-4 border-emerald-500">
-                 <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{isRtl ? 'صافي المستحق' : 'Net Total'}</p>
+                 <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{t('hr.netTotal')}</p>
                  <h3 className="text-3xl font-black text-emerald-600">{totals.net.toLocaleString()} <span className="text-xs">KWD</span></h3>
               </Card>
               <Card className="border-0 shadow-lg rounded-[2rem] p-6 text-start bg-white border-b-4 border-rose-500">
-                 <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{isRtl ? 'إجمالي الخصومات' : 'Deductions'}</p>
+                 <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{t('hr.totalDeductions')}</p>
                  <h3 className="text-3xl font-black text-rose-600">{totals.deductions.toLocaleString()} <span className="text-xs">KWD</span></h3>
               </Card>
               <Card className="border-0 shadow-lg rounded-[2rem] p-6 text-start bg-white border-b-4 border-blue-500">
-                 <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{isRtl ? 'موظف مدرج' : 'Staff Count'}</p>
+                 <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{t('hr.staffCount')}</p>
                  <h3 className="text-3xl font-black text-blue-600">{drafts.length}</h3>
               </Card>
            </div>
@@ -244,11 +241,11 @@ export default function NewPayrollBatchPage() {
               <CardHeader className="bg-slate-50 border-b p-8 flex flex-row items-center justify-between">
                  <div>
                     <CardTitle className="text-xl font-black">{isRtl ? `معاينة مسودة ${monthName} ${year}` : `Preview ${monthName} ${year}`}</CardTitle>
-                    <CardDescription className="font-bold">{isRtl ? 'مراجعة بيانات الرواتب قبل الاعتماد النهائي' : 'Review calculations before final commit'}</CardDescription>
+                    <CardDescription className="font-bold">{t('hr.reviewCalculations')}</CardDescription>
                  </div>
                  <div className="flex gap-4">
                     <Button variant="outline" onClick={() => setDrafts(null)} className="rounded-xl font-bold border-2 h-12">
-                       <X className="me-2 h-4 w-4" /> {isRtl ? 'إلغاء' : 'Cancel'}
+                       <X className="me-2 h-4 w-4" /> {t('common.cancel')}
                     </Button>
                     <Button 
                       onClick={handleSave} 
@@ -256,7 +253,7 @@ export default function NewPayrollBatchPage() {
                       className="bg-emerald-600 text-white font-black rounded-xl h-12 px-8 shadow-xl shadow-emerald-100"
                     >
                        {saving ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="me-2 h-5 w-5" />}
-                       {isRtl ? 'اعتماد وحفظ' : 'Confirm & Save'}
+                       {t('common.confirm')}
                     </Button>
                  </div>
               </CardHeader>
@@ -264,11 +261,11 @@ export default function NewPayrollBatchPage() {
                  <Table>
                     <TableHeader className="bg-muted/30 sticky top-0 z-10">
                        <TableRow>
-                          <TableHead className="py-6 ps-8 text-start">{isRtl ? 'الموظف' : 'Employee'}</TableHead>
-                          <TableHead className="text-end">{isRtl ? 'الأساسي' : 'Basic'}</TableHead>
-                          <TableHead className="text-end">{isRtl ? 'الخصومات' : 'Deductions'}</TableHead>
-                          <TableHead className="text-center">{isRtl ? 'غياب غير مبرر' : 'Unjustified'}</TableHead>
-                          <TableHead className="text-end">{isRtl ? 'الصافي' : 'Net'}</TableHead>
+                          <TableHead className="py-6 ps-8 text-start">{t('hr.employeesCount')}</TableHead>
+                          <TableHead className="text-end">{t('hr.basic')}</TableHead>
+                          <TableHead className="text-end">{t('hr.deductions')}</TableHead>
+                          <TableHead className="text-center">{t('hr.unjustified')}</TableHead>
+                          <TableHead className="text-end">{t('hr.net')}</TableHead>
                        </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -289,7 +286,7 @@ export default function NewPayrollBatchPage() {
                             <TableCell className="text-center">
                                {rec.unjustifiedAbsenceDays && rec.unjustifiedAbsenceDays > 0 ? (
                                  <Badge variant="destructive" className="bg-rose-50 text-rose-600 font-black border-0 text-[10px]">
-                                    {rec.unjustifiedAbsenceDays} {isRtl ? 'يوم' : 'Days'}
+                                    {rec.unjustifiedAbsenceDays} {t('common.days')}
                                  </Badge>
                                ) : <span className="text-slate-300">-</span>}
                             </TableCell>

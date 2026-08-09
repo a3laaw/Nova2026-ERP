@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -15,12 +14,11 @@ import { toast } from '@/hooks/use-toast';
 
 export default function NewEmployeePage() {
   const { globalUser } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
+  const { t, dir } = useLanguage();
   const { permissions } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const isRtl = lang === 'ar';
 
   const companyId = globalUser?.companyId;
   const hrService = useMemo(() => 
@@ -32,10 +30,10 @@ export default function NewEmployeePage() {
     setLoading(true);
     try {
       await hrService.addEmployee(data);
-      toast({ title: t('saved'), description: t('entryAdded') });
+      toast({ title: t('common.saved') });
       router.push('/dashboard/hr/employees');
     } catch (e) {
-      toast({ variant: "destructive", title: t('error'), description: t('saveFailed') });
+      toast({ variant: "destructive", title: t('common.error'), description: t('common.error') });
     } finally {
       setLoading(false);
     }
@@ -47,10 +45,10 @@ export default function NewEmployeePage() {
         <div className="text-start">
           <h1 className="text-3xl font-black font-headline flex items-center gap-3">
             <UserPlus className="h-8 w-8 text-primary" />
-            {isRtl ? 'إضافة موظف جديد' : 'Add New Employee'}
+            {t('hr.addNew')}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {isRtl ? 'إنشاء ملف تعريفي ومالي متكامل للموظف' : 'Create integrated profile and financial record'}
+            {t('hr.createIntegratedProfile')}
           </p>
         </div>
       </div>

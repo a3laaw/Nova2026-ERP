@@ -23,15 +23,13 @@ import { Input } from '@/components/ui/input';
 
 export default function PayrollBatchesPage() {
   const { globalUser } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
+  const { t, dir, isRtl } = useLanguage();
   const { check, isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
-  const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  // القفل السيادي: فحص صلاحية الاعتماد (Approve) قبل العرض
   const payrollAccess = check('hr', 'approve');
 
   useEffect(() => {
@@ -111,7 +109,7 @@ export default function PayrollBatchesPage() {
       <Card className="border-0 shadow-xl rounded-xl bg-white overflow-hidden ring-1 ring-black/5">
         <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between gap-4">
            <div className="relative w-full max-w-md">
-              <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#FFA000]" />
+              <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <Input 
                 placeholder={t('common.search')} 
                 className="ps-12 h-11 bg-white border-slate-200 focus-visible:ring-primary/10 focus-visible:border-primary transition-all" 
@@ -120,16 +118,16 @@ export default function PayrollBatchesPage() {
               />
            </div>
            <Button variant="outline" className="rounded-xl font-bold h-11 px-4 flex items-center gap-2 border-slate-200">
-              <Filter className="h-4 w-4 text-[#FFA000]" /> {t('common.filter')}
+              <Filter className="h-4 w-4" /> {t('common.filter')}
            </Button>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
            <Table>
               <TableHeader className="bg-muted/10 border-b">
                  <TableRow>
-                    <TableHead className="py-5 ps-8 text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{t('hr.period') || 'Period'}</TableHead>
-                    <TableHead className="text-center font-black text-slate-500 uppercase text-[10px] tracking-widest">{t('hr.employees') || 'Employees'}</TableHead>
-                    <TableHead className="text-end font-black text-slate-500 uppercase text-[10px] tracking-widest">{t('hr.netAmount') || 'Net Amount'}</TableHead>
+                    <TableHead className="py-5 ps-8 text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{t('hr.period')}</TableHead>
+                    <TableHead className="text-center font-black text-slate-500 uppercase text-[10px] tracking-widest">{t('hr.employeesCount')}</TableHead>
+                    <TableHead className="text-end font-black text-slate-500 uppercase text-[10px] tracking-widest">{t('hr.netSalary')}</TableHead>
                     <TableHead className="text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{t('common.status')}</TableHead>
                     <TableHead className="pe-8"></TableHead>
                  </TableRow>
@@ -138,7 +136,7 @@ export default function PayrollBatchesPage() {
                  {loading ? (
                    <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
                  ) : filtered.length === 0 ? (
-                   <TableRow><TableCell colSpan={5} className="text-center py-20 italic text-slate-400 font-bold">{t('hr.noPayrollFound') || 'No payroll batches found.'}</TableCell></TableRow>
+                   <TableRow><TableCell colSpan={5} className="text-center py-20 italic text-slate-400 font-bold">{t('hr.noPayrollFound')}</TableCell></TableRow>
                  ) : (
                    filtered.map((batch) => (
                      <TableRow key={batch.id} className="hover:bg-primary/[0.02] transition-colors group cursor-pointer border-b-slate-100" onClick={() => router.push(`/dashboard/hr/payroll/${batch.id}`)}>
@@ -155,9 +153,9 @@ export default function PayrollBatchesPage() {
                         <TableCell className="text-start">
                            <Badge variant="outline" className={cn(
                              "font-black px-3 py-1 rounded-lg border-0 shadow-sm uppercase text-[9px] gap-1",
-                             batch.status === 'paid' ? 'bg-[#039BE5]/10 text-[#039BE5]' :
-                             batch.status === 'approved' ? 'bg-emerald-50 text-emerald-600' :
-                             'bg-[#FFCA28]/10 text-[#FFCA28]'
+                             batch.status === 'paid' ? 'bg-emerald-500 text-white' :
+                             batch.status === 'approved' ? 'bg-blue-500 text-white' :
+                             'bg-amber-50 text-amber-600'
                            )}>
                               {t('status.' + batch.status)}
                            </Badge>

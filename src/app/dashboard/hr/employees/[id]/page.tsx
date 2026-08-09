@@ -30,11 +30,10 @@ export default function EmployeeDetailsPage() {
   const params = useParams();
   const empId = params.id as string;
   const { user, globalUser } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
+  const { t, dir } = useLanguage();
   const { check, isAdmin, permissions } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
-  const isRtl = lang === 'ar';
 
   const [saving, setSaving] = useState(false);
   const [terminating, setTerminating] = useState(false);
@@ -96,7 +95,7 @@ export default function EmployeeDetailsPage() {
               <h1 className="text-3xl font-black font-headline">{employee.fullName}</h1>
               <Badge className={cn(
                 "font-black px-3 py-1 rounded-lg border-0 shadow-sm",
-                employee.status === 'active' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'
+                employee.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
               )}>
                  {t('status.' + employee.status)}
               </Badge>
