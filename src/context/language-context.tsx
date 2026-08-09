@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -56,6 +55,8 @@ const translations: Record<Language, Record<string, string>> = {
     'common.confirmDelete': 'تأكيد الحذف',
     'common.retry': 'إعادة المحاولة',
     'common.back': 'العودة للقائمة',
+    'common.response': 'رد المسؤول',
+    'common.photosUploaded': 'تم رفع الصور',
 
     // --- Status ---
     'status.active': 'نشط',
@@ -255,6 +256,7 @@ const translations: Record<Language, Record<string, string>> = {
     'crm.description': 'إدارة المبيعات والعملاء المتوقعين',
     'clients.title': 'العملاء',
     'clients.registerNew': 'تسجيل عميل جديد',
+    'clients.registerNewDesc': 'فتح ملف تجاري جديد لربطه بالمعاملات الفنية',
     'clients.editProfile': 'تعديل ملف العميل',
     'clients.updateSuccess': 'تم تحديث بيانات العميل بنجاح',
     'clients.unauthorizedEdit': 'غير مصرح بتعديل بيانات العميل',
@@ -313,12 +315,31 @@ const translations: Record<Language, Record<string, string>> = {
     'projects.boqExplorer.rate': 'الفئة',
     'projects.boqExplorer.voSummary': 'ملخص التغييرات المقترحة',
     'projects.boqExplorer.action': 'الإجراء',
+    'projects.executionPipeline': 'مراحل التنفيذ',
+    'projects.newTitle': 'فتح معاملة فنية جديدة',
+    'projects.pathAssignment': 'تحديد المسار الفني والمهندس',
+    'projects.targetDept': 'القسم المسؤول',
+    'projects.selectDept': 'اختر القسم أولاً...',
+    'projects.assignedEngineer': 'المهندس المختص',
+    'projects.assignEngineer': 'تحديد المهندس...',
+    'projects.searchEngineer': 'بحث بالاسم أو الرقم...',
+    'projects.openNow': 'فتح المسار الآن',
+
+    // --- BOQ Specifics ---
+    'boq.workProgress': 'كميات الإنجاز (BOQ)',
+    'boq.study': 'دراسة الكميات',
+    'boq.activateTemplate': 'تنشيط المقايسة المرجعية',
+    'boq.activateNew': 'تنشيط مقايسة جديدة',
+    'boq.instantiateStart': 'تنشيط وبدء الدراسة',
+    'boq.registry': 'القاموس الهندسي',
+    'boq.sovereignRegistry': 'القاموس الهندسي الموحد',
+    'boq.selectTemplate': 'اختر القالب الهندسي',
 
     // --- Construction & Field ---
     'construction.radar': 'رادار العمليات الميدانية',
     'construction.radarDesc': 'إدارة وتنسيق أطقم العمل والمهندسين في مواقع المشاريع الإنشائية.',
     'construction.printRadar': 'طباعة الرادار الميداني',
-    'construction.groups': 'أطقم العمل',
+    'construction.groups': 'فرق العمل',
     'construction.groupsDesc': 'إدارة أطقم الميدان والتخصصات.',
     'construction.newGroup': 'تكوين طاقم عمل',
     'construction.setupCrew': 'إعداد طاقم جديد',
@@ -326,10 +347,15 @@ const translations: Record<Language, Record<string, string>> = {
     'construction.reportsDesc': 'أرشيف تقارير الإنجاز الميداني الموثقة بالموارد.',
     'construction.newReport': 'تقرير جديد',
     'construction.fieldLog': 'سجل إنجاز ميداني',
-    'construction.verifyForBilling': 'اعتماد للاستحقاق',
+    'construction.verify': 'اعتماد للاستحقاق',
     'construction.technicalProgress': 'تحليل الإنجاز الفني',
     'construction.context': 'سياق العمل',
     'construction.siteProgress': 'إنجاز الموقع',
+    'construction.logResources': 'توثيق الموارد والإنجاز',
+    'construction.commitResources': 'اعتماد التوثيق الميداني',
+    'construction.fieldProgressStatement': 'سجل إنجاز ميداني',
+    'construction.crewLoaded': 'تم تحميل طاقم العمل بنجاح',
+    'construction.visitCreated': 'تم إنشاء سجل الزيارة بنجاح',
 
     // --- Appointments & Meetings ---
     'appointments.radar': 'رادار المواعيد والزيارات',
@@ -428,7 +454,7 @@ const translations: Record<Language, Record<string, string>> = {
     'eveningOnly': 'مسائي فقط',
     'customEndTime': 'وقت انتهاء مخصص',
     'holidays': 'العطلات الأسبوعية والرسمية',
-    'weeklyHolidaysStatic': 'أيام العطلة الأسبوعية',
+    'weeklyHolidaysStatic': 'أيام العلطة الأسبوعية',
     'scheduledPublicHolidays': 'العطلات الرسمية المجدولة',
     'addHolidayManually': 'إضافة عطلة يدوياً',
     'holidayNameAr': 'اسم العطلة (Ar)',
@@ -517,6 +543,8 @@ const translations: Record<Language, Record<string, string>> = {
     'common.confirmDelete': 'Confirm Delete',
     'common.retry': 'Retry',
     'common.back': 'Back',
+    'common.response': 'Response',
+    'common.photosUploaded': 'Photos uploaded',
 
     // --- Status ---
     'status.active': 'Active',
@@ -716,6 +744,7 @@ const translations: Record<Language, Record<string, string>> = {
     'crm.description': 'Manage sales and leads',
     'clients.title': 'Clients',
     'clients.registerNew': 'Register New Client',
+    'clients.registerNewDesc': 'Open new commercial file',
     'clients.editProfile': 'Edit Client Profile',
     'clients.updateSuccess': 'Client data updated successfully',
     'clients.unauthorizedEdit': 'Unauthorized to edit clients',
@@ -774,6 +803,25 @@ const translations: Record<Language, Record<string, string>> = {
     'projects.boqExplorer.rate': 'Rate',
     'projects.boqExplorer.voSummary': 'Proposed Changes Summary',
     'projects.boqExplorer.action': 'Action',
+    'projects.executionPipeline': 'Execution Pipeline',
+    'projects.newTitle': 'New Technical Transaction',
+    'projects.pathAssignment': 'Technical Path & Assignment',
+    'projects.targetDept': 'Target Department',
+    'projects.selectDept': 'Select Department...',
+    'projects.assignedEngineer': 'Assigned Engineer',
+    'projects.assignEngineer': 'Assign Engineer...',
+    'projects.searchEngineer': 'Search engineer...',
+    'projects.openNow': 'Confirm & Open',
+
+    // --- BOQ Specifics ---
+    'boq.workProgress': 'BOQ Work Progress',
+    'boq.study': 'BOQ Study',
+    'boq.activateTemplate': 'Activate BOQ Template',
+    'boq.activateNew': 'Activate New BOQ',
+    'boq.instantiateStart': 'Instantiate & Start Study',
+    'boq.registry': 'Registry',
+    'boq.sovereignRegistry': 'Sovereign Registry',
+    'boq.selectTemplate': 'Select Template',
 
     // --- Construction & Field ---
     'construction.radar': 'Field Operations Radar',
@@ -787,10 +835,15 @@ const translations: Record<Language, Record<string, string>> = {
     'construction.reportsDesc': 'Archive of field logs and resources.',
     'construction.newReport': 'New Report',
     'construction.fieldLog': 'Field Log',
-    'construction.verifyForBilling': 'Verify for Billing',
+    'construction.verify': 'Verify',
     'construction.technicalProgress': 'Technical Progress',
     'construction.context': 'Work Context',
     'construction.siteProgress': 'Site Progress',
+    'construction.logResources': 'Log Site Resources',
+    'construction.commitResources': 'Commit Site Resources',
+    'construction.fieldProgressStatement': 'Field Progress Statement',
+    'construction.crewLoaded': 'Crew Loaded Successfully',
+    'construction.visitCreated': 'Field Visit Created',
 
     // --- Appointments & Meetings ---
     'appointments.radar': 'Appointments Radar',

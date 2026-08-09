@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, Suspense } from 'react';
@@ -131,7 +130,7 @@ function NewFieldVisitForm() {
       }
       const newPhotos = [...gridRows[idx].photoUrls, ...urls];
       updateRow(idx, 'photoUrls', newPhotos);
-      toast({ title: isRtl ? "تم رفع الصور" : "Photos uploaded" });
+      toast({ title: t('common.photosUploaded') });
     } finally {
       updateRow(idx, 'isUploading', false);
     }
@@ -169,7 +168,7 @@ function NewFieldVisitForm() {
      }
 
      setLaborDetails([...laborDetails.filter(l => l.trade), ...groupLabor]);
-     toast({ title: isRtl ? `تم تحميل طاقم ${group.name}` : `Crew ${group.name} Loaded` });
+     toast({ title: t('construction.crewLoaded') });
   };
 
   const handleSave = async () => {
@@ -198,7 +197,7 @@ function NewFieldVisitForm() {
         status: 'submitted',
         createdAt: serverTimestamp(),
       });
-      toast({ title: t('common.saved') });
+      toast({ title: t('construction.visitCreated') });
       router.push('/dashboard/construction/field-visits');
     } finally {
       setLoading(false);

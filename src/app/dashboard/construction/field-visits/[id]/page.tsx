@@ -65,7 +65,7 @@ export default function FieldVisitDetailsPage() {
         updatedAt: serverTimestamp(),
         updatedByName: globalUser?.fullName || user?.displayName || 'Admin'
       });
-      toast({ title: isRtl ? "تم تسجيل ردود المسؤول بنجاح" : "Engineer Responses Saved" });
+      toast({ title: t('common.saved') });
       setIsReviewing(false);
     } catch (e) {
       toast({ variant: "destructive", title: t('common.error') });
@@ -80,7 +80,7 @@ export default function FieldVisitDetailsPage() {
     try {
       const service = new BOQExecutionService(db, companyId, permissions);
       await service.verifyExecutionForBilling(visit.id, user.uid, globalUser?.fullName || 'Admin');
-      toast({ title: isRtl ? "تم اعتماد الإنجاز" : "Progress Verified" });
+      toast({ title: t('construction.verify') });
     } catch (e) {
       toast({ variant: "destructive", title: t('common.error') });
     } finally {
@@ -99,7 +99,7 @@ export default function FieldVisitDetailsPage() {
              <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
            </Button>
            <div className="text-start">
-              <h1 className="text-xl md:text-2xl font-bold text-slate-900">{isRtl ? 'سجل إنجاز ميداني' : 'Field Log'}</h1>
+              <h1 className="text-xl md:text-2xl font-bold text-slate-900">{t('construction.fieldLog')}</h1>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{visit.clientName} | Project: {visit.transactionNumber}</p>
            </div>
         </div>
@@ -108,18 +108,18 @@ export default function FieldVisitDetailsPage() {
            {!visit.isVerified && isAdmin && !isReviewing && (
              <Button onClick={handleVerify} disabled={verifying} size="sm" className="h-9 px-4 font-bold bg-emerald-600 text-white">
                 {verifying ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
-                {isRtl ? 'اعتماد للاستحقاق' : 'Verify'}
+                {t('construction.verify')}
              </Button>
            )}
            {!isReviewing ? (
              <Button onClick={() => setIsReviewing(true)} variant="outline" size="sm" className="h-9 px-4 font-bold border-slate-200">
-               <MessageSquare className="h-3.5 w-3.5 me-2" /> {isRtl ? 'رد المسؤول' : 'Response'}
+               <MessageSquare className="h-3.5 w-3.5 me-2" /> {t('common.response')}
              </Button>
            ) : (
              <div className="flex gap-2">
-               <Button onClick={() => setIsReviewing(false)} variant="outline" size="sm" className="h-9 font-bold border-slate-200">إلغاء</Button>
+               <Button onClick={() => setIsReviewing(false)} variant="outline" size="sm" className="h-9 font-bold border-slate-200">{t('common.cancel')}</Button>
                <Button onClick={handleSaveResponse} disabled={saving} size="sm" className="h-9 px-4 font-bold">
-                 {saving ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />} {isRtl ? 'حفظ الردود' : 'Save'}
+                 {saving ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />} {t('common.save')}
                </Button>
              </div>
            )}
@@ -129,7 +129,7 @@ export default function FieldVisitDetailsPage() {
         </div>
       </div>
 
-      <PrintWrapper title={isRtl ? "سجل إنجاز ميداني" : "Field Progress Statement"}>
+      <PrintWrapper title={t('construction.fieldProgressStatement')}>
          <div className="space-y-8 text-start">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b pb-6">
                <div className="space-y-1">
@@ -144,7 +144,7 @@ export default function FieldVisitDetailsPage() {
 
             <div className="space-y-4">
                <h3 className="font-bold text-base flex items-center gap-2 text-slate-800">
-                  <LayoutGrid className="h-4 w-4 text-primary" /> {isRtl ? 'تحليل الإنجاز الفني' : 'Technical Progress'}
+                  <LayoutGrid className="h-4 w-4 text-primary" /> {t('construction.technicalProgress')}
                </h3>
                <Card className="rounded-lg border shadow-sm bg-white overflow-hidden">
                   <Table>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -134,7 +133,7 @@ export default function AppointmentDetailPage() {
      }
 
      setLaborDetails([...laborDetails.filter(l => l.trade), ...groupLabor]);
-     toast({ title: isRtl ? `تم تحميل طاقم ${group.name}` : `Crew ${group.name} Loaded` });
+     toast({ title: t('construction.crewLoaded') });
   };
 
   const handleRecordProgress = async () => {
@@ -156,7 +155,7 @@ export default function AppointmentDetailPage() {
          }
       }
       
-      toast({ title: isRtl ? "تم تسجيل الإنجاز والموارد بنجاح" : "Progress & Resources Logged" });
+      toast({ title: t('construction.visitCreated') });
       setIsRecordOpen(false);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
@@ -182,7 +181,7 @@ export default function AppointmentDetailPage() {
         </div>
         {appt.status !== 'completed' && (
            <Button onClick={() => setIsRecordOpen(true)} size="sm" className="h-9 px-6 rounded-md font-bold gap-2 shadow-sm">
-               <Hammer className="h-4 w-4" /> {isRtl ? 'توثيق الموارد والإنجاز' : 'Log Site Resources'}
+               <Hammer className="h-4 w-4" /> {t('construction.logResources')}
            </Button>
         )}
       </div>
@@ -192,7 +191,7 @@ export default function AppointmentDetailPage() {
            <Card className="rounded-lg shadow-sm border-slate-100 bg-white overflow-hidden text-start">
               <CardHeader className="bg-slate-50 p-4 border-b">
                  <CardTitle className="text-[10px] font-bold uppercase text-slate-500 flex items-center gap-2">
-                    <Target className="h-4 w-4 text-primary" /> {isRtl ? 'مراحل التنفيذ' : 'Execution Pipeline'}
+                    <Target className="h-4 w-4 text-primary" /> {t('projects.executionPipeline')}
                  </CardTitle>
               </CardHeader>
               <CardContent className="p-2 space-y-1">
@@ -219,7 +218,7 @@ export default function AppointmentDetailPage() {
             <div className="bg-slate-50 p-6 text-slate-900 text-start flex items-center justify-between border-b shrink-0">
                <div className="flex items-center gap-3">
                   <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary shadow-sm"><LayoutGrid className="h-5 w-5" /></div>
-                  <DialogTitle className="text-lg font-bold">{isRtl ? 'توثيق الإنجاز والموارد' : 'Log Resources & Progress'}</DialogTitle>
+                  <DialogTitle className="text-lg font-bold">{t('construction.logResources')}</DialogTitle>
                </div>
             </div>
 
@@ -234,7 +233,7 @@ export default function AppointmentDetailPage() {
 
                {selectedStageId && (
                   <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
-                     <h4 className="font-black text-xs text-primary flex items-center gap-2 border-b pb-2 uppercase tracking-widest"><Hammer className="h-3.5 w-3.5" /> {isRtl ? 'كميات الإنجاز (BOQ)' : 'BOQ Work Progress'}</h4>
+                     <h4 className="font-black text-xs text-primary flex items-center gap-2 border-b pb-2 uppercase tracking-widest"><Hammer className="h-3.5 w-3.5" /> {t('boq.workProgress')}</h4>
                      <div className="border rounded-xl overflow-hidden shadow-sm">
                         <Table>
                            <TableHeader className="bg-slate-50/50">
@@ -249,7 +248,7 @@ export default function AppointmentDetailPage() {
                                 <TableRow key={idx} className="border-b-slate-50">
                                    <TableCell className="py-3">
                                       <p className="font-bold text-xs text-slate-800 leading-tight">{item.itemName}</p>
-                                      <Badge variant="outline" className="text-[7px] border-0 h-4 px-0 opacity-40 uppercase">{item.unit}</Badge>
+                                      <Badge variant="outline" className="text-[7px] border-0 h-4 px-0 uppercase">{item.unit}</Badge>
                                    </TableCell>
                                    <TableCell className="py-3"><Input type="number" step="0.01" value={item.quantity === 0 ? '' : item.quantity} onChange={e => { const ni = [...loggedItems]; ni[idx].quantity = Number(e.target.value); setLoggedItems(ni); }} className="h-9 text-center font-black text-sm border-2" /></TableCell>
                                    <TableCell className="py-3"><Input value={item.notes} onChange={e => { const ni = [...loggedItems]; ni[idx].notes = e.target.value; setLoggedItems(ni); }} className="h-9 text-[11px] border-2 bg-slate-50/30" /></TableCell>
@@ -321,7 +320,7 @@ export default function AppointmentDetailPage() {
             <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-4 shrink-0 shadow-lg">
                <Button variant="outline" onClick={() => setIsRecordOpen(false)} className="flex-1 h-12 rounded-xl font-bold border-2 bg-white">{t('common.cancel')}</Button>
                <Button onClick={handleRecordProgress} disabled={loadingAction === 'recording' || !selectedStageId} className="flex-[2] h-12 rounded-xl font-black gap-2 shadow-xl shadow-primary/20 border-b-4 border-orange-700">
-                  {loadingAction === 'recording' ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />} {isRtl ? 'اعتماد التوثيق الميداني' : 'Commit Site Resources'}
+                  {loadingAction === 'recording' ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />} {t('construction.commitResources')}
                </Button>
             </DialogFooter>
          </DialogContent>

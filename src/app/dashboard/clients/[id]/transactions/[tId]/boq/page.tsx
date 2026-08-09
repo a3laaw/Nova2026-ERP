@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -86,7 +85,6 @@ export default function TransactionBOQProgressPage() {
 
   const executionMetrics = useMemo(() => {
     const metrics: Record<string, { prev: number, current: number }> = {};
-    // This part requires access to executions, assume empty for now as query is complex
     return metrics;
   }, [stages]);
 
@@ -183,7 +181,7 @@ export default function TransactionBOQProgressPage() {
           <div className="space-y-2">
              <h2 className="text-xl font-black text-slate-400">{t('projects.boqExplorer')}</h2>
              <p className="text-xs font-bold text-slate-300 max-w-sm mx-auto leading-relaxed text-start">
-                {t('projects.boqExplorer.noBoqs')}
+                {t('boq.activateTemplate')}
              </p>
           </div>
           <Button onClick={() => setIsBoqInitOpen(true)} className="h-14 rounded-2xl px-10 bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 gap-3">
