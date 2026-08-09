@@ -45,17 +45,6 @@ const data = [
   { name: "Jun", revenue: 7200, expenses: 4100 },
 ]
 
-const chartConfig = {
-  revenue: {
-    label: "Revenue",
-    color: "#039BE5", 
-  },
-  expenses: {
-    label: "Expenses",
-    color: "#FFA000", 
-  },
-} satisfies ChartConfig
-
 export default function DashboardPage() {
   const { company } = useCompanyContext();
   const { globalUser } = useAuthContext();
@@ -65,6 +54,17 @@ export default function DashboardPage() {
 
   const companyId = globalUser?.companyId;
   const isAdmin = globalUser?.roleCode === 'ADMIN' || globalUser?.role?.toLowerCase() === 'admin';
+
+  const chartConfig = useMemo(() => ({
+    revenue: {
+      label: t('dashboard.chart.revenue'),
+      color: "#039BE5", 
+    },
+    expenses: {
+      label: t('dashboard.chart.expenses'),
+      color: "#FFA000", 
+    },
+  } satisfies ChartConfig), [t]);
 
   const apptsQuery = useMemo(() => {
     if (!companyId || !db) return null;
@@ -86,10 +86,10 @@ export default function DashboardPage() {
     return list;
   }, [allScheduled, isAdmin, globalUser?.employeeId]);
 
-  const stats = [
+  const stats = useMemo(() => [
     {
       title: t('dashboard.stats.revenue'),
-      value: "1.2M KWD",
+      value: `1.2M ${t('dashboard.units.kwd')}`,
       change: "+12.5%",
       trend: "up",
       icon: DollarSign,
@@ -99,7 +99,7 @@ export default function DashboardPage() {
     {
       title: t('dashboard.stats.activeProjects'),
       value: "24",
-      change: "+2 new",
+      change: `+2 ${t('dashboard.units.new')}`,
       trend: "up",
       icon: Briefcase,
       color: "text-[#FFA000]",
@@ -108,7 +108,7 @@ export default function DashboardPage() {
     {
       title: t('dashboard.stats.workforce'),
       value: "142",
-      change: "98% present",
+      change: `98% ${t('dashboard.units.present')}`,
       trend: "neutral",
       icon: Users,
       color: "text-[#FFCA28]",
@@ -117,19 +117,19 @@ export default function DashboardPage() {
     {
       title: t('dashboard.stats.completion'),
       value: "84%",
-      change: "+5% yr",
+      change: `+5% ${t('dashboard.units.yr')}`,
       trend: "up",
       icon: TrendingUp,
       color: "text-emerald-600",
       bg: "bg-emerald-50",
     },
-  ]
+  ], [t]);
 
   return (
     <div className="space-y-6 w-full animate-in fade-in duration-500" dir={dir}>
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="text-start">
-          <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">{t('dashboard.title')}</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">{t('dashboard')}</h1>
           <p className="text-xs text-muted-foreground font-medium">{company?.name || '...'}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -169,7 +169,7 @@ export default function DashboardPage() {
                         <div className="flex justify-between items-start">
                            <div className="text-start">
                               <p className="text-[10px] font-bold text-rose-500 uppercase">{t('common.pending')}</p>
-                              <p className="text-xs font-bold text-slate-600">{daysLate} {isRtl ? 'أيام' : 'Days'}</p>
+                              <p className="text-xs font-bold text-slate-600">{daysLate} {t('common.days')}</p>
                            </div>
                         </div>
                         <div className="text-start space-y-0.5">
@@ -254,9 +254,9 @@ export default function DashboardPage() {
           <CardContent className="p-0">
             <div className="divide-y divide-slate-50">
               {[
-                { title: "Quote Approved", detail: "Project Alpha", time: "5m", color: "bg-blue-500" },
-                { title: "Attendance Logged", detail: "120 Staff present", time: "1h", color: "bg-orange-500" },
-                { title: "Payment Voucher", detail: "Contract #2291", time: "3h", color: "bg-emerald-500" },
+                { title: t('dashboard.recent.quoteApproved'), detail: "Project Alpha", time: "5m", color: "bg-blue-500" },
+                { title: t('dashboard.recent.attendanceLogged'), detail: "120 Staff present", time: "1h", color: "bg-orange-500" },
+                { title: t('dashboard.recent.paymentVoucher'), detail: "Contract #2291", time: "3h", color: "bg-emerald-500" },
               ].map((activity, i) => (
                 <div key={i} className="flex items-start gap-3 p-4 hover:bg-slate-50/50 transition-colors">
                   <div className={cn("h-1.5 w-1.5 rounded-full mt-1.5 shrink-0", activity.color)} />
@@ -269,7 +269,7 @@ export default function DashboardPage() {
               ))}
             </div>
             <div className="p-3 bg-slate-50/30">
-              <Button variant="ghost" className="w-full h-8 text-[10px] font-bold text-primary hover:bg-primary/5">
+              <Button variant="ghost" className="w-full h-8 text-[10px] font-bold text-primary hover:bg-primary/5" onClick={() => router.push('/dashboard/projects')}>
                 {t('common.viewAll')}
               </Button>
             </div>
