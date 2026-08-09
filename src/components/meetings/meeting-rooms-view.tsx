@@ -151,7 +151,7 @@ export function MeetingRoomsView() {
     const docRef = doc(db, paths.appointments(companyId), targetId);
     deleteDoc(docRef)
       .then(() => {
-        toast({ title: isRtl ? "تم الحذف بنجاح" : "Deleted Successfully" });
+        toast({ title: t('common.deleted') });
         setDeletingId(null);
         setDialogOpen(false);
         forceThaw();
@@ -200,25 +200,25 @@ export function MeetingRoomsView() {
       <div className="grid grid-cols-4 gap-3 print:gap-1">
          <Card className="border-0 shadow-md rounded-xl bg-white border-b-4 border-b-slate-900 print:shadow-none print:border-b-2">
             <CardContent className="p-3 print:p-1 flex flex-col items-center justify-center text-center h-16 print:h-12">
-               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter">{isRtl ? 'إجمالي اجتماعات اليوم' : 'Daily Meetings'}</p>
+               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter">{t('appointments.totalMeetings')}</p>
                <h3 className="text-xl print:text-xs font-black text-slate-900" style={{ fontVariantNumeric: 'tabular-nums' }}>{filteredAppointments.length}</h3>
             </CardContent>
          </Card>
          <Card className="border-0 shadow-md rounded-xl bg-white border-b-4 border-b-blue-400 print:shadow-none print:border-b-2">
             <CardContent className="p-3 print:p-1 flex flex-col items-center justify-center text-center h-16 print:h-12">
-               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter">{isRtl ? 'إشغال القاعات' : 'Room Occupancy'}</p>
+               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter">{t('appointments.roomOccupancy')}</p>
                <h3 className="text-xl print:text-xs font-black text-blue-600">{Math.round((filteredAppointments.length / (allRooms.length * 8 || 1)) * 100)}%</h3>
             </CardContent>
          </Card>
          <Card className="border-0 shadow-md rounded-xl bg-white border-b-4 border-b-orange-500 print:shadow-none print:border-b-2">
             <CardContent className="p-3 print:p-1 flex flex-col items-center justify-center text-center h-16 print:h-12">
-               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter">{isRtl ? 'قيد التنفيذ' : 'In Progress'}</p>
+               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter">{t('status.scheduled')}</p>
                <h3 className="text-xl print:text-xs font-black text-orange-600">{filteredAppointments.filter(a => a.status === 'scheduled').length}</h3>
             </CardContent>
          </Card>
          <Card className="border-0 shadow-md rounded-xl bg-white border-b-4 border-b-emerald-500 print:shadow-none print:border-b-2">
             <CardContent className="p-3 print:p-1 flex flex-col items-center justify-center text-center h-16 print:h-12">
-               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter">{isRtl ? 'قاعات مفعلة' : 'Active Halls'}</p>
+               <p className="text-[8px] print:text-[6px] font-black text-slate-400 uppercase tracking-tighter">{t('appointments.activeHalls')}</p>
                <h3 className="text-xl print:text-xs font-black text-emerald-600">{allRooms.length}</h3>
             </CardContent>
          </Card>
@@ -226,7 +226,7 @@ export function MeetingRoomsView() {
 
       <div className="space-y-8 pb-10 print:pb-0 print:space-y-4">
          <HallGridSection 
-           title={isRtl ? "فترة الدوام الرسمي 🏛️" : "Halls Schedule"} 
+           title={t('appointments.halls.schedule')} 
            slots={timeSlots.morning} 
            rooms={allRooms} 
            appts={filteredAppointments}
@@ -270,15 +270,15 @@ export function MeetingRoomsView() {
                <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
                   <Trash2 className="h-10 w-10" />
                </div>
-               <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900">{isRtl ? 'حذف حجز القاعة' : 'Cancel Hall Booking'}</AlertDialogTitle>
+               <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900">{t('appointments.action.cancelBooking')}</AlertDialogTitle>
                <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
-                  {isRtl ? 'هل أنت متأكد؟ سيتم إزالة هذا الاجتماع من رادار القاعات نهائياً. لا يمكن التراجع عن هذا الإجراء.' : 'Are you sure? This meeting will be permanently removed from the halls radar. This cannot be undone.'}
+                  {t('appointments.delete.desc')}
                </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
-               <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white" onClick={() => { setDeletingId(null); forceThaw(); }}>إلغاء</AlertDialogCancel>
+               <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white" onClick={() => { setDeletingId(null); forceThaw(); }}>{t('common.cancel')}</AlertDialogCancel>
                <AlertDialogAction onClick={() => confirmDelete()} className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl">
-                  {isRtl ? 'نعم، احذف الحجز' : 'Confirm Delete'}
+                  {t('common.confirm')}
                </AlertDialogAction>
             </AlertDialogFooter>
          </AlertDialogContent>
@@ -301,7 +301,7 @@ function HallGridSection({ title, slots, rooms, appts, onAction, onDelete, isRtl
           <table className="w-full border-collapse">
              <thead>
                 <tr className="bg-slate-50/50 print:bg-white">
-                   <th className="w-16 p-2 border-b border-slate-100 font-black text-[9px] text-slate-400 uppercase tracking-tighter bg-slate-50/50 print:p-1 print:w-10">{isRtl ? 'الوقت' : 'Time'}</th>
+                   <th className="w-16 p-2 border-b border-slate-100 font-black text-[9px] text-slate-400 uppercase tracking-tighter bg-slate-50/50 print:p-1 print:w-10">{t('common.date')}</th>
                    {rooms.map((room: MeetingRoom) => (
                       <th key={room.id} className="p-3 border-b border-slate-100 border-s border-s-slate-50 min-w-[120px] print:p-1">
                          <div className="flex flex-col items-center text-center">
@@ -368,14 +368,14 @@ function HallGridSection({ title, slots, rooms, appts, onAction, onDelete, isRtl
                                           </DropdownMenuTrigger>
                                           <DropdownMenuContent className="rounded-xl border-2 shadow-2xl" align="end">
                                             <DropdownMenuItem className="font-bold text-xs gap-2" onClick={() => router.push('/dashboard/appointments/' + appt.id)}>
-                                              <Eye className="h-3.5 w-3.5" /> {isRtl ? 'عرض الرادار الفني' : 'View Tech Radar'}
+                                              <Eye className="h-3.5 w-3.5" /> {t('appointments.action.viewTechRadar')}
                                             </DropdownMenuItem>
                                             <DropdownMenuItem className="font-bold text-xs gap-2" onClick={() => onAction('edit', room, slot, appt)}>
-                                              <Edit3 className="h-3.5 w-3.5" /> {isRtl ? 'تعديل بيانات الحجز' : 'Edit Booking'}
+                                              <Edit3 className="h-3.5 w-3.5" /> {t('appointments.action.editBooking')}
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem className="font-black text-xs gap-2 text-rose-600" onClick={() => onDelete(appt.id)}>
-                                              <Trash2 className="h-3.5 w-3.5" /> {isRtl ? 'حذف وإلغاء الحجز' : 'Cancel Booking'}
+                                              <Trash2 className="h-3.5 w-3.5" /> {t('appointments.action.cancelBooking')}
                                             </DropdownMenuItem>
                                           </DropdownMenuContent>
                                         </DropdownMenu>
@@ -523,7 +523,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
     }
     setEligibilityLoading(true);
     const stagesPath = paths.transactionStages(companyId, transId);
-    getDocs(query(collection(db, stagesPath), orderBy('order')))
+    getDocs(query(collection(db, stagesPath), orderBy('order', 'asc')))
       .then(snap => {
         const allStages = snap.docs.map(d => d.data() as StageInstance);
         const deptStages = allStages.filter(s => s.allowedDepartmentIds?.includes(deptId));
@@ -565,7 +565,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
       : addMinutes(start, duration);
     
     if (!isAdmin && start < new Date()) {
-       toast({ variant: "destructive", title: isRtl ? "تنبيه: لا يمكن الحجز في وقت سابق" : "Alert: Cannot book in the past" });
+       toast({ variant: "destructive", title: t('appointments.conflict.past') });
        return;
     }
 
@@ -578,11 +578,11 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
         const isOverlapping = start < apptEnd && apptStart < end;
 
         if (isOverlapping) {
-            if (appt.hallId === data.room?.id) { toast({ variant: "destructive", title: isRtl ? "القاعة مشغولة" : "Hall Busy" }); return; }
-            if (appt.clientId === formData.clientId) { toast({ variant: "destructive", title: isRtl ? "تعارض للعميل" : "Client Conflict" }); return; }
+            if (appt.hallId === data.room?.id) { toast({ variant: "destructive", title: t('appointments.conflict.hallBusy') }); return; }
+            if (appt.clientId === formData.clientId) { toast({ variant: "destructive", title: t('appointments.conflict.clientConflict') }); return; }
             const apptEngineers = [appt.engineerId, ...(appt.additionalEngineerIds || [])];
             const overlappingEng = targetEngineers.find(id => apptEngineers.includes(id));
-            if (overlappingEng) { toast({ variant: "destructive", title: isRtl ? "تعارض للمهندس" : "Engineer Conflict" }); return; }
+            if (overlappingEng) { toast({ variant: "destructive", title: t('appointments.conflict.engineerConflict') }); return; }
         }
     }
 
@@ -593,7 +593,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
     const addEngNames = formData.additionalEngineerIds.map((id: string) => employees.find((e: any) => e.id === id)?.fullName || '');
 
     const payload: any = {
-      title: formData.title || (isRtl ? 'اجتماع فني' : 'Professional Meeting'),
+      title: formData.title || t('appointments.professionalMeeting'),
       clientId: formData.clientId,
       clientName: client?.nameAr || '',
       departmentId: formData.departmentId,
@@ -620,7 +620,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
       const docRef = doc(db, apptsPath, data.appointment.id);
       updateDoc(docRef, payload)
         .then(() => {
-          toast({ title: t('saved') });
+          toast({ title: t('common.saved') });
           onClose();
         })
         .catch(async (serverError) => {
@@ -645,7 +645,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
       };
       addDoc(collection(db, apptsPath), newDocData)
         .then(() => {
-          toast({ title: t('saved') });
+          toast({ title: t('common.saved') });
           onClose();
         })
         .catch(async (serverError) => {
@@ -670,7 +670,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
               <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary shadow-sm"><Landmark className="h-6 w-6" /></div>
               <div>
                  <DialogTitle className="text-2xl font-black font-headline">
-                    {isEdit ? (isRtl ? 'تعديل حجز القاعة' : 'Edit Booking') : (isRtl ? 'حجز قاعة اجتماع' : 'Room Booking')}
+                    {isEdit ? t('appointments.action.editBooking') : t('appointments.roomBooking')}
                  </DialogTitle>
                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                     {isRtl ? `القاعة: ${data.room?.name || data.appointment?.hallName}` : `Room: ${data.room?.nameEn || data.appointment?.hallName}`}
@@ -683,7 +683,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
         <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto scrollbar-hide bg-white">
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'العميل المالك' : 'Client'}</Label>
+                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('appointments.client')}</Label>
                  <Select value={formData.clientId} onValueChange={v => {
                    const c = clients.find((x:any) => x.id === v);
                    setFormData({...formData, clientId: v, clientName: c?.nameAr || '', transactionId: '', transactionNumber: '', activityTypeId: '', activityTypeName: ''});
@@ -698,11 +698,11 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
 
               <div className="space-y-2">
                  <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1">
-                    <Activity className="h-3 w-3" /> {isRtl ? 'نوع نشاط الاجتماع' : 'Meeting Activity'}
+                    <Activity className="h-3 w-3" /> {t('appointments.meetingActivity')}
                  </Label>
                  <Select disabled={!formData.clientId} value={formData.activityTypeId} onValueChange={handleActivityChange}>
                     <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white">
-                       <SelectValue placeholder={isRtl ? "تحديد التخصص..." : "Select specialty..."} />
+                       <SelectValue placeholder={t('appointments.selectSpecialty')} />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl z-[160]">
                        {activityTypes.map((act: any) => (
@@ -726,7 +726,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
                       setFormData({...formData, transactionId: v, transactionNumber: t?.transactionNumber || ''});
                    }}>
                       <SelectTrigger className="h-12 rounded-xl border-2 font-black text-xs bg-white shadow-sm">
-                         <SelectValue placeholder={clientTransactions.length === 0 ? (isRtl ? "لا يوجد معاملات لهذا التخصص" : "No projects for this specialty") : "..."} />
+                         <SelectValue placeholder={clientTransactions.length === 0 ? t('appointments.noProjectsForSpecialty') : "..."} />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl z-[161]">
                          {clientTransactions.map(t => (
@@ -759,7 +759,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
 
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'القسم المسؤول' : 'Department'}</Label>
+                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('appointments.department')}</Label>
                  <Select value={formData.departmentId} onValueChange={v => {
                     const d = departments.find((x:any) => x.id === v);
                     setFormData({...formData, departmentId: v, departmentName: d?.name || '', departmentColor: d?.color || '#FFA000', engineerId: ''});
@@ -780,7 +780,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
 
               <div className="space-y-2">
                  <Label className="text-[11px] font-black uppercase text-primary flex items-center gap-2">
-                   <Briefcase className="h-4 w-4" /> {isRtl ? 'المهندس المسؤول' : 'Lead Engineer'}
+                   <Briefcase className="h-4 w-4" /> {t('appointments.leadEngineer')}
                  </Label>
                  <Select value={formData.engineerId} onValueChange={v => setFormData({...formData, engineerId: v})}>
                     <SelectTrigger className="h-12 rounded-xl border-2 bg-white font-black">
@@ -794,7 +794,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
            </div>
 
            <div className="space-y-3">
-              <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'مهندسين مشاركين' : 'Supporting Team'}</Label>
+              <Label className="text-[10px] font-black uppercase text-slate-400">{t('appointments.supportingTeam')}</Label>
               <ScrollArea className="h-32 rounded-xl bg-slate-50/50 border-2 p-3 shadow-inner">
                  <div className="grid grid-cols-2 gap-2">
                     {employees.filter((e: any) => e.id !== formData.engineerId).map((e: any) => (
@@ -811,7 +811,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
            </div>
 
            <div className="space-y-1.5">
-             <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">غرض الموعد</Label>
+             <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('appointments.dialog.notes')}</Label>
              <Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="h-12 rounded-xl border-2 font-bold bg-slate-50/30" />
            </div>
         </div>
@@ -819,10 +819,10 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
         <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4 shrink-0 shadow-lg">
            <div className="flex-1 flex gap-3">
               <Button variant="outline" onClick={onClose} className="flex-1 h-12 rounded-[1.5rem] font-bold border-2 bg-white text-slate-900">
-                {isRtl ? 'إلغاء' : 'Cancel'}
+                {t('common.cancel')}
               </Button>
               {isEdit && (
-                <Button variant="ghost" onClick={() => onDelete(data?.appointment?.id)} className="flex-1 h-14 rounded-[1.5rem] font-black text-rose-600 bg-rose-50 border-2 border-rose-100 gap-2"><Trash2 className="h-4 w-4" />{isRtl ? 'حذف' : 'Delete'}</Button>
+                <Button variant="ghost" onClick={() => onDelete(data?.appointment?.id)} className="flex-1 h-14 rounded-[1.5rem] font-black text-rose-600 bg-rose-50 border-2 border-rose-100 gap-2"><Trash2 className="h-4 w-4" />{t('common.delete')}</Button>
               )}
            </div>
            <Button 
@@ -831,7 +831,7 @@ function HallBookingDialog({ isOpen, onClose, data, companyId, db, clients, empl
              className="flex-1 h-14 rounded-[1.5rem] bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 gap-3 border-b-8 border-orange-700 hover:scale-105 transition-all"
            >
               {loading || eligibilityLoading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
-              {isRtl ? 'تأكيد الحجز' : 'Confirm'}
+              {t('appointments.dialog.confirm')}
            </Button>
         </DialogFooter>
       </DialogContent>
