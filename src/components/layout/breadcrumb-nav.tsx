@@ -18,12 +18,12 @@ export function BreadcrumbNav() {
   const formatSegment = (segment: string) => {
     const sLower = segment.toLowerCase();
     
-    // Check for explicit ID or long hash
+    // التحقق مما إذا كان الجزء يمثل معرفاً (ID) طويل أو يحتوي على أرقام
     if (segment.length > 15 || /\d/.test(segment)) {
       return t('details');
     }
     
-    // Map system segments to dictionary keys
+    // خريطة المسارات الموحدة لربط روابط المتصفح بالقاموس المركزي
     const segmentMap: Record<string, string> = {
       'dashboard': 'dashboard',
       'clients': 'clients',
@@ -37,7 +37,18 @@ export function BreadcrumbNav() {
       'employees': 'staffRecords',
       'payroll': 'payroll',
       'boqs': 'boqExplorer',
-      'leaves': 'leaveRequests'
+      'leaves': 'leaveRequests',
+      'reports': 'reports',
+      'client-visits': 'visitsDossier',
+      'crm': 'crm',
+      'equipment': 'equipment',
+      'groups': 'workGroups',
+      'attendance': 'attendance',
+      'vouchers': 'paymentVouchers',
+      'coa': 'chartOfAccounts',
+      'journals': 'journalEntries',
+      'receipt': 'receiptVouchers',
+      'payment': 'paymentVouchers'
     };
     
     const key = segmentMap[sLower] || sLower;

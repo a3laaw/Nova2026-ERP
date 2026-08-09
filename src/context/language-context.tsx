@@ -172,7 +172,7 @@ const translations: Record<Language, Record<string, string>> = {
     'appointments.dialog.assignDept': 'القسم المختص بالزيارة',
     'appointments.dialog.selectSpecialty': 'تحديد التخصص المعماري...',
     'appointments.dialog.searchClient': 'بحث بالاسم أو الهاتف...',
-    'appointments.dialog.linkProject': 'ربط بالمسار الفني (المشروع)',
+    'appointments.dialog.linkProject': 'رابط المشروع',
     'appointments.dialog.selectProject': 'اختر المشروع المفتوح...',
     'appointments.dialog.notes': 'غرض الموعد',
     'appointments.dialog.confirm': 'تأكيد',
