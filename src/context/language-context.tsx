@@ -218,6 +218,11 @@ const translations: Record<Language, Record<string, string>> = {
     'projects.table.ipcCount': '{count} مستخلصات',
     'projects.noActiveProjects': 'لا يوجد مشاريع جارية.',
     'projects.boqExplorer': 'جدول الكميات والميزانية',
+    'projects.boqExplorer.desc': 'إدارة واعتماد جداول الكميات والميزانيات المرجعية',
+    'projects.noBoqsRegistered': 'لا يوجد مقايسات مسجلة حالياً.',
+    'projects.boqNumber': 'رقم المقايسة',
+    'projects.clientName': 'العميل',
+    'projects.budget': 'الميزانية',
 
     // --- General Navigation ---
     'meetings': 'الاجتماعات',
@@ -566,15 +571,16 @@ const translations: Record<Language, Record<string, string>> = {
     'projects.table.percentDone': '{pct}% Done',
     'projects.table.ipcCount': '{count} IPCs',
     'projects.noActiveProjects': 'No active projects.',
-    'projects.boqExplorer': 'BOQ & Budgeting',
+    'projects.boqExplorer': 'BOQ Explorer',
+    'projects.boqExplorer.desc': 'Manage bill of quantities and baseline budgets',
+    'projects.noBoqsRegistered': 'No BOQs registered yet.',
+    'projects.boqNumber': 'BOQ Number',
+    'projects.clientName': 'Client',
+    'projects.budget': 'Budget',
 
     // --- General Navigation ---
     'meetings': 'Meetings',
     'visitsDossier': 'Visits Dossier',
-    'projects': 'Projects',
-    'projects.title': 'Active Projects',
-    'projects.addNew': 'New Project',
-    'projects.boqExplorer': 'BOQ Master Tree',
     'reports': 'Reports',
     'construction': 'Construction',
     'construction.radar': 'Field Radar',

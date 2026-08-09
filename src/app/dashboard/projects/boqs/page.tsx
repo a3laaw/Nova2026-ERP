@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -25,12 +24,11 @@ import { toast } from '@/hooks/use-toast';
 
 export default function BOQExplorerPage() {
   const { globalUser, user } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
+  const { t, lang, dir, isRtl } = useLanguage();
   const { isAdmin, permissions } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const companyId = globalUser?.companyId;
-  const isRtl = lang === 'ar';
 
   const [searchTerm, setSearchTerm] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
@@ -93,7 +91,7 @@ export default function BOQExplorerPage() {
                />
             </div>
             <Badge variant="outline" className="h-7 px-3 font-black border-slate-200 bg-white text-[10px]">
-               {filteredBoqs.length} {isRtl ? 'سجل' : 'Items'}
+               {filteredBoqs.length} {t('common.records')}
             </Badge>
          </CardHeader>
          <CardContent className="p-0 overflow-x-auto">
@@ -124,14 +122,14 @@ export default function BOQExplorerPage() {
                          </div>
                       </TableCell>
                       <TableCell className="py-2.5 text-end font-mono font-black text-slate-900 text-xs">
-                         {boq.totalAmount?.toLocaleString()} <span className="text-[8px] opacity-40">KWD</span>
+                         {boq.totalAmount?.toLocaleString()} <span className="text-[8px] opacity-40">{t('dashboard.units.kwd')}</span>
                       </TableCell>
                       <TableCell className="py-2.5 text-start">
                          <Badge className={cn(
                            "text-[8px] font-black uppercase px-2 h-5 rounded-md border-0 shadow-sm", 
                            boq.status === 'approved' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
                          )}>
-                            {boq.status}
+                            {t('status.' + boq.status)}
                          </Badge>
                       </TableCell>
                       <TableCell className="py-2.5 pe-6 text-end" onClick={e => e.stopPropagation()}>
