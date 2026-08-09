@@ -42,7 +42,6 @@ export default function ClientVisitsReportPage() {
   const [loadingTimeline, setLoadingTimeline] = useState(false);
   const [indexError, setIndexError] = useState<string | null>(null);
 
-  // تثبيت كائن الاستعلام لمنع أخطاء استقرار الحالة ca9
   const clientsQuery = useMemo(() => {
     if (!companyId || !db) return null;
     return query(collection(db, paths.clients(companyId)), orderBy('nameAr'));
@@ -72,7 +71,6 @@ export default function ClientVisitsReportPage() {
         );
         const apptsSnap = await getDocs(apptsQuery);
         
-        // جلب تقارير الموقع - محمي ضد غياب الفهارس
         const fieldVisitsQuery = query(
           collectionGroup(db, 'fieldVisits'), 
           where('companyId', '==', companyId),
@@ -158,10 +156,10 @@ export default function ClientVisitsReportPage() {
       <Table>
         <TableHeader className="bg-slate-50/50">
           <TableRow className="hover:bg-slate-50 border-0">
-            <TableHead className="py-6 ps-8 text-primary font-black uppercase text-[10px] tracking-widest w-[180px]">{isRtl ? 'التاريخ والوقت' : 'Date & Time'}</TableHead>
-            <TableHead className="text-primary font-black uppercase text-[10px] tracking-widest w-[140px]">{isRtl ? 'نوع الزيارة' : 'Visit Type'}</TableHead>
-            <TableHead className="text-primary font-black uppercase text-[10px] tracking-widest">{isRtl ? 'التفاصيل والمخرجات الفنية' : 'Details & Technical Outputs'}</TableHead>
-            <TableHead className="text-primary font-black uppercase text-[10px] tracking-widest">{isRtl ? 'المسؤول الموثق' : 'Responsible Staff'}</TableHead>
+            <TableHead className="py-6 ps-8 text-primary font-black uppercase text-[10px] tracking-widest w-[180px]">{t('clients.dossier.table.dateTime')}</TableHead>
+            <TableHead className="text-primary font-black uppercase text-[10px] tracking-widest w-[140px]">{t('clients.dossier.table.visitType')}</TableHead>
+            <TableHead className="text-primary font-black uppercase text-[10px] tracking-widest">{t('clients.dossier.table.details')}</TableHead>
+            <TableHead className="text-primary font-black uppercase text-[10px] tracking-widest">{t('clients.dossier.table.staff')}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -184,7 +182,7 @@ export default function ClientVisitsReportPage() {
                     "font-black text-[8px] uppercase px-4 py-1.5 rounded-lg border-0 shadow-sm",
                     isAppt ? (isHall ? "bg-secondary text-white" : "bg-primary text-white") : "bg-emerald-600 text-white"
                   )}>
-                    {isAppt ? (isHall ? (isRtl ? "اجتماع قاعة" : "Hall Session") : (isRtl ? "زيارة معمارية" : "Arch Visit")) : (isRtl ? "تقرير ميداني" : "Field Report")}
+                    {isAppt ? (isHall ? t('clients.dossier.visit.hall') : t('clients.dossier.visit.arch')) : t('clients.dossier.visit.field')}
                   </Badge>
                 </td>
                 <td className="align-top py-6 text-start">
@@ -194,7 +192,7 @@ export default function ClientVisitsReportPage() {
                         <div className="p-5 bg-emerald-50/30 rounded-2xl border-2 border-emerald-100 flex items-start gap-4">
                           <HardHat className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
                           <div className="text-start space-y-1">
-                            <p className="text-xs font-bold text-slate-700 leading-relaxed">{item.completedWork || (isRtl ? 'توثيق إنجاز ميداني' : 'Site Progress Log')}</p>
+                            <p className="text-xs font-bold text-slate-700 leading-relaxed">{item.completedWork || t('clients.dossier.log.progress')}</p>
                             <div className="flex items-center gap-3 pt-1">
                               <Badge className="bg-emerald-600 text-white font-black text-[8px] h-5 px-3">+{item.progressPercentage}% Completion</Badge>
                             </div>
@@ -244,7 +242,7 @@ export default function ClientVisitsReportPage() {
           {data.length === 0 && (
             <TableRow>
               <TableCell colSpan={4} className="py-32 text-center text-slate-300 italic font-bold">
-                {isRtl ? 'لا يوجد سجلات في هذا القسم.' : 'No specialized records found.'}
+                {t('clients.dossier.emptyState')}
               </TableCell>
             </TableRow>
           )}
@@ -259,10 +257,10 @@ export default function ClientVisitsReportPage() {
         <div className="text-start">
            <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
              <History className="h-12 w-12 text-primary" />
-             {isRtl ? 'سجل تفاعل العملاء الشامل' : 'Universal Client Dossier'}
+             {t('clients.dossier.title')}
            </h1>
            <p className="text-muted-foreground font-bold text-sm opacity-70 italic">
-              رؤية موحدة لرحلة العميل من التصميم المعماري إلى التسليم الميداني.
+              {t('clients.dossier.desc')}
            </p>
         </div>
 
@@ -285,12 +283,12 @@ export default function ClientVisitsReportPage() {
            <CardContent className="p-8">
               <div className="relative max-w-2xl mx-auto">
                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-3 block text-start">
-                    البحث عن عميل بالاسم أو الهاتف
+                    {t('clients.dossier.searchLabel')}
                  </Label>
                  <div className="relative">
                     <Search className="absolute start-5 top-1/2 -translate-y-1/2 h-6 w-6 text-primary" />
                     <Input 
-                      placeholder="اكتب اسم العميل..." 
+                      placeholder={t('clients.dossier.searchPlaceholder')} 
                       className="h-16 rounded-2xl border-2 border-slate-100 ps-14 text-xl font-bold bg-slate-50 focus:bg-white focus:border-primary/40 transition-all shadow-inner" 
                       value={searchTerm}
                       onChange={e => setSearchTerm(e.target.value)}
@@ -317,7 +315,7 @@ export default function ClientVisitsReportPage() {
       {!selectedClientId ? (
         <div className="h-[400px] flex flex-col items-center justify-center text-center opacity-30 animate-pulse print:hidden">
            <UserCircle className="h-32 w-32 text-slate-200 mb-4" />
-           <p className="text-2xl font-black text-slate-400 uppercase tracking-widest">اختر عميلاً لبدء مراجعة السجل</p>
+           <p className="text-2xl font-black text-slate-400 uppercase tracking-widest">{t('clients.dossier.emptyState')}</p>
         </div>
       ) : loadingTimeline ? (
         <div className="h-[400px] flex flex-col items-center justify-center gap-4 print:hidden">
@@ -325,12 +323,12 @@ export default function ClientVisitsReportPage() {
            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">دمج السجلات السيادية...</p>
         </div>
       ) : (
-        <PrintWrapper title={isRtl ? "كشف سجل تفاعل العميل الشامل" : "Universal Client Dossier Statement"}>
+        <PrintWrapper title={t('clients.dossier.statementTitle')}>
            <div className="space-y-10">
               <div className="p-10 rounded-[3rem] bg-white border-2 border-primary/10 flex flex-col md:flex-row justify-between items-center gap-8 relative overflow-hidden text-start shadow-xl">
                  <div className="absolute top-0 right-0 p-10 opacity-5"><Landmark className="h-48 w-48 text-primary" /></div>
                  <div className="space-y-3 relative z-10">
-                    <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">ملف العميل المعتمد</p>
+                    <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">{t('clients.dossier.approvedFile')}</p>
                     <h2 className="text-4xl font-black font-headline text-slate-900">{selectedClient?.nameAr}</h2>
                     <div className="flex gap-4 items-center">
                        <Badge className="bg-primary text-white border-0 font-black px-6 py-1.5 rounded-xl uppercase text-[11px] shadow-lg">{selectedClient?.fileNumber}</Badge>
@@ -348,16 +346,16 @@ export default function ClientVisitsReportPage() {
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="bg-slate-50 border-2 border-primary/5 p-1.5 rounded-2xl h-16 w-full md:w-fit gap-2 shadow-sm mb-10 print:hidden">
                    <TabsTrigger value="all" className="rounded-xl font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2 h-full">
-                      <LayoutGrid className="h-4 w-4" /> الكل
+                      <LayoutGrid className="h-4 w-4" /> {t('clients.dossier.tab.all')}
                    </TabsTrigger>
                    <TabsTrigger value="field" className="rounded-xl font-black text-xs px-8 data-[state=active]:bg-emerald-600 data-[state=active]:text-white transition-all gap-2 h-full">
-                      <HardHat className="h-4 w-4" /> الميداني
+                      <HardHat className="h-4 w-4" /> {t('clients.dossier.tab.field')}
                    </TabsTrigger>
                    <TabsTrigger value="architectural" className="rounded-xl font-black text-xs px-8 data-[state=active]:bg-orange-500 data-[state=active]:text-white transition-all gap-2 h-full">
-                      <Zap className="h-4 w-4" /> المعماري
+                      <Zap className="h-4 w-4" /> {t('clients.dossier.tab.arch')}
                    </TabsTrigger>
                    <TabsTrigger value="halls" className="rounded-xl font-black text-xs px-8 data-[state=active]:bg-secondary data-[state=active]:text-white transition-all gap-2 h-full">
-                      <Landmark className="h-4 w-4" /> القاعات
+                      <Landmark className="h-4 w-4" /> {t('clients.dossier.tab.halls')}
                    </TabsTrigger>
                 </TabsList>
 
