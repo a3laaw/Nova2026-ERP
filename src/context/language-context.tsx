@@ -15,99 +15,33 @@ interface LanguageContextType {
 /**
  * القاموس الموحد والنهائي (Master Dictionary) - تم بناؤه من الصفر.
  * يحتوي على كافة مفاتيح النظام لضمان عدم حدوث تراجع في أي صفحة.
+ * تم توحيد المفاتيح لتكون بحروف صغيرة (lowercase) لسهولة المطابقة.
  */
 const translations: Record<Language, Record<string, string>> = {
   ar: {
-    // 1. التنقل الرئيسي (Sidebar & Navigation)
+    // 1. الهيكل العام والتنقل (Navigation)
     'dashboard': 'لوحة التحكم',
     'crm': 'العملاء والفرص',
-    'projects': 'المشاريع',
-    'construction': 'المقاولات',
-    'accounting': 'المحاسبة',
+    'projects': 'المشاريع الهندسية',
+    'construction': 'المقاولات والإنشاءات',
+    'accounting': 'المحاسبة والمالية',
     'hr': 'الموارد البشرية',
-    'procurement': 'المشتريات',
+    'procurement': 'المشتريات والتوريد',
     'inventory': 'المخازن والعهد',
-    'ai.hub': 'مركز الذكاء الاصطناعي',
+    'ai.hub': 'ذكاء Nova الاصطناعي',
     'settings': 'الإعدادات',
     'logout': 'تسجيل الخروج',
     'userprofile': 'ملفي الشخصي',
     'devconsole': 'لوحة تحكم المطور',
     'details': 'التفاصيل',
-    'transactions': 'المعاملات',
+    'transactions': 'المعاملات الفنية',
+    'reports': 'التقارير والرقابة',
 
-    // 2. إدارة العملاء (CRM)
-    'clients': 'إدارة العملاء',
-    'leads': 'الفرص والعملاء',
-    'visitsdossier': 'سجل الزيارات',
-    'clients.title': 'إدارة العملاء والملفات',
-    'clients.addnew': 'تسجيل عميل جديد',
-    'clients.table.profile': 'بيانات العميل',
-    'clients.table.staff': 'المسؤول المباشر',
-    'clients.table.contact': 'بيانات الاتصال',
-    'clients.table.status': 'حالة الملف',
-    'clients.newtransaction': 'فتح معاملة فنية',
-    'clients.finance': 'السجل المالي',
-
-    // 3. المشاريع والمقايسات (Projects & BOQ)
-    'activeprojects': 'المشاريع الجارية',
-    'boqexplorer': 'جدول الكميات والميزانية',
-    'reports': 'التقارير',
-    'projects.title': 'المشاريع الهندسية',
-    'projects.addnew': 'إضافة مشروع',
-    'projects.contracting': 'قسم المقاولات',
-    'projects.boqexplorer.desc': 'إدارة واعتماد جداول الكميات والميزانيات المرجعية',
-    'projects.stats.portfolio': 'إجمالي المحفظة',
-    'projects.stats.claims': 'المطالبات الجارية',
-    'projects.stats.collection': 'نسبة التحصيل',
-    'projects.table.project': 'المشروع / العميل',
-    'projects.table.progress': 'نسبة الإنجاز',
-    'projects.table.billing': 'المبالغ المفوترة',
-    'projects.table.status': 'حالة المشروع',
-    'projects.noactiveprojects': 'لا يوجد مشاريع جارية حالياً.',
-
-    // 4. المقاولات والميدان (Field Operations)
-    'fieldradar': 'رادار الميدان',
-    'workgroups': 'فرق العمل',
-    'equipment': 'المعدات والآليات',
-    'fieldlogs': 'تقارير الموقع',
-    'construction.radar': 'رادار العمليات الميدانية',
-    'construction.radar.desc': 'إدارة وتنسيق أطقم العمل والمهندسين في مواقع المشاريع الإنشائية',
-    'construction.groups': 'فرق العمل والمجموعات',
-    'construction.groups.desc': 'إدارة أطقم الميدان والتخصصات الفنية',
-    'construction.equipment': 'سجل المعدات والأصول',
-    'construction.reports': 'تقارير الإنجاز الميداني',
-    'construction.logresources': 'توثيق الموارد والإنجاز',
-
-    // 5. الموارد البشرية (HR & Payroll)
-    'staffrecords': 'شؤون الموظفين',
-    'attendance': 'بصمة الحضور',
-    'payroll': 'الرواتب',
-    'leaverequests': 'الإجازات',
-    'hr.title': 'الموارد البشرية والامتثال',
-    'hr.description': 'إدارة القوى العاملة والامتثال لقانون العمل الكويتي',
-    'hr.hire': 'تعيين موظف جديد',
-    'hr.staffrecords': 'سجل الموظفين الموحد',
-    'hr.payrolltitle': 'مسيرات الرواتب',
-    'hr.leaverequeststitle': 'طلبات الإجازات',
-
-    // 6. المحاسبة والمالية (Accounting)
-    'chartofaccounts': 'شجرة الحسابات',
-    'journalentries': 'قيود اليومية',
-    'paymentvouchers': 'سندات الصرف',
-    'receiptvouchers': 'سندات القبض',
-    'financialreports': 'التقارير المالية',
-
-    // 7. التقارير والرقابة (Reports Hub)
-    'reports.hub.title': 'مركز التقارير والرقابة',
-    'reports.hub.description': 'تحليل القوى العاملة والامتثال والإنتاجية الميدانية',
-    'reports.executive.title': 'التقرير التنفيذي الشامل',
-    'reports.analytics.title': 'رادار الأداء المالي',
-
-    // 8. إحصائيات الداشبورد (Dashboard Stats)
+    // 2. إحصائيات لوحة التحكم (Dashboard Stats)
     'dashboard.stats.revenue': 'إجمالي الإيرادات',
     'dashboard.stats.activeprojects': 'المشاريع الجارية',
     'dashboard.stats.workforce': 'القوى العاملة',
-    'dashboard.stats.completion': 'نسبة الإنجاز',
+    'dashboard.stats.completion': 'نسبة الإنجاز العام',
     'dashboard.units.kwd': 'د.ك',
     'dashboard.units.yearly': 'سنوياً',
     'dashboard.units.new': 'جديد',
@@ -115,14 +49,94 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.units.project': 'مشروع',
     'dashboard.units.employee': 'موظف',
     'dashboard.recent': 'العمليات الأخيرة',
-    'dashboard.export': 'تصدير',
+    'dashboard.export': 'تصدير البيانات',
+    'dashboard.missions': 'المهام المعلقة',
 
-    // 9. الكلمات الشائعة (Common)
+    // 3. إدارة العملاء (CRM & Clients)
+    'clients': 'إدارة العملاء',
+    'leads': 'الفرص والطلبات',
+    'appointments': 'رادار المواعيد',
+    'meetings': 'حجز القاعات',
+    'visitsdossier': 'سجل تفاعل العملاء',
+    'clients.title': 'قاعدة بيانات العملاء',
+    'clients.addnew': 'تسجيل عميل جديد',
+    'clients.table.profile': 'ملف العميل',
+    'clients.table.staff': 'المهندس المسؤول',
+    'clients.table.contact': 'بيانات الاتصال',
+    'clients.table.status': 'حالة الملف',
+    'clients.newtransaction': 'فتح معاملة جديدة',
+    'clients.finance': 'كشف الحساب',
+
+    // 4. المشاريع والمقايسات (Projects & BOQ)
+    'activeprojects': 'المشاريع النشطة',
+    'boqexplorer': 'جدول الكميات والميزانية',
+    'projects.title': 'إدارة المشاريع الهندسية',
+    'projects.addnew': 'إضافة مشروع',
+    'projects.contracting': 'قسم التنفيذ',
+    'projects.boqexplorer.desc': 'إدارة واعتماد جداول الكميات والميزانيات المرجعية للمشاريع',
+    'projects.stats.portfolio': 'قيمة المحفظة',
+    'projects.stats.claims': 'المطالبات المالية',
+    'projects.stats.collection': 'نسبة التحصيل',
+    'projects.table.project': 'المشروع / العميل',
+    'projects.table.progress': 'الإنجاز الميداني',
+    'projects.table.billing': 'المبالغ المفوترة',
+    'projects.table.status': 'حالة المشروع',
+    'projects.noactiveprojects': 'لا يوجد مشاريع جارية حالياً.',
+
+    // 5. المقاولات والميدان (Construction & Field)
+    'fieldradar': 'رادار العمليات الميدانية',
+    'workgroups': 'فرق وأطقم العمل',
+    'equipment': 'المعدات والآليات',
+    'fieldlogs': 'سجلات الإنجاز الميداني',
+    'construction.radar': 'رادار الميدان الإنشائي',
+    'construction.radar.desc': 'تنسيق أطقم العمل والمعدات وتتبع حركة المهندسين في المواقع',
+    'construction.groups': 'تكوين أطقم العمل',
+    'construction.groups.desc': 'إدارة تخصصات العمالة وتوزيع المهام الميدانية',
+    'construction.equipment': 'سجل الأصول والمعدات',
+    'construction.reports': 'تقارير المواقع اليومية',
+    'construction.logresources': 'توثيق الإنجاز والموارد',
+
+    // 6. الموارد البشرية والرواتب (HR & Payroll)
+    'staffrecords': 'شؤون الموظفين',
+    'attendance': 'بصمة الحضور والغياب',
+    'payroll': 'مسيرات الرواتب',
+    'leaverequests': 'إدارة الإجازات',
+    'hr.title': 'الموارد البشرية والامتثال',
+    'hr.description': 'إدارة شؤون الموظفين والامتثال الكامل لقانون العمل الكويتي',
+    'hr.hire': 'توظيف جديد',
+    'hr.staffrecords': 'سجل الموظفين الموحد',
+    'hr.payrolltitle': 'كشوف الرواتب الشهرية',
+    'hr.leaverequeststitle': 'طلبات الإجازات الرسمية',
+
+    // 7. المحاسبة والمالية (Accounting)
+    'chartofaccounts': 'دليل الحسابات',
+    'journalentries': 'قيود اليومية',
+    'paymentvouchers': 'سندات الصرف',
+    'receiptvouchers': 'سندات القبض',
+    'financialreports': 'التقارير المالية والختامية',
+
+    // 8. التقارير والرقابة (Reports Hub)
+    'reports.hub.title': 'مركز التقارير والرقابة',
+    'reports.hub.description': 'تحليل الأداء التشغيلي والمالي والامتثال القانوني للمنشأة',
+    'reports.executive.title': 'التقرير التنفيذي الشامل',
+    'reports.analytics.title': 'رادار الأداء المالي',
+
+    // 9. الإعدادات وقواعد العمل (Settings)
+    'usersmanagement': 'المستخدمين والصلاحيات',
+    'companyidentity': 'هوية الشركة والبراند',
+    'settings.checklists': 'الدستور التشغيلي',
+    'rolespermissions': 'الأدوار والمسؤوليات',
+    'workhours': 'ساعات الدوام الرسمي',
+    'templates': 'مكتبة القوالب',
+    'managecompanydata': 'إدارة بيانات المنشأة والسجلات الرسمية',
+    'settings.checklists.desc': 'إدارة القواعد المرجعية، المسارات الفنية، والمقايسات القياسية',
+
+    // 10. الكلمات الشائعة (Common)
     'common.search': 'بحث...',
     'common.filter': 'تصفية',
-    'common.save': 'حفظ',
+    'common.save': 'حفظ البيانات',
     'common.cancel': 'إلغاء',
-    'common.add': 'إضافة',
+    'common.add': 'إضافة جديد',
     'common.edit': 'تعديل',
     'common.delete': 'حذف',
     'common.confirm': 'تأكيد',
@@ -131,21 +145,26 @@ const translations: Record<Language, Record<string, string>> = {
     'common.name': 'الاسم',
     'common.amount': 'المبلغ',
     'common.total': 'الإجمالي',
-    'common.noresults': 'لا توجد نتائج مطابقة',
+    'common.noresults': 'لا توجد نتائج مطابقة للبحث',
     'common.viewall': 'عرض الكل',
     'common.back': 'العودة',
-    'common.error': 'خطأ في العملية',
-    'common.saved': 'تم الحفظ بنجاح',
+    'common.error': 'فشل في تنفيذ العملية',
+    'common.saved': 'تم حفظ التغييرات بنجاح',
+    'common.active': 'تم التنشيط بنجاح',
+    'common.completed': 'تم الإنجاز بنجاح',
 
-    // 10. حالات النظام (Status)
+    // 11. حالات النظام (Statuses)
     'status.active': 'نشط',
     'status.completed': 'مكتمل',
-    'status.pending': 'قيد الانتظار',
+    'status.pending': 'بانتظار الإجراء',
     'status.draft': 'مسودة',
     'status.contracted': 'متعاقد',
     'status.new': 'جديد',
     'status.approved': 'معتمد',
     'status.rejected': 'مرفوض',
+    'status.cancelled': 'ملغى',
+    'status.in-progress': 'قيد التنفيذ',
+    'status.paid': 'تم السداد',
   },
   en: {
     'dashboard': 'Dashboard',
@@ -156,10 +175,15 @@ const translations: Record<Language, Record<string, string>> = {
     'hr': 'Human Resources',
     'procurement': 'Procurement',
     'inventory': 'Inventory',
+    'ai.hub': 'AI Assistant',
     'settings': 'Settings',
     'common.search': 'Search...',
+    'common.save': 'Save',
+    'common.cancel': 'Cancel',
     'dashboard.stats.revenue': 'Total Revenue',
-    'dashboard.units.kwd': 'KWD'
+    'dashboard.units.kwd': 'KWD',
+    'status.active': 'Active',
+    'status.completed': 'Completed',
   }
 };
 
@@ -181,13 +205,15 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   };
 
   /**
-   * دالة الترجمة الذكية: تقوم بتحويل المفتاح لحروف صغيرة لضمان المطابقة
-   * ومنع ظهور الأكواد البرمجية في حال اختلاف حالة الأحرف في الكود.
+   * دالة الترجمة الذكية السيادية:
+   * تقوم بتحويل أي مفتاح يتم طلبه إلى حروف صغيرة (lowercase) قبل البحث عنه.
+   * هذا يمنع ظهور "أكواد المفاتيح" في حال اختلاف حالة الأحرف في الكود البرمجي.
    */
   const t = (key: string) => {
     if (!key) return '';
     const lowerKey = key.toLowerCase();
-    return translations[lang]?.[lowerKey] || translations[lang]?.[key] || key;
+    // البحث أولاً بالمفتاح الصغير، ثم بالمفتاح الأصلي كخيار احتياطي
+    return translations[lang][lowerKey] || translations[lang][key] || key;
   };
 
   return (

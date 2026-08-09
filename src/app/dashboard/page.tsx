@@ -99,8 +99,8 @@ export default function DashboardPage() {
           </div>
           <div className="text-start">
             <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{t('dashboard')}</h1>
-            <p className="text-xs font-bold text-muted-foreground italic mt-0.5">
-              {isRtl ? 'نظرة عامة على أداء المنشأة وسير العمل' : 'Overview of organization performance and workflow'}
+            <p className="text-xs font-bold text-muted-foreground italic mt-0.5 text-start">
+               {isRtl ? 'نظرة عامة على أداء المنشأة وسير العمل التشغيلي' : 'Overview of organization performance and operational workflow'}
             </p>
           </div>
         </div>
@@ -160,7 +160,7 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
-            <div className="p-4 bg-slate-50/30 border-t">
+            <div className="p-4 bg-slate-50/30 border-t text-center">
               <Button variant="ghost" className="w-full h-8 text-[10px] font-black text-primary hover:bg-primary/5">
                 {t('common.viewall')}
               </Button>

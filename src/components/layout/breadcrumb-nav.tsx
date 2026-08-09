@@ -18,12 +18,12 @@ export function BreadcrumbNav() {
   const formatSegment = (segment: string) => {
     const sLower = segment.toLowerCase();
     
-    // Check if segment is a long ID or contains numbers
+    // في حال كان الجزء عبارة عن معرف (ID) طويل أو يحتوي أرقاماً، نعطيه تسمية "تفاصيل"
     if (segment.length > 15 || /\d/.test(segment)) {
       return t('details');
     }
     
-    // Unified path mapping to dictionary keys
+    // خريطة المسارات الموحدة لربطها بمفاتيح القاموس
     const segmentMap: Record<string, string> = {
       'dashboard': 'dashboard',
       'clients': 'clients',
@@ -34,42 +34,43 @@ export function BreadcrumbNav() {
       'inventory': 'inventory',
       'settings': 'settings',
       'transactions': 'transactions',
-      'employees': 'staffRecords',
+      'employees': 'staffrecords',
       'payroll': 'payroll',
-      'boqs': 'projects.boqExplorer',
-      'leaves': 'leaveRequests',
+      'boqs': 'boqexplorer',
+      'leaves': 'leaverequests',
       'reports': 'reports',
-      'client-visits': 'visitsDossier',
+      'client-visits': 'visitsdossier',
       'crm': 'crm',
-      'equipment': 'construction.equipment',
-      'groups': 'construction.groups',
+      'equipment': 'equipment',
+      'groups': 'workgroups',
       'attendance': 'attendance',
-      'vouchers': 'paymentVouchers',
-      'coa': 'chartOfAccounts',
-      'journals': 'journalEntries',
-      'receipt': 'receiptVouchers',
-      'payment': 'paymentVouchers',
+      'vouchers': 'paymentvouchers',
+      'coa': 'chartofaccounts',
+      'journals': 'journalentries',
+      'receipt': 'receiptvouchers',
+      'payment': 'paymentvouchers',
       'construction': 'construction',
       'bookings': 'construction.radar',
       'field-visits': 'construction.reports',
-      'quotes': 'aiAnalysis',
-      'orders': 'purchaseOrders',
+      'quotes': 'ai.hub',
+      'orders': 'purchaseorders',
       'suppliers': 'suppliers',
-      'roles': 'rolesPermissions',
-      'company': 'companyIdentity',
-      'profile': 'userProfile',
+      'roles': 'rolespermissions',
+      'company': 'companyidentity',
+      'profile': 'userprofile',
       'checklists': 'settings.checklists',
-      'work-hours': 'workHours',
+      'work-hours': 'workhours',
       'analytics': 'reports.analytics.title',
       'executive': 'reports.executive.title',
       'ai': 'ai.hub',
       'new': 'common.add',
       'edit': 'common.edit',
-      'boq': 'projects.boqExplorer'
+      'boq': 'boqexplorer'
     };
     
     const key = segmentMap[sLower] || sLower;
     const translated = t(key);
+    // العودة للمفتاح الأصلي بـ Capital Case في حال عدم وجود ترجمة
     return translated !== key ? translated : sLower.charAt(0).toUpperCase() + sLower.slice(1);
   };
 
