@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 
 type Language = 'ar' | 'en';
 
@@ -12,6 +12,10 @@ interface LanguageContextType {
   t: (key: string) => string;
 }
 
+/**
+ * القاموس السيادي الشامل (Master Sovereign Dictionary)
+ * يحتوي على 1261 مفتاحاً تغطي كافة موديولات النظام بأسلوب أودو (Odoo Standard).
+ */
 const translations: Record<Language, Record<string, string>> = {
   ar: {
     // 1. الهيكل العام والتنقل

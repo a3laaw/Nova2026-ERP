@@ -12,7 +12,6 @@ import {
   Activity,
   FileText,
   LayoutDashboard,
-  ArrowUpRight,
   Sparkles
 } from "lucide-react";
 import { 
@@ -21,7 +20,6 @@ import {
   XAxis, 
   YAxis, 
   CartesianGrid,
-  ResponsiveContainer,
 } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { cn } from "@/lib/utils";
