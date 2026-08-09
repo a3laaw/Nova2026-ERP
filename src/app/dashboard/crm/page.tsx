@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -60,6 +59,7 @@ export default function CRMPage() {
         departmentId: globalUser?.departmentId || 'general'
       });
       toast({ title: t('common.saved') });
+      setIsAdding(false);
       setNewLead({ name: '', company: '', status: 'new', value: '', email: '' });
     } catch (error) {
       toast({ variant: "destructive", title: t('common.error') });
@@ -114,8 +114,8 @@ export default function CRMPage() {
                    <Input value={newLead.email} onChange={e => setNewLead({...newLead, email: e.target.value})} className="h-11 border-2 rounded-xl text-start" dir="ltr" />
                 </div>
                 <div className="space-y-2">
-                   <Label className="text-xs font-black uppercase text-slate-400">{t('common.amount')}</Label>
-                   <Input value={newLead.value} onChange={e => setNewLead({...newLead, value: e.target.value})} className="h-11 border-2 rounded-xl" type="number" />
+                   <Label className="text-xs font-black uppercase text-slate-400">{t('crm.leadValue')}</Label>
+                   <Input value={newLead.value} onChange={e => setNewLead({...newLead, value: e.target.value})} className="h-11 border-2 rounded-xl text-center font-black" type="number" />
                 </div>
               </div>
               <DialogFooter className="p-8 bg-slate-50 border-t">
@@ -170,7 +170,7 @@ export default function CRMPage() {
                       "font-black text-[9px] uppercase px-3 py-1 border-0 shadow-sm",
                       lead.status === 'new' ? "bg-blue-50 text-blue-600" : "bg-orange-50 text-orange-600"
                     )}>
-                      {lead.status}
+                      {t('status.' + lead.status)}
                     </Badge>
                   </TableCell>
                 </TableRow>

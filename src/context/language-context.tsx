@@ -64,6 +64,7 @@ const translations: Record<Language, Record<string, string>> = {
     'common.alert': 'تنبيه',
     'common.viewAll': 'عرض الكل',
     'common.pending': 'معلق',
+    'common.getStarted': 'ابدأ الآن',
 
     // --- Dashboard ---
     'dashboard': 'لوحة التحكم',
@@ -87,6 +88,9 @@ const translations: Record<Language, Record<string, string>> = {
 
     // --- Navigation & Sidebar ---
     'crm': 'العملاء والفرص',
+    'crm.description': 'إدارة الفرص البيعية والمتابعة التجارية للعملاء',
+    'crm.newLead': 'إضافة فرصة جديدة',
+    'crm.leadValue': 'القيمة المتوقعة',
     'leads': 'الفرص والعملاء',
     'clients': 'العملاء',
     'appointments': 'المواعيد',
@@ -287,6 +291,7 @@ const translations: Record<Language, Record<string, string>> = {
     'common.alert': 'Alert',
     'common.viewAll': 'View All',
     'common.pending': 'Pending',
+    'common.getStarted': 'Get Started',
 
     // --- Dashboard ---
     'dashboard': 'Dashboard',
@@ -310,6 +315,9 @@ const translations: Record<Language, Record<string, string>> = {
 
     // --- Navigation & Sidebar ---
     'crm': 'CRM',
+    'crm.description': 'Sales leads and commercial client management',
+    'crm.newLead': 'New Lead',
+    'crm.leadValue': 'Expected Value',
     'leads': 'Leads & CRM',
     'clients': 'Clients',
     'appointments': 'Appointments',
