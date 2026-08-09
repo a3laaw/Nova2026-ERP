@@ -1,14 +1,12 @@
-
 'use client';
 
 import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { 
-  BarChart3, FileText, Users, CalendarDays, 
-  Calculator, Scale, ArrowUpRight, TrendingUp,
-  Clock, ShieldCheck, Target
+  BarChart3, Users, CalendarDays, 
+  Calculator, ShieldCheck, TrendingUp,
+  Clock, ArrowUpRight
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
@@ -18,11 +16,10 @@ import { paths } from '@/firebase/multi-tenant';
 import { cn } from '@/lib/utils';
 
 export default function HRReportsHub() {
-  const { t, lang, dir } = useLanguage();
+  const { t, dir } = useLanguage();
   const router = useRouter();
   const { globalUser } = useAuthContext();
   const db = useFirestore();
-  const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
   const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId))) : null, [db, companyId]);
@@ -31,8 +28,8 @@ export default function HRReportsHub() {
   const reportCards = [
     {
       id: 'dossier',
-      title: isRtl ? 'ملف الموظف الشامل' : 'Employee Dossier',
-      desc: isRtl ? 'سجل تاريخي كامل: حضور، إجازات، ورواتب.' : 'Complete historical record: attendance, leaves, and payroll.',
+      title: t('hr.reports.dossier.title'),
+      desc: t('hr.reports.dossier.desc'),
       icon: ShieldCheck,
       color: 'text-indigo-600',
       bg: 'bg-indigo-50',
@@ -40,8 +37,8 @@ export default function HRReportsHub() {
     },
     {
       id: 'attendance',
-      title: isRtl ? 'تحليل الحضور والغياب' : 'Attendance Analysis',
-      desc: isRtl ? 'تقرير إجمالي التأخير والغياب لفترة محددة.' : 'Total late minutes and absence summary report.',
+      title: t('hr.reports.attendance.title'),
+      desc: t('hr.reports.attendance.desc'),
       icon: Clock,
       color: 'text-emerald-600',
       bg: 'bg-emerald-50',
@@ -49,8 +46,8 @@ export default function HRReportsHub() {
     },
     {
       id: 'payroll',
-      title: isRtl ? 'كشوف الرواتب الموحدة' : 'Payroll Summary',
-      desc: isRtl ? 'ملخص مالي للمدفوعات والخصومات الشهرية.' : 'Financial summary of monthly payments and deductions.',
+      title: t('hr.reports.payroll.title'),
+      desc: t('hr.reports.payroll.desc'),
       icon: Calculator,
       color: 'text-amber-600',
       bg: 'bg-amber-50',
@@ -61,19 +58,19 @@ export default function HRReportsHub() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500" dir={dir}>
       <div className="text-start">
-        <h1 className="text-4xl font-black font-headline flex items-center gap-3">
+        <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
           <BarChart3 className="h-10 w-10 text-primary" />
-          {isRtl ? 'مركز تقارير HR والرقابة' : 'HR Analytics Hub'}
+          {t('hr.reports.title')}
         </h1>
         <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-          {isRtl ? 'تحليل القوى العاملة والامتثال والإنتاجية الميدانية' : 'Workforce analysis and compliance'}
+          {t('hr.reports.desc')}
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="border-0 shadow-lg rounded-[2rem] bg-white p-6 text-start flex items-center justify-between group hover:shadow-xl transition-all">
           <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي الموظفين' : 'Total Employees'}</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('hr.stats.totalEmployees')}</p>
             <h3 className="text-4xl font-black font-headline text-slate-900">{employees?.length || 0}</h3>
           </div>
           <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -83,7 +80,7 @@ export default function HRReportsHub() {
         
         <Card className="border-0 shadow-lg rounded-[2rem] bg-white p-6 text-start flex items-center justify-between group hover:shadow-xl transition-all">
           <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'نشط ميدانياً' : 'Active Now'}</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('hr.stats.activeNow')}</p>
             <h3 className="text-4xl font-black font-headline text-emerald-600">
                {employees?.filter((e: any) => e.status === 'active').length || 0}
             </h3>
@@ -95,7 +92,7 @@ export default function HRReportsHub() {
 
         <Card className="border-0 shadow-lg rounded-[2rem] bg-white p-6 text-start flex items-center justify-between group hover:shadow-xl transition-all">
           <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'في إجازة' : 'On Leave'}</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('hr.stats.onLeave')}</p>
             <h3 className="text-4xl font-black font-headline text-blue-600">
                {employees?.filter((e: any) => e.status === 'on-leave').length || 0}
             </h3>
@@ -107,7 +104,7 @@ export default function HRReportsHub() {
 
         <Card className="border-0 shadow-lg rounded-[2rem] bg-white p-6 text-start flex items-center justify-between group hover:shadow-xl transition-all">
           <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'معدل التواجد' : 'Retention Rate'}</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('hr.stats.retentionRate')}</p>
             <h3 className="text-4xl font-black font-headline text-amber-600">92%</h3>
           </div>
           <div className="h-12 w-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -134,7 +131,7 @@ export default function HRReportsHub() {
             </CardHeader>
             <CardContent className="p-8 pt-0 text-start">
                <div className={cn("flex items-center gap-2 font-black text-xs group-hover:gap-4 transition-all", card.color)}>
-                  {isRtl ? 'عرض التقرير المفصل' : 'View Detailed Report'}
+                  {t('hr.reports.viewDetailed')}
                   <ArrowUpRight className="h-4 w-4" />
                </div>
             </CardContent>

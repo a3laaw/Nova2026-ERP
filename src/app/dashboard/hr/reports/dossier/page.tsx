@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -8,8 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
   Search, Loader2, ArrowRight, 
-  ShieldCheck, Briefcase, AlertCircle,
-  RefreshCw
+  ShieldCheck, Briefcase, AlertCircle
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
@@ -22,17 +20,15 @@ import { cn } from '@/lib/utils';
 
 export default function DossierSearchPage() {
   const { globalUser } = useAuthContext();
-  const { lang, dir } = useLanguage();
+  const { t, dir, isRtl } = useLanguage();
   const { check } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
-  const isRtl = lang === 'ar';
 
   const companyId = globalUser?.companyId;
   const hrView = check('hr', 'view');
 
-  // توجيه ذكي: إذا كان الموظف يملك صلاحية رؤية نفسه فقط، نوجهه فوراً لملفه
   useEffect(() => {
     if (hrView.can && hrView.scope === 'own' && globalUser?.employeeId) {
       router.replace(`/dashboard/hr/reports/dossier/${globalUser.employeeId}`);
@@ -54,8 +50,6 @@ export default function DossierSearchPage() {
                             emp.employeeNumber?.includes(term);
         
         if (!matchSearch) return false;
-        
-        // تطبيق النطاق المسموح به في مصفوفة الصلاحيات
         if (hrView.scope === 'all') return true;
         if (hrView.scope === 'dept') return emp.departmentId === globalUser?.departmentId;
         if (hrView.scope === 'own') return emp.id === globalUser?.employeeId;
@@ -65,33 +59,25 @@ export default function DossierSearchPage() {
       .sort((a, b) => a.employeeNumber.localeCompare(b.employeeNumber));
   }, [rawEmployees, searchTerm, hrView, globalUser]);
 
-  // إذا لم يكن لديه صلاحية العرض إطلاقاً
   if (!hrView.can && !loading) {
     return (
       <div className="h-[60vh] flex flex-col items-center justify-center space-y-4 text-center">
          <div className="h-20 w-20 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center"><AlertCircle className="h-10 w-10" /></div>
-         <h2 className="text-xl font-black">{isRtl ? 'لا تملك صلاحية عرض التقارير' : 'No Permission for Reports'}</h2>
-         <p className="text-sm text-slate-400 font-bold max-w-xs">{isRtl ? 'يرجى مراجعة الإدارة لتفعيل صلاحية (HR -> View) في ملف دورك الوظيفي.' : 'Please ask Admin to enable (HR -> View) in your role matrix.'}</p>
+         <h2 className="text-xl font-black">{t('hr.accessRestricted')}</h2>
+         <p className="text-sm text-slate-400 font-bold max-w-xs">{t('hr.noPayrollAccess')}</p>
       </div>
     );
   }
-
-  if (hrView.scope === 'own') return (
-    <div className="h-[60vh] flex flex-col items-center justify-center gap-4">
-      <Loader2 className="animate-spin h-10 w-10 text-primary/30" />
-      <p className="text-xs font-bold text-slate-400">{isRtl ? 'جاري توجيهك لملفك الشخصي...' : 'Redirecting to your dossier...'}</p>
-    </div>
-  );
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto" dir={dir}>
       <div className="text-start">
         <h1 className="text-3xl font-black font-headline flex items-center gap-3">
           <ShieldCheck className="h-8 w-8 text-primary" />
-          {isRtl ? 'ملف الموظف الشامل (Dossier)' : 'Employee Dossier Search'}
+          {t('hr.reports.dossierSearch')}
         </h1>
         <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-          {isRtl ? 'ابحث عن الموظف لعرض تاريخه الكامل في المنشأة.' : 'Search for an employee to view their full institutional history.'}
+          {t('hr.reports.dossierSearchDesc')}
         </p>
       </div>
 
@@ -100,7 +86,7 @@ export default function DossierSearchPage() {
           <div className="relative w-full">
             <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input 
-              placeholder={isRtl ? 'بحث باسم الموظف، الرقم المدني، أو رقم الملف...' : 'Search by name, civil id, or number...'} 
+              placeholder={t('hr.reports.searchPlaceholder')} 
               className="ps-12 rounded-2xl h-16 bg-white text-start border-2 border-slate-100 text-lg font-bold" 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -113,7 +99,7 @@ export default function DossierSearchPage() {
             {loading ? (
               <div className="py-20 text-center flex flex-col items-center gap-4">
                 <Loader2 className="animate-spin h-10 w-10 text-primary/30" />
-                <p className="text-xs font-bold text-slate-400">{isRtl ? 'جاري جلب سجل الموظفين...' : 'Fetching employees...'}</p>
+                <p className="text-xs font-bold text-slate-400">{t('hr.reports.fetchingEmployees')}</p>
               </div>
             ) : error ? (
               <div className="py-16 text-center space-y-4">
@@ -121,7 +107,7 @@ export default function DossierSearchPage() {
                    <AlertCircle className="h-8 w-8" />
                 </div>
                 <div className="space-y-1">
-                   <h3 className="font-black text-rose-900">{isRtl ? 'حدث خطأ أثناء جلب البيانات' : 'Error Fetching Data'}</h3>
+                   <h3 className="font-black text-rose-900">{t('common.error')}</h3>
                    <p className="text-xs text-rose-600 font-bold">{(error as any).message}</p>
                 </div>
               </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -17,12 +17,10 @@ import { Button } from '@/components/ui/button';
 
 export default function PayrollSummaryReportPage() {
   const { globalUser } = useAuthContext();
-  const { lang, dir } = useLanguage();
+  const { t, dir } = useLanguage();
   const db = useFirestore();
-  const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  // تثبيت كائن الاستعلام
   const payrollQuery = useMemo(() => {
     if (!companyId || !db) return null;
     return query(collection(db, paths.payroll(companyId)));
@@ -51,10 +49,10 @@ export default function PayrollSummaryReportPage() {
       <div className="text-start">
         <h1 className="text-3xl font-black font-headline flex items-center gap-3">
           <Calculator className="h-8 w-8 text-amber-600" />
-          {isRtl ? 'ملخص مصروفات الرواتب' : 'Payroll Expenditure Summary'}
+          {t('hr.reports.payrollSummary')}
         </h1>
         <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-          {isRtl ? 'عرض إجمالي المدفوعات والخصومات على مستوى المنشأة.' : 'Overview of institution-wide payments and deductions.'}
+          {t('hr.reports.payrollOverview')}
         </p>
       </div>
 
@@ -64,24 +62,24 @@ export default function PayrollSummaryReportPage() {
         <Card className="border-2 border-rose-100 bg-rose-50 p-10 text-center rounded-[2rem] space-y-4">
            <div className="h-16 w-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto"><AlertCircle className="h-8 w-8" /></div>
            <div className="space-y-1">
-              <h3 className="text-xl font-black text-rose-900">{isRtl ? 'فشل تحميل بيانات الرواتب' : 'Failed to load payroll data'}</h3>
+              <h3 className="text-xl font-black text-rose-900">{t('hr.reports.loadFailed')}</h3>
               <p className="text-sm text-rose-600 font-bold">{(error as any).message}</p>
            </div>
-           <Button variant="outline" onClick={() => window.location.reload()} className="rounded-xl gap-2"><RefreshCw className="h-4 w-4" /> {isRtl ? 'إعادة المحاولة' : 'Retry'}</Button>
+           <Button variant="outline" onClick={() => window.location.reload()} className="rounded-xl gap-2"><RefreshCw className="h-4 w-4" /> {t('common.retry')}</Button>
         </Card>
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
              <Card className="border-0 shadow-lg rounded-2xl p-6 text-start bg-white border-b-4 border-emerald-500">
-                <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{isRtl ? 'إجمالي الصافي المصروف' : 'Total Net Paid'}</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{t('hr.totalNetPaid')}</p>
                 <h3 className="text-3xl font-black text-emerald-600 font-mono">{totals.net.toLocaleString()} <span className="text-xs">KWD</span></h3>
              </Card>
              <Card className="border-0 shadow-lg rounded-2xl p-6 text-start bg-white border-b-4 border-rose-500">
-                <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{isRtl ? 'إجمالي الاستقطاعات' : 'Total Deductions'}</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{t('hr.totalDeductions')}</p>
                 <h3 className="text-3xl font-black text-rose-600 font-mono">{totals.deductions.toLocaleString()} <span className="text-xs">KWD</span></h3>
              </Card>
              <Card className="border-0 shadow-lg rounded-2xl p-6 text-start bg-white border-b-4 border-blue-500">
-                <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{isRtl ? 'عدد الدورات' : 'Cycles'}</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{t('hr.batchCount')}</p>
                 <h3 className="text-3xl font-black text-blue-600">{totals.count}</h3>
              </Card>
           </div>
@@ -91,18 +89,18 @@ export default function PayrollSummaryReportPage() {
               <Table>
                 <TableHeader className="bg-slate-50 border-b">
                   <TableRow>
-                    <TableHead className="py-6 ps-8 text-start">{isRtl ? 'الدورة المالية' : 'Payroll Cycle'}</TableHead>
-                    <TableHead className="text-center">{isRtl ? 'الموظفين' : 'Employees'}</TableHead>
-                    <TableHead className="text-end">{isRtl ? 'إجمالي الرواتب' : 'Gross'}</TableHead>
-                    <TableHead className="text-end">{isRtl ? 'الخصومات' : 'Deductions'}</TableHead>
-                    <TableHead className="text-end pe-8">{isRtl ? 'الصافي' : 'Net Amount'}</TableHead>
+                    <TableHead className="py-6 ps-8 text-start">{t('hr.period')}</TableHead>
+                    <TableHead className="text-center">{t('hr.employeesCount')}</TableHead>
+                    <TableHead className="text-end">{t('hr.gross')}</TableHead>
+                    <TableHead className="text-end">{t('hr.deductions')}</TableHead>
+                    <TableHead className="text-end pe-8">{t('hr.net')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <TableRow><TableCell colSpan={5} className="text-center py-24"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/30" /></TableCell></TableRow>
                   ) : batches.length === 0 ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-24 text-slate-400 font-bold italic">{isRtl ? 'لا توجد كشوف رواتب معتمدة.' : 'No payroll batches found.'}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center py-24 text-slate-400 font-bold italic">{t('hr.noPayrollFound')}</TableCell></TableRow>
                   ) : (
                     batches.map((batch) => (
                       <TableRow key={batch.id} className="hover:bg-slate-50 transition-colors font-bold">
