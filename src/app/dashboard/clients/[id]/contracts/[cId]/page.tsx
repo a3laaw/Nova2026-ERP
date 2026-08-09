@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useEffect, useState } from 'react';
@@ -105,7 +106,7 @@ export default function ContractViewPage() {
     if (editData.pricingMode === 'percentage' && !stats.isValid) {
       toast({ 
         variant: "destructive", 
-        title: isRtl ? "خطأ في توزيع الدفعات" : "Milestone Mismatch", 
+        title: t('common.error'), 
         description: isRtl ? `يجب أن يكون مجموع الحصص 100% (الحالي: ${stats.totalPercentage}%)` : `Total percentage must be 100%` 
       });
       return;
@@ -128,10 +129,10 @@ export default function ContractViewPage() {
         updatedBy: globalUser?.username || user.displayName || 'Admin'
       }, user.uid);
       
-      toast({ title: isRtl ? "تم اعتماد وحفظ العقد بنجاح" : "Contract Approved & Saved" });
+      toast({ title: t('common.saved') });
       setIsEditing(false);
     } catch (e: any) {
-      toast({ variant: "destructive", title: t('error'), description: e.message });
+      toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
       setSaving(false);
     }
@@ -181,16 +182,16 @@ export default function ContractViewPage() {
     try {
       const service = new DocumentService(db, companyId, permissions);
       await service.updateContract(contractId, { status: 'paid', isPaid: true } as any, user.uid);
-      toast({ title: isRtl ? "تم توثيق السداد وتفعيل المشروع" : "Payment Confirmed" });
+      toast({ title: t('common.saved') });
     } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+      toast({ variant: "destructive", title: t('common.error') });
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
-  if (!contract) return <div className="p-20 text-center font-black">{isRtl ? 'العقد غير موجود' : 'Contract not found'}</div>;
+  if (!contract) return <div className="p-20 text-center font-black">404 - Not Found</div>;
 
   const currentDisplayAmount = editData.pricingMode === 'itemized' 
     ? stats.totalItemizedAmount 
@@ -209,7 +210,7 @@ export default function ContractViewPage() {
            </Button>
            <div className="text-start">
               <div className="flex items-center gap-2">
-                 <h1 className="text-xl font-black text-slate-900">{isRtl ? 'عقد خدمات هندسية رسمي' : 'Official Engineering Contract'}</h1>
+                 <h1 className="text-xl font-black text-slate-900">{t('contracts.officialTitle')}</h1>
                  <Badge className={cn(
                    "font-black px-4 py-1 rounded-xl shadow-sm uppercase text-[9px]",
                    (editData.status || contract.status) === 'paid' ? 'bg-emerald-500 text-white' : 'bg-primary text-white'
@@ -223,17 +224,17 @@ export default function ContractViewPage() {
         <div className="flex gap-2">
            {!isEditing && contract.status !== 'paid' && isAdmin && (
               <Button onClick={() => handleMarkAsPaid(contract.id)} disabled={saving} variant="outline" className="rounded-xl h-10 px-6 font-black gap-2 bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100">
-                 <Wallet className="h-4 w-4" /> {isRtl ? 'توثيق السداد' : 'Mark Paid'}
+                 <Wallet className="h-4 w-4" /> {t('contracts.markPaid')}
               </Button>
            )}
            {isEditing ? (
               <>
                 <Button onClick={handleCancel} variant="outline" size="sm" className="rounded-xl h-10 px-6 font-bold bg-white border-2">
-                   {isRtl ? 'إلغاء' : 'Cancel'}
+                   {t('common.cancel')}
                 </Button>
                 <Button onClick={handleSave} disabled={saving} size="sm" className="rounded-xl h-10 px-8 font-black gap-2 shadow-xl border-b-4 border-orange-700">
                    {saving ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
-                   {contract.status === 'draft' && !contract.isHistoryRecorded ? (isRtl ? 'اعتماد وحفظ العقد' : 'Commit & Save') : (isRtl ? 'حفظ التعديلات' : 'Save Changes')}
+                   {contract.status === 'draft' && !contract.isHistoryRecorded ? t('contracts.commitAndSave') : t('common.saveChanges')}
                 </Button>
               </>
            ) : (
@@ -249,7 +250,7 @@ export default function ContractViewPage() {
         </div>
       </div>
 
-      <PrintWrapper title={isRtl ? "عقد اتفاق خدمات هندسية" : "Engineering Services Agreement"} className="mt-2">
+      <PrintWrapper title={t('contracts.officialTitle')} className="mt-2">
          <div className="space-y-10 text-start">
             <div className="p-6 bg-primary/5 rounded-[2rem] border-2 border-dashed border-primary/20 flex items-center justify-between gap-4 shadow-sm print:hidden">
                 <div className="flex items-center gap-4 text-start">
@@ -271,7 +272,7 @@ export default function ContractViewPage() {
                 
                 {(editData.pricingMode === 'percentage' || editData.pricingMode === 'fixed') && (
                   <div className="space-y-1 text-start w-48">
-                     <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'الميزانية المستهدفة' : 'Target Budget'}</Label>
+                     <Label className="text-[10px] font-black uppercase text-primary tracking-widest">Target Budget</Label>
                      {isEditing ? (
                        <div className="relative">
                           <Input 
@@ -290,11 +291,11 @@ export default function ContractViewPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b-4 border-primary/20 pb-8">
                <div className="text-start space-y-4">
                   <div className="space-y-1">
-                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'الطرف الأول (العميل)' : 'First Party:'}</p>
+                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">First Party:</p>
                      <p className="text-xl font-black text-slate-900">{contract.clientName}</p>
                   </div>
                   <div className="space-y-1">
-                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'موضوع التعاقد' : 'Subject:'}</p>
+                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Subject:</p>
                      {isEditing ? (
                         <Input value={editData.name} onChange={e => setEditForm({...editData, name: e.target.value})} className="font-bold border-2 h-12 rounded-xl text-sm" />
                      ) : (
@@ -320,7 +321,7 @@ export default function ContractViewPage() {
                   <table className="w-full text-xs text-start">
                      <thead className="bg-slate-50 border-b-2 border-slate-100 text-slate-500 font-black uppercase text-[10px] tracking-widest">
                         <tr>
-                           <th className="p-5 w-10">#</th>
+                           <th className="p-5 w-10 text-start">#</th>
                            <th className="p-5 text-start">{isRtl ? 'مسمى الدفعة المستحقة' : 'Milestone Name'}</th>
                            {editData.pricingMode === 'percentage' && <th className="p-5 text-center w-20">%</th>}
                            {isEditing && <th className="p-5 text-center w-28">{isRtl ? 'التوقيت' : 'Timing'}</th>}
@@ -339,15 +340,15 @@ export default function ContractViewPage() {
 
                            return (
                              <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                                <td className="p-5 font-black text-slate-300">{idx + 1}</td>
+                                <td className="p-5 font-black text-slate-300 text-start">{idx + 1}</td>
                                 <td className="p-5 text-start">
                                    {isEditing ? (
                                       <div className="space-y-2">
                                          <Input value={m.name} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-10 rounded-xl font-bold text-sm bg-white" />
                                          {m.technicalStageId && m.technicalStageId !== 'NONE' && (
-                                            <p className="text-[8px] font-black text-primary/60 italic flex items-center gap-1">
+                                            <p className="text-[8px] font-black text-primary/60 italic flex items-center gap-1 mt-1">
                                                <Clock className="h-3 w-3" />
-                                               {t(m.timing || 'at')} {m.technicalStageId === 'SIGNING' ? (isRtl ? 'توقيع العقد' : 'Contract Signing') : linkedStageName}
+                                               {t(m.timing || 'at')} {m.technicalStageId === 'SIGNING' ? 'Contract Signing' : linkedStageName}
                                             </p>
                                          )}
                                       </div>
@@ -357,7 +358,7 @@ export default function ContractViewPage() {
                                          {m.technicalStageId && m.technicalStageId !== 'NONE' && (
                                             <p className="text-[10px] font-black text-primary/60 italic flex items-center gap-1">
                                                <Clock className="h-3 w-3" />
-                                               {t(m.timing || 'at')} {m.technicalStageId === 'SIGNING' ? (isRtl ? 'توقيع العقد' : 'Contract Signing') : linkedStageName}
+                                               {t(m.timing || 'at')} {m.technicalStageId === 'SIGNING' ? 'Contract Signing' : linkedStageName}
                                             </p>
                                          )}
                                       </div>
@@ -402,7 +403,7 @@ export default function ContractViewPage() {
                                         "font-black text-[10px] border-0 px-4 h-6 rounded-lg shadow-sm",
                                         m.technicalStageId === 'SIGNING' ? "bg-emerald-50 text-emerald-600" : "bg-primary/5 text-primary"
                                       )}>
-                                         {m.technicalStageId === 'SIGNING' ? (isRtl ? 'عند التوقيع' : 'Signing') : (linkedStageName || (isRtl ? 'مرحلة ميدانية' : 'Field Stage'))}
+                                         {m.technicalStageId === 'SIGNING' ? 'Signing' : (linkedStageName || 'Field Stage')}
                                       </Badge>
                                    )}
                                 </td>
@@ -452,7 +453,7 @@ export default function ContractViewPage() {
                {isEditing ? (
                   <Textarea value={editData.legalText} onChange={e => setEditForm({...editData, legalText: e.target.value})} className="min-h-[300px] rounded-[2rem] border-2 p-8 text-sm font-bold leading-relaxed bg-slate-50/50 shadow-inner" />
                ) : (
-                  <p className="p-10 bg-slate-50/50 rounded-[3rem] border-2 border-white shadow-inner text-sm font-bold text-slate-700 leading-relaxed whitespace-pre-wrap italic">
+                  <p className="p-10 bg-slate-50/50 rounded-[3rem] border-2 border-white shadow-inner text-sm font-bold text-slate-700 leading-relaxed whitespace-pre-wrap italic text-start">
                      {contract.legalText}
                   </p>
                )}

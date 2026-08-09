@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect, Suspense } from 'react';
@@ -55,7 +56,7 @@ function TransactionDetailsContent() {
   const transactionId = params?.tId as string;
   
   const { globalUser, user } = useAuthContext();
-  const { t, lang, dir, isRtl } = useLanguage();
+  const { t, dir } = useLanguage();
   const { permissions, isAdmin, check } = usePermissions();
   const db = useFirestore();
   const companyId = globalUser?.companyId;
@@ -240,7 +241,7 @@ function TransactionDetailsContent() {
                               const isOperationalFrontier = stage.status === 'in-progress' || (stage.status === 'pending' && (idx === 0 || stages[idx-1].status === 'completed'));
                               return (
                                 <Card key={stage.id} className={cn("rounded-md shadow-none border bg-white transition-all border-s-4", stage.status === 'completed' ? 'border-s-emerald-500' : stage.status === 'in-progress' ? 'border-s-blue-500' : 'border-s-slate-100 opacity-70')}>
-                                  <CardContent className="p-3 flex items-center justify-between gap-4">
+                                  <CardContent className="p-3 flex items-center justify-between gap-4 text-start">
                                      <div className="flex items-center gap-3 flex-1 min-w-0">
                                         <div className={cn("h-6 w-6 rounded-md flex items-center justify-center font-bold text-[10px] shrink-0", stage.status === 'completed' ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-400")}>{stage.status === 'completed' ? <Check className="h-3 w-3" /> : (idx + 1)}</div>
                                         <h4 className="font-bold text-xs text-slate-900 truncate">{stage.name}</h4>

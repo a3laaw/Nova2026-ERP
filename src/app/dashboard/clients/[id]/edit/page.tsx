@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -20,11 +21,10 @@ export default function EditClientPage() {
   const params = useParams();
   const clientId = params.id as string;
   const { globalUser, user } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
+  const { t, dir } = useLanguage();
   const { permissions } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
-  const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
   const [saving, setSaving] = useState(false);
@@ -38,15 +38,15 @@ export default function EditClientPage() {
     try {
       const service = new ClientService(db, companyId);
       await service.updateClient(clientId, data, user.uid, user.displayName || user.email || 'User');
-      toast({ title: t('saved'), description: isRtl ? 'تم تحديث بيانات العميل بنجاح.' : 'Client data updated successfully.' });
+      toast({ title: t('common.saved'), description: t('clients.updateSuccess') });
       router.push(`/dashboard/clients/${clientId}`);
     } catch (e: any) {
       toast({ 
         variant: "destructive", 
-        title: t('error'), 
+        title: t('common.error'), 
         description: e.message.includes('UNAUTHORIZED') 
-          ? (isRtl ? 'لا تملك صلاحية تعديل بيانات العملاء.' : 'Unauthorized to edit clients.') 
-          : t('saveFailed') 
+          ? t('clients.unauthorizedEdit') 
+          : t('common.error') 
       });
     } finally {
       setSaving(false);
@@ -54,7 +54,7 @@ export default function EditClientPage() {
   };
 
   if (clientLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
-  if (!client) return <div className="p-20 text-center font-black">{isRtl ? 'العميل غير موجود' : 'Client not found'}</div>;
+  if (!client) return <div className="p-20 text-center font-black">404 - Client not found</div>;
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto pb-20 animate-in fade-in duration-500" dir={dir}>
@@ -62,9 +62,9 @@ export default function EditClientPage() {
         <div className="text-start">
           <h1 className="text-4xl font-black font-headline flex items-center gap-4 text-slate-900">
             <Edit3 className="h-10 w-10 text-primary" />
-            {isRtl ? 'تعديل بيانات العميل' : 'Edit Client Profile'}
+            {t('clients.editProfile')}
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
+          <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic text-start">
             {client.nameAr} | {client.fileNumber}
           </p>
         </div>

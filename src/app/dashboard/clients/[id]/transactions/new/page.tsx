@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -34,7 +35,7 @@ import { cn } from '@/lib/utils';
 export default function NewTransactionPage() {
   const clientId = useParams().id as string;
   const { globalUser, user } = useAuthContext();
-  const { lang, dir } = useLanguage();
+  const { lang, dir, t } = useLanguage();
   const { permissions } = usePermissions(); 
   const db = useFirestore();
   const router = useRouter();
@@ -104,16 +105,16 @@ export default function NewTransactionPage() {
       }, user.uid, user.displayName || 'User');
 
       toast({ 
-        title: isRtl ? 'تم فتح المسار الفني بنجاح' : 'Technical Transaction Opened',
-        description: isRtl ? 'جاري تحويلك لرادار المتابعة...' : 'Redirecting to tracking radar...'
+        title: t('transactions.openSuccess'),
+        description: t('transactions.redirecting')
       });
       
       router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}`);
     } catch (e: any) {
       toast({ 
         variant: "destructive", 
-        title: isRtl ? "فشل فتح المعاملة" : "Transaction Failed",
-        description: e.message || (isRtl ? "حدث خطأ غير متوقع." : "An unexpected error occurred.")
+        title: t('transactions.openFailed'),
+        description: e.message || t('common.unexpectedError')
       });
     } finally {
       setLoading(false);
@@ -126,15 +127,15 @@ export default function NewTransactionPage() {
     <div className="space-y-6 max-w-4xl mx-auto pb-20 animate-in fade-in duration-500" dir={dir}>
       <div className="flex items-center gap-4 border-b pb-4">
         <div className="text-start">
-           <h1 className="text-2xl font-black font-headline text-slate-900 tracking-tight">{isRtl ? 'فتح معاملة فنية جديدة' : 'New Technical Transaction'}</h1>
-           <p className="text-muted-foreground text-[10px] font-bold opacity-70 italic">{client?.nameAr} | {client?.fileNumber}</p>
+           <h1 className="text-2xl font-black font-headline text-slate-900 tracking-tight">{t('transactions.newTitle')}</h1>
+           <p className="text-muted-foreground text-[10px] font-bold opacity-70 italic text-start">{client?.nameAr} | {client?.fileNumber}</p>
         </div>
       </div>
 
       <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/5">
         <div className="bg-primary/5 p-6 border-b flex items-center gap-3">
           <Workflow className="h-5 w-5 text-primary" />
-          <h3 className="text-base font-black font-headline">{isRtl ? 'تحديد المسار الفني والمهندس' : 'Technical Path & Assignment'}</h3>
+          <h3 className="text-base font-black font-headline text-start">{t('transactions.pathAssignment')}</h3>
         </div>
         <CardContent className="p-8 space-y-8 text-start">
            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -164,11 +165,11 @@ export default function NewTransactionPage() {
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-slate-50">
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5">
-                   <Building2 className="h-3 w-3" /> {isRtl ? 'القسم المسؤول' : 'Target Department'}
+                   <Building2 className="h-3 w-3" /> {t('transactions.targetDept')}
                 </Label>
                 <Select value={form.departmentId} onValueChange={(v) => setForm({...form, departmentId: v, assignedEngineerId: ''})}>
                    <SelectTrigger className="h-14 rounded-2xl border-2 font-black bg-white shadow-sm">
-                      <SelectValue placeholder={isRtl ? "اختر القسم أولاً..." : "Select Department..."} />
+                      <SelectValue placeholder={t('transactions.selectDept')} />
                    </SelectTrigger>
                    <SelectContent className="rounded-2xl">
                       {departments?.map(dept => <SelectItem key={dept.id} value={dept.id!} className="font-bold text-xs">{isRtl ? dept.name : dept.nameEn}</SelectItem>)}
@@ -178,13 +179,13 @@ export default function NewTransactionPage() {
 
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5">
-                   <Briefcase className="h-3 w-3" /> {isRtl ? 'المهندس المسؤول عن التنفيذ' : 'Assigned Engineer'}
+                   <Briefcase className="h-3 w-3" /> {t('transactions.assignedEngineer')}
                 </Label>
                 
                 <Popover open={openEngPicker} onOpenChange={setOpenEngPicker}>
                   <PopoverTrigger asChild>
                     <Button variant="outline" className="w-full h-14 rounded-2xl border-2 bg-white font-black justify-between px-4">
-                      <span className="truncate">{selectedEngineer?.fullName || (isRtl ? "تحديد المهندس..." : "Assign Engineer...")}</span>
+                      <span className="truncate">{selectedEngineer?.fullName || t('transactions.assignEngineer')}</span>
                       <ChevronDown className="h-4 w-4 opacity-30" />
                     </Button>
                   </PopoverTrigger>
@@ -193,7 +194,7 @@ export default function NewTransactionPage() {
                         <div className="relative">
                            <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                            <Input 
-                             placeholder={isRtl ? "بحث بالاسم أو الرقم..." : "Search engineer..."}
+                             placeholder={t('transactions.searchEngineer')}
                              className="h-10 ps-10 rounded-lg border-2 bg-white font-bold"
                              value={engSearch}
                              onChange={e => setEngSearch(e.target.value)}
@@ -234,9 +235,9 @@ export default function NewTransactionPage() {
       </Card>
 
       <div className="flex justify-end gap-4 pt-4">
-         <Button variant="outline" onClick={() => router.back()} className="h-14 rounded-2xl px-10 font-black border-2 text-sm bg-white hover:bg-slate-50">إلغاء</Button>
+         <Button variant="outline" onClick={() => router.back()} className="h-14 rounded-2xl px-10 font-black border-2 text-sm bg-white hover:bg-slate-50">{t('common.cancel')}</Button>
          <Button onClick={handleCreate} disabled={loading || !form.subServiceId || !form.assignedEngineerId} className="h-14 rounded-2xl px-16 bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 gap-3 border-b-4 border-orange-700 hover:scale-[1.02] active:scale-[0.98] transition-all">
-           {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : <CheckCircle2 className="h-6 w-6" />} {isRtl ? 'فتح المسار الآن' : 'Confirm & Open'}
+           {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : <CheckCircle2 className="h-6 w-6" />} {t('transactions.openNow')}
          </Button>
       </div>
     </div>

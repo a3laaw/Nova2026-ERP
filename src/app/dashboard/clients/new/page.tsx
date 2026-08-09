@@ -16,12 +16,11 @@ import { cn } from '@/lib/utils';
 
 export default function NewClientPage() {
   const { globalUser, user } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
+  const { t, dir, isRtl } = useLanguage();
   const { permissions } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const isRtl = lang === 'ar';
 
   const companyId = globalUser?.companyId;
 
@@ -31,10 +30,10 @@ export default function NewClientPage() {
     try {
       const service = new ClientService(db, companyId); 
       const clientId = await service.addClient(data, user.uid, user.displayName || user.email || 'User');
-      toast({ title: t('saved') });
+      toast({ title: t('common.saved') });
       router.push(`/dashboard/clients/${clientId}`);
     } catch (e: any) {
-      toast({ variant: "destructive", title: t('error') });
+      toast({ variant: "destructive", title: t('common.error') });
     } finally {
       setLoading(false);
     }
@@ -48,10 +47,10 @@ export default function NewClientPage() {
         </Button>
         <div className="text-start">
           <h1 className="text-xl md:text-2xl font-bold text-slate-900">
-            {isRtl ? 'تسجيل عميل جديد' : 'Register New Client'}
+            {t('clients.registerNew')}
           </h1>
           <p className="text-xs text-muted-foreground font-medium">
-            {isRtl ? 'فتح ملف تجاري جديد لربطه بالمعاملات الفنية' : 'Open new commercial file'}
+            {t('clients.registerNewDesc')}
           </p>
         </div>
       </div>

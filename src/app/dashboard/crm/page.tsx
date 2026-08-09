@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -21,7 +22,7 @@ import { cn } from '@/lib/utils';
 
 export default function CRMPage() {
   const { globalUser } = useAuthContext();
-  const { t, dir, isRtl } = useLanguage();
+  const { t, dir } = useLanguage();
   const { check } = usePermissions();
   const db = useFirestore();
   const [searchTerm, setSearchTerm] = useState("");
@@ -80,8 +81,8 @@ export default function CRMPage() {
             <Users className="h-8 w-8 text-primary" />
             {t('crm')}
           </h1>
-          <p className="text-slate-600 text-sm font-bold opacity-80 italic">
-            {isRtl ? 'إدارة الفرص والمبيعات' : 'Manage Leads & Sales'}
+          <p className="text-slate-600 text-sm font-bold opacity-80 italic text-start">
+            {t('crm.description')}
           </p>
         </div>
         
@@ -90,12 +91,12 @@ export default function CRMPage() {
             <DialogTrigger asChild>
               <Button variant="default" className="h-11 px-8 shadow-lg">
                 <UserPlus className="h-5 w-5 me-2" />
-                {t('addLead')}
+                {t('crm.newLead')}
               </Button>
             </DialogTrigger>
             <DialogContent className="rounded-xl border-0 shadow-2xl max-w-lg p-0 overflow-hidden bg-white" dir={dir}>
               <DialogHeader className="bg-slate-50 p-8 border-b">
-                <DialogTitle className="text-start font-black text-2xl">{t('addLead')}</DialogTitle>
+                <DialogTitle className="text-start font-black text-2xl">{t('crm.newLead')}</DialogTitle>
               </DialogHeader>
               <div className="p-8 space-y-6 text-start">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-start">
@@ -109,7 +110,7 @@ export default function CRMPage() {
                    </div>
                 </div>
                 <div className="space-y-2">
-                   <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'البريد الإلكتروني' : 'Email'}</Label>
+                   <Label className="text-xs font-black uppercase text-slate-400">{t('common.email')}</Label>
                    <Input value={newLead.email} onChange={e => setNewLead({...newLead, email: e.target.value})} className="h-11 border-2 rounded-xl text-start" dir="ltr" />
                 </div>
                 <div className="space-y-2">
@@ -159,7 +160,7 @@ export default function CRMPage() {
               {loading ? (
                 <TableRow><TableCell colSpan={3} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
               ) : filteredLeads.length === 0 ? (
-                <TableRow><TableCell colSpan={3} className="text-center py-20 italic text-slate-400 font-bold">{isRtl ? 'لا يوجد نتائج.' : 'No results found.'}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={3} className="text-center py-20 italic text-slate-400 font-bold">{t('common.noResults')}</TableCell></TableRow>
               ) : filteredLeads.map((lead: any) => (
                 <TableRow key={lead.id} className="hover:bg-primary/[0.01] transition-colors border-b-slate-100 group">
                   <TableCell className="py-5 ps-8 font-black text-slate-800 text-start">{lead.name}</TableCell>

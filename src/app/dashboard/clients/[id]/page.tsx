@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -79,12 +80,12 @@ export default function ClientDetailsPage() {
         <div className="flex gap-2">
            {canEditClient && (
              <Button onClick={() => router.push(`/dashboard/clients/${clientId}/edit`)} variant="outline" size="sm" className="h-9 px-4 rounded-md font-bold text-xs gap-2">
-               <Edit3 className="h-3.5 w-3.5" /> {isRtl ? 'تعديل' : 'Edit'}
+               <Edit3 className="h-3.5 w-3.5" /> {t('clients.edit')}
              </Button>
            )}
            {canOpenTransaction && (
              <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/new`) } size="sm" className="h-9 px-4 rounded-md font-bold text-xs gap-2 shadow-sm">
-               <Layers className="h-3.5 w-3.5" /> {isRtl ? 'فتح معاملة' : 'New Trans'}
+               <Layers className="h-3.5 w-3.5" /> {t('clients.newTransaction')}
              </Button>
            )}
         </div>
@@ -123,7 +124,7 @@ export default function ClientDetailsPage() {
                              onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/clients/${clientId}/transactions/${t.id}?tab=documents`); }}
                           >
                              <Receipt className="h-3.5 w-3.5" />
-                             {isRtl ? 'المالية' : 'Finance'}
+                             {translate('clients.finance')}
                           </Button>
                           <Button 
                              variant="ghost" 

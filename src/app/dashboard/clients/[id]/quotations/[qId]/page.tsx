@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useEffect, useState } from 'react';
@@ -94,7 +95,7 @@ export default function QuotationViewPage() {
     if (editData.pricingMode === 'percentage' && !stats.isValid) {
       toast({ 
         variant: "destructive", 
-        title: isRtl ? "خطأ في الميزانية" : "Budget Mismatch", 
+        title: t('common.error'), 
         description: isRtl ? `يجب أن يكون مجموع الحصص 100% (الحالي: ${stats.totalPercentage}%)` : `Total percentage must be 100%` 
       });
       return;
@@ -107,7 +108,6 @@ export default function QuotationViewPage() {
         ? stats.totalItemizedAmount 
         : (editData.totalAmount || quote?.totalAmount || 0);
       
-      // الترقية التلقائية للحالة لفتح الربط بالعميل
       const newStatus = (quote?.status === 'draft' && !quote.isHistoryRecorded) ? 'approved' : editData.status;
 
       const { id, createdAt, updatedAt, ...sanitizedData } = editData as any;
@@ -126,10 +126,10 @@ export default function QuotationViewPage() {
         updatedByName: globalUser?.username || user.displayName || 'Admin'
       }, user.uid);
       
-      toast({ title: isRtl ? "تم اعتماد وحفظ العرض بنجاح" : "Quotation Saved & Committed" });
+      toast({ title: t('common.saved') });
       setIsEditing(false);
     } catch (e: any) {
-      toast({ variant: "destructive", title: t('error'), description: e.message });
+      toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
       setSaving(false);
     }
@@ -145,10 +145,10 @@ export default function QuotationViewPage() {
         user.uid, 
         globalUser?.username || user.displayName || 'Admin'
       );
-      toast({ title: isRtl ? "تم تحويل العرض إلى عقد رسمي" : "Quotation converted to Contract" });
+      toast({ title: t('quotations.convertedToContract') });
       router.push(`/dashboard/clients/${clientId}/contracts/${contractId}`);
     } catch (e: any) {
-      toast({ variant: "destructive", title: t('error'), description: e.message });
+      toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
       setConverting(false);
     }
@@ -195,7 +195,7 @@ export default function QuotationViewPage() {
   };
 
   if (loading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
-  if (!quote) return <div className="p-20 text-center font-black">{isRtl ? 'المستند غير موجود' : 'Quotation not found'}</div>;
+  if (!quote) return <div className="p-20 text-center font-black">404 - Not Found</div>;
 
   const activeItemsForDisplay = (editData.items || []).filter((i: any) => !i.deleted);
   const currentDisplayAmount = isEditing 
@@ -215,7 +215,7 @@ export default function QuotationViewPage() {
            </Button>
            <div className="text-start">
               <div className="flex items-center gap-2">
-                 <h1 className="text-xl font-black text-slate-900">{isRtl ? 'عرض سعر رسمي' : 'Official Quotation'}</h1>
+                 <h1 className="text-xl font-black text-slate-900">{t('common.quotation')}</h1>
                  <Badge variant="outline" className="h-6 px-4 font-black text-[9px] uppercase bg-primary text-white border-0 shadow-sm">{editData.status || quote.status}</Badge>
               </div>
               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">REF: {quote.id.slice(-8).toUpperCase()} | {editData.pricingMode}</p>
@@ -225,11 +225,11 @@ export default function QuotationViewPage() {
            {isEditing ? (
               <>
                 <Button onClick={handleCancel} variant="outline" size="sm" className="h-10 px-6 font-bold bg-white border-2 rounded-xl">
-                   {isRtl ? 'إلغاء' : 'Cancel'}
+                   {t('common.cancel')}
                 </Button>
                 <Button onClick={handleSave} disabled={saving} size="sm" className="h-10 px-8 rounded-xl font-black gap-2 shadow-xl border-b-4 border-orange-700">
                    {saving ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
-                   {quote.status === 'draft' && !quote.isHistoryRecorded ? (isRtl ? 'اعتماد وحفظ عرض السعر' : 'Commit & Save') : (isRtl ? 'حفظ التعديلات' : 'Save Changes')}
+                   {quote.status === 'draft' && !quote.isHistoryRecorded ? t('quotations.commitAndSave') : t('common.saveChanges')}
                 </Button>
               </>
            ) : (
@@ -245,7 +245,7 @@ export default function QuotationViewPage() {
                   {t('convertToContract')}
                </Button>
                <Button onClick={() => setIsEditing(true)} variant="outline" size="sm" className="rounded-xl h-10 px-6 font-black gap-2 border-2 bg-white text-primary hover:bg-primary/5">
-                  <Edit3 className="h-4 w-4" /> {isRtl ? 'تعديل البنود' : 'Edit Template'}
+                  <Edit3 className="h-4 w-4" /> {t('common.editItems')}
                </Button>
                <Button onClick={() => window.print()} size="sm" className="rounded-xl h-10 px-8 font-black gap-2 bg-slate-900 text-white shadow-xl">
                   <Printer className="h-4 w-4" /> {isRtl ? 'طباعة' : 'Print'}
@@ -255,7 +255,7 @@ export default function QuotationViewPage() {
         </div>
       </div>
 
-      <PrintWrapper title={isRtl ? "عرض سعر فني ومالي" : "Technical & Financial Proposal"} className="mt-2">
+      <PrintWrapper title={t('common.quotation')} className="mt-2">
          <div className="space-y-8 text-start">
             <div className="p-4 bg-primary/5 rounded-xl border-2 border-dashed border-primary/20 flex items-center justify-between gap-4 shadow-sm print:hidden">
                 <div className="flex items-center gap-4 text-start">
@@ -277,7 +277,7 @@ export default function QuotationViewPage() {
                 
                 {(editData.pricingMode === 'percentage' || editData.pricingMode === 'fixed') && (
                   <div className="space-y-1 text-start w-32">
-                     <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'الميزانية المستهدفة' : 'Target Budget'}</Label>
+                     <Label className="text-[10px] font-black uppercase text-primary tracking-widest">Target Budget</Label>
                      {isEditing ? (
                        <div className="relative">
                           <Input 
@@ -356,7 +356,7 @@ export default function QuotationViewPage() {
                                          {item.technicalStageId && item.technicalStageId !== 'NONE' && (
                                             <p className="text-[8px] font-black text-primary/60 italic flex items-center gap-1 mt-1">
                                                <Clock className="h-2 w-2" />
-                                               {t(item.timing || 'at')} {item.technicalStageId === 'SIGNING' ? t('contractSigning') : linkedStageName}
+                                               {t(item.timing || 'at')} {item.technicalStageId === 'SIGNING' ? 'Contract Signing' : linkedStageName}
                                             </p>
                                          )}
                                       </div>
@@ -367,7 +367,7 @@ export default function QuotationViewPage() {
                                          {item.technicalStageId && item.technicalStageId !== 'NONE' && (
                                             <p className="text-[10px] font-black text-primary/60 italic flex items-center gap-1">
                                                <Clock className="h-3 w-3" />
-                                               {t(item.timing || 'at')} {item.technicalStageId === 'SIGNING' ? t('contractSigning') : linkedStageName}
+                                               {t(item.timing || 'at')} {item.technicalStageId === 'SIGNING' ? 'Contract Signing' : linkedStageName}
                                             </p>
                                          )}
                                       </div>
@@ -406,13 +406,13 @@ export default function QuotationViewPage() {
                                            "h-8 rounded-lg border-2 font-black text-xs",
                                            (item.technicalStageId && item.technicalStageId !== 'NONE') ? "bg-primary/5 text-primary border-primary/20" : "bg-white"
                                          )}>
-                                            <SelectValue placeholder={isRtl ? "ربط فني..." : "Link Stage..."} />
+                                            <SelectValue placeholder="Link Stage..." />
                                          </SelectTrigger>
                                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
                                             <SelectItem value="SIGNING" className="font-black text-xs py-3">
-                                               <span className="flex items-center gap-2"><ShieldCheck className="h-3 w-3 text-emerald-500" /> {t('contractSigning')}</span>
+                                               <span className="flex items-center gap-2"><ShieldCheck className="h-3 w-3 text-emerald-500" /> Contract Signing</span>
                                             </SelectItem>
-                                            <SelectItem value="NONE" className="font-bold text-xs text-slate-400 italic">--- {isRtl ? 'بدون ربط' : 'No Link'} ---</SelectItem>
+                                            <SelectItem value="NONE" className="font-bold text-xs text-slate-400 italic">--- No Link ---</SelectItem>
                                             {stages?.map(s => (
                                               <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3">
                                                  <span className="flex items-center gap-2"><Workflow className="h-3 w-3 text-primary" /> {s.name}</span>
@@ -425,7 +425,7 @@ export default function QuotationViewPage() {
                                         "font-black text-[10px] border-0 px-4 h-6 rounded-lg shadow-sm",
                                         item.technicalStageId === 'SIGNING' ? "bg-emerald-50 text-emerald-600" : (item.technicalStageId ? "bg-primary/5 text-primary" : "bg-slate-50 text-slate-300")
                                       )}>
-                                         {item.technicalStageId === 'SIGNING' ? (isRtl ? 'عند التوقيع' : 'Signing') : (item.technicalStageId ? (linkedStageName || 'Linked') : '---')}
+                                         {item.technicalStageId === 'SIGNING' ? 'Signing' : (item.technicalStageId ? (linkedStageName || 'Linked') : '---')}
                                       </Badge>
                                    )}
                                 </td>
@@ -471,7 +471,7 @@ export default function QuotationViewPage() {
                {isEditing ? (
                   <Textarea value={editData.defaultTerms} onChange={e => setEditForm({...editData, defaultTerms: e.target.value})} className="min-h-[150px] rounded-[2rem] border-2 p-8 text-sm font-bold leading-relaxed bg-slate-50/50 shadow-inner" />
                ) : (
-                  <p className="p-10 bg-slate-50/50 rounded-[3rem] border-2 border-white shadow-inner text-sm font-bold text-slate-700 leading-relaxed whitespace-pre-wrap italic">
+                  <p className="p-10 bg-slate-50/50 rounded-[3rem] border-2 border-white shadow-inner text-sm font-bold text-slate-700 leading-relaxed whitespace-pre-wrap italic text-start">
                      {quote.defaultTerms}
                   </p>
                )}

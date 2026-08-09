@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -71,7 +72,7 @@ export default function ClientsListPage() {
         
         {canRegisterClient && (
           <Button onClick={() => router.push('/dashboard/clients/new')} size="sm" className="h-9 px-4 font-black rounded-xl shadow-lg shadow-primary/20">
-            <UserPlus className="h-4 w-4 me-2" /> {t('clients.addNew')}
+            <UserPlus className="h-4 w-4 me-2" /> {t('clients.registerNew')}
           </Button>
         )}
       </div>
@@ -100,7 +101,7 @@ export default function ClientsListPage() {
           <Table>
             <TableHeader className="bg-slate-50/50">
               <TableRow className="border-b-0">
-                <TableHead className="py-5 ps-10 text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('clients.table.profile')}</TableHead>
+                <TableHead className="py-5 ps-10 text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('clients.table.profile')}</TableHead>
                 <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('clients.table.staff')}</TableHead>
                 <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('clients.table.contact')}</TableHead>
                 <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('common.status')}</TableHead>
@@ -112,7 +113,7 @@ export default function ClientsListPage() {
                 <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></TableCell></TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 font-black italic">
-                   {isRtl ? 'لا يوجد نتائج.' : 'No results found.'}
+                   {t('common.noResults')}
                 </TableCell></TableRow>
               ) : filtered.map((client) => (
                 <TableRow key={client.id} className="cursor-pointer group hover:bg-slate-50 transition-colors border-b-slate-100" onClick={() => router.push(`/dashboard/clients/${client.id}`)}>
