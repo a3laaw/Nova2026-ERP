@@ -47,10 +47,10 @@ export default function EquipmentMasterPage() {
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
           <h1 className="text-xl md:text-2xl font-bold text-slate-900">
-            {t('construction.equipment')}
+            {t('equipment.title')}
           </h1>
           <p className="text-xs text-muted-foreground font-medium">
-            {isRtl ? 'إدارة سجل الأصول والمعدات المملوكة والمستأجرة.' : 'Manage owned and rented assets.'}
+            {t('equipment.description')}
           </p>
         </div>
         <Button 
@@ -58,7 +58,7 @@ export default function EquipmentMasterPage() {
           onClick={() => router.push('/dashboard/equipment/new')} 
           className="h-9 px-4 font-bold rounded-md shadow-sm"
         >
-           <Plus className="h-4 w-4 me-2" /> {isRtl ? 'إضافة أصل جديد' : 'New Asset'}
+           <Plus className="h-4 w-4 me-2" /> {t('equipment.addNew')}
         </Button>
       </header>
 
@@ -81,10 +81,10 @@ export default function EquipmentMasterPage() {
           <Table>
             <TableHeader className="bg-slate-50">
               <TableRow>
-                <TableHead className="py-3 ps-6 text-start text-[10px] font-bold uppercase text-slate-500">المعدة / الكود</TableHead>
-                <TableHead className="text-start text-[10px] font-bold uppercase text-slate-500">نوع الملكية</TableHead>
-                <TableHead className="text-center text-[10px] font-bold uppercase text-slate-500">الحالة</TableHead>
-                <TableHead className="text-end text-[10px] font-bold uppercase text-slate-500">التعرفة</TableHead>
+                <TableHead className="py-3 ps-6 text-start text-[10px] font-bold uppercase text-slate-500">{t('equipment.table.code')}</TableHead>
+                <TableHead className="text-start text-[10px] font-bold uppercase text-slate-500">{t('equipment.table.ownership')}</TableHead>
+                <TableHead className="text-center text-[10px] font-bold uppercase text-slate-500">{t('common.status')}</TableHead>
+                <TableHead className="text-end text-[10px] font-bold uppercase text-slate-500">{t('equipment.table.rate')}</TableHead>
                 <TableHead className="pe-6"></TableHead>
               </TableRow>
             </TableHeader>
@@ -92,7 +92,7 @@ export default function EquipmentMasterPage() {
               {loading ? (
                 <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 font-bold italic">No assets found.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 font-bold italic">{t('common.noResults')}</TableCell></TableRow>
               ) : (
                 filtered.map((item) => (
                   <TableRow key={item.id} className="group hover:bg-slate-50/50 transition-colors border-b-slate-100 cursor-pointer" onClick={() => router.push(`/dashboard/equipment/${item.id}/edit`)}>
@@ -125,7 +125,7 @@ export default function EquipmentMasterPage() {
                        </div>
                     </TableCell>
                     <TableCell className="text-end font-mono font-bold text-xs text-emerald-600">
-                       {(item.hourlyRentalRate || item.hourlyDepreciationRate || 0).toLocaleString()} <span className="text-[8px] opacity-40">KWD</span>
+                       {(item.hourlyRentalRate || item.hourlyDepreciationRate || 0).toLocaleString()} <span className="text-[8px] opacity-40">{t('dashboard.units.kwd')}</span>
                     </TableCell>
                     <TableCell className="pe-6 text-end">
                        <Button variant="ghost" size="icon" className="rounded-md group-hover:text-primary transition-all h-8 w-8">

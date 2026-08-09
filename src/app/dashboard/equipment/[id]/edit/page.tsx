@@ -40,7 +40,7 @@ export default function EditEquipmentPage() {
     const equipmentService = new EquipmentService(db, companyId);
     equipmentService.updateEquipment(equipId, formData, user.uid);
     
-    toast({ title: t('saved') });
+    toast({ title: t('common.saved') });
     router.push('/dashboard/equipment');
   };
 
@@ -54,7 +54,7 @@ export default function EditEquipmentPage() {
         </Button>
         <div className="text-start space-y-1">
           <h1 className="text-4xl font-black font-headline text-slate-900 tracking-tight">
-             {isRtl ? 'تعديل بيانات الأصل' : 'Edit Asset Details'}
+             {t('equipment.editDetails')}
           </h1>
           <p className="text-muted-foreground font-bold italic text-sm">
              {equipment?.name} | {equipment?.code}

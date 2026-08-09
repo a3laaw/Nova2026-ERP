@@ -48,7 +48,23 @@ export function BreadcrumbNav() {
       'coa': 'chartOfAccounts',
       'journals': 'journalEntries',
       'receipt': 'receiptVouchers',
-      'payment': 'paymentVouchers'
+      'payment': 'paymentVouchers',
+      'construction': 'construction',
+      'bookings': 'construction.radar',
+      'field-visits': 'construction.reports',
+      'quotes': 'aiAnalysis',
+      'orders': 'purchaseOrders',
+      'suppliers': 'suppliers',
+      'roles': 'rolesPermissions',
+      'company': 'companyIdentity',
+      'profile': 'userProfile',
+      'checklists': 'checklists',
+      'work-hours': 'workHours',
+      'analytics': 'reports.analytics.title',
+      'executive': 'reports.executive.title',
+      'ai': 'ai.hub',
+      'new': 'common.add',
+      'edit': 'common.edit'
     };
     
     const key = segmentMap[sLower] || sLower;

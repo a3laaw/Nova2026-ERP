@@ -39,10 +39,10 @@ export default function NewEquipmentPage() {
         </Button>
         <div className="text-start space-y-0.5">
           <h1 className="text-xl md:text-2xl font-bold text-slate-900">
-             {isRtl ? 'تسجيل أصل تشغيلي جديد' : 'Register New Asset'}
+             {t('equipment.registerNew')}
           </h1>
           <p className="text-muted-foreground font-medium text-xs">
-             {isRtl ? 'إدراج معدة مملوكة أو مستأجرة وتحديد مسارها المالي.' : 'Register owned or rented equipment.'}
+             {t('equipment.registerNewDesc')}
           </p>
         </div>
       </div>
