@@ -251,6 +251,7 @@ const translations: Record<Language, Record<string, string>> = {
     'construction.radarDesc': 'إدارة وتنسيق أطقم العمل والمهندسين في مواقع المشاريع الإنشائية.',
     'construction.printRadar': 'طباعة الرادار الميداني',
     'construction.groups': 'فرق العمل',
+    'construction.groupsDesc': 'إدارة أطقم الميدان والتخصصات.',
     'construction.equipment': 'المعدات',
     'construction.reports': 'تقارير الموقع',
     'procurement': 'المشتريات',
@@ -279,6 +280,15 @@ const translations: Record<Language, Record<string, string>> = {
     'devConsole': 'لوحة المطور',
     'erpSystem': 'نظام ERP الموحد',
     'erpCloud': 'سحابة Nova السيادية',
+
+    // --- Work Groups ---
+    'groups.form.name': 'اسم الطاقم',
+    'groups.form.supervisor': 'المشرف المسؤول',
+    'groups.form.members': 'أعضاء الطاقم',
+    'groups.form.staffList': 'قائمة الموظفين',
+    'groups.table.crewDept': 'الطاقم / القسم',
+    'groups.table.supervisor': 'المشرف',
+    'groups.table.count': 'العدد',
 
     // --- Status ---
     'status.active': 'نشط',
@@ -625,6 +635,7 @@ const translations: Record<Language, Record<string, string>> = {
     'construction.radarDesc': 'Coordinate site engineers and work crews in construction project sites.',
     'construction.printRadar': 'Print Field Radar',
     'construction.groups': 'Work Groups',
+    'construction.groupsDesc': 'Field crew management.',
     'construction.equipment': 'Equipment',
     'construction.reports': 'Field Logs',
     'procurement': 'Procurement',
@@ -653,6 +664,15 @@ const translations: Record<Language, Record<string, string>> = {
     'devConsole': 'Dev Console',
     'erpSystem': 'ERP System',
     'erpCloud': 'Nova Sovereign Cloud',
+
+    // --- Work Groups ---
+    'groups.form.name': 'Group Name',
+    'groups.form.supervisor': 'Supervisor',
+    'groups.form.members': 'Crew Members',
+    'groups.form.staffList': 'Staff List',
+    'groups.table.crewDept': 'Crew / Dept',
+    'groups.table.supervisor': 'Supervisor',
+    'groups.table.count': 'Count',
 
     // --- Status ---
     'status.active': 'Active',

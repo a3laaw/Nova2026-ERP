@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -28,9 +27,8 @@ import { toast } from '@/hooks/use-toast';
 
 export default function WorkGroupsPage() {
   const { globalUser } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
+  const { t, lang, dir, isRtl } = useLanguage();
   const db = useFirestore();
-  const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -78,7 +76,7 @@ export default function WorkGroupsPage() {
       const data = {
         ...form,
         companyId,
-        departmentName: department?.name || '',
+        departmentName: department ? (isRtl ? department.name : department.nameEn) : '',
         supervisorName: supervisor?.fullName || '',
         memberCount: form.memberIds?.length || 0,
         createdAt: form.id ? form.createdAt : serverTimestamp(),
@@ -110,7 +108,8 @@ export default function WorkGroupsPage() {
     <div className="space-y-4 w-full animate-in fade-in duration-500" dir={dir}>
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-start">
         <div className="text-start">
-           <h1 className="text-xl md:text-2xl font-bold text-slate-900">
+           <h1 className="text-xl md:text-2xl font-bold text-slate-900 flex items-center gap-2">
+             <Users className="h-6 w-6 text-primary" />
              {t('construction.groups')}
            </h1>
            <p className="text-xs text-muted-foreground font-medium">{t('construction.groupsDesc')}</p>
@@ -130,7 +129,7 @@ export default function WorkGroupsPage() {
              <div className="p-6 space-y-4 text-start bg-white">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase text-slate-400">{isRtl ? 'اسم الطاقم' : 'Group Name'}</Label>
+                      <Label className="text-[10px] font-bold uppercase text-slate-400">{t('groups.form.name')}</Label>
                       <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="h-9 border-slate-200 text-xs font-medium rounded-md" />
                    </div>
                    <div className="space-y-1.5">
@@ -147,7 +146,7 @@ export default function WorkGroupsPage() {
                 </div>
 
                 <div className={cn("space-y-1.5", !form.departmentId && "opacity-30 pointer-events-none")}>
-                   <Label className="text-[10px] font-bold uppercase text-slate-400">{isRtl ? 'المشرف المسؤول' : 'Supervisor'}</Label>
+                   <Label className="text-[10px] font-bold uppercase text-slate-400">{t('groups.form.supervisor')}</Label>
                    <Select value={form.supervisorId} onValueChange={v => setForm({...form, supervisorId: v})}>
                       <SelectTrigger className="h-9 border-slate-200 text-xs font-medium rounded-md"><SelectValue placeholder="..." /></SelectTrigger>
                       <SelectContent className="rounded-md">
@@ -157,7 +156,7 @@ export default function WorkGroupsPage() {
                 </div>
 
                 <div className={cn("space-y-2 pt-2 border-t", !form.departmentId && "opacity-30 pointer-events-none")}>
-                   <Label className="text-[10px] font-bold uppercase text-slate-400">{isRtl ? 'أعضاء الطاقم' : 'Crew Members'}</Label>
+                   <Label className="text-[10px] font-bold uppercase text-slate-400">{t('groups.form.members')}</Label>
                    <ScrollArea className="h-40 border rounded-md p-2 bg-slate-50/30">
                       <div className="grid grid-cols-1 gap-1.5">
                          {filteredEmployeesForSelection.filter(e => e.id !== form.supervisorId).map(e => {
@@ -211,9 +210,9 @@ export default function WorkGroupsPage() {
             <Table>
                <TableHeader className="bg-slate-50">
                   <TableRow>
-                     <TableHead className="py-3 ps-6 text-start text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'الطاقم / القسم' : 'Crew / Dept'}</TableHead>
-                     <TableHead className="text-start text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'المشرف' : 'Supervisor'}</TableHead>
-                     <TableHead className="text-center text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'العدد' : 'Count'}</TableHead>
+                     <TableHead className="py-3 ps-6 text-start text-[10px] font-bold uppercase text-slate-500">{t('groups.table.crewDept')}</TableHead>
+                     <TableHead className="text-start text-[10px] font-bold uppercase text-slate-500">{t('groups.table.supervisor')}</TableHead>
+                     <TableHead className="text-center text-[10px] font-bold uppercase text-slate-500">{t('groups.table.count')}</TableHead>
                      <TableHead className="pe-6"></TableHead>
                   </TableRow>
                </TableHeader>
