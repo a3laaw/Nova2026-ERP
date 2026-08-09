@@ -14,7 +14,7 @@ interface LanguageContextType {
 
 const translations: Record<Language, Record<string, string>> = {
   ar: {
-    // الهيكل العام
+    // --- الهيكل العام والتنقل ---
     'dashboard': 'لوحة التحكم',
     'logout': 'تسجيل الخروج',
     'devConsole': 'لوحة المطور',
@@ -22,6 +22,7 @@ const translations: Record<Language, Record<string, string>> = {
     'settings': 'الإعدادات',
     'reports': 'التقارير',
     'details': 'التفاصيل',
+    'transactions': 'المعاملات',
     'common.search': 'بحث...',
     'common.filter': 'تصفية',
     'common.save': 'حفظ',
@@ -39,8 +40,12 @@ const translations: Record<Language, Record<string, string>> = {
     'common.total': 'الإجمالي',
     'common.active': 'نشط',
     'common.completed': 'مكتمل',
+    'common.viewAll': 'عرض الكل',
+    'common.saved': 'تم الحفظ بنجاح',
+    'common.error': 'خطأ في العملية',
+    'common.noResults': 'لا توجد نتائج',
 
-    // لوحة التحكم (Stats & Dashboard)
+    // --- لوحة التحكم (Dashboard) ---
     'dashboard.stats.revenue': 'إجمالي الإيرادات',
     'dashboard.stats.activeProjects': 'المشاريع الجارية',
     'dashboard.stats.workforce': 'القوى العاملة',
@@ -55,17 +60,20 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.export': 'تصدير',
     'dashboard.missions': 'المهام المطلوبة',
 
-    // CRM
+    // --- إدارة العملاء والـ CRM ---
     'clients': 'العملاء',
     'leads': 'الفرص والعملاء',
     'clients.title': 'إدارة العملاء',
-    'clients.addNew': 'إضافة عميل',
+    'clients.addNew': 'إضافة عميل جديد',
     'clients.table.profile': 'بيانات العميل',
     'clients.table.staff': 'المسؤول',
     'clients.table.contact': 'الاتصال',
     'clients.table.status': 'الحالة',
+    'clients.details.transactions': 'المعاملات الجارية',
+    'clients.details.location': 'الموقع والعنوان',
+    'clients.details.history': 'سجل التفاعل',
 
-    // المشاريع و BOQ
+    // --- المشاريع والمقايسات (BOQ) ---
     'projects': 'المشاريع',
     'activeProjects': 'المشاريع الجارية',
     'boqExplorer': 'جدول الكميات والميزانية',
@@ -77,9 +85,24 @@ const translations: Record<Language, Record<string, string>> = {
     'projects.stats.collection': 'التحصيل',
     'projects.table.project': 'المشروع',
     'projects.table.progress': 'الإنجاز',
-    'projects.table.billing': 'المبالغ المفوترة',
+    'projects.table.billing': 'المفوتر',
+    'projects.details.radar': 'رادار التنفيذ',
+    'projects.details.finance': 'المستندات والمالية',
 
-    // الموارد البشرية
+    // --- العمليات الميدانية (Construction) ---
+    'construction': 'المقاولات',
+    'fieldRadar': 'رادار الميدان',
+    'construction.radar': 'رادار الميدان',
+    'construction.radarDesc': 'إدارة وتنسيق أطقم العمل والمهندسين في المواقع الإنشائية',
+    'workGroups': 'فرق العمل',
+    'construction.groups': 'فرق العمل',
+    'construction.groupsDesc': 'إدارة أطقم الميدان والتخصصات',
+    'fieldLogs': 'تقارير الموقع',
+    'construction.reports': 'تقارير الموقع',
+    'equipment': 'المعدات',
+    'construction.equipment': 'المعدات والآليات',
+
+    // --- الموارد البشرية (HR) ---
     'hr.title': 'الموارد البشرية',
     'staffRecords': 'الموظفون',
     'payroll': 'الرواتب',
@@ -88,37 +111,33 @@ const translations: Record<Language, Record<string, string>> = {
     'attendance': 'بصمة الحضور',
     'hr.workforce.compliance': 'إدارة القوى العاملة والامتثال',
 
-    // العمليات الميدانية
-    'construction': 'المقاولات',
-    'fieldRadar': 'رادار الميدان',
-    'construction.radar': 'رادار الميدان',
-    'construction.radarDesc': 'إدارة وتنسيق أطقم العمل والمهندسين في مواقع المشاريع الإنشائية',
-    'workGroups': 'فرق العمل',
-    'construction.groups': 'فرق العمل',
-    'construction.groupsDesc': 'إدارة أطقم الميدان والتخصصات',
-    'fieldLogs': 'تقارير الموقع',
-    'construction.reports': 'تقارير الموقع',
-
-    // المحاسبة
+    // --- المحاسبة (Accounting) ---
+    'accounting': 'المحاسبة',
     'chartOfAccounts': 'شجرة الحسابات',
     'journalEntries': 'قيود اليومية',
     'paymentVouchers': 'سندات الصرف',
     'receiptVouchers': 'سندات القبض',
     'financialReports': 'التقارير المالية',
 
-    // التقارير
+    // --- التقارير (Reports) ---
     'reports.hub.title': 'مركز التقارير',
     'reports.hub.description': 'تحليل القوى العاملة والامتثال والإنتاجية الميدانية',
+    'reports.executive.title': 'التقرير التنفيذي',
+    'reports.analytics.title': 'التحليلات الذكية',
 
-    // الإعدادات
+    // --- الإعدادات (Settings) ---
     'companyIdentity': 'بيانات الشركة',
     'usersManagement': 'المستخدمون والصلاحيات',
     'rolesPermissions': 'الأدوار والوصول',
     'workHours': 'ساعات العمل',
     'templates': 'القوالب',
+    'settings.checklists': 'قواعد العمل',
+    'settings.checklists.desc': 'إدارة القواعد المرجعية والمسارات الفنية',
+    'boqMasterTree': 'شجرة BOQ الموحدة',
+    'halls': 'القاعات',
   },
   en: {
-    // General
+    // --- Structure & Nav ---
     'dashboard': 'Dashboard',
     'logout': 'Logout',
     'devConsole': 'Dev Console',
@@ -126,6 +145,7 @@ const translations: Record<Language, Record<string, string>> = {
     'settings': 'Settings',
     'reports': 'Reports',
     'details': 'Details',
+    'transactions': 'Transactions',
     'common.search': 'Search...',
     'common.filter': 'Filter',
     'common.save': 'Save',
@@ -143,8 +163,12 @@ const translations: Record<Language, Record<string, string>> = {
     'common.total': 'Total',
     'common.active': 'Active',
     'common.completed': 'Completed',
+    'common.viewAll': 'View All',
+    'common.saved': 'Saved Successfully',
+    'common.error': 'Operation Error',
+    'common.noResults': 'No results found',
 
-    // Dashboard
+    // --- Dashboard ---
     'dashboard.stats.revenue': 'Total Revenue',
     'dashboard.stats.activeProjects': 'Active Projects',
     'dashboard.stats.workforce': 'Workforce',
@@ -159,31 +183,49 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.export': 'Export',
     'dashboard.missions': 'Pending Tasks',
 
-    // CRM
+    // --- CRM ---
     'clients': 'Clients',
     'leads': 'Leads & Clients',
-    'clients.title': 'CRM Management',
-    'clients.addNew': 'Add Client',
+    'clients.title': 'Client Management',
+    'clients.addNew': 'Add New Client',
     'clients.table.profile': 'Client Profile',
     'clients.table.staff': 'Assigned To',
     'clients.table.contact': 'Contact',
     'clients.table.status': 'Status',
+    'clients.details.transactions': 'Active Transactions',
+    'clients.details.location': 'Location & Address',
+    'clients.details.history': 'Interaction History',
 
-    // Projects & BOQ
+    // --- Projects & BOQ ---
     'projects': 'Projects',
     'activeProjects': 'Active Projects',
     'boqExplorer': 'BOQ & Budget',
     'projects.boqExplorer': 'BOQ & Budget',
     'projects.boqExplorer.desc': 'Manage bill of quantities and baseline budgets',
-    'projects.addNew': 'Add Project',
+    'projects.addNew': 'New Project',
     'projects.stats.portfolio': 'Total Portfolio',
     'projects.stats.claims': 'Claims',
     'projects.stats.collection': 'Collection',
     'projects.table.project': 'Project',
     'projects.table.progress': 'Progress',
-    'projects.table.billing': 'Billing',
+    'projects.table.billing': 'Billed',
+    'projects.details.radar': 'Execution Radar',
+    'projects.details.finance': 'Docs & Finance',
 
-    // HR
+    // --- Construction ---
+    'construction': 'Construction',
+    'fieldRadar': 'Field Radar',
+    'construction.radar': 'Field Radar',
+    'construction.radarDesc': 'Coordinate site engineers and work crews in construction project sites',
+    'workGroups': 'Work Groups',
+    'construction.groups': 'Work Groups',
+    'construction.groupsDesc': 'Manage field crew and specialties',
+    'fieldLogs': 'Field Logs',
+    'construction.reports': 'Field Reports',
+    'equipment': 'Equipment',
+    'construction.equipment': 'Equipment Master',
+
+    // --- HR ---
     'hr.title': 'Human Resources',
     'staffRecords': 'Employees',
     'payroll': 'Payroll',
@@ -192,34 +234,30 @@ const translations: Record<Language, Record<string, string>> = {
     'attendance': 'Attendance',
     'hr.workforce.compliance': 'Workforce & Compliance',
 
-    // Field Operations
-    'construction': 'Construction',
-    'fieldRadar': 'Field Radar',
-    'construction.radar': 'Field Radar',
-    'construction.radarDesc': 'Coordinate site engineers and work crews',
-    'workGroups': 'Work Groups',
-    'construction.groups': 'Work Groups',
-    'construction.groupsDesc': 'Manage field crews and specialties',
-    'fieldLogs': 'Field Logs',
-    'construction.reports': 'Field Reports',
-
-    // Accounting
+    // --- Accounting ---
+    'accounting': 'Accounting',
     'chartOfAccounts': 'Chart of Accounts',
     'journalEntries': 'Journal Entries',
     'paymentVouchers': 'Payment Vouchers',
     'receiptVouchers': 'Receipt Vouchers',
     'financialReports': 'Financial Reports',
 
-    // Reports
+    // --- Reports ---
     'reports.hub.title': 'Reports Hub',
     'reports.hub.description': 'Workforce analysis and compliance reports',
+    'reports.executive.title': 'Executive Report',
+    'reports.analytics.title': 'Smart Analytics',
 
-    // Settings
+    // --- Settings ---
     'companyIdentity': 'Company Identity',
     'usersManagement': 'Users & Permissions',
     'rolesPermissions': 'Roles & Access',
     'workHours': 'Working Hours',
     'templates': 'Templates',
+    'settings.checklists': 'Rules & Refs',
+    'settings.checklists.desc': 'Manage reference lists and technical paths',
+    'boqMasterTree': 'BOQ Master Tree',
+    'halls': 'Meeting Rooms',
   }
 };
 
@@ -242,11 +280,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   const t = (key: string) => {
     if (!key) return '';
-    // جعل البحث عن المفاتيح غير حساس لحالة الأحرف لضمان الاستقرار
+    // جعل البحث غير حساس لحالة الأحرف لضمان ثبات القاموس مهما تغير الكود
     const normalizedKey = key.toLowerCase();
     const currentTranslations = translations[lang];
     
-    // البحث عن المفتاح المطابق بغض النظر عن حالة الأحرف
+    // محاولة العثور على المفتاح بغض النظر عن حالة الأحرف
     const foundKey = Object.keys(currentTranslations).find(k => k.toLowerCase() === normalizedKey);
     
     return foundKey ? currentTranslations[foundKey] : key;
