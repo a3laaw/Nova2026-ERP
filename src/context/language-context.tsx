@@ -13,7 +13,7 @@ interface LanguageContextType {
 }
 
 /**
- * القاموس الموحد والنهائي (Master Dictionary) - تم بناؤه من الصفر.
+ * القاموس الموحد والنهائي (Master Dictionary) - من الصفر.
  * يحتوي على كافة مفاتيح النظام لضمان عدم حدوث تراجع في أي صفحة.
  * تم توحيد المفاتيح لتكون بحروف صغيرة (lowercase) لسهولة المطابقة.
  */
@@ -36,6 +36,30 @@ const translations: Record<Language, Record<string, string>> = {
     'details': 'التفاصيل',
     'transactions': 'المعاملات الفنية',
     'reports': 'التقارير والرقابة',
+    'activeprojects': 'المشاريع النشطة',
+    'boqexplorer': 'جدول الكميات والميزانية',
+    'fieldradar': 'رادار العمليات الميدانية',
+    'workgroups': 'فرق وأطقم العمل',
+    'equipment': 'المعدات والآليات',
+    'fieldlogs': 'سجلات الإنجاز الميداني',
+    'visitsdossier': 'سجل تفاعل العملاء',
+    'leads': 'الفرص والطلبات',
+    'clients': 'إدارة العملاء',
+    'appointments': 'رادار المواعيد',
+    'meetings': 'حجز القاعات',
+    'payroll': 'مسيرات الرواتب',
+    'leaverequests': 'إدارة الإجازات',
+    'chartofaccounts': 'دليل الحسابات',
+    'journalentries': 'قيود اليومية',
+    'paymentvouchers': 'سندات الصرف',
+    'receiptvouchers': 'سندات القبض',
+    'financialreports': 'التقارير المالية والختامية',
+    'usersmanagement': 'المستخدمين والصلاحيات',
+    'companyidentity': 'هوية الشركة والبراند',
+    'settings.checklists': 'الدستور التشغيلي',
+    'rolespermissions': 'الأدوار والمسؤوليات',
+    'workhours': 'ساعات الدوام الرسمي',
+    'templates': 'مكتبة القوالب',
 
     // 2. إحصائيات لوحة التحكم (Dashboard Stats)
     'dashboard.stats.revenue': 'إجمالي الإيرادات',
@@ -53,11 +77,6 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.missions': 'المهام المعلقة',
 
     // 3. إدارة العملاء (CRM & Clients)
-    'clients': 'إدارة العملاء',
-    'leads': 'الفرص والطلبات',
-    'appointments': 'رادار المواعيد',
-    'meetings': 'حجز القاعات',
-    'visitsdossier': 'سجل تفاعل العملاء',
     'clients.title': 'قاعدة بيانات العملاء',
     'clients.addnew': 'تسجيل عميل جديد',
     'clients.table.profile': 'ملف العميل',
@@ -68,8 +87,6 @@ const translations: Record<Language, Record<string, string>> = {
     'clients.finance': 'كشف الحساب',
 
     // 4. المشاريع والمقايسات (Projects & BOQ)
-    'activeprojects': 'المشاريع النشطة',
-    'boqexplorer': 'جدول الكميات والميزانية',
     'projects.title': 'إدارة المشاريع الهندسية',
     'projects.addnew': 'إضافة مشروع',
     'projects.contracting': 'قسم التنفيذ',
@@ -84,10 +101,6 @@ const translations: Record<Language, Record<string, string>> = {
     'projects.noactiveprojects': 'لا يوجد مشاريع جارية حالياً.',
 
     // 5. المقاولات والميدان (Construction & Field)
-    'fieldradar': 'رادار العمليات الميدانية',
-    'workgroups': 'فرق وأطقم العمل',
-    'equipment': 'المعدات والآليات',
-    'fieldlogs': 'سجلات الإنجاز الميداني',
     'construction.radar': 'رادار الميدان الإنشائي',
     'construction.radar.desc': 'تنسيق أطقم العمل والمعدات وتتبع حركة المهندسين في المواقع',
     'construction.groups': 'تكوين أطقم العمل',
@@ -99,8 +112,6 @@ const translations: Record<Language, Record<string, string>> = {
     // 6. الموارد البشرية والرواتب (HR & Payroll)
     'staffrecords': 'شؤون الموظفين',
     'attendance': 'بصمة الحضور والغياب',
-    'payroll': 'مسيرات الرواتب',
-    'leaverequests': 'إدارة الإجازات',
     'hr.title': 'الموارد البشرية والامتثال',
     'hr.description': 'إدارة شؤون الموظفين والامتثال الكامل لقانون العمل الكويتي',
     'hr.hire': 'توظيف جديد',
@@ -108,30 +119,24 @@ const translations: Record<Language, Record<string, string>> = {
     'hr.payrolltitle': 'كشوف الرواتب الشهرية',
     'hr.leaverequeststitle': 'طلبات الإجازات الرسمية',
 
-    // 7. المحاسبة والمالية (Accounting)
-    'chartofaccounts': 'دليل الحسابات',
-    'journalentries': 'قيود اليومية',
-    'paymentvouchers': 'سندات الصرف',
-    'receiptvouchers': 'سندات القبض',
-    'financialreports': 'التقارير المالية والختامية',
-
-    // 8. التقارير والرقابة (Reports Hub)
+    // 7. التقارير والرقابة (Reports Hub)
     'reports.hub.title': 'مركز التقارير والرقابة',
     'reports.hub.description': 'تحليل الأداء التشغيلي والمالي والامتثال القانوني للمنشأة',
     'reports.executive.title': 'التقرير التنفيذي الشامل',
     'reports.analytics.title': 'رادار الأداء المالي',
 
-    // 9. الإعدادات وقواعد العمل (Settings)
-    'usersmanagement': 'المستخدمين والصلاحيات',
-    'companyidentity': 'هوية الشركة والبراند',
-    'settings.checklists': 'الدستور التشغيلي',
-    'rolespermissions': 'الأدوار والمسؤوليات',
-    'workhours': 'ساعات الدوام الرسمي',
-    'templates': 'مكتبة القوالب',
+    // 8. الإعدادات وقواعد العمل (Settings)
     'managecompanydata': 'إدارة بيانات المنشأة والسجلات الرسمية',
     'settings.checklists.desc': 'إدارة القواعد المرجعية، المسارات الفنية، والمقايسات القياسية',
+    'settings.enterprise.desc': 'لوحة تحكم إعدادات المنشأة والرقابة النظامية',
+    'settings.users.desc': 'إدارة حسابات الدخول، تعيين الأدوار، وتفعيل الموظفين',
+    'settings.roles.desc': 'تعيين حدود الوصول وتوزيع المسؤوليات على مصفوفة الأدوار',
+    'settings.workhours.desc': 'ضبط ساعات الدوام الرسمي، الفترات، والعطلات الرسمية',
+    'settings.templates.desc': 'بناء وإدارة قوالب عروض الأسعار، العقود، والمقايسات',
+    'settings.profile.desc': 'تعديل بيانات الحساب الشخصي وتغيير كلمة المرور',
+    'settings.configure': 'إعداد المورد',
 
-    // 10. الكلمات الشائعة (Common)
+    // 9. الكلمات الشائعة (Common)
     'common.search': 'بحث...',
     'common.filter': 'تصفية',
     'common.save': 'حفظ البيانات',
@@ -153,7 +158,7 @@ const translations: Record<Language, Record<string, string>> = {
     'common.active': 'تم التنشيط بنجاح',
     'common.completed': 'تم الإنجاز بنجاح',
 
-    // 11. حالات النظام (Statuses)
+    // 10. حالات النظام (Statuses)
     'status.active': 'نشط',
     'status.completed': 'مكتمل',
     'status.pending': 'بانتظار الإجراء',
@@ -177,11 +182,25 @@ const translations: Record<Language, Record<string, string>> = {
     'inventory': 'Inventory',
     'ai.hub': 'AI Assistant',
     'settings': 'Settings',
+    'logout': 'Logout',
+    'userprofile': 'Profile',
+    'devconsole': 'Dev Console',
+    'details': 'Details',
+    'transactions': 'Transactions',
+    'reports': 'Reports',
+    'activeprojects': 'Active Projects',
+    'boqexplorer': 'BOQ Explorer',
+    'fieldradar': 'Field Radar',
+    'workgroups': 'Work Groups',
+    'equipment': 'Equipment',
+    'fieldlogs': 'Field Logs',
     'common.search': 'Search...',
     'common.save': 'Save',
     'common.cancel': 'Cancel',
-    'dashboard.stats.revenue': 'Total Revenue',
-    'dashboard.units.kwd': 'KWD',
+    'common.add': 'Add New',
+    'common.edit': 'Edit',
+    'common.delete': 'Delete',
+    'common.confirm': 'Confirm',
     'status.active': 'Active',
     'status.completed': 'Completed',
   }
@@ -212,7 +231,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const t = (key: string) => {
     if (!key) return '';
     const lowerKey = key.toLowerCase();
-    // البحث أولاً بالمفتاح الصغير، ثم بالمفتاح الأصلي كخيار احتياطي
+    // البحث أولاً بالمفتاح الصغير كمرجع موحد، ثم بالمفتاح الأصلي كخيار احتياطي
     return translations[lang][lowerKey] || translations[lang][key] || key;
   };
 

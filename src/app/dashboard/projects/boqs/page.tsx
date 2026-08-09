@@ -44,7 +44,8 @@ export default function BOQExplorerPage() {
 
   return (
     <div className="w-full space-y-6 text-start animate-in fade-in duration-500" dir={dir}>
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-6">
+      {/* Unified Header Design */}
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-6 text-start">
         <div className="flex items-center gap-4 text-start">
           <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/5">
             <FileSpreadsheet className="h-8 w-8" />
@@ -75,9 +76,9 @@ export default function BOQExplorerPage() {
             <Table>
                <TableHeader className="bg-slate-50/50">
                   <TableRow className="border-b-0">
-                     <TableHead className="py-5 ps-10 text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">رقم المقايسة</TableHead>
+                     <TableHead className="py-5 ps-10 text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'رقم المقايسة' : 'BOQ Number'}</TableHead>
                      <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('clients')}</TableHead>
-                     <TableHead className="text-end text-[10px] font-black uppercase text-slate-500 tracking-widest">الميزانية</TableHead>
+                     <TableHead className="text-end text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'الميزانية' : 'Budget'}</TableHead>
                      <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('common.status')}</TableHead>
                      <TableHead className="pe-10"></TableHead>
                   </TableRow>
@@ -106,7 +107,7 @@ export default function BOQExplorerPage() {
                            "font-black px-3 py-1 rounded-lg border-0 shadow-sm text-[9px] uppercase", 
                            boq.status === 'approved' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
                          )}>
-                            {boq.status}
+                            {t('status.' + boq.status)}
                          </Badge>
                       </TableCell>
                       <TableCell className="pe-10 text-end">

@@ -70,7 +70,7 @@ export function BreadcrumbNav() {
     
     const key = segmentMap[sLower] || sLower;
     const translated = t(key);
-    // العودة للمفتاح الأصلي بـ Capital Case في حال عدم وجود ترجمة
+    // العودة للمفتاح الأصلي في حال عدم وجود ترجمة
     return translated !== key ? translated : sLower.charAt(0).toUpperCase() + sLower.slice(1);
   };
 
