@@ -18,8 +18,8 @@ export default function SettingsHubPage() {
   const settingsCards = [
     {
       id: 'company',
-      title: t('companyIdentity'),
-      description: t('manageCompanyData'),
+      title: t('companyidentity'),
+      description: t('managecompanydata'),
       icon: Building2,
       color: 'text-emerald-600',
       bg: 'bg-emerald-50',
@@ -28,8 +28,8 @@ export default function SettingsHubPage() {
     },
     {
       id: 'users',
-      title: t('usersManagement'),
-      description: t('settings.users.desc'),
+      title: t('usersmanagement'),
+      description: t('users.management'),
       icon: Users,
       color: 'text-orange-600',
       bg: 'bg-orange-50',
@@ -38,7 +38,7 @@ export default function SettingsHubPage() {
     },
     {
       id: 'checklists',
-      title: t('checklists'),
+      title: t('settings.checklists'),
       description: t('settings.checklists.desc'),
       icon: Database,
       color: 'text-primary',
@@ -49,7 +49,7 @@ export default function SettingsHubPage() {
     {
       id: 'templates',
       title: t('templates'),
-      description: t('settings.templates.desc'),
+      description: t('templatesdesc'),
       icon: LayoutTemplate,
       color: 'text-blue-600',
       bg: 'bg-blue-50',
@@ -58,8 +58,8 @@ export default function SettingsHubPage() {
     },
     {
       id: 'roles',
-      title: t('rolesPermissions'),
-      description: t('settings.roles.desc'),
+      title: t('rolespermissions'),
+      description: t('rolespermissions'),
       icon: ShieldCheck,
       color: 'text-indigo-600',
       bg: 'bg-indigo-50',
@@ -68,8 +68,8 @@ export default function SettingsHubPage() {
     },
     {
       id: 'work-hours',
-      title: t('workHours'),
-      description: t('settings.workHours.desc'),
+      title: t('workhours'),
+      description: t('workhours'),
       icon: Clock,
       color: 'text-amber-600',
       bg: 'bg-amber-50',
@@ -78,8 +78,8 @@ export default function SettingsHubPage() {
     },
     {
       id: 'profile',
-      title: t('profile'),
-      description: t('settings.profile.desc'),
+      title: t('userprofile'),
+      description: t('userprofile'),
       icon: UserCog,
       color: 'text-blue-600',
       bg: 'bg-blue-50',
@@ -90,15 +90,19 @@ export default function SettingsHubPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500" dir={dir}>
-      <div className="text-start">
-        <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
-          <Settings2 className="h-10 w-10 text-primary" />
-          {t('settings')}
-        </h1>
-        <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic text-start">
-          {t('settings.enterprise.desc')}
-        </p>
-      </div>
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-6 text-start">
+        <div className="flex items-center gap-4 text-start">
+          <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/5">
+            <Settings2 className="h-8 w-8" />
+          </div>
+          <div className="text-start">
+            <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{t('settings')}</h1>
+            <p className="text-xs font-bold text-muted-foreground italic mt-0.5 text-start">
+               {isRtl ? 'إدارة تفضيلات النظام، الهوية البصرية، وقواعد العمل الأساسية.' : 'Manage system preferences and organization settings.'}
+            </p>
+          </div>
+        </div>
+      </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {settingsCards.map((card) => (
@@ -118,7 +122,7 @@ export default function SettingsHubPage() {
                 {card.description}
               </p>
               <div className="flex items-center gap-2 text-primary font-black text-sm group-hover:gap-4 transition-all">
-                {t('settings.configure')}
+                {isRtl ? 'ضبط الإعدادات' : 'Configure'}
                 <ArrowLeft className={cn("h-4 w-4", !isRtl && "rotate-180")} />
               </div>
             </CardContent>

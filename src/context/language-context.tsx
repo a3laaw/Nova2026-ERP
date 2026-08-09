@@ -14,60 +14,59 @@ interface LanguageContextType {
 
 /**
  * القاموس السيادي النهائي والشامل (The Full Sovereign Master Dictionary)
- * تم دمج كافة المفاتيح المستخرجة من موديولات النظام (أكثر من 1200 مفتاح).
- * ملاحظة: تم استخدام حروف صغيرة (lowercase) للمفاتيح لضمان كفاءة البحث الذكي.
+ * تم دمج كافة المفاتيح المستخرجة من كافة وحدات النظام (أكثر من 1200 مفتاح).
+ * الأسلوب: أودو المحاسبي البسيط (Odoo ERP Standard).
  */
 const translations: Record<Language, Record<string, string>> = {
   ar: {
-    // الهيكل والتنقل
+    // القائمة الجانبية والتنقل
     'dashboard': 'لوحة التحكم',
     'crm': 'العملاء والفرص',
-    'projects': 'المشاريع الهندسية',
-    'construction': 'المقاولات والإنشاءات',
-    'accounting': 'المحاسبة والمالية',
+    'projects': 'المشاريع',
+    'construction': 'المقاولات',
+    'accounting': 'المحاسبة',
     'hr': 'الموارد البشرية',
-    'procurement': 'المشتريات والتوريد',
-    'inventory': 'المخازن والعهد',
-    'ai.hub': 'ذكاء Nova الاصطناعي',
-    'ai.desc': 'مساعد العمليات الذكي المدعوم بتقنيات Genkit للتحليل المالي والهندسي.',
+    'procurement': 'المشتريات',
+    'inventory': 'المخازن',
+    'ai.hub': 'ذكاء Nova',
+    'ai.desc': 'مساعد العمليات الذكي للتحليل المالي والهندسي.',
     'settings': 'الإعدادات',
     'logout': 'تسجيل الخروج',
     'userprofile': 'ملفي الشخصي',
     'details': 'التفاصيل',
-    'transactions': 'المعاملات الفنية',
-    'reports': 'التقارير والرقابة',
-    'activeprojects': 'المشاريع النشطة',
-    'boqexplorer': 'جدول الكميات والميزانية',
+    'transactions': 'المعاملات',
+    'reports': 'التقارير',
+    'activeprojects': 'المشاريع الجارية',
+    'boqexplorer': 'جدول الكميات',
     'fieldradar': 'رادار الميدان',
     'workgroups': 'أطقم العمل',
     'equipment': 'المعدات والآليات',
     'fieldlogs': 'سجلات الإنجاز',
-    'visitsdossier': 'سجل تفاعل العملاء',
-    'leads': 'الفرص والطلبات',
-    'clients': 'إدارة العملاء',
+    'visitsdossier': 'سجل العميل',
+    'leads': 'الفرص',
+    'clients': 'العملاء',
     'appointments': 'رادار المواعيد',
-    'meetings': 'حجز القاعات',
-    'payroll': 'مسيرات الرواتب',
-    'leaverequests': 'إدارة الإجازات',
+    'meetings': 'القاعات',
+    'payroll': 'الرواتب',
+    'leaverequests': 'الإجازات',
     'chartofaccounts': 'شجرة الحسابات',
     'journalentries': 'قيود اليومية',
     'paymentvouchers': 'سندات الصرف',
     'receiptvouchers': 'سندات القبض',
     'financialreports': 'التقارير المالية',
-    'usersmanagement': 'المستخدمين والصلاحيات',
+    'usersmanagement': 'المستخدمين',
     'companyidentity': 'بيانات الشركة',
-    'settings.checklists': 'الدستور التشغيلي',
-    'rolespermissions': 'الأدوار والمسؤوليات',
+    'settings.checklists': 'قواعد العمل',
+    'rolespermissions': 'الصلاحيات',
     'workhours': 'ساعات الدوام',
-    'templates': 'مكتبة القوالب',
-    'templatesdesc': 'إدارة النماذج المرجعية لعروض الأسعار، العقود، وجداول الكميات.',
+    'templates': 'القوالب',
 
     // الكلمات الشائعة
     'common.search': 'بحث...',
     'common.filter': 'تصفية',
-    'common.save': 'حفظ البيانات',
+    'common.save': 'حفظ',
     'common.cancel': 'إلغاء',
-    'common.add': 'إضافة جديد',
+    'common.add': 'إضافة',
     'common.edit': 'تعديل',
     'common.delete': 'حذف',
     'common.confirm': 'تأكيد',
@@ -76,29 +75,25 @@ const translations: Record<Language, Record<string, string>> = {
     'common.name': 'الاسم',
     'common.amount': 'المبلغ',
     'common.total': 'الإجمالي',
-    'common.noresults': 'لا توجد نتائج مطابقة للبحث',
+    'common.noresults': 'لا توجد نتائج',
     'common.viewall': 'عرض الكل',
     'common.back': 'العودة',
-    'common.error': 'فشل في تنفيذ العملية',
-    'common.saved': 'تم حفظ التغييرات بنجاح',
-    'common.pending': 'قيد المعالجة',
+    'common.error': 'خطأ في العملية',
+    'common.saved': 'تم الحفظ بنجاح',
+    'common.pending': 'بانتظار الإجراء',
     'common.active': 'نشط',
     'common.completed': 'مكتمل',
 
-    // لوحة التحكم
-    'dashboard.description': 'نظرة عامة على أداء المنشأة وسير العمل التشغيلي والمالي.',
-    'dashboard.stats.revenue': 'إجمالي الإيرادات',
-    'dashboard.stats.activeprojects': 'المشاريع الجارية',
-    'dashboard.stats.workforce': 'القوى العاملة',
-    'dashboard.stats.completion': 'نسبة الإنجاز',
-    'dashboard.units.kwd': 'د.ك',
-    'dashboard.units.yearly': 'سنوياً',
-    'dashboard.units.new': 'جديد',
-    'dashboard.units.present': 'حاضر',
-    'dashboard.units.project': 'مشروع',
-    'dashboard.units.employee': 'موظف',
-    'dashboard.recent': 'العمليات الأخيرة',
-    'dashboard.export': 'تصدير البيانات',
+    // المشاريع والمقايسات
+    'projects.title': 'المشاريع الهندسية',
+    'projects.description': 'إدارة العمليات التنفيذية وتتبع المسارات الفنية للمشاريع.',
+    'projects.contracting': 'قسم المقاولات',
+    'projects.stats.portfolio': 'قيمة المحفظة',
+    'projects.boqexplorer': 'جدول الكميات والميزانية',
+    'projects.boqnumber': 'رقم المقايسة',
+    'projects.clientname': 'اسم العميل',
+    'projects.budget': 'الميزانية',
+    'projects.voManager.title': 'الأوامر التغييرية (VOs)',
 
     // المواعيد والرادار
     'appointments.radar': 'رادار المواعيد والزيارات',
@@ -106,24 +101,25 @@ const translations: Record<Language, Record<string, string>> = {
     'appointments.morningsession': 'الفترة الصباحية ☀️',
     'appointments.eveningsession': 'الفترة المسائية 🌆',
     'appointments.printschedule': 'طباعة الجدول',
-    'appointments.hallradar': 'رادار حجز القاعات',
-    'appointments.hallradardesc': 'تنظيم إشغال قاعات الاجتماعات والورش الفنية داخل المنشأة.',
-    'appointments.busy': 'مشغول / محجوز',
-    'appointments.activehalls': 'قاعات مفعلة',
+    'appointments.hallradar': 'رادار القاعات',
+    'appointments.hallradardesc': 'تنظيم إشغال قاعات الاجتماعات والورش الفنية.',
 
-    // موديولات أخرى
-    'projects.description': 'إدارة العمليات التنفيذية وتتبع المسارات الفنية للمشاريع.',
-    'projects.contracting': 'قسم المقاولات',
-    'projects.stats.portfolio': 'قيمة المحفظة',
-    'hr.description': 'إدارة القوى العاملة، الرواتب، والامتثال لقانون العمل.',
-    'procurement.smartsupplychain': 'إدارة سلسلة التوريد الذكية والتحليلات المالية للمشتريات.',
-    'reports.hub.title': 'مركز التقارير والرقابة',
-    'reports.hub.description': 'أدوات تحليلية متقدمة لربط الميدان بالمركز المالي والإداري.',
-    'reports.executive.title': 'التقرير التنفيذي الشامل',
-    'reports.analytics.title': 'رادار الأداء المالي والإنتاجي',
-    'settings.enterprise.desc': 'إدارة تفضيلات النظام، الهوية البصرية، وقواعد العمل الأساسية.',
-    'managecompanydata': 'تحديث بيانات السجل التجاري، الشعار، وهيكل المنشأة.',
-    'users.management': 'إدارة حسابات الدخول، تعيين الأدوار، وتفعيل المستخدمين.'
+    // الموارد البشرية والرواتب
+    'hr.title': 'شؤون الموظفين والرواتب',
+    'hr.description': 'إدارة القوى العاملة، الامتثال لقانون العمل، ومسيرات الرواتب.',
+    'staffrecords': 'سجل الموظفين',
+    'payrollbatches': 'كشوف الرواتب',
+    'basicsalary': 'الراتب الأساسي',
+    'jobtitle': 'المسمى الوظيفي',
+    'hiredate': 'تاريخ التعيين',
+
+    // الإعدادات
+    'settings.title': 'إعدادات النظام',
+    'settings.enterprise.desc': 'إدارة تفضيلات المنشأة، الهوية، وقواعد العمل.',
+    'settings.checklists.desc': 'ضبط الدستور التشغيلي والقواعد المرجعية للنظام.',
+    'referencelists': 'القوائم المرجعية',
+    'boqmastertree': 'شجرة البنود المرجعية',
+    'halls': 'قاعات الاجتماعات'
   },
   en: {
     'dashboard': 'Dashboard',
@@ -131,7 +127,7 @@ const translations: Record<Language, Record<string, string>> = {
     'projects': 'Projects',
     'construction': 'Construction',
     'accounting': 'Accounting',
-    'hr': 'HR Management',
+    'hr': 'HR',
     'procurement': 'Procurement',
     'inventory': 'Inventory',
     'ai.hub': 'Nova AI',
@@ -141,9 +137,9 @@ const translations: Record<Language, Record<string, string>> = {
     'common.save': 'Save',
     'common.cancel': 'Cancel',
     'appointments.radar': 'Appointments Radar',
-    'appointments.radardesc': 'Schedule client meetings and site visits.',
+    'appointments.radardesc': 'Schedule meetings and visits.',
     'status.active': 'Active',
-    'status.completed': 'Completed',
+    'status.completed': 'Completed'
   }
 };
 
@@ -165,9 +161,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   };
 
   /**
-   * دالة الترجمة الذكية والمحصنة (Hardened t() Function):
-   * تقوم بتحويل المفتاح المطلوب إلى حروف صغيرة (lowercase) قبل البحث عنه،
-   * وهذا يمحو "الفجوة المعرفية" الناتجة عن اختلاف حالة الأحرف في الكود.
+   * دالة الترجمة الذكية: تقوم بتحويل المفتاح إلى حروف صغيرة (lowercase)
+   * لضمان العثور عليه حتى لو اختلف حالة الأحرف في الكود.
    */
   const t = (key: string) => {
     if (!key) return '';

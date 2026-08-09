@@ -21,9 +21,8 @@ import {
   YAxis, 
   CartesianGrid,
   ResponsiveContainer,
-  Tooltip
 } from "recharts";
-import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/context/language-context";
 import { useRouter } from 'next/navigation';
@@ -43,11 +42,11 @@ export default function DashboardPage() {
 
   const chartConfig = {
     revenue: {
-      label: "Revenue",
+      label: isRtl ? "الإيرادات" : "Revenue",
       color: "hsl(var(--primary))",
     },
     expenses: {
-      label: "Expenses",
+      label: isRtl ? "المصروفات" : "Expenses",
       color: "hsl(var(--secondary))",
     },
   } satisfies ChartConfig;
@@ -183,7 +182,7 @@ export default function DashboardPage() {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 10, fontWeight: 700 }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 10, fontWeight: 700 }} />
-                <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
+                <ChartTooltip content={<ChartTooltipContent />} />
                 <Bar dataKey="revenue" fill="var(--color-revenue)" radius={[4, 4, 0, 0]} barSize={20} />
                 <Bar dataKey="expenses" fill="var(--color-expenses)" radius={[4, 4, 0, 0]} barSize={20} />
               </BarChart>
