@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -84,7 +83,7 @@ export default function ProjectsPage() {
          <Card className="rounded-lg shadow-sm border p-4 bg-white flex items-center justify-between group hover:shadow-md transition-all">
             <div className="text-start">
                <p className="text-[10px] font-bold text-slate-400 uppercase">{t('projects.stats.portfolio')}</p>
-               <h3 className="text-xl font-bold text-slate-900">2.4M <span className="text-xs font-medium text-slate-400">KWD</span></h3>
+               <h3 className="text-xl font-bold text-slate-900">2.4M <span className="text-xs font-medium text-slate-400">{t('dashboard.units.kwd')}</span></h3>
             </div>
             <div className="h-10 w-10 rounded-lg bg-primary/5 text-primary flex items-center justify-center shrink-0"><Wallet className="h-5 w-5" /></div>
          </Card>
@@ -108,7 +107,7 @@ export default function ProjectsPage() {
         <div className="p-3 bg-slate-50/30 border-b flex items-center justify-between">
            <div className="relative w-full max-w-sm">
               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-              <Input placeholder={t('common.search')} className="ps-9 h-9 rounded-md bg-white border-slate-200 text-sm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+              <Input placeholder={t('common.search')} className="ps-9 h-9 rounded-md bg-white border-slate-200 text-sm font-bold" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
            </div>
            <Button variant="outline" size="sm" className="h-9 px-4 border-slate-200 font-bold text-xs"><Filter className="h-3.5 w-3.5 me-2" /> {t('common.filter')}</Button>
         </div>
@@ -142,19 +141,28 @@ export default function ProjectsPage() {
                        </div>
                     </TableCell>
                     <TableCell className="text-start">
-                       <Badge variant="outline" className="bg-blue-50/50 text-blue-600 font-bold text-[9px] uppercase px-2 h-5 border-0">42% Done</Badge>
+                       <Badge variant="outline" className="bg-blue-50/50 text-blue-600 font-black text-[9px] uppercase px-3 h-5 border-0 shadow-sm">
+                          {t('projects.table.percentDone').replace('{pct}', '42')}
+                       </Badge>
                     </TableCell>
                     <TableCell className="text-end">
                        <div className="flex flex-col text-end">
-                          <span className="font-bold text-xs text-slate-900">15,400 <span className="text-[8px] opacity-40">KWD</span></span>
-                          <span className="text-[8px] font-bold text-emerald-600">3 IPCs</span>
+                          <span className="font-black text-xs text-slate-900">15,400 <span className="text-[8px] opacity-40">{t('dashboard.units.kwd')}</span></span>
+                          <span className="text-[8px] font-black text-emerald-600">
+                             {t('projects.table.ipcCount').replace('{count}', '3')}
+                          </span>
                        </div>
                     </TableCell>
                     <TableCell className="text-start">
-                       <Badge className={cn("font-bold px-2 h-5 rounded-md border-0 text-[9px] uppercase", proj.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600')}>{proj.status}</Badge>
+                       <Badge className={cn(
+                         "font-black px-3 py-0.5 rounded-md border-0 text-[8px] uppercase", 
+                         proj.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
+                       )}>
+                          {t('status.' + proj.status)}
+                       </Badge>
                     </TableCell>
                     <TableCell className="pe-6 text-end">
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-300 rounded-md">
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-300 rounded-md group-hover:text-primary transition-all">
                         <ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} />
                       </Button>
                     </TableCell>
