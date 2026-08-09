@@ -3,7 +3,6 @@
 import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { 
   TrendingUp, 
   Users, 
@@ -12,9 +11,6 @@ import {
   Plus,
   Activity,
   FileText,
-  ShieldAlert,
-  ArrowRight,
-  Clock,
   LayoutDashboard
 } from "lucide-react";
 import { 
@@ -29,11 +25,6 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
 import { cn } from "@/lib/utils";
 import { useAuthContext } from "@/context/auth-context";
 import { useLanguage } from "@/context/language-context";
-import { useCollection, useFirestore } from '@/firebase';
-import { collection, query, orderBy, where } from 'firebase/firestore';
-import { paths } from '@/firebase/multi-tenant';
-import { Appointment } from '@/types/appointment';
-import { startOfDay, isBefore, parseISO, format, differenceInDays } from 'date-fns';
 import { useRouter } from 'next/navigation';
 
 const data = [
@@ -46,85 +37,66 @@ const data = [
 ];
 
 export default function DashboardPage() {
-  const { globalUser } = useAuthContext();
-  const { t, isRtl, dir } = useLanguage();
-  const db = useFirestore();
+  const { t, dir } = useLanguage();
   const router = useRouter();
 
-  const companyId = globalUser?.companyId;
-  const isAdmin = globalUser?.roleCode === 'ADMIN' || globalUser?.role?.toUpperCase() === 'admin';
-
-  const chartConfig = useMemo(() => ({
-    revenue: { label: t('dashboard.chart.revenue'), color: "#039BE5" },
-    expenses: { label: t('dashboard.chart.expenses'), color: "#FFA000" },
-  } satisfies ChartConfig), [t]);
-
-  const apptsQuery = useMemo(() => {
-    if (!companyId || !db) return null;
-    return query(
-      collection(db, paths.appointments(companyId)),
-      where('status', '==', 'scheduled'),
-      orderBy('start', 'asc')
-    );
-  }, [db, companyId]);
-
-  const { data: allScheduled } = useCollection<Appointment>(apptsQuery);
-
-  const overdueMissions = useMemo(() => {
-    const today = startOfDay(new Date());
-    let list = (allScheduled || []).filter(a => isBefore(parseISO(a.start), today));
-    if (!isAdmin && globalUser?.employeeId) {
-      list = list.filter(a => a.engineerId === globalUser.employeeId);
-    }
-    return list;
-  }, [allScheduled, isAdmin, globalUser?.employeeId]);
+  const chartConfig = {
+    revenue: {
+      label: "Revenue",
+      color: "hsl(var(--chart-1))",
+    },
+    expenses: {
+      label: "Expenses",
+      color: "hsl(var(--chart-2))",
+    },
+  } satisfies ChartConfig;
 
   const stats = [
     {
-      title: t('dashboard.stats.completion'),
-      value: "84%",
-      change: `5%+`,
-      unit: t('dashboard.units.yr'),
-      icon: TrendingUp,
-      color: "text-emerald-500",
-      bg: "bg-emerald-50",
-    },
-    {
-      title: t('dashboard.stats.workforce'),
-      value: "142",
-      change: `98%`,
-      unit: t('dashboard.units.present'),
-      icon: Users,
-      color: "text-[#FFCA28]",
-      bg: "bg-yellow-50",
-    },
-    {
-      title: t('dashboard.stats.activeprojects'),
-      value: "24",
-      change: `2+`,
-      unit: t('dashboard.units.new'),
-      icon: Briefcase,
-      color: "text-orange-500",
-      bg: "bg-orange-50",
-    },
-    {
       title: t('dashboard.stats.revenue'),
       value: "1.2M",
-      change: `12.5%+`,
+      change: t('dashboard.units.yearly'),
       unit: t('dashboard.units.kwd'),
       icon: DollarSign,
       color: "text-blue-500",
       bg: "bg-blue-50",
     },
+    {
+      title: t('dashboard.stats.activeprojects'),
+      value: "24",
+      change: t('dashboard.units.new'),
+      unit: t('dashboard.units.project'),
+      icon: Briefcase,
+      color: "text-orange-500",
+      bg: "bg-orange-50",
+    },
+    {
+      title: t('dashboard.stats.workforce'),
+      value: "142",
+      change: t('dashboard.units.present'),
+      unit: t('dashboard.units.employee'),
+      icon: Users,
+      color: "text-yellow-500",
+      bg: "bg-yellow-50",
+    },
+    {
+      title: t('dashboard.stats.completion'),
+      value: "84%",
+      change: t('dashboard.units.yearly'),
+      unit: "",
+      icon: TrendingUp,
+      color: "text-emerald-500",
+      bg: "bg-emerald-50",
+    },
   ];
 
   return (
     <div className="space-y-6 w-full animate-in fade-in" dir={dir}>
-      {/* Header الموحد للداشبورد */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-6">
+      {/* Header section as requested */}
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-6">
         <div className="flex gap-3">
           <Button onClick={() => router.push('/dashboard/clients/new')} className="bg-primary text-white h-11 px-6 rounded-xl font-black shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all">
-            {t('projects.addNew')} <Plus className="ms-2 h-4 w-4" />
+            {t('projects.addnew')} <Plus className="ms-2 h-4 w-4" />
           </Button>
           <Button variant="outline" className="h-11 px-6 rounded-xl font-black border-2 bg-white text-slate-400 gap-2">
             {t('dashboard.export')} <FileText className="h-4 w-4" />
@@ -140,9 +112,9 @@ export default function DashboardPage() {
             <LayoutDashboard className="h-8 w-8" />
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* المحتوى الرئيسي */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, i) => (
           <Card key={i} className="rounded-2xl shadow-sm border-slate-100 bg-white text-start">
@@ -152,7 +124,7 @@ export default function DashboardPage() {
                   <stat.icon className={cn("h-6 w-6", stat.color)} />
                 </div>
                 <div className="text-end">
-                   <span className={cn("text-xs font-black", stat.color)}>{stat.unit} {stat.change}</span>
+                   <span className={cn("text-xs font-black", stat.color)}>{stat.change}</span>
                    <div className="h-1 w-12 bg-slate-100 rounded-full mt-1 overflow-hidden">
                       <div className={cn("h-full", stat.color.replace('text', 'bg'))} style={{ width: '70%' }} />
                    </div>
@@ -160,7 +132,7 @@ export default function DashboardPage() {
               </div>
               <div className="text-start">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.title}</p>
-                <h3 className="text-2xl font-black text-slate-900 mt-1">{stat.value} <span className="text-xs font-bold text-slate-400">{stat.title === t('dashboard.stats.revenue') ? t('dashboard.units.kwd') : ''}</span></h3>
+                <h3 className="text-2xl font-black text-slate-900 mt-1">{stat.value} <span className="text-xs font-bold text-slate-400">{stat.unit}</span></h3>
               </div>
             </CardContent>
           </Card>
@@ -168,8 +140,8 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* النشاطات الأخيرة */}
-        <Card className="rounded-2xl border-slate-100 shadow-sm overflow-hidden bg-white">
+        {/* Recent Activities */}
+        <Card className="rounded-2xl border-slate-100 shadow-sm overflow-hidden bg-white text-start">
           <CardHeader className="px-6 py-4 border-b bg-slate-50/50 flex flex-row items-center justify-between">
             <CardTitle className="text-sm font-black text-slate-900">{t('dashboard.recent')}</CardTitle>
             <Activity className="h-4 w-4 text-slate-300" />
@@ -177,9 +149,9 @@ export default function DashboardPage() {
           <CardContent className="p-0">
             <div className="divide-y divide-slate-50">
               {[
-                { title: t('dashboard.recent.quoteApproved'), detail: "Project Alpha", time: "5m", color: "bg-blue-500" },
-                { title: t('dashboard.recent.attendanceLogged'), detail: "Staff present 120", time: "1h", color: "bg-orange-500" },
-                { title: t('dashboard.recent.paymentVoucher'), detail: "Contract #2291", time: "3h", color: "bg-emerald-500" },
+                { title: "اعتماد ميزانية مشروع صباح السالم", detail: "نظام المقايسات", time: "5m", color: "bg-blue-500" },
+                { title: "تسجيل حضور طاقم العمل الميداني", detail: "نظام الحضور", time: "1h", color: "bg-orange-500" },
+                { title: "إصدار سند صرف للمورد", detail: "النظام المالي", time: "3h", color: "bg-emerald-500" },
               ].map((activity, i) => (
                 <div key={i} className="flex items-start gap-3 p-4 hover:bg-slate-50/50 transition-colors">
                   <div className={cn("h-1.5 w-1.5 rounded-full mt-1.5 shrink-0", activity.color)} />
@@ -192,15 +164,15 @@ export default function DashboardPage() {
               ))}
             </div>
             <div className="p-4 bg-slate-50/30 border-t">
-              <Button variant="ghost" className="w-full h-8 text-[10px] font-black text-primary hover:bg-primary/5" onClick={() => router.push('/dashboard/reports')}>
-                {t('common.viewAll')}
+              <Button variant="ghost" className="w-full h-8 text-[10px] font-black text-primary hover:bg-primary/5">
+                {t('common.viewall')}
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* رسم بياني */}
-        <Card className="lg:col-span-2 rounded-2xl border-slate-100 shadow-sm overflow-hidden bg-white">
+        {/* Financial Chart Fixed with ChartContainer */}
+        <Card className="lg:col-span-2 rounded-2xl border-slate-100 shadow-sm overflow-hidden bg-white text-start">
           <CardHeader className="flex flex-row items-center justify-between px-6 py-4 border-b bg-slate-50/50">
             <div className="text-start">
               <CardTitle className="text-sm font-black text-slate-900">{t('accounting')}</CardTitle>
@@ -209,16 +181,18 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="p-6">
             <div className="h-[260px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#64748B", fontSize: 10, fontWeight: 700 }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: "#64748B", fontSize: 10, fontWeight: 700 }} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="revenue" fill="#039BE5" radius={[4, 4, 0, 0]} barSize={20} />
-                  <Bar dataKey="expenses" fill="#FFA000" radius={[4, 4, 0, 0]} barSize={20} />
-                </BarChart>
-              </ResponsiveContainer>
+              <ChartContainer config={chartConfig}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={data}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#64748B", fontSize: 10, fontWeight: 700 }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: "#64748B", fontSize: 10, fontWeight: 700 }} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="revenue" fill="var(--color-revenue)" radius={[4, 4, 0, 0]} barSize={20} />
+                    <Bar dataKey="expenses" fill="var(--color-expenses)" radius={[4, 4, 0, 0]} barSize={20} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
             </div>
           </CardContent>
         </Card>
