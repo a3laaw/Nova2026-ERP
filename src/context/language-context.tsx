@@ -12,10 +12,13 @@ interface LanguageContextType {
   t: (key: string) => string;
 }
 
-// القاموس الشامل والنهائي (Sovereign Master Dictionary)
+/**
+ * القاموس السيادي الموحد (Master Dictionary)
+ * تم دمج كافة المفاتيح لضمان الثبات المطلق للنظام.
+ */
 const translations: Record<Language, Record<string, string>> = {
   ar: {
-    // --- التنقل والهيكل العام ---
+    // --- 1. الهيكل العام والتنقل ---
     'dashboard': 'لوحة التحكم',
     'logout': 'تسجيل الخروج',
     'devconsole': 'لوحة المطور',
@@ -30,8 +33,9 @@ const translations: Record<Language, Record<string, string>> = {
     'accounting': 'المحاسبة',
     'inventory': 'المخازن والعهد',
     'hr': 'الموارد البشرية',
+    'procurement': 'المشتريات',
     
-    // --- لوحة التحكم (Dashboard) ---
+    // --- 2. لوحة التحكم (Dashboard) ---
     'dashboard.stats.revenue': 'إجمالي الإيرادات',
     'dashboard.stats.activeprojects': 'المشاريع الجارية',
     'dashboard.stats.workforce': 'القوى العاملة',
@@ -46,7 +50,7 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.export': 'تصدير',
     'dashboard.missions': 'المهام المطلوبة',
 
-    // --- المشاريع والمقايسات (BOQ) ---
+    // --- 3. المشاريع والمقايسات (BOQ) ---
     'projects.boqexplorer': 'جدول الكميات والميزانية',
     'projects.boqexplorer.desc': 'إدارة واعتماد جداول الكميات والميزانيات المرجعية',
     'projects.addnew': 'إضافة مشروع',
@@ -58,8 +62,10 @@ const translations: Record<Language, Record<string, string>> = {
     'projects.table.billing': 'المفوتر',
     'projects.details.radar': 'رادار التنفيذ',
     'projects.details.finance': 'المستندات والمالية',
+    'boq.workprogress': 'كميات الإنجاز (BOQ)',
+    'boq.activatetemplate': 'تنشيط المقايسة المرجعية',
 
-    // --- الميدان (Construction) ---
+    // --- 4. العمليات الميدانية (Construction) ---
     'construction.radar': 'رادار الميدان',
     'construction.radardesc': 'إدارة وتنسيق أطقم العمل والمهندسين في مواقع المشاريع الإنشائية',
     'construction.groups': 'فرق العمل',
@@ -69,38 +75,68 @@ const translations: Record<Language, Record<string, string>> = {
     'fieldradar': 'رادار الميدان',
     'workgroups': 'فرق العمل',
     'fieldlogs': 'تقارير الموقع',
+    'construction.logresources': 'توثيق الموارد والإنجاز',
 
-    // --- التقارير (Reports) ---
+    // --- 5. التقارير (Reports) ---
     'reports.hub.title': 'مركز التقارير',
     'reports.hub.description': 'تحليل القوى العاملة والامتثال والإنتاجية الميدانية',
     'reports.executive.title': 'التقرير التنفيذي',
     'reports.analytics.title': 'التحليلات الذكية',
+    'reports.stats.portfolio': 'إجمالي المحفظة',
+    'reports.stats.activeprojects': 'المشاريع الجارية',
+    'reports.stats.staff': 'القوى العاملة',
+    'reports.stats.attendance': 'انضباط الحضور',
+    'reports.charts.budgetvsexpenses': 'مقارنة الميزانية بالمصروف',
+    'reports.charts.portfoliobyactivity': 'توزيع المحفظة حسب النشاط',
+    'reports.integrity.title': 'شهادة صحة البيانات السحابية',
+    'reports.integrity.description': 'يتم التحقق من دقة هذه البيانات لحظياً عبر الربط المباشر مع سجلات الميدان والمركز المالي.',
 
-    // --- العملاء (CRM) ---
+    // --- 6. العملاء والبيع (CRM) ---
     'clients': 'العملاء',
     'leads': 'الفرص والعملاء',
     'clients.title': 'إدارة العملاء',
     'clients.addnew': 'إضافة عميل جديد',
+    'clients.registernew': 'تسجيل عميل جديد',
+    'clients.registernewdesc': 'فتح ملف تجاري جديد لربطه بالمعاملات الفنية',
     'clients.table.profile': 'بيانات العميل',
     'clients.table.staff': 'المسؤول',
     'clients.table.contact': 'الاتصال',
     'clients.table.status': 'الحالة',
+    'clients.newtransaction': 'فتح معاملة',
+    'clients.details.transactions': 'المعاملات الجارية',
+    'clients.details.location': 'موقع المشروع',
+    'clients.details.history': 'سجل التفاعل',
+    'clients.finance': 'المالية',
 
-    // --- شؤون الموظفين (HR) ---
+    // --- 7. شؤون الموظفين (HR) ---
     'staffrecords': 'الموظفون',
     'payroll': 'الرواتب',
     'leaverequests': 'الإجازات',
     'attendance': 'بصمة الحضور',
     'payrollbatches': 'مسيرات الرواتب',
+    'hr.title': 'الموظفون',
+    'hr.description': 'إدارة القوى العاملة والامتثال',
+    'hr.addnew': 'إضافة موظف جديد',
+    'hr.hire': 'تعيين موظف',
+    'hr.notfound': 'الموظف غير موجود',
 
-    // --- المحاسبة (Accounting) ---
+    // --- 8. المحاسبة والمالية (Accounting) ---
     'chartofaccounts': 'شجرة الحسابات',
     'journalentries': 'قيود اليومية',
     'paymentvouchers': 'سندات الصرف',
     'receiptvouchers': 'سندات القبض',
     'financialreports': 'التقارير المالية',
+    'accounting.smartrecon': 'مطابقة ذكية',
 
-    // --- الإعدادات (Settings) ---
+    // --- 9. المشتريات (Procurement) ---
+    'suppliers': 'الموردون',
+    'purchaseorders': 'أوامر الشراء',
+    'contracts': 'العقود',
+    'contracts.officialtitle': 'عقد اتفاق خدمات هندسية',
+    'procurement.smartsupplychain': 'إدارة سلسلة التوريد الذكية والتحليلات المالية',
+    'procurement.recentorders': 'آخر أوامر الشراء',
+
+    // --- 10. الإعدادات وقواعد العمل ---
     'companyidentity': 'بيانات الشركة',
     'usersmanagement': 'المستخدمون والصلاحيات',
     'rolespermissions': 'الأدوار والوصول',
@@ -110,8 +146,18 @@ const translations: Record<Language, Record<string, string>> = {
     'settings.checklists.desc': 'إدارة القواعد المرجعية والمسارات الفنية',
     'boqmastertree': 'شجرة BOQ الموحدة',
     'halls': 'القاعات',
+    'referencelists': 'القوائم المرجعية',
+    'systemsetup': 'إعداد النظام',
+    'orgref': 'الهيكل التنظيمي',
+    'techref': 'المسارات الفنية',
+    'georef': 'البيانات الجغرافية',
 
-    // --- Common ---
+    // --- 11. الذكاء الاصطناعي ---
+    'ai.hub': 'مركز الذكاء الاصطناعي',
+    'ai.desc': 'ذكاء عمليات تنفيذي لدعم قراراتك',
+    'aianalysis': 'تحليل الذكاء الاصطناعي',
+
+    // --- 12. كلمات شائعة (Common) ---
     'common.search': 'بحث...',
     'common.filter': 'تصفية',
     'common.save': 'حفظ',
@@ -127,7 +173,10 @@ const translations: Record<Language, Record<string, string>> = {
     'common.total': 'الإجمالي',
     'common.saved': 'تم الحفظ بنجاح',
     'common.error': 'خطأ في العملية',
-    'common.noresults': 'لا توجد نتائج'
+    'common.noresults': 'لا توجد نتائج',
+    'common.viewall': 'عرض الكل',
+    'common.back': 'العودة',
+    'common.notes': 'الملاحظات'
   },
   en: {
     'dashboard': 'Dashboard',
@@ -141,6 +190,7 @@ const translations: Record<Language, Record<string, string>> = {
     'construction': 'Construction',
     'accounting': 'Accounting',
     'hr': 'HR',
+    'procurement': 'Procurement',
     'common.search': 'Search...',
     'common.save': 'Save',
     'common.cancel': 'Cancel',
@@ -170,13 +220,15 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.dir = newLang === 'ar' ? 'rtl' : 'ltr';
   };
 
-  // دالة ترجمة ذكية غير حساسة لحالة الأحرف (Case-insensitive)
+  /**
+   * دالة الترجمة (t) غير حساسة لحالة الأحرف.
+   * تقوم بتحويل المفتاح إلى حروف صغيرة للبحث عنه في القاموس.
+   */
   const t = (key: string) => {
     if (!key) return '';
     const normalizedKey = key.toLowerCase();
     const currentTranslations = translations[lang];
     
-    // البحث عن المفتاح في القاموس المسطح
     return currentTranslations[normalizedKey] || key;
   };
 
