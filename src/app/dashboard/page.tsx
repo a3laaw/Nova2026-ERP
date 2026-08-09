@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -45,11 +44,11 @@ export default function DashboardPage() {
   const chartConfig = {
     revenue: {
       label: "Revenue",
-      color: "#ffa000",
+      color: "hsl(var(--primary))",
     },
     expenses: {
       label: "Expenses",
-      color: "#039be5",
+      color: "hsl(var(--secondary))",
     },
   } satisfies ChartConfig;
 
@@ -180,16 +179,14 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="p-6">
             <ChartContainer config={chartConfig} className="h-[280px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 10, fontWeight: 700 }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 10, fontWeight: 700 }} />
-                  <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
-                  <Bar dataKey="revenue" fill="var(--color-revenue)" radius={[4, 4, 0, 0]} barSize={20} />
-                  <Bar dataKey="expenses" fill="var(--color-expenses)" radius={[4, 4, 0, 0]} barSize={20} />
-                </BarChart>
-              </ResponsiveContainer>
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 10, fontWeight: 700 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 10, fontWeight: 700 }} />
+                <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
+                <Bar dataKey="revenue" fill="var(--color-revenue)" radius={[4, 4, 0, 0]} barSize={20} />
+                <Bar dataKey="expenses" fill="var(--color-expenses)" radius={[4, 4, 0, 0]} barSize={20} />
+              </BarChart>
             </ChartContainer>
           </CardContent>
         </Card>

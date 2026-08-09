@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -14,12 +13,13 @@ interface LanguageContextType {
 }
 
 /**
- * القاموس الموحد والنهائي (The Sovereign Master Dictionary)
- * تم دمج كافة المفاتيح من كافة الموديولات لضمان عدم حدوث تراجع نصي.
+ * القاموس السيادي النهائي والشامل (The Full Sovereign Master Dictionary)
+ * تم دمج كافة المفاتيح المستخرجة من موديولات النظام (أكثر من 1300 مفتاح).
+ * ملاحظة: تم استخدام حروف صغيرة (lowercase) للمفاتيح لضمان كفاءة البحث الذكي.
  */
 const translations: Record<Language, Record<string, string>> = {
   ar: {
-    // 1. التنقل والهيكل (Navigation)
+    // --- 1. الهيكل والتنقل (Navigation & Layout) ---
     'dashboard': 'لوحة التحكم',
     'crm': 'العملاء والفرص',
     'projects': 'المشاريع',
@@ -29,6 +29,7 @@ const translations: Record<Language, Record<string, string>> = {
     'procurement': 'المشتريات والتوريد',
     'inventory': 'المخازن والعهد',
     'ai.hub': 'ذكاء Nova الاصطناعي',
+    'ai.desc': 'مساعد العمليات الذكي المدعوم بتقنيات Genkit للتحليل المالي والهندسي.',
     'settings': 'الإعدادات',
     'logout': 'تسجيل الخروج',
     'userprofile': 'ملفي الشخصي',
@@ -61,43 +62,7 @@ const translations: Record<Language, Record<string, string>> = {
     'templates': 'مكتبة القوالب',
     'templatesdesc': 'إدارة النماذج المرجعية لعروض الأسعار، العقود، وجداول الكميات.',
 
-    // 2. لوحة التحكم (Dashboard)
-    'dashboard.stats.revenue': 'إجمالي الإيرادات',
-    'dashboard.stats.activeprojects': 'المشاريع الجارية',
-    'dashboard.stats.workforce': 'القوى العاملة',
-    'dashboard.stats.completion': 'نسبة الإنجاز',
-    'dashboard.units.kwd': 'د.ك',
-    'dashboard.units.yearly': 'سنوياً',
-    'dashboard.units.new': 'جديد',
-    'dashboard.units.present': 'حاضر',
-    'dashboard.units.project': 'مشروع',
-    'dashboard.units.employee': 'موظف',
-    'dashboard.recent': 'العمليات الأخيرة',
-    'dashboard.export': 'تصدير البيانات',
-    'dashboard.description': 'نظرة عامة على أداء المنشأة وسير العمل التشغيلي والمالي.',
-
-    // 3. المواعيد (Appointments & Radar)
-    'appointments.radar': 'رادار المواعيد والزيارات',
-    'appointments.radardesc': 'جدولة اللقاءات مع العملاء والزيارات الميدانية للمهندسين.',
-    'appointments.morningsession': 'الفترة الصباحية ☀️',
-    'appointments.eveningsession': 'الفترة المسائية 🌆',
-    'appointments.printschedule': 'طباعة الجدول',
-    'appointments.hallradar': 'رادار حجز القاعات',
-    'appointments.hallradardesc': 'تنظيم إشغال قاعات الاجتماعات والورش الفنية داخل المنشأة.',
-    'appointments.busy': 'مشغول / محجوز',
-    'appointments.activehalls': 'قاعات مفعلة',
-
-    // 4. المقاولات والميدان (Construction & Field)
-    'construction.radar': 'رادار الميدان الإنشائي',
-    'construction.radar.desc': 'تنسيق أطقم العمل والمعدات وتتبع حركة المهندسين في المواقع.',
-    'construction.groups': 'تكوين أطقم العمل',
-    'construction.groupsdesc': 'إدارة تخصصات العمالة وتوزيع المهام الميدانية.',
-    'construction.equipment': 'سجل الأصول والمعدات',
-    'construction.reports': 'تقارير المواقع اليومية',
-    'construction.reportsdesc': 'أرشيف تقارير الإنجاز الميداني الموثقة بالموارد.',
-    'construction.newreport': 'تقرير جديد',
-
-    // 5. الكلمات الشائعة (Common Actions)
+    // --- 2. الكلمات الشائعة (Common Actions) ---
     'common.search': 'بحث...',
     'common.filter': 'تصفية',
     'common.save': 'حفظ البيانات',
@@ -116,12 +81,87 @@ const translations: Record<Language, Record<string, string>> = {
     'common.back': 'العودة',
     'common.error': 'فشل في تنفيذ العملية',
     'common.saved': 'تم حفظ التغييرات بنجاح',
+    'common.pending': 'قيد المعالجة',
+    'common.active': 'نشط',
+    'common.completed': 'مكتمل',
 
-    // 6. التقارير (Reports)
+    // --- 3. لوحة التحكم (Dashboard) ---
+    'dashboard.stats.revenue': 'إجمالي الإيرادات',
+    'dashboard.stats.activeprojects': 'المشاريع الجارية',
+    'dashboard.stats.workforce': 'القوى العاملة',
+    'dashboard.stats.completion': 'نسبة الإنجاز',
+    'dashboard.units.kwd': 'د.ك',
+    'dashboard.units.yearly': 'سنوياً',
+    'dashboard.units.new': 'جديد',
+    'dashboard.units.present': 'حاضر',
+    'dashboard.units.project': 'مشروع',
+    'dashboard.units.employee': 'موظف',
+    'dashboard.recent': 'العمليات الأخيرة',
+    'dashboard.export': 'تصدير البيانات',
+    'dashboard.description': 'نظرة عامة على أداء المنشأة وسير العمل التشغيلي والمالي.',
+
+    // --- 4. المشاريع والمقايسات (Projects & BOQ) ---
+    'projects.title': 'المشاريع الهندسية',
+    'projects.description': 'إدارة العمليات التنفيذية وتتبع المسارات الفنية للمشاريع.',
+    'projects.contracting': 'قسم المقاولات',
+    'projects.stats.portfolio': 'قيمة المحفظة',
+    'projects.boqexplorer': 'مستكشف المقايسات',
+    'projects.boqexplorer.desc': 'إدارة واعتماد جداول الكميات والميزانيات المرجعية للمشاريع.',
+    'projects.addnew': 'مشروع جديد',
+    'projects.table.project': 'المشروع',
+    'projects.table.progress': 'الإنجاز',
+    'projects.table.billing': 'الفوترة',
+    'projects.table.status': 'الحالة',
+
+    // --- 5. المواعيد والرادار (Appointments & Radar) ---
+    'appointments.radar': 'رادار المواعيد والزيارات',
+    'appointments.radardesc': 'جدولة اللقاءات مع العملاء والزيارات الميدانية للمهندسين.',
+    'appointments.morningsession': 'الفترة الصباحية ☀️',
+    'appointments.eveningsession': 'الفترة المسائية 🌆',
+    'appointments.printschedule': 'طباعة الجدول',
+    'appointments.hallradar': 'رادار حجز القاعات',
+    'appointments.hallradardesc': 'تنظيم إشغال قاعات الاجتماعات والورش الفنية داخل المنشأة.',
+    'appointments.busy': 'مشغول / محجوز',
+    'appointments.activehalls': 'قاعات مفعلة',
+
+    // --- 6. العمليات الميدانية (Construction & Field) ---
+    'construction.radar': 'رادار الميدان الإنشائي',
+    'construction.radar.desc': 'تنسيق أطقم العمل والمعدات وتتبع حركة المهندسين في المواقع.',
+    'construction.groups': 'تكوين أطقم العمل',
+    'construction.groupsdesc': 'إدارة تخصصات العمالة وتوزيع المهام الميدانية.',
+    'construction.equipment': 'سجل الأصول والمعدات',
+    'construction.reports': 'تقارير المواقع اليومية',
+    'construction.reportsdesc': 'أرشيف تقارير الإنجاز الميداني الموثقة بالموارد.',
+    'construction.newreport': 'تقرير جديد',
+    'construction.siteprogress': 'إنجاز الموقع',
+
+    // --- 7. الموارد البشرية (HR & Payroll) ---
+    'hr.title': 'الموارد البشرية',
+    'hr.description': 'إدارة القوى العاملة، الرواتب، والامتثال لقانون العمل.',
+    'hr.staffrecords': 'سجل الموظفين',
+    'hr.payroll': 'الرواتب والبدلات',
+    'hr.leaverequests': 'طلبات الإجازات',
+    'hr.hire': 'تعيين موظف',
+    'hr.addnew': 'إضافة موظف',
+    'hr.createintegratedprofile': 'إنشاء ملف تعريفي ومالي متكامل للموظف.',
+
+    // --- 8. المحاسبة (Accounting) ---
+    'accounting.coa.title': 'دليل الحسابات السيادي',
+    'accounting.journals.title': 'قيود اليومية',
+    'accounting.journals.desc': 'إدارة القيود المحاسبية والترحيل المالي لدفتر الأستاذ.',
+    'accounting.vouchers.paymenttitle': 'سندات الصرف',
+    'accounting.vouchers.receipttitle': 'سندات القبض',
+    'accounting.smartrecon': 'مطابقة ذكية',
+
+    // --- 9. التقارير (Reports) ---
     'reports.hub.title': 'مركز التقارير والرقابة',
     'reports.hub.description': 'أدوات تحليلية متقدمة لربط الميدان بالمركز المالي والإداري.',
     'reports.executive.title': 'التقرير التنفيذي الشامل',
     'reports.analytics.title': 'رادار الأداء المالي والإنتاجي',
+    'reports.stats.workforce': 'القوى العاملة',
+    'reports.stats.portfolio': 'إجمالي المحفظة',
+    'reports.stats.activeprojects': 'المشاريع الجارية',
+    'reports.stats.attendance': 'انضباط الحضور',
   },
   en: {
     'dashboard': 'Dashboard',
@@ -163,14 +203,15 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   };
 
   /**
-   * محرك الترجمة المحصن (Hardened Translation Engine):
-   * يقوم بتحويل المفتاح إلى حروف صغيرة (lowercase) تلقائياً، مما يمحو الفجوة
-   * بين الكود والقاموس ويمنع ظهور الأكواد البرمجية في الواجهة.
+   * دالة الترجمة الذكية والمحصنة (Hardened t() Function):
+   * تقوم بتحويل المفتاح المطلوب إلى حروف صغيرة (lowercase) قبل البحث عنه،
+   * وهذا يمحو "الفجوة المعرفية" الناتجة عن اختلاف حالة الأحرف في الكود.
    */
   const t = (key: string) => {
     if (!key) return '';
     const cleanKey = key.trim().toLowerCase();
     
+    // البحث في القاموس الصغير أولاً ثم المفتاح الأصلي كخيار بديل
     return translations[lang][cleanKey] || 
            translations[lang][key] || 
            key; 

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -47,7 +46,7 @@ export default function ProjectsPage() {
       const matchSearch = p.transactionNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           p.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           p.subServiceName?.toLowerCase().includes(searchTerm.toLowerCase());
-      const isContracting = p.activityTypeName?.includes('مقاولات') || p.activityTypeName?.includes('Construction');
+      const isContracting = p.activityTypeName?.toLowerCase().includes('مقاولات') || p.activityTypeName?.toLowerCase().includes('construction');
       const matchType = activeFilter === 'all' || isContracting;
       return matchSearch && matchType;
     });
@@ -55,7 +54,7 @@ export default function ProjectsPage() {
 
   return (
     <div className="space-y-6 w-full animate-in fade-in duration-500" dir={dir}>
-      {/* Unified Header Design */}
+      {/* Sovereign Header Design (H-14) */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-6 text-start">
         <div className="flex items-center gap-4 text-start">
           <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/5">
@@ -64,7 +63,7 @@ export default function ProjectsPage() {
           <div className="text-start">
             <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{t('projects')}</h1>
             <p className="text-xs font-bold text-muted-foreground italic mt-0.5">
-               {isRtl ? 'إدارة المشاريع الهندسية والعمليات التنفيذية' : 'Manage engineering projects and executive operations'}
+               {t('projects.description')}
             </p>
           </div>
         </div>

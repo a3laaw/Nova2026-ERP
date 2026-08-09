@@ -1,4 +1,4 @@
 /**
- * @fileOverview تم تفريغ الملف الاحتياطي لمنع التداخل مع القاموس المركزي الموحد.
+ * @fileOverview Empty file to prevent interference with Master Dictionary.
  */
 export {};
