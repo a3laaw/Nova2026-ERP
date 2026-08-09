@@ -19,22 +19,80 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard': 'لوحة التحكم',
     'dashboard.subtitle': 'إحصائيات عامة ومتابعة سير العمل في المشاريع.',
     'projects': 'المشاريع',
-    'boqexplorer': 'جدول الكميات والميزانية',
-    'boqexplorer.subtitle': 'إدارة واعتماد جداول الكميات والميزانيات المرجعية',
+    'crm': 'العملاء والفرص',
+    'procurement': 'المشتريات',
+    'hr': 'الموارد البشرية',
+    'inventory': 'المخازن والعهد',
+    'accounting': 'المحاسبة والمالية',
+    'ai.hub': 'ذكاء Nova',
+    'settings': 'الإعدادات',
+
+    // الكلمات المشتركة
+    'common.search': 'بحث...',
+    'common.filter': 'تصفية',
+    'common.save': 'حفظ',
+    'common.cancel': 'إلغاء',
+    'common.add': 'إضافة',
+    'common.edit': 'تعديل',
+    'common.delete': 'حذف',
+    'common.confirm': 'تأكيد',
+    'common.status': 'الحالة',
+    'common.name': 'الاسم',
+    'common.company': 'الشركة',
+    'common.noresults': 'لا توجد نتائج مطابقة',
+    'common.date': 'التاريخ',
+    'common.amount': 'المبلغ',
+    'common.unit': 'الوحدة',
+    'common.quantity': 'الكمية',
+    'common.total': 'الإجمالي',
+    'common.viewall': 'عرض الكل',
+
+    // CRM & Leads
+    'crm.title': 'العملاء والفرص',
+    'crm.description': 'إدارة الفرص البيعية وقاعدة بيانات العملاء.',
+    'crm.newlead': 'إضافة فرصة',
+    'crm.table.name': 'الاسم',
+    'crm.table.company': 'الشركة',
+    'crm.table.status': 'الحالة',
+
+    // Projects & BOQ
+    'projects.title': 'المشاريع',
+    'projects.description': 'متابعة المشاريع الجارية والجدول الزمني.',
+    'projects.addnew': 'إضافة مشروع',
+    'projects.boqexplorer': 'جدول الكميات والميزانية',
+    'projects.boqexplorer.desc': 'إدارة واعتماد جداول الكميات والميزانيات المرجعية.',
+    'boq.activate': 'تنشيط المقايسة',
+    
+    // HR & Payroll
+    'hr.title': 'الموارد البشرية',
+    'hr.description': 'إدارة القوى العاملة والامتثال لقانون العمل.',
+    'staffrecords': 'شؤون الموظفين',
+    'payroll': 'مسيرات الرواتب',
+    'leaverequests': 'طلبات الإجازات',
+    'attendance': 'بصمة الحضور',
+    'hr.workforce.desc': 'إدارة طواقم العمل والميدان.',
     'workgroups': 'فرق العمل',
-    'workgroups.subtitle': 'إدارة أطقم الميدان والتخصصات.',
+    'workgroups.desc': 'إدارة أطقم الميدان والتخصصات.',
+
+    // Construction & Field
     'construction.radar': 'رادار الميدان',
     'construction.radarDesc': 'إدارة وتنسيق أطقم العمل والمهندسين في مواقع المشاريع الإنشائية.',
-    'reports.hub.title': 'مركز التقارير',
-    'reports.hub.description': 'تحليل القوى العاملة والامتثال والإنتاجية الميدانية',
-    
-    // إحصائيات الداشبورد
+    'fieldradar': 'رادار الميدان',
+    'fieldlogs': 'تقارير الموقع',
+    'equipment': 'المخازن والمعدات',
+
+    // Financials
+    'chartofaccounts': 'شجرة الحسابات',
+    'journalentries': 'قيود اليومية',
+    'paymentvouchers': 'سندات الصرف',
+    'receiptvouchers': 'سندات القبض',
+    'financialreports': 'التقارير المالية',
+
+    // Dashboard Stats & Units
     'dashboard.stats.revenue': 'إجمالي الإيرادات',
     'dashboard.stats.activeprojects': 'المشاريع الجارية',
     'dashboard.stats.workforce': 'القوى العاملة',
     'dashboard.stats.completion': 'نسبة الإنجاز',
-    
-    // وحدات ومسميات
     'dashboard.units.kwd': 'د.ك',
     'dashboard.units.project': 'مشروع',
     'dashboard.units.employee': 'موظف',
@@ -42,45 +100,75 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.units.present': 'حاضر',
     'dashboard.units.new': 'جديد',
     
-    // أزرار وإجراءات
-    'projects.addnew': 'إضافة مشروع',
-    'dashboard.export': 'تصدير',
-    'common.search': 'بحث...',
-    'common.filter': 'تصفية',
-    'common.viewall': 'عرض الكل',
-    'dashboard.recent': 'النشاطات الأخيرة',
-    'accounting': 'المحاسبة',
-    
-    // السايدبار (Sidebar)
-    'leads': 'الفرص والعملاء',
-    'clients': 'العملاء',
-    'appointments': 'المواعيد',
-    'meetings': 'الاجتماعات',
-    'visitsdossier': 'سجل الزيارات',
-    'activeprojects': 'المشاريع الجارية',
-    'reports': 'التقارير',
-    'construction': 'المقاولات',
-    'fieldradar': 'رادار الميدان',
-    'workgroups_sidebar': 'فرق العمل',
-    'equipment': 'المعدات',
-    'fieldlogs': 'تقارير الموقع',
-    'aianalysis': 'تحليل الذكاء الاصطناعي',
-    'userprofile': 'ملفي الشخصي',
-    'settings': 'الإعدادات',
-    'logout': 'تسجيل الخروج',
+    // Reports
+    'reports.hub.title': 'مركز التقارير',
+    'reports.hub.description': 'تحليل القوى العاملة والامتثال والإنتاجية الميدانية.',
   },
   en: {
     'dashboard': 'Dashboard',
-    'dashboard.subtitle': 'General statistics and project workflow tracking.',
+    'dashboard.subtitle': 'General statistics and workflow tracking.',
     'projects': 'Projects',
-    'boqexplorer': 'BOQ & Budget',
-    'boqexplorer.subtitle': 'Manage and approve bill of quantities and baseline budgets',
+    'crm': 'CRM & Leads',
+    'procurement': 'Procurement',
+    'hr': 'Human Resources',
+    'inventory': 'Inventory & Assets',
+    'accounting': 'Accounting',
+    'ai.hub': 'Nova AI',
+    'settings': 'Settings',
+
+    'common.search': 'Search...',
+    'common.filter': 'Filter',
+    'common.save': 'Save',
+    'common.cancel': 'Cancel',
+    'common.add': 'Add',
+    'common.edit': 'Edit',
+    'common.delete': 'Delete',
+    'common.confirm': 'Confirm',
+    'common.status': 'Status',
+    'common.name': 'Name',
+    'common.company': 'Company',
+    'common.noresults': 'No results found',
+    'common.date': 'Date',
+    'common.amount': 'Amount',
+    'common.unit': 'Unit',
+    'common.quantity': 'Quantity',
+    'common.total': 'Total',
+    'common.viewall': 'View All',
+
+    'crm.title': 'CRM & Leads',
+    'crm.description': 'Manage sales opportunities and client database.',
+    'crm.newlead': 'New Lead',
+    'crm.table.name': 'Name',
+    'crm.table.company': 'Company',
+    'crm.table.status': 'Status',
+
+    'projects.title': 'Projects',
+    'projects.description': 'Track active projects and timelines.',
+    'projects.addnew': 'Add Project',
+    'projects.boqexplorer': 'BOQ & Budget',
+    'projects.boqexplorer.desc': 'Manage bill of quantities and baseline budgets.',
+
+    'hr.title': 'Human Resources',
+    'hr.description': 'Workforce management and labor law compliance.',
+    'staffrecords': 'Staff Records',
+    'payroll': 'Payroll',
+    'leaverequests': 'Leave Requests',
+    'attendance': 'Attendance',
     'workgroups': 'Work Groups',
-    'workgroups.subtitle': 'Manage field crews and specialties.',
+    'workgroups.desc': 'Field crew management and specialties.',
+
     'construction.radar': 'Field Radar',
     'construction.radarDesc': 'Coordinate site engineers and work crews in construction sites.',
-    'reports.hub.title': 'Reports Hub',
-    'reports.hub.description': 'Workforce analysis, compliance and field productivity',
+    'fieldradar': 'Field Radar',
+    'fieldlogs': 'Field Logs',
+    'equipment': 'Equipment & Assets',
+
+    'chartofaccounts': 'Chart of Accounts',
+    'journalentries': 'Journal Entries',
+    'paymentvouchers': 'Payment Vouchers',
+    'receiptvouchers': 'Receipt Vouchers',
+    'financialreports': 'Financial Reports',
+
     'dashboard.stats.revenue': 'Total Revenue',
     'dashboard.stats.activeprojects': 'Active Projects',
     'dashboard.stats.workforce': 'Workforce',
@@ -91,29 +179,9 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.units.yearly': 'Yearly',
     'dashboard.units.present': 'Present',
     'dashboard.units.new': 'New',
-    'projects.addnew': 'Add Project',
-    'dashboard.export': 'Export',
-    'common.search': 'Search...',
-    'common.filter': 'Filter',
-    'common.viewall': 'View All',
-    'dashboard.recent': 'Recent Activities',
-    'accounting': 'Accounting',
-    'leads': 'Leads & CRM',
-    'clients': 'Clients',
-    'appointments': 'Appointments',
-    'meetings': 'Meetings',
-    'visitsdossier': 'Visits Dossier',
-    'activeprojects': 'Active Projects',
-    'reports': 'Reports',
-    'construction': 'Construction',
-    'fieldradar': 'Field Radar',
-    'workgroups_sidebar': 'Work Groups',
-    'equipment': 'Equipment',
-    'fieldlogs': 'Field Logs',
-    'aianalysis': 'AI Analysis',
-    'userprofile': 'My Profile',
-    'settings': 'Settings',
-    'logout': 'Logout',
+
+    'reports.hub.title': 'Reports Hub',
+    'reports.hub.description': 'Workforce analysis and field productivity.',
   }
 };
 
@@ -137,7 +205,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const t = (key: string) => {
     if (!key) return '';
     const lowKey = key.toLowerCase();
-    return translations[lang]?.[lowKey] || translations[lang]?.[key] || key;
+    // ابحث أولاً عن المفتاح كما هو، ثم ابحث عن النسخة المصغرة (lowercase)
+    return translations[lang]?.[key] || translations[lang]?.[lowKey] || key;
   };
 
   const tSafe = (key: string, fallbackAr: string, fallbackEn?: string) => {
