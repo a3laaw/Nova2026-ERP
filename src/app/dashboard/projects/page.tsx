@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Plus, Search, Loader2, ArrowRight,
   TrendingUp, Building2, CheckCircle2,
-  Wallet, Activity, Filter
+  Wallet, Activity, Filter, HardHat
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -53,12 +53,19 @@ export default function ProjectsPage() {
   }, [allTransactions, searchTerm, activeFilter]);
 
   return (
-    <div className="space-y-4 w-full px-4 md:px-6 animate-in fade-in duration-500" dir={dir}>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="text-start">
-          <h1 className="text-xl md:text-2xl font-bold text-slate-900">
-            {t('projects.title')}
-          </h1>
+    <div className="space-y-6 w-full animate-in fade-in duration-500" dir={dir}>
+      {/* Unified Header Design */}
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-6 text-start">
+        <div className="flex items-center gap-4 text-start">
+          <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/5">
+            <HardHat className="h-8 w-8" />
+          </div>
+          <div className="text-start">
+            <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{t('projects.title')}</h1>
+            <p className="text-xs font-bold text-muted-foreground italic mt-0.5">
+               {isRtl ? 'إدارة المشاريع الهندسية والعمليات التنفيذية' : 'Manage engineering projects and executive operations'}
+            </p>
+          </div>
         </div>
 
         <div className="flex gap-2">
@@ -66,104 +73,101 @@ export default function ProjectsPage() {
             type="button"
             onClick={() => setActiveFilter(activeFilter === 'all' ? 'contracting' : 'all')}
             className={cn(
-              "h-9 px-4 rounded-md font-bold text-xs border flex items-center transition-all", 
+              "h-11 px-6 rounded-xl font-bold text-xs border flex items-center transition-all", 
               activeFilter === 'contracting' ? "bg-primary/10 border-primary text-primary" : "bg-white border-slate-200"
             )}
           >
             <TrendingUp className="h-4 w-4 me-2" />
             {t('projects.contracting')}
           </button>
-          <Button onClick={() => router.push('/dashboard/clients')} size="sm" className="h-9 px-4 rounded-md font-bold text-xs shadow-sm">
-            <Plus className="h-4 w-4 me-2" /> {t('projects.addNew')}
+          <Button onClick={() => router.push('/dashboard/clients')} size="sm" className="h-11 px-6 rounded-xl font-black shadow-lg shadow-primary/20 transition-all">
+            <Plus className="h-4 w-4 me-2" /> {t('projects.addnew')}
           </Button>
         </div>
+      </header>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+         <Card className="rounded-xl shadow-sm border p-6 bg-white flex items-center justify-between group hover:shadow-md transition-all text-start">
+            <div className="text-start">
+               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('projects.stats.portfolio')}</p>
+               <h3 className="text-2xl font-black text-slate-900 mt-1">2.4M <span className="text-xs font-bold text-slate-400">{t('dashboard.units.kwd')}</span></h3>
+            </div>
+            <div className="h-12 w-12 rounded-2xl bg-primary/5 text-primary flex items-center justify-center shrink-0"><Wallet className="h-6 w-6" /></div>
+         </Card>
+         <Card className="rounded-xl shadow-sm border p-6 bg-white flex items-center justify-between group hover:shadow-md transition-all text-start">
+            <div className="text-start">
+               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('projects.stats.claims')}</p>
+               <h3 className="text-2xl font-black text-blue-600 mt-1">12</h3>
+            </div>
+            <div className="h-12 w-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0"><Activity className="h-6 w-6" /></div>
+         </Card>
+         <Card className="rounded-xl shadow-sm border p-6 bg-white flex items-center justify-between group hover:shadow-md transition-all text-start">
+            <div className="text-start">
+               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('projects.stats.collection')}</p>
+               <h3 className="text-2xl font-black text-emerald-600 mt-1">88%</h3>
+            </div>
+            <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"><CheckCircle2 className="h-6 w-6" /></div>
+         </Card>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-         <Card className="rounded-lg shadow-sm border p-4 bg-white flex items-center justify-between group hover:shadow-md transition-all">
-            <div className="text-start">
-               <p className="text-[10px] font-bold text-slate-400 uppercase">{t('projects.stats.portfolio')}</p>
-               <h3 className="text-xl font-bold text-slate-900">2.4M <span className="text-xs font-medium text-slate-400">{t('dashboard.units.kwd')}</span></h3>
-            </div>
-            <div className="h-10 w-10 rounded-lg bg-primary/5 text-primary flex items-center justify-center shrink-0"><Wallet className="h-5 w-5" /></div>
-         </Card>
-         <Card className="rounded-lg shadow-sm border p-4 bg-white flex items-center justify-between group hover:shadow-md transition-all">
-            <div className="text-start">
-               <p className="text-[10px] font-bold text-slate-400 uppercase">{t('projects.stats.claims')}</p>
-               <h3 className="text-xl font-bold text-blue-600">12</h3>
-            </div>
-            <div className="h-10 w-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0"><Activity className="h-5 w-5" /></div>
-         </Card>
-         <Card className="rounded-lg shadow-sm border p-4 bg-white flex items-center justify-between group hover:shadow-md transition-all">
-            <div className="text-start">
-               <p className="text-[10px] font-bold text-slate-400 uppercase">{t('projects.stats.collection')}</p>
-               <h3 className="text-xl font-bold text-emerald-600">88%</h3>
-            </div>
-            <div className="h-10 w-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"><CheckCircle2 className="h-5 w-5" /></div>
-         </Card>
-      </div>
-
-      <Card className="rounded-lg shadow-sm border overflow-hidden bg-white">
-        <div className="p-3 bg-slate-50/30 border-b flex items-center justify-between">
+      <Card className="rounded-2xl shadow-sm border border-slate-100 overflow-hidden bg-white text-start">
+        <div className="p-4 bg-slate-50/30 border-b flex items-center justify-between">
            <div className="relative w-full max-w-sm">
-              <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-              <Input placeholder={t('common.search')} className="ps-9 h-9 rounded-md bg-white border-slate-200 text-sm font-bold" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+              <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+              <Input placeholder={t('common.search')} className="ps-11 h-11 border-2 border-slate-100 bg-white font-bold rounded-xl" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
            </div>
-           <Button variant="outline" size="sm" className="h-9 px-4 border-slate-200 font-bold text-xs"><Filter className="h-3.5 w-3.5 me-2" /> {t('common.filter')}</Button>
+           <Button variant="outline" className="h-11 px-6 rounded-xl font-black text-xs border-2"><Filter className="h-4 w-4 me-2" /> {t('common.filter')}</Button>
         </div>
-        <CardContent className="p-0">
+        <CardContent className="p-0 overflow-x-auto">
           <Table>
             <TableHeader className="bg-slate-50/50">
               <TableRow className="border-b-0">
-                <TableHead className="py-3 ps-6 text-[10px] font-bold uppercase text-slate-500">{t('projects.table.project')}</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{t('projects.table.progress')}</TableHead>
-                <TableHead className="text-end text-[10px] font-bold uppercase text-slate-500">{t('projects.table.billing')}</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{t('common.status')}</TableHead>
-                <TableHead className="pe-6"></TableHead>
+                <TableHead className="py-5 ps-8 text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('projects.table.project')}</TableHead>
+                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('projects.table.progress')}</TableHead>
+                <TableHead className="text-end text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('projects.table.billing')}</TableHead>
+                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('common.status')}</TableHead>
+                <TableHead className="pe-8"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
               ) : filteredProjects.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-20 italic text-slate-400 text-sm font-bold">{t('projects.noActiveProjects')}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-24 italic text-slate-300 font-black">{t('projects.noactiveprojects')}</TableCell></TableRow>
               ) : filteredProjects.map((proj) => (
-                <TableRow key={proj.id} className="hover:bg-slate-50/50 cursor-pointer border-b-slate-100 group" onClick={() => router.push(`/dashboard/clients/${proj.clientId}/transactions/${proj.id}`)}>
-                    <TableCell className="py-2.5 ps-6 text-start">
-                       <div className="flex items-center gap-3">
-                          <div className={cn("h-10 w-10 rounded-lg shadow-sm flex items-center justify-center shrink-0", proj.status === 'completed' ? "bg-emerald-50 text-emerald-600" : "bg-primary/5 text-primary")}>
-                             <Building2 className="h-5 w-5" />
+                <TableRow key={proj.id} className="hover:bg-primary/[0.01] cursor-pointer border-b-slate-100 group" onClick={() => router.push(`/dashboard/clients/${proj.clientId}/transactions/${proj.id}`)}>
+                    <TableCell className="py-5 ps-8 text-start">
+                       <div className="flex items-center gap-4">
+                          <div className={cn("h-11 w-11 rounded-xl shadow-inner border flex items-center justify-center shrink-0", proj.status === 'completed' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-primary/5 text-primary border-primary/10")}>
+                             <Building2 className="h-6 w-6" />
                           </div>
                           <div className="text-start truncate">
-                             <span className="font-bold text-slate-800 text-sm block leading-none truncate">{proj.subServiceName}</span>
-                             <span className="text-[10px] text-slate-400 font-medium mt-1.5 block truncate">{proj.clientName}</span>
+                             <span className="font-black text-slate-800 text-sm block leading-none truncate">{proj.subServiceName}</span>
+                             <span className="text-[10px] text-slate-400 font-bold mt-1.5 block truncate uppercase">CLIENT: {proj.clientName}</span>
                           </div>
                        </div>
                     </TableCell>
                     <TableCell className="text-start">
-                       <Badge variant="outline" className="bg-blue-50/50 text-blue-600 font-black text-[9px] uppercase px-3 h-5 border-0 shadow-sm">
-                          {t('projects.table.percentDone').replace('{pct}', '42')}
+                       <Badge variant="outline" className="bg-blue-50 text-blue-600 font-black text-[9px] uppercase px-4 h-6 border-0 shadow-sm">
+                          PROGRESS 42%
                        </Badge>
                     </TableCell>
-                    <TableCell className="text-end">
+                    <TableCell className="text-end pe-4">
                        <div className="flex flex-col text-end">
-                          <span className="font-black text-xs text-slate-900">15,400 <span className="text-[8px] opacity-40">{t('dashboard.units.kwd')}</span></span>
-                          <span className="text-[8px] font-black text-emerald-600">
-                             {t('projects.table.ipcCount').replace('{count}', '3')}
-                          </span>
+                          <span className="font-black text-sm text-slate-900">15,400 <span className="text-[8px] opacity-40">{t('dashboard.units.kwd')}</span></span>
                        </div>
                     </TableCell>
                     <TableCell className="text-start">
                        <Badge className={cn(
-                         "font-black px-3 py-0.5 rounded-md border-0 text-[8px] uppercase", 
+                         "font-black px-3 py-1 rounded-lg border-0 shadow-sm text-[9px] uppercase", 
                          proj.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
                        )}>
                           {t('status.' + proj.status)}
                        </Badge>
                     </TableCell>
-                    <TableCell className="pe-6 text-end">
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-300 rounded-md group-hover:text-primary transition-all">
-                        <ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} />
+                    <TableCell className="pe-8 text-end">
+                      <Button variant="ghost" size="icon" className="h-9 w-9 text-slate-300 group-hover:text-primary transition-all rounded-xl">
+                        <ArrowRight className={cn("h-5 w-5", isRtl && "rotate-180")} />
                       </Button>
                     </TableCell>
                 </TableRow>

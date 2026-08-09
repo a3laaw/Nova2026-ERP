@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   UserPlus, Search, Loader2, 
-  ArrowRight, Filter
+  ArrowRight, Filter, UserCircle
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
@@ -61,28 +61,35 @@ export default function ClientsListPage() {
   }, [rawClients, searchTerm, isAdmin, globalUser?.employeeId]);
 
   return (
-    <div className="space-y-4 w-full px-4 md:px-6 animate-in fade-in duration-500" dir={dir}>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="text-start">
-           <h1 className="text-xl md:text-2xl font-black text-slate-900">
-             {t('clients.title')}
-           </h1>
+    <div className="space-y-6 w-full animate-in fade-in duration-500" dir={dir}>
+      {/* Unified Header Design */}
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-6 text-start">
+        <div className="flex items-center gap-4 text-start">
+          <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/5">
+            <UserCircle className="h-8 w-8" />
+          </div>
+          <div className="text-start">
+            <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{t('clients.title')}</h1>
+            <p className="text-xs font-bold text-muted-foreground italic mt-0.5">
+               {isRtl ? 'إدارة قاعدة بيانات العملاء والملفات الرسمية' : 'Manage client database and official files'}
+            </p>
+          </div>
         </div>
         
         {canRegisterClient && (
-          <Button onClick={() => router.push('/dashboard/clients/new')} size="sm" className="h-9 px-4 font-black rounded-xl shadow-lg shadow-primary/20">
-            <UserPlus className="h-4 w-4 me-2" /> {t('clients.registerNew')}
+          <Button onClick={() => router.push('/dashboard/clients/new')} size="sm" className="h-11 px-6 font-black rounded-xl shadow-lg shadow-primary/20">
+            <UserPlus className="h-4 w-4 me-2" /> {t('clients.addnew')}
           </Button>
         )}
-      </div>
+      </header>
 
-      <Card className="rounded-2xl shadow-sm border border-slate-100 overflow-hidden bg-white">
+      <Card className="rounded-2xl shadow-sm border border-slate-100 overflow-hidden bg-white text-start">
         <div className="p-4 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50/30 border-b">
            <div className="relative w-full max-w-md">
               <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input 
                 placeholder={t('common.search')} 
-                className="ps-10 h-11 rounded-xl border-slate-200 bg-white text-sm font-bold shadow-inner" 
+                className="ps-11 h-11 rounded-xl border-slate-200 bg-white text-sm font-bold shadow-inner" 
                 value={searchTerm} 
                 onChange={e => setSearchTerm(e.target.value)} 
               />
@@ -103,7 +110,7 @@ export default function ClientsListPage() {
                 <TableHead className="py-5 ps-10 text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('clients.table.profile')}</TableHead>
                 <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('clients.table.staff')}</TableHead>
                 <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('clients.table.contact')}</TableHead>
-                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('common.status')}</TableHead>
+                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('clients.table.status')}</TableHead>
                 <TableHead className="pe-10"></TableHead>
               </TableRow>
             </TableHeader>
@@ -112,7 +119,7 @@ export default function ClientsListPage() {
                 <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></TableCell></TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 font-black italic">
-                   {t('common.noResults')}
+                   {t('common.noresults')}
                 </TableCell></TableRow>
               ) : filtered.map((client) => (
                 <TableRow key={client.id} className="cursor-pointer group hover:bg-slate-50 transition-colors border-b-slate-100" onClick={() => router.push(`/dashboard/clients/${client.id}`)}>
