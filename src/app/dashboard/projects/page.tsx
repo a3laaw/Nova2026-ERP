@@ -62,7 +62,7 @@ export default function ProjectsPage() {
           </div>
           <div className="text-start">
             <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{t('projects')}</h1>
-            <p className="text-xs font-bold text-muted-foreground italic mt-0.5">
+            <p className="text-xs font-bold text-muted-foreground italic mt-0.5 text-start">
                {t('projects.description')}
             </p>
           </div>
@@ -89,14 +89,14 @@ export default function ProjectsPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
          <Card className="rounded-xl shadow-sm border p-6 bg-white flex items-center justify-between group hover:shadow-md transition-all text-start">
             <div className="text-start">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('reports.stats.portfolio')}</p>
+               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('projects.stats.portfolio')}</p>
                <h3 className="text-2xl font-black text-slate-900 mt-1">2.4M <span className="text-xs font-bold text-slate-400">{t('dashboard.units.kwd')}</span></h3>
             </div>
             <div className="h-12 w-12 rounded-2xl bg-primary/5 text-primary flex items-center justify-center shrink-0"><Wallet className="h-6 w-6" /></div>
          </Card>
          <Card className="rounded-xl shadow-sm border p-6 bg-white flex items-center justify-between group hover:shadow-md transition-all text-start">
             <div className="text-start">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('reports.stats.activeprojects')}</p>
+               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('dashboard.stats.activeprojects')}</p>
                <h3 className="text-2xl font-black text-blue-600 mt-1">12</h3>
             </div>
             <div className="h-12 w-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0"><Activity className="h-6 w-6" /></div>
@@ -162,7 +162,7 @@ export default function ProjectsPage() {
                          "font-black px-3 py-1 rounded-lg border-0 shadow-sm text-[9px] uppercase", 
                          proj.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
                        )}>
-                          {t('status.' + proj.status)}
+                          {t('common.status')}: {proj.status}
                        </Badge>
                     </TableCell>
                     <TableCell className="pe-8 text-end">

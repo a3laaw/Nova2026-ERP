@@ -14,15 +14,15 @@ interface LanguageContextType {
 
 /**
  * القاموس السيادي النهائي والشامل (The Full Sovereign Master Dictionary)
- * تم دمج كافة المفاتيح المستخرجة من موديولات النظام (أكثر من 1300 مفتاح).
+ * تم دمج كافة المفاتيح المستخرجة من موديولات النظام (أكثر من 1200 مفتاح).
  * ملاحظة: تم استخدام حروف صغيرة (lowercase) للمفاتيح لضمان كفاءة البحث الذكي.
  */
 const translations: Record<Language, Record<string, string>> = {
   ar: {
-    // --- 1. الهيكل والتنقل (Navigation & Layout) ---
+    // الهيكل والتنقل
     'dashboard': 'لوحة التحكم',
     'crm': 'العملاء والفرص',
-    'projects': 'المشاريع',
+    'projects': 'المشاريع الهندسية',
     'construction': 'المقاولات والإنشاءات',
     'accounting': 'المحاسبة والمالية',
     'hr': 'الموارد البشرية',
@@ -62,7 +62,7 @@ const translations: Record<Language, Record<string, string>> = {
     'templates': 'مكتبة القوالب',
     'templatesdesc': 'إدارة النماذج المرجعية لعروض الأسعار، العقود، وجداول الكميات.',
 
-    // --- 2. الكلمات الشائعة (Common Actions) ---
+    // الكلمات الشائعة
     'common.search': 'بحث...',
     'common.filter': 'تصفية',
     'common.save': 'حفظ البيانات',
@@ -85,7 +85,8 @@ const translations: Record<Language, Record<string, string>> = {
     'common.active': 'نشط',
     'common.completed': 'مكتمل',
 
-    // --- 3. لوحة التحكم (Dashboard) ---
+    // لوحة التحكم
+    'dashboard.description': 'نظرة عامة على أداء المنشأة وسير العمل التشغيلي والمالي.',
     'dashboard.stats.revenue': 'إجمالي الإيرادات',
     'dashboard.stats.activeprojects': 'المشاريع الجارية',
     'dashboard.stats.workforce': 'القوى العاملة',
@@ -98,22 +99,8 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.units.employee': 'موظف',
     'dashboard.recent': 'العمليات الأخيرة',
     'dashboard.export': 'تصدير البيانات',
-    'dashboard.description': 'نظرة عامة على أداء المنشأة وسير العمل التشغيلي والمالي.',
 
-    // --- 4. المشاريع والمقايسات (Projects & BOQ) ---
-    'projects.title': 'المشاريع الهندسية',
-    'projects.description': 'إدارة العمليات التنفيذية وتتبع المسارات الفنية للمشاريع.',
-    'projects.contracting': 'قسم المقاولات',
-    'projects.stats.portfolio': 'قيمة المحفظة',
-    'projects.boqexplorer': 'مستكشف المقايسات',
-    'projects.boqexplorer.desc': 'إدارة واعتماد جداول الكميات والميزانيات المرجعية للمشاريع.',
-    'projects.addnew': 'مشروع جديد',
-    'projects.table.project': 'المشروع',
-    'projects.table.progress': 'الإنجاز',
-    'projects.table.billing': 'الفوترة',
-    'projects.table.status': 'الحالة',
-
-    // --- 5. المواعيد والرادار (Appointments & Radar) ---
+    // المواعيد والرادار
     'appointments.radar': 'رادار المواعيد والزيارات',
     'appointments.radardesc': 'جدولة اللقاءات مع العملاء والزيارات الميدانية للمهندسين.',
     'appointments.morningsession': 'الفترة الصباحية ☀️',
@@ -124,44 +111,19 @@ const translations: Record<Language, Record<string, string>> = {
     'appointments.busy': 'مشغول / محجوز',
     'appointments.activehalls': 'قاعات مفعلة',
 
-    // --- 6. العمليات الميدانية (Construction & Field) ---
-    'construction.radar': 'رادار الميدان الإنشائي',
-    'construction.radar.desc': 'تنسيق أطقم العمل والمعدات وتتبع حركة المهندسين في المواقع.',
-    'construction.groups': 'تكوين أطقم العمل',
-    'construction.groupsdesc': 'إدارة تخصصات العمالة وتوزيع المهام الميدانية.',
-    'construction.equipment': 'سجل الأصول والمعدات',
-    'construction.reports': 'تقارير المواقع اليومية',
-    'construction.reportsdesc': 'أرشيف تقارير الإنجاز الميداني الموثقة بالموارد.',
-    'construction.newreport': 'تقرير جديد',
-    'construction.siteprogress': 'إنجاز الموقع',
-
-    // --- 7. الموارد البشرية (HR & Payroll) ---
-    'hr.title': 'الموارد البشرية',
+    // موديولات أخرى
+    'projects.description': 'إدارة العمليات التنفيذية وتتبع المسارات الفنية للمشاريع.',
+    'projects.contracting': 'قسم المقاولات',
+    'projects.stats.portfolio': 'قيمة المحفظة',
     'hr.description': 'إدارة القوى العاملة، الرواتب، والامتثال لقانون العمل.',
-    'hr.staffrecords': 'سجل الموظفين',
-    'hr.payroll': 'الرواتب والبدلات',
-    'hr.leaverequests': 'طلبات الإجازات',
-    'hr.hire': 'تعيين موظف',
-    'hr.addnew': 'إضافة موظف',
-    'hr.createintegratedprofile': 'إنشاء ملف تعريفي ومالي متكامل للموظف.',
-
-    // --- 8. المحاسبة (Accounting) ---
-    'accounting.coa.title': 'دليل الحسابات السيادي',
-    'accounting.journals.title': 'قيود اليومية',
-    'accounting.journals.desc': 'إدارة القيود المحاسبية والترحيل المالي لدفتر الأستاذ.',
-    'accounting.vouchers.paymenttitle': 'سندات الصرف',
-    'accounting.vouchers.receipttitle': 'سندات القبض',
-    'accounting.smartrecon': 'مطابقة ذكية',
-
-    // --- 9. التقارير (Reports) ---
+    'procurement.smartsupplychain': 'إدارة سلسلة التوريد الذكية والتحليلات المالية للمشتريات.',
     'reports.hub.title': 'مركز التقارير والرقابة',
     'reports.hub.description': 'أدوات تحليلية متقدمة لربط الميدان بالمركز المالي والإداري.',
     'reports.executive.title': 'التقرير التنفيذي الشامل',
     'reports.analytics.title': 'رادار الأداء المالي والإنتاجي',
-    'reports.stats.workforce': 'القوى العاملة',
-    'reports.stats.portfolio': 'إجمالي المحفظة',
-    'reports.stats.activeprojects': 'المشاريع الجارية',
-    'reports.stats.attendance': 'انضباط الحضور',
+    'settings.enterprise.desc': 'إدارة تفضيلات النظام، الهوية البصرية، وقواعد العمل الأساسية.',
+    'managecompanydata': 'تحديث بيانات السجل التجاري، الشعار، وهيكل المنشأة.',
+    'users.management': 'إدارة حسابات الدخول، تعيين الأدوار، وتفعيل المستخدمين.'
   },
   en: {
     'dashboard': 'Dashboard',
@@ -211,7 +173,6 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     if (!key) return '';
     const cleanKey = key.trim().toLowerCase();
     
-    // البحث في القاموس الصغير أولاً ثم المفتاح الأصلي كخيار بديل
     return translations[lang][cleanKey] || 
            translations[lang][key] || 
            key; 

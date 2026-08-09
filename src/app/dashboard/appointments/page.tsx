@@ -19,7 +19,7 @@ export default function AppointmentsListPage() {
           </div>
           <div className="text-start">
             <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{t('appointments.radar')}</h1>
-            <p className="text-xs font-bold text-muted-foreground italic mt-0.5">{t('appointments.radarDesc')}</p>
+            <p className="text-xs font-bold text-muted-foreground italic mt-0.5 text-start">{t('appointments.radarDesc')}</p>
           </div>
         </div>
         

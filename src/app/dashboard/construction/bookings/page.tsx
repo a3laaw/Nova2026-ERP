@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useLanguage } from '@/context/language-context';
@@ -20,8 +19,8 @@ export default function ConstructionBookingsPage() {
           </div>
           <div className="text-start">
             <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{t('construction.radar')}</h1>
-            <p className="text-xs font-bold text-muted-foreground italic mt-0.5">
-               {isRtl ? 'تنسيق أطقم العمل والمعدات وتتبع حركة المهندسين في المواقع الإنشائية.' : 'Coordinate site engineers and work crews in construction project sites.'}
+            <p className="text-xs font-bold text-muted-foreground italic mt-0.5 text-start">
+               {t('construction.radar.desc')}
             </p>
           </div>
         </div>
