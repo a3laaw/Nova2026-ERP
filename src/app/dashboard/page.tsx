@@ -62,7 +62,7 @@ export default function DashboardPage() {
       bg: "bg-blue-50",
     },
     {
-      title: t('dashboard.stats.activeprojects'),
+      title: t('dashboard.stats.activeProjects'),
       value: "24",
       change: t('dashboard.units.new'),
       unit: t('dashboard.units.project'),
@@ -92,24 +92,24 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 w-full animate-in fade-in" dir={dir}>
-      {/* Header section */}
+      {/* Header section - Unified Design */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-6">
-        <div className="flex items-center gap-4 text-start order-2 md:order-1">
+        <div className="flex items-center gap-4 text-start">
           <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/5">
             <LayoutDashboard className="h-8 w-8" />
           </div>
           <div className="text-start">
             <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{t('dashboard')}</h1>
-            <p className="text-xs font-bold text-muted-foreground italic mt-0.5">{t('dashboard.subtitle')}</p>
+            <p className="text-xs font-bold text-muted-foreground italic mt-0.5">{isRtl ? 'نظرة عامة على أداء المنشأة وسير العمل' : 'Overview of organization performance and workflow'}</p>
           </div>
         </div>
 
-        <div className="flex gap-3 order-1 md:order-2">
+        <div className="flex gap-3">
           <Button onClick={() => router.push('/dashboard/projects')} className="bg-primary text-white h-11 px-6 rounded-xl font-black shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all">
-            {t('projects.addNew')} <Plus className="ms-2 h-4 w-4" />
+             <Plus className="ms-2 h-4 w-4" /> {t('projects.addNew')}
           </Button>
           <Button variant="outline" className="h-11 px-6 rounded-xl font-black border-2 bg-white text-slate-400 gap-2">
-            {t('dashboard.export')} <FileText className="h-4 w-4" />
+             <FileText className="h-4 w-4" /> {t('dashboard.export')}
           </Button>
         </div>
       </header>
@@ -171,11 +171,11 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Financial Chart */}
+        {/* Financial Chart - Fixed and Translated */}
         <Card className="lg:col-span-2 rounded-2xl border-slate-100 shadow-sm overflow-hidden bg-white text-start">
           <CardHeader className="flex flex-row items-center justify-between px-6 py-4 border-b bg-slate-50/50">
             <div className="text-start">
-              <CardTitle className="text-sm font-black text-slate-900">{t('accounting')}</CardTitle>
+              <CardTitle className="text-sm font-black text-slate-900">{isRtl ? 'الأداء المالي' : 'Financial Performance'}</CardTitle>
             </div>
             <Activity className="h-4 w-4 text-slate-300" />
           </CardHeader>
