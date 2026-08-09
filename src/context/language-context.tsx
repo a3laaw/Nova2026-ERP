@@ -13,9 +13,9 @@ interface LanguageContextType {
 }
 
 /**
- * القاموس الموحد والنهائي (Master Dictionary) - الإصدار الشامل.
+ * القاموس الموحد والنهائي (Master Dictionary) - الإصدار الشامل جداً.
  * يحتوي على كافة مفاتيح النظام لضمان عدم حدوث تراجع في أي صفحة.
- * تم توحيد المفاتيح لتكون بحروف صغيرة (lowercase) لسهولة المطابقة عبر دالة t().
+ * تم توحيد المفاتيح لتكون بحروف صغيرة (lowercase) لسهولة المطابقة.
  */
 const translations: Record<Language, Record<string, string>> = {
   ar: {
@@ -55,11 +55,13 @@ const translations: Record<Language, Record<string, string>> = {
     'receiptvouchers': 'سندات القبض',
     'financialreports': 'التقارير المالية',
     'usersmanagement': 'المستخدمين والصلاحيات',
-    'companyidentity': 'هوية الشركة',
+    'companyidentity': 'بيانات الشركة',
     'settings.checklists': 'الدستور التشغيلي',
     'rolespermissions': 'الأدوار والمسؤوليات',
     'workhours': 'ساعات الدوام',
     'templates': 'مكتبة القوالب',
+    'appointments.radar': 'رادار المواعيد والزيارات',
+    'appointments.radardesc': 'جدولة اللقاءات مع العملاء والزيارات الميدانية للمهندسين.',
 
     // 2. إحصائيات لوحة التحكم (Dashboard Stats)
     'dashboard.stats.revenue': 'إجمالي الإيرادات',
