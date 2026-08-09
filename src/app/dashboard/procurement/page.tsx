@@ -38,16 +38,16 @@ export default function ProcurementDashboard() {
   const { data: suppliers } = useCollection<any>(suppliersQuery);
 
   const stats = [
-    { title: isRtl ? 'الموردين النشطين' : 'Active Suppliers', val: suppliers?.length || 0, icon: Truck, color: 'text-orange-600', bg: 'bg-orange-50' },
-    { title: isRtl ? 'أوامر الشراء (POs)' : 'Purchase Orders', val: orders?.length || 0, icon: ShoppingCart, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { title: isRtl ? 'إجمالي المشتريات' : 'Total Spend', val: orders?.reduce((acc, o) => acc + (o.totalAmount || 0), 0).toLocaleString(), icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { title: isRtl ? 'عروض قيد التحليل' : 'Pending Quotes', val: '5', icon: FileSearch, color: 'text-amber-600', bg: 'bg-amber-50' },
+    { title: t('procurement.activeSuppliers'), val: suppliers?.length || 0, icon: Truck, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { title: t('purchaseOrders'), val: orders?.length || 0, icon: ShoppingCart, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { title: t('procurement.totalSpend'), val: orders?.reduce((acc, o) => acc + (o.totalAmount || 0), 0).toLocaleString(), icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { title: t('procurement.pendingQuotes'), val: '5', icon: FileSearch, color: 'text-amber-600', bg: 'bg-amber-50' },
   ];
 
   const quickActions = [
-    { title: isRtl ? 'تحليل عرض سعر ذكي' : 'AI Quote Analysis', desc: isRtl ? 'مقارنة العروض بالذكاء الاصطناعي' : 'AI Price comparison', icon: Sparkles, path: '/dashboard/ai', primary: true },
-    { title: isRtl ? 'إصدار أمر شراء' : 'New Purchase Order', desc: isRtl ? 'إنشاء أمر توريد رسمي لمورد' : 'Issue official PO', icon: ShoppingBag, path: '/dashboard/procurement/orders/new', primary: false },
-    { title: isRtl ? 'سجل الأوامر' : 'Orders History', desc: isRtl ? 'عرض ومتابعة كافة الطلبات' : 'View all purchase history', icon: FileText, path: '/dashboard/procurement/orders', primary: false },
+    { title: t('procurement.aiQuoteAnalysis'), desc: t('procurement.aiPriceComparison'), icon: Sparkles, path: '/dashboard/ai', primary: true },
+    { title: t('procurement.newPurchaseOrder'), desc: t('procurement.issueOfficialPo'), icon: ShoppingBag, path: '/dashboard/procurement/orders/new', primary: false },
+    { title: t('procurement.ordersHistory'), desc: t('procurement.viewAllPurchaseHistory'), icon: FileText, path: '/dashboard/procurement/orders', primary: false },
   ];
 
   return (
@@ -58,7 +58,7 @@ export default function ProcurementDashboard() {
           {t('procurement')}
         </h1>
         <p className="text-muted-foreground text-xs font-medium italic">
-          {isRtl ? 'إدارة سلسلة التوريد الذكية والتحليلات المالية للمشتريات' : 'Smart supply chain management and procurement analytics'}
+          {t('procurement.smartSupplyChain')}
         </p>
       </div>
 
@@ -90,7 +90,7 @@ export default function ProcurementDashboard() {
             <h3 className="text-sm font-bold mb-1">{action.title}</h3>
             <p className={cn("text-[10px] font-medium opacity-70", action.primary ? "text-orange-900" : "text-slate-500")}>{action.desc}</p>
             <div className={cn("mt-4 flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider", action.primary ? "text-primary" : "text-slate-400")}>
-               {isRtl ? 'ابدأ الآن' : 'Get Started'}
+               {t('common.getStarted')}
                <ArrowUpRight className="h-3 w-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </div>
           </Card>
@@ -102,7 +102,7 @@ export default function ProcurementDashboard() {
             <CardHeader className="bg-slate-50/50 border-b p-4 text-start">
                <CardTitle className="text-sm font-bold flex items-center gap-2">
                   <Clock className="h-4 w-4 text-primary" />
-                  {isRtl ? 'آخر أوامر الشراء' : 'Recent POs'}
+                  {t('procurement.recentOrders')}
                </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
@@ -120,7 +120,7 @@ export default function ProcurementDashboard() {
                  </div>
                ) : (
                  <div className="p-16 text-center text-slate-300 italic font-medium text-xs">
-                    {isRtl ? 'لا يوجد أوامر شراء نشطة حالياً.' : 'No active purchase orders found.'}
+                    {t('common.noResults')}
                  </div>
                )}
             </CardContent>
@@ -130,11 +130,11 @@ export default function ProcurementDashboard() {
             <CardHeader className="bg-slate-50/50 border-b p-4 text-start">
                <CardTitle className="text-sm font-bold flex items-center gap-2">
                   <BarChart3 className="h-4 w-4 text-primary" />
-                  {isRtl ? 'تحليل الإنفاق حسب التصنيف' : 'Spending by Category'}
+                  {t('procurement.spendingByCategory')}
                </CardTitle>
             </CardHeader>
             <CardContent className="p-16 text-center text-slate-200 italic font-medium text-xs">
-               {isRtl ? 'سيتم عرض المخططات البيانية قريباً.' : 'Analytics charts coming soon.'}
+               {t('procurement.analyticsCharts')}
             </CardContent>
          </Card>
       </div>

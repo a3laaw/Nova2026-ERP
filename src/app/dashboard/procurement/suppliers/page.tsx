@@ -41,7 +41,7 @@ export default function SuppliersPage() {
 
   const stats = useMemo(() => ({
     total: suppliers?.length || 0,
-    activeOrders: 0 // Placeholder
+    activeOrders: 0 
   }), [suppliers]);
 
   const handleAdd = async () => {
@@ -77,6 +77,9 @@ export default function SuppliersPage() {
             <Truck className="h-8 w-8 text-primary" />
             {t('suppliers')}
           </h1>
+          <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
+            {t('procurement.supplierDatabase')}
+          </p>
         </div>
 
         <Dialog>
@@ -88,7 +91,7 @@ export default function SuppliersPage() {
           </DialogTrigger>
           <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
              <div className="bg-slate-50 p-8 text-slate-900 text-start border-b">
-                <DialogTitle className="text-2xl font-black font-headline">{isRtl ? 'إضافة مورد معتمد' : 'Add New Supplier'}</DialogTitle>
+                <DialogTitle className="text-2xl font-black font-headline">{t('procurement.addSupplier')}</DialogTitle>
              </div>
              <div className="p-8 space-y-6 text-start">
                 <div className="space-y-2">
@@ -113,7 +116,7 @@ export default function SuppliersPage() {
              <DialogFooter className="p-8 bg-slate-50 border-t">
                 <Button onClick={handleAdd} disabled={isAdding} className="w-full h-16 rounded-2xl font-black text-xl shadow-xl">
                    {isAdding ? <Loader2 className="animate-spin" /> : <Save className="me-2 h-6 w-6" />}
-                   {t('common.save')}
+                   {t('procurement.registerSupplier')}
                 </Button>
              </DialogFooter>
           </DialogContent>
@@ -158,7 +161,7 @@ export default function SuppliersPage() {
               {loading ? (
                 <TableRow><TableCell colSpan={5} className="text-center py-32"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/20" /></TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-32 italic text-slate-400 font-black">{isRtl ? 'لا يوجد موردين مسجلين.' : 'No suppliers found.'}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-32 italic text-slate-400 font-black">{t('common.noResults')}</TableCell></TableRow>
               ) : (
                 filtered.map((supplier) => (
                   <TableRow key={supplier.id} className="hover:bg-primary/[0.01] transition-colors group border-b-slate-50">

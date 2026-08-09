@@ -41,7 +41,7 @@ export default function SmartQuoteAnalyzerPage() {
 
   const handleAnalyze = async () => {
     if (quotes.some(q => !q.supplierName || !q.quoteText)) {
-      toast({ variant: "destructive", title: isRtl ? "بيانات ناقصة" : "Missing Data" });
+      toast({ variant: "destructive", title: t('common.error') });
       return;
     }
 
@@ -49,9 +49,9 @@ export default function SmartQuoteAnalyzerPage() {
     try {
       const response = await analyzeSupplierQuotes({ quotes });
       setResult(response);
-      toast({ title: isRtl ? "تم التحليل بنجاح" : "Analysis Complete" });
+      toast({ title: t('common.confirm') });
     } catch (error) {
-      toast({ variant: "destructive", title: t('error') });
+      toast({ variant: "destructive", title: t('common.error') });
     } finally {
       setLoading(false);
     }
@@ -61,9 +61,9 @@ export default function SmartQuoteAnalyzerPage() {
     <div className="space-y-8 max-w-6xl mx-auto pb-20 animate-in fade-in duration-700" dir={dir}>
       <div className="text-start space-y-1 border-b pb-6">
            <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-3 py-1 rounded-full w-fit">
-              <Sparkles className="h-3 w-3" /> {isRtl ? 'ذكاء اصطناعي' : 'GenAI'}
+              <Sparkles className="h-3 w-3" /> {t('aiAnalysis')}
            </div>
-           <h1 className="text-3xl font-black font-headline text-slate-900">{isRtl ? 'محلل عروض الأسعار' : 'Quote Analyzer'}</h1>
+           <h1 className="text-3xl font-black font-headline text-slate-900">{t('procurement.quotesAnalyzer')}</h1>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -73,12 +73,12 @@ export default function SmartQuoteAnalyzerPage() {
                 <CardHeader className="bg-slate-50/50 border-b p-5 flex flex-row items-center justify-between">
                    <CardTitle className="text-xs font-black flex items-center gap-2 uppercase tracking-widest text-slate-500">
                       <Badge className="h-5 w-5 p-0 flex items-center justify-center text-[10px]">{idx + 1}</Badge>
-                      {isRtl ? 'بيانات العرض' : 'Quote Data'}
+                      {t('procurement.quoteData')}
                    </CardTitle>
                    {quotes.length > 1 && (
-                     <Button variant="ghost" size="icon" onClick={() => removeQuoteField(idx)} className="h-7 w-7 text-rose-500 hover:bg-rose-50">
+                     <button type="button" onClick={() => removeQuoteField(idx)} className="h-7 w-7 text-rose-500 hover:bg-rose-50 rounded-lg flex items-center justify-center">
                        <Trash2 className="h-3.5 w-3.5" />
-                     </Button>
+                     </button>
                    )}
                 </CardHeader>
                 <CardContent className="p-5 space-y-4 text-start">
@@ -108,7 +108,7 @@ export default function SmartQuoteAnalyzerPage() {
 
            <Button onClick={handleAnalyze} disabled={loading} className="w-full h-14 rounded-2xl bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 transition-all gap-3 mt-4">
              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
-             {isRtl ? 'تحليل ومقارنة العروض' : 'Analyze Now'}
+             {t('procurement.analyzeQuotes')}
            </Button>
         </div>
 
@@ -119,7 +119,7 @@ export default function SmartQuoteAnalyzerPage() {
                    <CardHeader className="bg-primary/5 border-b p-8">
                       <div className="flex items-center gap-4">
                          <div className="h-11 w-11 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg"><ShieldCheck className="h-6 w-6" /></div>
-                         <CardTitle className="text-xl font-black font-headline">{isRtl ? 'توصية Nova AI' : 'AI Analysis'}</CardTitle>
+                         <CardTitle className="text-xl font-black font-headline">{t('procurement.aiAnalysis')}</CardTitle>
                       </div>
                    </CardHeader>
                    <CardContent className="p-8 space-y-6">
@@ -134,7 +134,7 @@ export default function SmartQuoteAnalyzerPage() {
            ) : (
              <div className="h-full min-h-[500px] flex flex-col items-center justify-center text-center p-12 bg-slate-50/50 rounded-3xl border-4 border-dashed border-slate-100 animate-pulse">
                 <Sparkles className="h-10 w-10 text-slate-200 mb-4" />
-                <h3 className="text-xl font-black text-slate-400">{isRtl ? 'بانتظار المدخلات' : 'Waiting for Quotes'}</h3>
+                <h3 className="text-xl font-black text-slate-400">{t('common.noResults')}</h3>
              </div>
            )}
         </div>

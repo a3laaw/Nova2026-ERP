@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -47,10 +46,10 @@ export default function PurchaseOrdersPage() {
         <div className="text-start">
           <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
             <ShoppingCart className="h-10 w-10 text-primary" />
-            {isRtl ? 'أوامر الشراء (POs)' : 'Purchase Orders'}
+            {t('purchaseOrders')}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {isRtl ? 'تتبع طلبات التوريد، الاعتمادات، وحالة الاستلام الميداني.' : 'Track supply orders, approvals, and field delivery status.'}
+            {t('procurement.trackSupplyOrders')}
           </p>
         </div>
 
@@ -59,7 +58,7 @@ export default function PurchaseOrdersPage() {
           className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all"
         >
           <Plus className="me-2 h-6 w-6" />
-          {isRtl ? 'أمر شراء جديد' : 'New Order'}
+          {t('common.newOrder')}
         </Button>
       </div>
 
@@ -68,7 +67,7 @@ export default function PurchaseOrdersPage() {
            <div className="relative w-full max-w-md">
               <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <Input 
-                placeholder={isRtl ? 'بحث برقم الأمر أو المورد...' : 'Search by PO number or supplier...'} 
+                placeholder={t('common.search')} 
                 className="ps-12 rounded-2xl h-14 bg-white border-2 border-slate-100 font-bold" 
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
@@ -79,10 +78,10 @@ export default function PurchaseOrdersPage() {
           <Table>
             <TableHeader className="bg-muted/30">
               <TableRow>
-                <TableHead className="py-6 ps-8 text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'رقم الأمر / المورد' : 'PO # / Supplier'}</TableHead>
-                <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'التاريخ' : 'Date'}</TableHead>
-                <TableHead className="text-end text-xs font-black uppercase tracking-widest">{isRtl ? 'الإجمالي' : 'Amount'}</TableHead>
-                <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'الحالة' : 'Status'}</TableHead>
+                <TableHead className="py-6 ps-8 text-start text-xs font-black uppercase tracking-widest">{t('common.code')} / {t('common.supplier')}</TableHead>
+                <TableHead className="text-start text-xs font-black uppercase tracking-widest">{t('common.date')}</TableHead>
+                <TableHead className="text-end text-xs font-black uppercase tracking-widest">{t('common.amount')}</TableHead>
+                <TableHead className="text-start text-xs font-black uppercase tracking-widest">{t('common.status')}</TableHead>
                 <TableHead className="pe-8 text-end"></TableHead>
               </TableRow>
             </TableHeader>
@@ -90,7 +89,7 @@ export default function PurchaseOrdersPage() {
               {loading ? (
                 <TableRow><TableCell colSpan={5} className="text-center py-24"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/20" /></TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-24 text-slate-400 font-bold italic">{isRtl ? 'لا يوجد أوامر شراء.' : 'No purchase orders found.'}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-24 text-slate-400 font-bold italic">{t('common.noResults')}</TableCell></TableRow>
               ) : (
                 filtered.map((po) => (
                   <TableRow key={po.id} className="hover:bg-slate-50 transition-colors border-b-slate-50 cursor-pointer" onClick={() => router.push(`/dashboard/procurement/orders/${po.id}`)}>
@@ -120,7 +119,7 @@ export default function PurchaseOrdersPage() {
                          po.status === 'ordered' ? 'bg-blue-50 text-blue-600' :
                          'bg-amber-50 text-amber-600'
                        )}>
-                          {po.status}
+                          {t('status.' + po.status)}
                        </Badge>
                     </TableCell>
                     <TableCell className="pe-8 text-end">

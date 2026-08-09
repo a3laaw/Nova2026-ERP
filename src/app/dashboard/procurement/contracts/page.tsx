@@ -59,7 +59,7 @@ export default function GlobalContractsPage() {
             {t('contracts')}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {isRtl ? 'عرض شامل لكافة العقود الرسمية المبرمة مع العملاء.' : 'Unified view of all formal client agreements.'}
+            {t('procurement.unifiedContractsView')}
           </p>
         </div>
 
@@ -68,7 +68,7 @@ export default function GlobalContractsPage() {
           className="bg-primary text-white font-black rounded-xl h-11 px-8 shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2"
         >
           <Plus className="h-4 w-4" />
-          {isRtl ? 'إصدار عقد لعميل' : 'Issue New Contract'}
+          {t('procurement.issueContract')}
         </Button>
       </div>
 
@@ -77,21 +77,21 @@ export default function GlobalContractsPage() {
             <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary mb-4">
                <Wallet className="h-5 w-5" />
             </div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'إجمالي قيمة العقود' : 'Total Portfolio Value'}</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('hr.reports.payroll.individualTitle')}</p>
             <h3 className="text-2xl font-black text-slate-900 mt-1">
               {stats.totalValue.toLocaleString()} <span className="text-xs">KWD</span>
             </h3>
          </Card>
          <Card className="border-0 shadow-lg rounded-xl p-6 text-start bg-white group hover:scale-[1.02] transition-all border-b-4 border-b-emerald-500">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'عقود مفعلة (مدفوعة)' : 'Active (Paid)'}</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{t('status.active_paid')}</p>
             <h3 className="text-3xl font-black text-emerald-600">{stats.paid}</h3>
          </Card>
          <Card className="border-0 shadow-lg rounded-xl p-6 text-start bg-white group hover:scale-[1.02] transition-all border-b-4 border-b-blue-500">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'بانتظار السداد' : 'Pending Payment'}</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{t('status.pending')}</p>
             <h3 className="text-3xl font-black text-blue-600">{stats.pending}</h3>
          </Card>
          <Card className="border-0 shadow-lg rounded-xl p-6 text-start bg-white group hover:scale-[1.02] transition-all border-b-4 border-b-slate-900">
-            <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{isRtl ? 'إجمالي السجلات' : 'Total Count'}</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{t('hr.reports.totalLogs')}</p>
             <h3 className="text-3xl font-black text-slate-900">{stats.total}</h3>
          </Card>
       </div>
@@ -101,7 +101,7 @@ export default function GlobalContractsPage() {
            <div className="relative w-full max-w-md">
               <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <Input 
-                placeholder={isRtl ? 'بحث باسم العقد أو العميل...' : 'Search contracts...'} 
+                placeholder={t('procurement.searchContracts')} 
                 className="ps-12 rounded-xl h-11 bg-white border-slate-200 font-bold" 
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
@@ -112,10 +112,10 @@ export default function GlobalContractsPage() {
           <Table>
             <TableHeader className="bg-muted/10 border-b">
               <TableRow>
-                <TableHead className="py-5 ps-8 text-start">{isRtl ? 'العقد / العميل المالك' : 'Contract / Client'}</TableHead>
-                <TableHead className="text-start">{isRtl ? 'تاريخ التوقيع' : 'Date'}</TableHead>
-                <TableHead className="text-end">{isRtl ? 'القيمة الإجمالية' : 'Total Amount'}</TableHead>
-                <TableHead className="text-center">{isRtl ? 'الحالة المالية' : 'Finance'}</TableHead>
+                <TableHead className="py-5 ps-8 text-start">{t('procurement.contractClient')}</TableHead>
+                <TableHead className="text-start">{t('common.date')}</TableHead>
+                <TableHead className="text-end">{t('hr.reports.totalEntitled')}</TableHead>
+                <TableHead className="text-center">{t('procurement.financeStatus')}</TableHead>
                 <TableHead className="pe-8 text-end"></TableHead>
               </TableRow>
             </TableHeader>
@@ -123,7 +123,7 @@ export default function GlobalContractsPage() {
               {loading ? (
                 <TableRow><TableCell colSpan={5} className="text-center py-24"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-24 text-slate-400 font-bold italic">{isRtl ? 'لا يوجد عقود مسجلة.' : 'No contracts found.'}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-24 text-slate-400 font-bold italic">{t('common.noResults')}</TableCell></TableRow>
               ) : (
                 filtered.map((contract) => (
                   <TableRow key={contract.id} className="hover:bg-primary/[0.02] transition-colors group cursor-pointer border-b-slate-100" onClick={() => router.push(`/dashboard/clients/${contract.clientId}/contracts/${contract.id}`)}>
@@ -158,7 +158,7 @@ export default function GlobalContractsPage() {
                          (contract.status === 'paid' || contract.isPaid) ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
                        )}>
                           {(contract.status === 'paid' || contract.isPaid) ? <CheckCircle2 className="h-2.5 w-2.5" /> : <Clock className="h-2.5 w-2.5" />}
-                          {(contract.status === 'paid' || contract.isPaid) ? (isRtl ? 'تم الدفع' : 'PAID') : (isRtl ? 'بانتظار السداد' : 'PENDING')}
+                          {(contract.status === 'paid' || contract.isPaid) ? t('status.paid') : t('status.pending')}
                        </Badge>
                     </TableCell>
                     <TableCell className="pe-8 text-end">
