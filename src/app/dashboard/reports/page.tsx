@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { 
   BarChart3, FileText, Printer, Download, 
   MapPinned, Calculator, TrendingUp, CheckCircle2,
@@ -21,8 +20,8 @@ export default function ReportsHubPage() {
   const reportCards = [
     {
       id: 'executive',
-      title: isRtl ? 'التقرير التنفيذي الشامل' : 'Global Executive Report',
-      desc: isRtl ? 'ملخص ذكاء أعمال موحد يشمل CRM والمشاريع والمالية والـ HR في شاشة واحدة.' : 'Unified business intelligence summary covering CRM, Projects, Finance and HR.',
+      title: t('reports.executive.title'),
+      desc: t('reports.executive.description'),
       icon: Landmark,
       color: 'text-primary',
       bg: 'bg-primary/5',
@@ -31,8 +30,8 @@ export default function ReportsHubPage() {
     },
     {
       id: 'analytics',
-      title: isRtl ? 'رادار الأداء المالي والإنتاجي' : 'Financial Performance Radar',
-      desc: isRtl ? 'تحليل ذكي لربط ميزانيات المقايسات بالمصروفات الفعلية ونسب الإنجاز.' : 'Smart analysis linking BOQ budgets to actual spending and progress.',
+      title: t('reports.analytics.title'),
+      desc: t('reports.analytics.description'),
       icon: Activity,
       color: 'text-blue-600',
       bg: 'bg-blue-50',
@@ -40,8 +39,8 @@ export default function ReportsHubPage() {
     },
     {
       id: 'visits',
-      title: isRtl ? 'سجل تفاعل العملاء والزيارات' : 'Client Visit Dossier',
-      desc: isRtl ? 'تحليل تاريخي لكل زيارة: الإنجاز الفني الموثق والملاحظات الميدانية.' : 'Visit-by-visit audit of technical progress and site notes.',
+      title: t('reports.visits.title'),
+      desc: t('reports.visits.description'),
       icon: MapPinned,
       color: 'text-emerald-600',
       bg: 'bg-emerald-50',
@@ -54,10 +53,10 @@ export default function ReportsHubPage() {
       <div className="text-start space-y-1">
         <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
           <BarChart3 className="h-10 w-10 text-primary" />
-          {isRtl ? 'مركز التقارير والرقابة الهندسية' : 'Engineering Reports Hub'}
+          {t('reports.hub.title')}
         </h1>
         <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-          {isRtl ? 'أدوات تحليلية متقدمة لربط الميدان بالمركز المالي والإداري.' : 'Advanced analytics linking field logs to financial center.'}
+          {t('reports.hub.description')}
         </p>
       </div>
 

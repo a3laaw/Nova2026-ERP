@@ -67,7 +67,7 @@ export default function ExecutiveReportPage() {
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 print:hidden px-4 pt-4 text-start">
         <div className="text-start space-y-1">
            <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-white px-4 py-1.5 rounded-full w-fit border-2 border-primary/10 shadow-sm">
-              <Landmark className="h-3 w-3" /> {isRtl ? 'التقرير السيادي الشامل' : 'Unified Executive Report'}
+              <Landmark className="h-3 w-3" /> {t('reports.executive.title')}
            </div>
            <h1 className="text-4xl font-black font-headline text-slate-900">{isRtl ? 'ملخص الأداء العام للمنشأة' : 'Enterprise Performance Summary'}</h1>
         </div>
@@ -83,29 +83,29 @@ export default function ExecutiveReportPage() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                  <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white border-b-8 border-emerald-500 p-8 overflow-hidden relative group">
                     <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:scale-110 transition-transform text-emerald-600"><Calculator className="h-24 w-24" /></div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{isRtl ? 'إجمالي المحفظة' : 'Portfolio Value'}</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{t('reports.stats.portfolio')}</p>
                     <h3 className="text-3xl font-black font-headline text-slate-900">{data.finance.totalBudget.toLocaleString()} <span className="text-xs text-slate-400">KWD</span></h3>
                  </Card>
                  <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white p-8 border-b-8 border-primary">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{isRtl ? 'المشاريع الجارية' : 'Active Projects'}</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('reports.stats.activeProjects')}</p>
                     <h3 className="text-3xl font-black text-slate-900">{data.projects.active}</h3>
                  </Card>
                  <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white p-8 border-b-8 border-secondary">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{isRtl ? 'القوى العاملة' : 'Total Staff'}</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('reports.stats.staff')}</p>
                     <h3 className="text-3xl font-black text-slate-900">{data.hr.totalStaff}</h3>
                  </Card>
                  <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white p-8 border-b-8 border-accent">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{isRtl ? 'انضباط الحضور' : 'Attendance'}</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('reports.stats.attendance')}</p>
                     <h3 className="text-3xl font-black text-slate-900">94%</h3>
                  </Card>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                  <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
-                    <CardHeader className="bg-slate-50 border-b p-8 text-start">
+                    <CardHeader className="bg-slate-50/50 border-b p-8 text-start">
                        <CardTitle className="text-lg font-black flex items-center gap-2">
                           <Activity className="h-5 w-5 text-primary" />
-                          {isRtl ? 'تحليل الميزانية vs المصروفات' : 'Budget vs Expenses'}
+                          {t('reports.charts.budgetVsExpenses')}
                        </CardTitle>
                     </CardHeader>
                     <CardContent className="p-10">
@@ -131,7 +131,7 @@ export default function ExecutiveReportPage() {
                     <CardHeader className="bg-slate-50 border-b p-8 text-start">
                        <CardTitle className="text-lg font-black flex items-center gap-2">
                           <LayoutGrid className="h-5 w-5 text-primary" />
-                          {isRtl ? 'توزيع المحفظة حسب النشاط' : 'Portfolio by Activity'}
+                          {t('reports.charts.portfolioByActivity')}
                        </CardTitle>
                     </CardHeader>
                     <CardContent className="p-10 flex flex-col items-center">
@@ -163,11 +163,9 @@ export default function ExecutiveReportPage() {
               <div className="p-10 rounded-[3rem] bg-emerald-50/30 border-2 border-dashed border-emerald-200 flex items-start gap-6 text-start shadow-inner">
                  <ShieldCheck className="h-8 w-8 text-emerald-600 shrink-0 mt-1" />
                  <div className="space-y-2">
-                    <h5 className="font-black text-sm text-slate-800 uppercase tracking-widest">{isRtl ? 'شهادة صحة البيانات السحابية' : 'Cloud Data Integrity'}</h5>
+                    <h5 className="font-black text-sm text-slate-800 uppercase tracking-widest">{t('reports.integrity.title')}</h5>
                     <p className="text-[10px] text-slate-500 font-bold leading-relaxed italic">
-                       {isRtl 
-                         ? 'تم استخراج هذا التقرير آلياً من محرك NovaFlow ERP. كافة القيم المالية والإنتاجية تم التحقق من صحتها من خلال سجلات التدقيق المربوطة بالهوية الرقمية للمهندسين.' 
-                         : 'Report auto-generated by NovaFlow engine. Values verified via engineer-linked digital signatures.'}
+                       {t('reports.integrity.description')}
                     </p>
                  </div>
               </div>
