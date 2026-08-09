@@ -69,7 +69,7 @@ export default function ClientsListPage() {
             <UserCircle className="h-8 w-8" />
           </div>
           <div className="text-start">
-            <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{t('clients.title')}</h1>
+            <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{t('clients')}</h1>
             <p className="text-xs font-bold text-muted-foreground italic mt-0.5">
                {isRtl ? 'إدارة قاعدة بيانات العملاء والملفات الرسمية المعتمدة' : 'Manage client database and official files'}
             </p>
@@ -107,10 +107,10 @@ export default function ClientsListPage() {
           <Table>
             <TableHeader className="bg-slate-50/50">
               <TableRow className="border-b-0">
-                <TableHead className="py-5 ps-10 text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('clients.table.profile')}</TableHead>
-                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest text-start">{t('clients.table.staff')}</TableHead>
-                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest text-start">{t('clients.table.contact')}</TableHead>
-                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest text-start">{t('clients.table.status')}</TableHead>
+                <TableHead className="py-5 ps-10 text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">Client Profile</TableHead>
+                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest text-start">Engineer</TableHead>
+                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest text-start">Contact</TableHead>
+                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest text-start">{t('common.status')}</TableHead>
                 <TableHead className="pe-10"></TableHead>
               </TableRow>
             </TableHeader>

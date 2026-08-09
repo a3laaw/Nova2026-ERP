@@ -12,7 +12,8 @@ import {
   Activity,
   FileText,
   LayoutDashboard,
-  ArrowUpRight
+  ArrowUpRight,
+  Sparkles
 } from "lucide-react";
 import { 
   Bar, 
