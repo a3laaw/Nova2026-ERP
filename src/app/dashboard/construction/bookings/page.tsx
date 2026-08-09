@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useLanguage } from '@/context/language-context';
@@ -8,7 +7,6 @@ import { Button } from '@/components/ui/button';
 
 export default function ConstructionBookingsPage() {
   const { lang, dir, t } = useLanguage();
-  const isRtl = lang === 'ar';
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 print:space-y-2 w-full" dir={dir}>

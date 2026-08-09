@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -245,25 +244,25 @@ export function ConstructionBookingsView() {
       <div className="grid grid-cols-4 gap-3 print:gap-1">
          <Card className="rounded-lg shadow-sm border-slate-100 bg-white border-b-4 border-b-slate-500">
             <CardContent className="p-3 flex flex-col items-center justify-center h-14">
-               <p className="text-[9px] font-bold text-slate-400 uppercase">{isRtl ? 'إجمالي اليوم' : 'Total'}</p>
+               <p className="text-[9px] font-bold text-slate-400 uppercase">{t('appointments.totalToday')}</p>
                <h3 className="text-lg font-bold text-slate-900">{filteredAppointments.length}</h3>
             </CardContent>
          </Card>
          <Card className="rounded-lg shadow-sm border-slate-100 bg-white border-b-4 border-b-yellow-500">
             <CardContent className="p-3 flex flex-col items-center justify-center h-14">
-               <p className="text-[9px] font-bold text-slate-400 uppercase">{isRtl ? 'قيد التنفيذ' : 'Active'}</p>
+               <p className="text-[9px] font-bold text-slate-400 uppercase">{t('status.scheduled')}</p>
                <h3 className="text-lg font-bold text-yellow-600">{filteredAppointments.filter(a => a.status === 'scheduled').length}</h3>
             </CardContent>
          </Card>
          <Card className="rounded-lg shadow-sm border-slate-100 bg-white border-b-4 border-b-emerald-500">
             <CardContent className="p-3 flex flex-col items-center justify-center h-14">
-               <p className="text-[9px] font-bold text-slate-400 uppercase">{isRtl ? 'مكتملة' : 'Done'}</p>
+               <p className="text-[9px] font-bold text-slate-400 uppercase">{t('status.completed')}</p>
                <h3 className="text-lg font-bold text-emerald-600">{filteredAppointments.filter(a => a.status === 'completed').length}</h3>
             </CardContent>
          </Card>
          <Card className="rounded-lg shadow-sm border-slate-100 bg-white border-b-4 border-b-blue-500">
             <CardContent className="p-3 flex flex-col items-center justify-center h-14">
-               <p className="text-[9px] font-bold text-slate-400 uppercase">{isRtl ? 'المهندسين' : 'Engineers'}</p>
+               <p className="text-[9px] font-bold text-slate-400 uppercase">{t('appointments.activeHalls').replace('Halls', 'Staff')}</p>
                <h3 className="text-lg font-bold text-blue-600">{fieldEngineers.length}</h3>
             </CardContent>
          </Card>
@@ -271,7 +270,7 @@ export function ConstructionBookingsView() {
 
       <div className="space-y-6 pb-10">
          <GridSection 
-           title={isRtl ? "الفترة الصباحية ☀️" : "Morning Session"} 
+           title={t('appointments.morningSession')} 
            slots={timeSlots.morning} 
            engineers={fieldEngineers} 
            grid={filteredAppointments} 
@@ -288,7 +287,7 @@ export function ConstructionBookingsView() {
          />
          {timeSlots.evening.length > 0 && (
            <GridSection 
-             title={isRtl ? "الفترة المسائية 🌆" : "Evening Session"} 
+             title={t('appointments.eveningSession')} 
              slots={timeSlots.evening} 
              engineers={fieldEngineers} 
              grid={filteredAppointments} 
@@ -314,7 +313,7 @@ function GridSection({ title, slots, engineers, grid, visitCounts, onAction, isR
 
   const getBlockedReason = (engId: string, slotTime: string) => {
      const leave = leaves?.find((l: any) => l.employeeId === engId && dateStr >= l.startDate && dateStr <= l.endDate);
-     if (leave) return { type: 'leave', label: isRtl ? 'إجازة' : 'Leave' };
+     if (leave) return { type: 'leave', label: t('hr.annualLeave') };
      const absence = absences?.find((a: any) => a.employeeId === engId);
      if (absence) return { type: 'absent', label: isRtl ? 'غائب' : 'Absent' };
      const perm = permissions?.find((p: any) => {
@@ -339,7 +338,7 @@ function GridSection({ title, slots, engineers, grid, visitCounts, onAction, isR
           <table className="w-full border-collapse">
              <thead>
                 <tr className="bg-slate-50/50">
-                   <th className="w-14 p-2 border-b font-bold text-[10px] text-slate-400">{isRtl ? 'الوقت' : 'Time'}</th>
+                   <th className="w-14 p-2 border-b font-bold text-[10px] text-slate-400">{t('common.date')}</th>
                    {engineers.map((eng: Employee) => (
                       <th key={eng.id} className="p-2 border-b border-s min-w-[150px]">
                          <div className="flex items-center gap-2">
