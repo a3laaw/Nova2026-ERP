@@ -71,7 +71,7 @@ export default function ClientsListPage() {
           <div className="text-start">
             <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{t('clients.title')}</h1>
             <p className="text-xs font-bold text-muted-foreground italic mt-0.5">
-               {isRtl ? 'إدارة قاعدة بيانات العملاء والملفات الرسمية' : 'Manage client database and official files'}
+               {isRtl ? 'إدارة قاعدة بيانات العملاء والملفات الرسمية المعتمدة' : 'Manage client database and official files'}
             </p>
           </div>
         </div>
@@ -85,7 +85,7 @@ export default function ClientsListPage() {
 
       <Card className="rounded-2xl shadow-sm border border-slate-100 overflow-hidden bg-white text-start">
         <div className="p-4 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50/30 border-b">
-           <div className="relative w-full max-w-md">
+           <div className="relative w-full max-w-md text-start">
               <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input 
                 placeholder={t('common.search')} 
@@ -108,9 +108,9 @@ export default function ClientsListPage() {
             <TableHeader className="bg-slate-50/50">
               <TableRow className="border-b-0">
                 <TableHead className="py-5 ps-10 text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('clients.table.profile')}</TableHead>
-                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('clients.table.staff')}</TableHead>
-                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('clients.table.contact')}</TableHead>
-                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('clients.table.status')}</TableHead>
+                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest text-start">{t('clients.table.staff')}</TableHead>
+                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest text-start">{t('clients.table.contact')}</TableHead>
+                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest text-start">{t('clients.table.status')}</TableHead>
                 <TableHead className="pe-10"></TableHead>
               </TableRow>
             </TableHeader>

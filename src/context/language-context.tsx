@@ -13,16 +13,15 @@ interface LanguageContextType {
 }
 
 /**
- * القاموس الموحد والنهائي (Master Dictionary) - الإصدار الشامل جداً.
- * يحتوي على كافة مفاتيح النظام لضمان عدم حدوث تراجع في أي صفحة.
- * تم توحيد المفاتيح لتكون بحروف صغيرة (lowercase) لسهولة المطابقة.
+ * القاموس الموحد والنهائي (Master Dictionary) - الإصدار الشامل.
+ * يحتوي على كافة مفاتيح النظام المستخرجة من i18n_master_prompt.md.
  */
 const translations: Record<Language, Record<string, string>> = {
   ar: {
-    // 1. الهيكل العام والتنقل (Layout & Navigation)
+    // الهيكل والتنقل
     'dashboard': 'لوحة التحكم',
     'crm': 'العملاء والفرص',
-    'projects': 'المشاريع الهندسية',
+    'projects': 'المشاريع',
     'construction': 'المقاولات والإنشاءات',
     'accounting': 'المحاسبة والمالية',
     'hr': 'الموارد البشرية',
@@ -60,10 +59,8 @@ const translations: Record<Language, Record<string, string>> = {
     'rolespermissions': 'الأدوار والمسؤوليات',
     'workhours': 'ساعات الدوام',
     'templates': 'مكتبة القوالب',
-    'appointments.radar': 'رادار المواعيد والزيارات',
-    'appointments.radardesc': 'جدولة اللقاءات مع العملاء والزيارات الميدانية للمهندسين.',
-
-    // 2. إحصائيات لوحة التحكم (Dashboard Stats)
+    
+    // الداشبورد
     'dashboard.stats.revenue': 'إجمالي الإيرادات',
     'dashboard.stats.activeprojects': 'المشاريع الجارية',
     'dashboard.stats.workforce': 'القوى العاملة',
@@ -76,9 +73,8 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.units.employee': 'موظف',
     'dashboard.recent': 'العمليات الأخيرة',
     'dashboard.export': 'تصدير البيانات',
-    'dashboard.missions': 'المهام المعلقة',
 
-    // 3. رادار المواعيد والقاعات (Appointments & Meetings)
+    // الرادار والمواعيد
     'appointments.radar': 'رادار المواعيد والزيارات',
     'appointments.radardesc': 'جدولة اللقاءات مع العملاء والزيارات الميدانية للمهندسين.',
     'appointments.printschedule': 'طباعة الجدول',
@@ -89,10 +85,8 @@ const translations: Record<Language, Record<string, string>> = {
     'appointments.printoccupancy': 'طباعة تقرير الإشغال',
     'appointments.busy': 'مشغول / محجوز',
     'appointments.activehalls': 'قاعات مفعلة',
-    'appointments.totalmeetings': 'إجمالي اجتماعات اليوم',
-    'appointments.roomoccupancy': 'إشغال القاعات',
 
-    // 4. المقاولات والميدان (Construction & Field)
+    // الميدان
     'construction.radar': 'رادار الميدان الإنشائي',
     'construction.radar.desc': 'تنسيق أطقم العمل والمعدات وتتبع حركة المهندسين في المواقع.',
     'construction.groups': 'تكوين أطقم العمل',
@@ -102,7 +96,7 @@ const translations: Record<Language, Record<string, string>> = {
     'construction.reportsdesc': 'أرشيف تقارير الإنجاز الميداني الموثقة بالموارد.',
     'construction.newreport': 'تقرير جديد',
 
-    // 5. الكلمات الشائعة (Common)
+    // الكلمات الشائعة والجداول
     'common.search': 'بحث...',
     'common.filter': 'تصفية',
     'common.save': 'حفظ البيانات',
@@ -121,20 +115,24 @@ const translations: Record<Language, Record<string, string>> = {
     'common.back': 'العودة',
     'common.error': 'فشل في تنفيذ العملية',
     'common.saved': 'تم حفظ التغييرات بنجاح',
-    'common.active': 'تم التنشيط بنجاح',
-    'common.completed': 'تم الإنجاز بنجاح',
 
-    // 6. الموارد البشرية والرواتب (HR & Payroll)
-    'hr.title': 'الموارد البشرية والامتثال',
-    'hr.description': 'إدارة شؤون الموظفين والامتثال الكامل لقانون العمل الكويتي.',
-    'hr.hire': 'توظيف جديد',
-    'hr.staffrecords': 'سجل الموظفين الموحد',
-    'hr.payrolltitle': 'كشوف الرواتب الشهرية',
-    'hr.leaverequeststitle': 'طلبات الإجازات',
-    'hr.ownrecordsonly': 'عرض سجلاتك الشخصية فقط',
-    'hr.manageabsences': 'إدارة الغيابات والأرصدة',
+    // رؤوس جداول CRM
+    'clients.title': 'قاعدة بيانات العملاء',
+    'clients.addnew': 'تسجيل عميل جديد',
+    'clients.table.profile': 'ملف العميل',
+    'clients.table.staff': 'المهندس المسؤول',
+    'clients.table.contact': 'الاتصال',
+    'clients.table.status': 'الحالة التقديرية',
 
-    // 7. حالات النظام (Statuses)
+    // رؤوس جداول المشاريع
+    'projects.title': 'سجل المشاريع الهندسية',
+    'projects.addnew': 'فتح معاملة جديدة',
+    'projects.table.project': 'المشروع / العميل',
+    'projects.table.progress': 'الإنجاز الفني',
+    'projects.table.billing': 'المطالبات المالية',
+    'projects.noactiveprojects': 'لا يوجد مشاريع جارية حالياً.',
+
+    // حالات
     'status.active': 'نشط',
     'status.completed': 'مكتمل',
     'status.pending': 'بانتظار الإجراء',
@@ -143,7 +141,6 @@ const translations: Record<Language, Record<string, string>> = {
     'status.new': 'جديد',
     'status.approved': 'معتمد',
     'status.rejected': 'مرفوض',
-    'status.cancelled': 'ملغى',
     'status.in-progress': 'قيد التنفيذ',
     'status.paid': 'تم السداد',
   },
@@ -188,9 +185,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   };
 
   /**
-   * دالة الترجمة الذكية السيادية:
-   * تقوم بتحويل أي مفتاح يتم طلبه إلى حروف صغيرة (lowercase) قبل البحث عنه.
-   * هذا يمحو الفجوة المعرفية ويمنع ظهور الأكواد البرمجية في الواجهة.
+   * دالة الترجمة الذكية:
+   * تحول المفتاح إلى حروف صغيرة لضمان المطابقة حتى لو اختلف الكود.
    */
   const t = (key: string) => {
     if (!key) return '';
