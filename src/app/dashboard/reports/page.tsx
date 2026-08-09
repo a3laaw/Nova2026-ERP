@@ -49,7 +49,7 @@ export default function ReportsHubPage() {
 
   return (
     <div className="space-y-10 animate-in fade-in duration-700" dir={dir}>
-      {/* Unified Header Design */}
+      {/* Unified Sovereign Header Design (H-14) */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-6 text-start">
         <div className="flex items-center gap-4 text-start">
           <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/5">

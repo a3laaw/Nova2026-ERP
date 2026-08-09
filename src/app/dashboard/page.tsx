@@ -107,7 +107,7 @@ export default function DashboardPage() {
 
         <div className="flex gap-3">
           <Button onClick={() => router.push('/dashboard/projects')} className="bg-primary text-white h-11 px-6 rounded-xl font-black shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all">
-             <Plus className={cn("h-4 w-4", isRtl ? "ms-2" : "me-2")} /> {t('projects.addnew')}
+             <Plus className={cn("h-4 w-4", isRtl ? "ms-2" : "me-2")} /> {t('common.add')}
           </Button>
           <Button variant="outline" className="h-11 px-6 rounded-xl font-black border-2 bg-white text-slate-400 gap-2">
              <FileText className="h-4 w-4" /> {t('dashboard.export')}
@@ -147,7 +147,7 @@ export default function DashboardPage() {
             <div className="divide-y divide-slate-50">
               {[
                 { title: isRtl ? "اعتماد ميزانية مشروع صباح السالم" : "Approve Project Budget", detail: t('boqexplorer'), time: "5m", color: "bg-blue-500" },
-                { title: isRtl ? "تسجيل حضور طاقم العمل الميداني" : "Record site crew attendance", detail: t('attendance'), time: "1h", color: "bg-orange-500" },
+                { title: isRtl ? "تسجيل حضور طاقم العمل الميداني" : "Record site crew attendance", detail: t('hr'), time: "1h", color: "bg-orange-500" },
                 { title: isRtl ? "إصدار سند صرف للمورد" : "Issue payment voucher", detail: t('accounting'), time: "3h", color: "bg-emerald-500" },
               ].map((activity, i) => (
                 <div key={i} className="flex items-start gap-3 p-4 hover:bg-slate-50/50 transition-colors">
@@ -177,6 +177,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="p-6">
             <ChartContainer config={chartConfig} className="h-[260px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: "#64748B", fontSize: 10, fontWeight: 700 }} />
@@ -185,6 +186,7 @@ export default function DashboardPage() {
                   <Bar dataKey="revenue" fill="var(--color-revenue)" radius={[4, 4, 0, 0]} barSize={20} />
                   <Bar dataKey="expenses" fill="var(--color-expenses)" radius={[4, 4, 0, 0]} barSize={20} />
                 </BarChart>
+              </ResponsiveContainer>
             </ChartContainer>
           </CardContent>
         </Card>

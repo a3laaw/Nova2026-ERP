@@ -14,11 +14,11 @@ interface LanguageContextType {
 
 /**
  * القاموس الموحد والنهائي (Master Dictionary) - الإصدار الشامل.
- * يحتوي على كافة مفاتيح النظام المستخرجة من i18n_master_prompt.md.
+ * يحتوي على كافة مفاتيح النظام لضمان عدم حدوث تراجع نصي.
  */
 const translations: Record<Language, Record<string, string>> = {
   ar: {
-    // الهيكل والتنقل
+    // 1. الهيكل والتنقل
     'dashboard': 'لوحة التحكم',
     'crm': 'العملاء والفرص',
     'projects': 'المشاريع',
@@ -28,10 +28,10 @@ const translations: Record<Language, Record<string, string>> = {
     'procurement': 'المشتريات والتوريد',
     'inventory': 'المخازن والعهد',
     'ai.hub': 'ذكاء Nova الاصطناعي',
+    'ai.desc': 'استخدم قوة الذكاء الاصطناعي لتحليل البيانات والعمليات المالية والهندسية.',
     'settings': 'الإعدادات',
     'logout': 'تسجيل الخروج',
     'userprofile': 'ملفي الشخصي',
-    'devconsole': 'لوحة تحكم المطور',
     'details': 'التفاصيل',
     'transactions': 'المعاملات الفنية',
     'reports': 'التقارير والرقابة',
@@ -60,7 +60,7 @@ const translations: Record<Language, Record<string, string>> = {
     'workhours': 'ساعات الدوام',
     'templates': 'مكتبة القوالب',
     
-    // الداشبورد
+    // 2. الداشبورد (Dashboard)
     'dashboard.stats.revenue': 'إجمالي الإيرادات',
     'dashboard.stats.activeprojects': 'المشاريع الجارية',
     'dashboard.stats.workforce': 'القوى العاملة',
@@ -74,19 +74,19 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.recent': 'العمليات الأخيرة',
     'dashboard.export': 'تصدير البيانات',
 
-    // الرادار والمواعيد
+    // 3. الرادار والمواعيد (Appointments & Radar)
     'appointments.radar': 'رادار المواعيد والزيارات',
     'appointments.radardesc': 'جدولة اللقاءات مع العملاء والزيارات الميدانية للمهندسين.',
     'appointments.printschedule': 'طباعة الجدول',
     'appointments.morningsession': 'الفترة الصباحية ☀️',
     'appointments.eveningsession': 'الفترة المسائية 🌆',
     'appointments.hallradar': 'رادار حجز القاعات',
-    'appointments.hallradardesc': 'تنظيم إشغال قاعات الاجتماعات والورش الفنية.',
+    'appointments.hallradardesc': 'تنظيم إشغال قاعات الاجتماعات والورش الفنية داخل المنشأة.',
     'appointments.printoccupancy': 'طباعة تقرير الإشغال',
     'appointments.busy': 'مشغول / محجوز',
     'appointments.activehalls': 'قاعات مفعلة',
 
-    // الميدان
+    // 4. الميدان والإنشاءات (Field & Construction)
     'construction.radar': 'رادار الميدان الإنشائي',
     'construction.radar.desc': 'تنسيق أطقم العمل والمعدات وتتبع حركة المهندسين في المواقع.',
     'construction.groups': 'تكوين أطقم العمل',
@@ -96,7 +96,13 @@ const translations: Record<Language, Record<string, string>> = {
     'construction.reportsdesc': 'أرشيف تقارير الإنجاز الميداني الموثقة بالموارد.',
     'construction.newreport': 'تقرير جديد',
 
-    // الكلمات الشائعة والجداول
+    // 5. المحاسبة (Accounting)
+    'accounting.coa.title': 'دليل الحسابات والترميز المالي',
+    'accounting.journals.title': 'دفاتر قيود اليومية',
+    'accounting.vouchers.paymenttitle': 'سندات الصرف المعتمدة',
+    'accounting.vouchers.receipttitle': 'سندات القبض المعتمدة',
+
+    // 6. الكلمات الشائعة (Common & UI)
     'common.search': 'بحث...',
     'common.filter': 'تصفية',
     'common.save': 'حفظ البيانات',
@@ -116,7 +122,7 @@ const translations: Record<Language, Record<string, string>> = {
     'common.error': 'فشل في تنفيذ العملية',
     'common.saved': 'تم حفظ التغييرات بنجاح',
 
-    // رؤوس جداول CRM
+    // 7. إدارة العملاء (CRM)
     'clients.title': 'قاعدة بيانات العملاء',
     'clients.addnew': 'تسجيل عميل جديد',
     'clients.table.profile': 'ملف العميل',
@@ -124,25 +130,26 @@ const translations: Record<Language, Record<string, string>> = {
     'clients.table.contact': 'الاتصال',
     'clients.table.status': 'الحالة التقديرية',
 
-    // رؤوس جداول المشاريع
+    // 8. المشاريع (Projects)
     'projects.title': 'سجل المشاريع الهندسية',
     'projects.addnew': 'فتح معاملة جديدة',
     'projects.table.project': 'المشروع / العميل',
     'projects.table.progress': 'الإنجاز الفني',
     'projects.table.billing': 'المطالبات المالية',
     'projects.noactiveprojects': 'لا يوجد مشاريع جارية حالياً.',
+    'projects.boqexplorer.desc': 'إدارة واعتماد جداول الكميات والميزانيات المرجعية للمشاريع.',
 
-    // حالات
-    'status.active': 'نشط',
-    'status.completed': 'مكتمل',
-    'status.pending': 'بانتظار الإجراء',
-    'status.draft': 'مسودة',
-    'status.contracted': 'متعاقد',
-    'status.new': 'جديد',
-    'status.approved': 'معتمد',
-    'status.rejected': 'مرفوض',
-    'status.in-progress': 'قيد التنفيذ',
-    'status.paid': 'تم السداد',
+    // 9. التقارير (Reports)
+    'reports.hub.title': 'مركز التقارير والرقابة',
+    'reports.hub.description': 'أدوات تحليلية متقدمة لربط الميدان بالمركز المالي والإداري.',
+    'reports.executive.title': 'التقرير التنفيذي الشامل',
+    'reports.analytics.title': 'رادار الأداء المالي والإنتاجي',
+    'reports.charts.budgetvsexpenses': 'تحليل الميزانية vs المصروفات',
+    'reports.charts.portfoliobyactivity': 'توزيع المحفظة حسب النشاط',
+    'reports.stats.portfolio': 'إجمالي المحفظة',
+    'reports.stats.activeprojects': 'المشاريع الجارية',
+    'reports.stats.staff': 'القوى العاملة',
+    'reports.stats.attendance': 'انضباط الحضور',
   },
   en: {
     'dashboard': 'Dashboard',
@@ -157,11 +164,11 @@ const translations: Record<Language, Record<string, string>> = {
     'settings': 'Settings',
     'logout': 'Logout',
     'userprofile': 'Profile',
-    'appointments.radar': 'Appointments Radar',
-    'appointments.radardesc': 'Schedule client meetings and site visits.',
     'common.search': 'Search...',
     'common.save': 'Save',
     'common.cancel': 'Cancel',
+    'appointments.radar': 'Appointments Radar',
+    'appointments.radardesc': 'Schedule client meetings and site visits.',
     'status.active': 'Active',
     'status.completed': 'Completed',
   }
@@ -185,13 +192,18 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   };
 
   /**
-   * دالة الترجمة الذكية:
-   * تحول المفتاح إلى حروف صغيرة لضمان المطابقة حتى لو اختلف الكود.
+   * دالة الترجمة الذكية والمحصنة:
+   * تقوم بتحويل المفتاح إلى حروف صغيرة (lowercase) قبل البحث عنه،
+   * مما يمنع ظهور الأكواد البرمجية في الواجهة في حال اختلاف حالة الأحرف.
    */
   const t = (key: string) => {
     if (!key) return '';
     const lowerKey = key.toLowerCase();
-    return translations[lang][lowerKey] || translations[lang][key] || key;
+    
+    // البحث في القاموس عن المفتاح (سواء كان بشكله الحالي أو بحروف صغيرة)
+    return translations[lang][lowerKey] || 
+           translations[lang][key] || 
+           key; // العودة للمفتاح الأصلي في حال عدم وجود ترجمة
   };
 
   return (

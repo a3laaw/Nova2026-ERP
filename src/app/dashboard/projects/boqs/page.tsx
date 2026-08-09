@@ -14,7 +14,6 @@ import { useFirestore, useCollection } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
-import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQ } from '@/types/documents';
 import { cn } from '@/lib/utils';
@@ -44,7 +43,7 @@ export default function BOQExplorerPage() {
 
   return (
     <div className="w-full space-y-6 text-start animate-in fade-in duration-500" dir={dir}>
-      {/* Unified Header Design */}
+      {/* Unified Sovereign Header Design (H-14) */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-6 text-start">
         <div className="flex items-center gap-4 text-start">
           <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/5">
@@ -57,7 +56,7 @@ export default function BOQExplorerPage() {
         </div>
       </header>
 
-      <Card className="rounded-xl border shadow-sm bg-white overflow-hidden">
+      <Card className="rounded-2xl border shadow-sm bg-white overflow-hidden ring-1 ring-black/5">
          <CardHeader className="bg-slate-50/50 border-b p-4 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="relative w-full max-w-md">
                <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
