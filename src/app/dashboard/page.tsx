@@ -15,7 +15,8 @@ import {
   ShieldAlert,
   ArrowRight,
   Clock,
-  Loader2
+  Loader2,
+  LayoutDashboard
 } from "lucide-react"
 import { 
   Bar, 
@@ -53,7 +54,7 @@ export default function DashboardPage() {
   const router = useRouter();
 
   const companyId = globalUser?.companyId;
-  const isAdmin = globalUser?.roleCode === 'ADMIN' || globalUser?.role?.toLowerCase() === 'admin';
+  const isAdmin = globalUser?.roleCode === 'ADMIN' || globalUser?.role?.toUpperCase() === 'admin';
 
   const chartConfig = useMemo(() => ({
     revenue: {
@@ -127,10 +128,15 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 w-full animate-in fade-in duration-500" dir={dir}>
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="text-start">
-          <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">{t('dashboard')}</h1>
-          <p className="text-xs text-muted-foreground font-medium">{company?.name || '...'}</p>
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-6">
+        <div className="flex items-center gap-4 text-start">
+          <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/5">
+            <LayoutDashboard className="h-7 w-7" />
+          </div>
+          <div className="text-start">
+            <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">{t('dashboard.title')}</h1>
+            <p className="text-xs font-bold text-muted-foreground italic mt-0.5">{t('dashboard.description')}</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="h-9 font-semibold px-4 border-slate-200">
@@ -146,7 +152,7 @@ export default function DashboardPage() {
 
       {overdueMissions.length > 0 && (
         <div className="animate-in slide-in-from-top-4 duration-500">
-           <div className="flex items-center gap-2 mb-3 px-1">
+           <div className="flex items-center gap-2 mb-3 px-1 text-start">
               <ShieldAlert className="h-4 w-4 text-rose-500" />
               <h2 className="text-sm font-bold text-slate-900">
                 {t('dashboard.missions')}

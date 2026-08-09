@@ -18,12 +18,12 @@ export function BreadcrumbNav() {
   const formatSegment = (segment: string) => {
     const sLower = segment.toLowerCase();
     
-    // التحقق مما إذا كان الجزء يمثل معرفاً (ID) طويل أو يحتوي على أرقام
+    // Check if segment is a long ID or contains numbers
     if (segment.length > 15 || /\d/.test(segment)) {
       return t('details');
     }
     
-    // خريطة المسارات الموحدة لربط روابط المتصفح بالقاموس المركزي
+    // Unified path mapping to dictionary keys
     const segmentMap: Record<string, string> = {
       'dashboard': 'dashboard',
       'clients': 'clients',
@@ -36,13 +36,13 @@ export function BreadcrumbNav() {
       'transactions': 'transactions',
       'employees': 'staffRecords',
       'payroll': 'payroll',
-      'boqs': 'boqExplorer',
+      'boqs': 'projects.boqExplorer',
       'leaves': 'leaveRequests',
       'reports': 'reports',
       'client-visits': 'visitsDossier',
       'crm': 'crm',
-      'equipment': 'equipment',
-      'groups': 'workGroups',
+      'equipment': 'construction.equipment',
+      'groups': 'construction.groups',
       'attendance': 'attendance',
       'vouchers': 'paymentVouchers',
       'coa': 'chartOfAccounts',
@@ -58,17 +58,19 @@ export function BreadcrumbNav() {
       'roles': 'rolesPermissions',
       'company': 'companyIdentity',
       'profile': 'userProfile',
-      'checklists': 'checklists',
+      'checklists': 'settings.checklists',
       'work-hours': 'workHours',
       'analytics': 'reports.analytics.title',
       'executive': 'reports.executive.title',
       'ai': 'ai.hub',
       'new': 'common.add',
-      'edit': 'common.edit'
+      'edit': 'common.edit',
+      'boq': 'projects.boqExplorer'
     };
     
     const key = segmentMap[sLower] || sLower;
-    return t(key);
+    const translated = t(key);
+    return translated !== key ? translated : sLower.charAt(0).toUpperCase() + sLower.slice(1);
   };
 
   if (segments.length <= 1 && segments[0] === 'dashboard') return null;
