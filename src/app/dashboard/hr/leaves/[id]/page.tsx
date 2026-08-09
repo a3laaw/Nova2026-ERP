@@ -98,16 +98,16 @@ export default function LeaveDetailsPage() {
         actualReturnDate: actualReturnDate,
         actualDepartureDate: actualDepartureDate
       });
-      toast({ title: t('saved') });
+      toast({ title: t('common.saved') });
     } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+      toast({ variant: "destructive", title: t('common.error') });
     } finally {
       setProcessing(false);
     }
   };
 
   if (loading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
-  if (!leave) return <div className="p-20 text-center text-slate-400 font-bold">{isRtl ? 'الطلب غير موجود' : 'Request not found'}</div>;
+  if (!leave) return <div className="p-20 text-center text-slate-400 font-bold">{t('hr.requestNotFound')}</div>;
 
   const canPrint = check('hr', 'print').can;
 
@@ -117,7 +117,7 @@ export default function LeaveDetailsPage() {
         <div className="flex items-center gap-4">
           <div className="text-start">
              <div className="flex items-center gap-3">
-                <h1 className="text-3xl font-black font-headline text-slate-900">{isRtl ? 'حالة طلب الإجازة' : 'Leave Request Status'}</h1>
+                <h1 className="text-3xl font-black font-headline text-slate-900">{t('hr.leaveStatus')}</h1>
                 <Badge className={cn(
                   "font-black px-4 py-1 rounded-xl shadow-sm uppercase",
                   leave.status === 'approved' ? 'bg-blue-500 text-white' : 
@@ -127,7 +127,7 @@ export default function LeaveDetailsPage() {
                   leave.status === 'pending' ? 'bg-amber-50 text-amber-600 border-amber-200 border' : 
                   'bg-rose-500 text-white'
                 )}>
-                   {leave.status}
+                   {t('status.' + leave.status)}
                 </Badge>
              </div>
           </div>
@@ -135,13 +135,13 @@ export default function LeaveDetailsPage() {
         <div className="flex gap-3">
            {canPrint && (
               <Button onClick={() => window.print()} className="h-12 px-6 rounded-xl bg-white border-2 text-slate-900 font-black gap-2 hover:bg-slate-50 shadow-sm">
-                 <Printer className="h-5 w-5 text-primary" /> {isRtl ? 'طباعة المستند' : 'Print'}
+                 <Printer className="h-5 w-5 text-primary" /> {t('common.print')}
               </Button>
            )}
         </div>
       </div>
 
-      <PrintWrapper title={isRtl ? "إقرار إجازة رسمية" : "Official Leave Authorization"}>
+      <PrintWrapper title={t('hr.officialAuthorization')}>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
            
            <div className="lg:col-span-8 space-y-8">
@@ -157,8 +157,8 @@ export default function LeaveDetailsPage() {
                          <div className="flex items-center gap-4 text-rose-600">
                             <ShieldAlert className="h-10 w-10" />
                             <div className="text-start">
-                               <h3 className="font-black text-xl uppercase tracking-tighter">{isRtl ? 'تنبيه: تداخل تخصصي حرج' : 'Operational Conflict Warning'}</h3>
-                               <p className="text-sm font-bold opacity-80">{isRtl ? 'يوجد موظفون آخرون من نفس القسم لديهم إجازات في نفس الفترة.' : 'Other department staff are away during this period.'}</p>
+                               <h3 className="font-black text-xl uppercase tracking-tighter">{t('hr.operationalConflict')}</h3>
+                               <p className="text-sm font-bold opacity-80">{t('hr.departmentOverlap')}</p>
                             </div>
                          </div>
                          
@@ -170,14 +170,14 @@ export default function LeaveDetailsPage() {
                                     <p className="text-[9px] font-bold text-rose-400">{p.period}</p>
                                  </div>
                                  <Badge className={cn("text-[8px] font-black uppercase border-0", p.status === 'pending' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700")}>
-                                    {p.status}
+                                    {t('status.' + p.status)}
                                  </Badge>
                               </div>
                             ))}
                          </div>
                          <div className="p-4 bg-rose-600 text-white rounded-2xl flex items-center gap-3">
                             <AlertTriangle className="h-5 w-5" />
-                            <p className="text-xs font-black">{isRtl ? 'يرجى مراجعة الجدول الزمني للقسم قبل اتمام الموافقة لتجنب توقف العمل.' : 'Review department schedule before approval to prevent downtime.'}</p>
+                            <p className="text-xs font-black">{t('hr.reviewSchedule')}</p>
                          </div>
                       </div>
                    )}
@@ -187,21 +187,21 @@ export default function LeaveDetailsPage() {
               {isAdmin && leave.status === 'pending' && (
                 <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-2 ring-primary/10 print:hidden">
                    <div className="bg-slate-900 p-8 text-white text-start">
-                      <h3 className="text-2xl font-black font-headline flex items-center gap-3"><Clock className="h-7 w-7 text-primary" /> {isRtl ? 'قرار الإدارة وتصحيح البيانات' : 'Admin Decision'}</h3>
+                      <h3 className="text-2xl font-black font-headline flex items-center gap-3"><Clock className="h-7 w-7 text-primary" /> {t('hr.adminDecision')}</h3>
                    </div>
                    <CardContent className="p-8 space-y-8 text-start">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-slate-50 rounded-[2rem] border-2 border-dashed border-primary/10">
-                         <div className="space-y-2"><Label className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'تاريخ البدء المعتمد' : 'Approve Start'}</Label><SmartDateInput value={editForm.startDate} onChange={v => setEditForm({...editForm, startDate: v})} /></div>
-                         <div className="space-y-2"><Label className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'تاريخ العودة المعتمد' : 'Approve Return'}</Label><SmartDateInput value={editForm.endDate} onChange={v => setEditForm({...editForm, endDate: v})} /></div>
-                         <div className="space-y-2 md:col-span-2"><Label className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'أيام الخصم الفعلي (للمحاسبة)' : 'Deduction Days'}</Label><Input type="number" value={editForm.workingDays} onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})} className="h-14 rounded-2xl border-2 font-black text-primary text-xl" /></div>
+                         <div className="space-y-2"><Label className="text-[10px] font-black text-slate-400 uppercase">{t('hr.approveStart')}</Label><SmartDateInput value={editForm.startDate} onChange={v => setEditForm({...editForm, startDate: v})} /></div>
+                         <div className="space-y-2"><Label className="text-[10px] font-black text-slate-400 uppercase">{t('hr.approveReturn')}</Label><SmartDateInput value={editForm.endDate} onChange={v => setEditForm({...editForm, endDate: v})} /></div>
+                         <div className="space-y-2 md:col-span-2"><Label className="text-[10px] font-black text-slate-400 uppercase">{t('hr.deductionDays')}</Label><Input type="number" value={editForm.workingDays} onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})} className="h-14 rounded-2xl border-2 font-black text-primary text-xl" /></div>
                       </div>
                       <div className="space-y-3">
-                         <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'ملاحظات الإدارة' : 'Internal Notes'}</Label>
+                         <Label className="text-[10px] font-black uppercase text-slate-400">{t('hr.internalNotes')}</Label>
                          <Textarea value={editForm.comment} onChange={e => setEditForm({...editForm, comment: e.target.value})} className="min-h-[100px] rounded-2xl border-2" />
                       </div>
                       <div className="flex gap-4">
-                         <Button onClick={() => handleAction('rejected')} disabled={processing} variant="outline" className="flex-1 h-16 rounded-2xl border-2 text-rose-600 font-black">{isRtl ? 'رفض الطلب' : 'Reject'}</Button>
-                         <Button onClick={() => handleAction('approved')} disabled={processing} className="flex-1 h-16 rounded-2xl bg-emerald-600 text-white font-black shadow-xl shadow-emerald-100">{isRtl ? 'اعتماد وصرف' : 'Approve'}</Button>
+                         <Button onClick={() => handleAction('rejected')} disabled={processing} variant="outline" className="flex-1 h-16 rounded-2xl border-2 text-rose-600 font-black">{t('status.rejected')}</Button>
+                         <Button onClick={() => handleAction('approved')} disabled={processing} className="flex-1 h-16 rounded-2xl bg-emerald-600 text-white font-black shadow-xl shadow-emerald-100">{t('common.confirm')}</Button>
                       </div>
                    </CardContent>
                 </Card>
@@ -209,7 +209,7 @@ export default function LeaveDetailsPage() {
 
               <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                  <CardHeader className="bg-slate-50/50 border-b p-8">
-                    <CardTitle className="text-xl font-black">{isRtl ? 'بيانات طلب الإجازة' : 'Request Details'}</CardTitle>
+                    <CardTitle className="text-xl font-black">{t('hr.requestDetails')}</CardTitle>
                  </CardHeader>
                  <CardContent className="p-8 space-y-10 text-start">
                     <div className="flex items-center gap-6">
@@ -217,44 +217,44 @@ export default function LeaveDetailsPage() {
                           <User className="h-8 w-8" />
                        </div>
                        <div>
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'اسم الموظف صاحب الطلب' : 'Employee'}</p>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('common.name')}</p>
                           <h4 className="text-2xl font-black text-slate-900">{leave.userName}</h4>
                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                        <div className="p-6 rounded-2xl bg-slate-50 border-2 border-white shadow-sm text-start">
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'نوع الإجازة' : 'Type'}</p>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('hr.type') || 'Type'}</p>
                           <p className="text-lg font-black text-primary uppercase">{leave.type}</p>
                        </div>
                        <div className="p-6 rounded-2xl bg-slate-50 border-2 border-white shadow-sm text-start">
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'المدة التقويمية' : 'Calendar Days'}</p>
-                          <p className="text-lg font-black text-slate-900">{leave.days} {isRtl ? 'يوم' : 'Days'}</p>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('hr.calendarDays') || 'Calendar Days'}</p>
+                          <p className="text-lg font-black text-slate-900">{leave.days} {t('common.days') || 'Days'}</p>
                        </div>
                        <div className="p-6 rounded-2xl bg-emerald-50 border-2 border-white shadow-sm text-start">
-                          <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">{isRtl ? 'الخصم الفعلي' : 'Net Deduction'}</p>
-                          <p className="text-lg font-black text-emerald-700">{leave.workingDays} {isRtl ? 'يوم عمل' : 'Work Days'}</p>
+                          <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">{t('hr.netDeduction')}</p>
+                          <p className="text-lg font-black text-emerald-700">{leave.workingDays} {t('hr.workDays')}</p>
                        </div>
                     </div>
 
                     <div className="p-8 rounded-[2rem] border-2 border-dashed border-slate-200 flex flex-col md:flex-row justify-between items-center gap-8 relative overflow-hidden">
                        <div className="absolute top-0 right-0 p-4 opacity-5"><CalendarDays className="h-20 w-20" /></div>
                        <div className="text-center md:text-start space-y-1">
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'تاريخ البداية' : 'Start Date'}</p>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('hr.startDate') || 'Start Date'}</p>
                           <p className="text-2xl font-black text-slate-900">{leave.startDate}</p>
                        </div>
                        <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-300">
                           <ArrowRight className={cn("h-6 w-6", isRtl && "rotate-180")} />
                        </div>
                        <div className="text-center md:text-end space-y-1">
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'تاريخ العودة' : 'Return Date'}</p>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('hr.returnDate')}</p>
                           <p className="text-2xl font-black text-slate-900">{leave.endDate}</p>
                        </div>
                     </div>
 
                     <div className="space-y-4">
                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                          <Info className="h-3 w-3" /> {isRtl ? 'المبررات والأسباب' : 'Reason / Justification'}
+                          <Info className="h-3 w-3" /> {t('hr.justification')}
                        </p>
                        <p className="p-6 bg-slate-50/50 rounded-2xl border-2 border-white shadow-inner text-sm font-bold text-slate-700 leading-relaxed italic">
                           {leave.reason}
@@ -269,27 +269,27 @@ export default function LeaveDetailsPage() {
                  <CardHeader className="bg-slate-50 border-b p-6">
                     <CardTitle className="text-base font-black flex items-center gap-2">
                        <History className="h-5 w-5 text-primary" />
-                       {isRtl ? 'سجل الحركات (Audit)' : 'Audit Trail'}
+                       {t('hr.auditTrail')}
                     </CardTitle>
                  </CardHeader>
                  <CardContent className="p-6">
                     <div className="space-y-6">
                        <div className="relative ps-6 border-s-2 border-slate-100 pb-2">
                           <div className="absolute -left-[9px] top-0 h-4 w-4 rounded-full bg-primary border-4 border-white shadow-sm" />
-                          <p className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'تقديم الطلب' : 'Request Created'}</p>
+                          <p className="text-[9px] font-black text-slate-400 uppercase">{t('hr.requestCreated')}</p>
                           <p className="text-xs font-bold text-slate-700 mt-1">{leave.createdAt?.toDate().toLocaleString()}</p>
                        </div>
                        {leave.approvedAt && (
                           <div className="relative ps-6 border-s-2 border-slate-100 pb-2">
                              <div className="absolute -left-[9px] top-0 h-4 w-4 rounded-full bg-emerald-500 border-4 border-white shadow-sm" />
-                             <p className="text-[9px] font-black text-emerald-600 uppercase">{isRtl ? 'تم الاعتماد' : 'Approved'}</p>
+                             <p className="text-[9px] font-black text-emerald-600 uppercase">{t('status.approved')}</p>
                              <p className="text-xs font-bold text-slate-700 mt-1">{leave.approvedAt?.toDate().toLocaleString()}</p>
                           </div>
                        )}
                        {leave.rejectedAt && (
                           <div className="relative ps-6 border-s-2 border-slate-100 pb-2">
                              <div className="absolute -left-[9px] top-0 h-4 w-4 rounded-full bg-rose-500 border-4 border-white shadow-sm" />
-                             <p className="text-[9px] font-black text-rose-600 uppercase">{isRtl ? 'تم الرفض' : 'Rejected'}</p>
+                             <p className="text-[9px] font-black text-rose-600 uppercase">{t('status.rejected')}</p>
                              <p className="text-xs font-bold text-slate-700 mt-1">{leave.rejectedAt?.toDate().toLocaleString()}</p>
                           </div>
                        )}
@@ -300,7 +300,7 @@ export default function LeaveDetailsPage() {
               <div className="p-8 rounded-[2rem] bg-amber-50 border-2 border-dashed border-amber-200 flex items-start gap-4">
                  <Scale className="h-6 w-6 text-amber-600 shrink-0 mt-1" />
                  <p className="text-[10px] text-amber-800 font-bold leading-relaxed text-start">
-                    {isRtl ? 'بناءً على مادة 70: لا يحق للموظف القيام بالإجازة إلا بموافقة الإدارة. يحق للمدير تعديل تواريخ الإجازة بما يتناسب مع مصلحة العمل وضمان استمرارية القسم.' : 'Art 70: Leave requires admin approval. Manager can adjust dates to suit operational needs and department continuity.'}
+                    {t('hr.art70Notice')}
                  </p>
               </div>
            </div>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -47,16 +46,6 @@ export default function HRDashboard() {
   const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId))) : null, [db, companyId]);
   const { data: employees, loading: empsLoading } = useCollection<Employee>(empsQuery);
 
-  const expiringDocs = useMemo(() => {
-    if (!employees) return [];
-    const next30Days = addDays(new Date(), 30);
-    return employees.filter(emp => {
-      if (!emp.residencyExpiry) return false;
-      const expiry = parseISO(emp.residencyExpiry);
-      return isBefore(expiry, next30Days);
-    });
-  }, [employees]);
-
   if (hrView.scope === 'own' || empsLoading) return <div className="h-[60vh] flex flex-col items-center justify-center gap-4"><Loader2 className="animate-spin text-primary" /></div>;
 
   return (
@@ -64,21 +53,21 @@ export default function HRDashboard() {
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
           <h1 className="text-xl md:text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <UserCircle className="h-6 w-6 text-primary" /> {t('hr')}
+            <UserCircle className="h-6 w-6 text-primary" /> {t('hr.title')}
           </h1>
-          <p className="text-muted-foreground text-xs font-medium">{isRtl ? 'إدارة القوى العاملة والامتثال' : 'Workforce & Compliance'}</p>
+          <p className="text-muted-foreground text-xs font-medium">{t('hr.description')}</p>
         </div>
         <div className="flex gap-2">
-           {canSeePayroll && <Button onClick={() => router.push('/dashboard/hr/payroll')} size="sm" className="h-9 font-bold px-4"><Calculator className="me-2 h-4 w-4" /> {isRtl ? 'الرواتب' : 'Payroll'}</Button>}
-           {canHire && <Button onClick={() => router.push('/dashboard/hr/employees/new')} size="sm" className="h-9 font-bold px-4"><UserPlus className="me-2 h-4 w-4" /> {isRtl ? 'تعيين' : 'Hire'}</Button>}
+           {canSeePayroll && <Button onClick={() => router.push('/dashboard/hr/payroll')} size="sm" className="h-9 font-bold px-4"><Calculator className="me-2 h-4 w-4" /> {t('payroll')}</Button>}
+           {canHire && <Button onClick={() => router.push('/dashboard/hr/employees/new')} size="sm" className="h-9 font-bold px-4"><UserPlus className="me-2 h-4 w-4" /> {t('hr.hire')}</Button>}
         </div>
       </header>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="bg-white p-1 rounded-lg border shadow-sm mb-4 inline-flex">
           <TabsList className="bg-transparent h-8 gap-1 p-0">
-            <TabsTrigger value="overview" className="rounded-md font-bold text-[11px] px-6 data-[state=active]:bg-primary data-[state=active]:text-white transition-all h-full">نظرة عامة</TabsTrigger>
-            <TabsTrigger value="leaves" className="rounded-md font-bold text-[11px] px-6 data-[state=active]:bg-primary data-[state=active]:text-white transition-all h-full">الإجازات</TabsTrigger>
+            <TabsTrigger value="overview" className="rounded-md font-bold text-[11px] px-6 data-[state=active]:bg-primary data-[state=active]:text-white transition-all h-full">{t('common.overview')}</TabsTrigger>
+            <TabsTrigger value="leaves" className="rounded-md font-bold text-[11px] px-6 data-[state=active]:bg-primary data-[state=active]:text-white transition-all h-full">{t('leaveRequests')}</TabsTrigger>
           </TabsList>
         </div>
 

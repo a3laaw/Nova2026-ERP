@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -62,9 +61,9 @@ export default function EmployeeDetailsPage() {
     setSaving(true);
     try {
       await hrService.updateEmployee(empId, data, { uid: user.uid, name: user.displayName || 'Admin' });
-      toast({ title: t('saved') });
+      toast({ title: t('common.saved') });
     } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+      toast({ variant: "destructive", title: t('common.error') });
     } finally {
       setSaving(false);
     }
@@ -75,18 +74,18 @@ export default function EmployeeDetailsPage() {
     setTerminating(true);
     try {
       await hrService.terminateEmployee(empId, termForm.reason, termForm.date, { uid: user.uid, name: user.displayName || 'Admin' });
-      toast({ title: isRtl ? 'تم إنهاء الخدمة' : 'Service Terminated' });
+      toast({ title: t('hr.terminate') });
       setIsTerminateOpen(false);
       router.push('/dashboard/hr/employees');
     } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+      toast({ variant: "destructive", title: t('common.error') });
     } finally {
       setTerminating(false);
     }
   };
 
   if (empLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
-  if (!employee) return <div className="p-20 text-center"><AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" /><h2 className="text-2xl font-black">{isRtl ? 'الموظف غير موجود' : 'Employee Not Found'}</h2></div>;
+  if (!employee) return <div className="p-20 text-center"><AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" /><h2 className="text-2xl font-black">{t('hr.notFound')}</h2></div>;
 
   return (
     <div className="space-y-8" dir={dir}>
@@ -99,12 +98,12 @@ export default function EmployeeDetailsPage() {
                 "font-black px-3 py-1 rounded-lg border-0 shadow-sm",
                 employee.status === 'active' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'
               )}>
-                 {isRtl ? (employee.status === 'active' ? 'نشط' : 'منتهي الخدمة') : employee.status.toUpperCase()}
+                 {t('status.' + employee.status)}
               </Badge>
             </div>
             <div className="text-xs font-bold text-muted-foreground mt-1 flex items-center gap-2">
                <ShieldCheck className="h-3 w-3 text-primary" /> 
-               {isRtl ? 'رقم الموظف:' : 'Emp #:'} <span className="font-mono text-slate-800">{employee.employeeNumber}</span>
+               {t('hr.empNumLabel')} <span className="font-mono text-slate-800">{employee.employeeNumber}</span>
                <div className="h-1 w-1 rounded-full bg-slate-300" />
                <span className="uppercase text-[9px] font-black">{employee.jobTitle}</span>
             </div>
@@ -115,31 +114,31 @@ export default function EmployeeDetailsPage() {
           <Dialog open={isTerminateOpen} onOpenChange={setIsTerminateOpen}>
              <DialogTrigger asChild>
                 <Button variant="destructive" className="rounded-xl font-bold h-12 gap-2 shadow-lg shadow-rose-200">
-                   <Ban className="h-4 w-4" /> {isRtl ? 'إنهاء الخدمة' : 'Terminate'}
+                   <Ban className="h-4 w-4" /> {t('hr.terminate')}
                 </Button>
              </DialogTrigger>
              <DialogContent className="rounded-xl p-0 overflow-hidden" dir={dir}>
                 <div className="bg-rose-50 p-8 border-b text-start">
                    <DialogTitle className="font-black text-rose-800 flex items-center gap-2">
-                      <AlertTriangle className="h-6 w-6" /> {isRtl ? 'تأكيد إنهاء الخدمة' : 'Confirm Termination'}
+                      <AlertTriangle className="h-6 w-6" /> {t('hr.confirmTermination')}
                    </DialogTitle>
                    <DialogDescription className="mt-1 font-bold text-rose-600/70">
-                      {isRtl ? 'تنبيه: سيتم إيقاف صرف الرواتب وتعطيل وصول الموظف للنظام فوراً.' : 'Warning: Payroll and system access will be disabled immediately.'}
+                      {t('hr.terminateWarning')}
                    </DialogDescription>
                 </div>
                 <div className="p-8 space-y-6 text-start">
                    <div className="space-y-2">
-                      <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{isRtl ? 'تاريخ الإنهاء' : 'Effective Date'}</Label>
+                      <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{t('hr.terminationDate')}</Label>
                       <SmartDateInput value={termForm.date} onChange={v => setTermForm({...termForm, date: v})} />
                    </div>
                    <div className="space-y-2">
-                      <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{isRtl ? 'سبب إنهاء الخدمة' : 'Reason'}</Label>
+                      <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{t('common.reason')}</Label>
                       <Textarea value={termForm.reason} onChange={e => setTermForm({...termForm, reason: e.target.value})} className="rounded-xl border-2 min-h-[100px]" placeholder="..." />
                    </div>
                 </div>
                 <DialogFooter className="p-8 bg-slate-50 border-t">
                    <Button onClick={handleTerminate} disabled={terminating || !termForm.reason} className="w-full h-14 rounded-xl font-black text-lg bg-rose-600 text-white shadow-xl shadow-rose-200">
-                      {terminating ? <Loader2 className="animate-spin" /> : (isRtl ? 'تأكيد الإنهاء النهائي' : 'Confirm Termination')}
+                      {terminating ? <Loader2 className="animate-spin" /> : t('hr.confirmTerminationBtn')}
                    </Button>
                 </DialogFooter>
              </DialogContent>
@@ -163,7 +162,7 @@ export default function EmployeeDetailsPage() {
                 <CardHeader className="bg-slate-50 border-b p-8 text-start">
                    <CardTitle className="text-lg font-black flex items-center gap-3 text-slate-900">
                       <History className="h-5 w-5 text-primary" />
-                      {isRtl ? 'سجل التدقيق (Audit)' : 'Audit History'}
+                      {t('hr.auditHistory')}
                    </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -171,7 +170,7 @@ export default function EmployeeDetailsPage() {
                       {logsLoading ? <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto text-primary/30" /></div> : (
                         <div className="divide-y divide-slate-100">
                            {logs?.length === 0 ? (
-                             <div className="p-10 text-center text-slate-500 italic text-xs">{isRtl ? 'لا يوجد تغييرات مسجلة.' : 'No audit logs found.'}</div>
+                             <div className="p-10 text-center text-slate-500 italic text-xs">{t('hr.noAuditLogs')}</div>
                            ) : (
                              logs?.map((log) => (
                                <div key={log.id} className="p-6 space-y-3 hover:bg-slate-50 transition-colors text-start">
@@ -186,7 +185,7 @@ export default function EmployeeDetailsPage() {
                                   </div>
                                   <div>
                                      <p className="text-xs font-bold text-slate-600">
-                                        {isRtl ? 'تغيير في' : 'Changed'} <span className="text-slate-900 font-black">{log.field}</span>
+                                        {t('hr.changedField')} <span className="text-slate-900 font-black">{log.field}</span>
                                      </p>
                                   </div>
                                </div>

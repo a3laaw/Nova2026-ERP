@@ -58,16 +58,16 @@ export default function LeaveRequestsPage() {
         <div className="text-start">
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2 text-slate-900">
             <Plane className="h-6 w-6 text-primary" />
-            {isRtl ? 'طلبات الإجازات' : 'Leave Requests'}
+            {t('hr.leaveRequestsTitle')}
           </h1>
           <p className="text-muted-foreground text-xs font-medium">
-            {viewAccess.scope === 'own' ? (isRtl ? 'عرض سجلاتك الشخصية فقط' : 'Viewing your own records only') : (isRtl ? 'إدارة الغيابات والأرصدة' : 'Manage absences and balances')}
+            {viewAccess.scope === 'own' ? t('hr.ownRecordsOnly') : t('hr.manageAbsences')}
           </p>
         </div>
 
         <Button onClick={() => router.push('/dashboard/hr/leaves/new')} size="sm" className="h-9 px-6 font-bold rounded-md shadow-sm">
           <Plus className="me-2 h-4 w-4" />
-          {isRtl ? 'طلب جديد' : 'New Request'}
+          {t('common.add')}
         </Button>
       </div>
 
@@ -76,23 +76,23 @@ export default function LeaveRequestsPage() {
           <div className="relative w-full max-w-sm">
             <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input 
-              placeholder={isRtl ? 'بحث...' : 'Search...'} 
+              placeholder={t('common.search')} 
               className="ps-9 h-9 border-slate-200 bg-white font-medium text-sm" 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant="outline" size="sm" className="h-9 px-4 border-slate-200 font-bold text-xs"><Filter className="h-3.5 w-3.5 me-2" /> {isRtl ? 'تصفية' : 'Filter'}</Button>
+          <Button variant="outline" size="sm" className="h-9 px-4 border-slate-200 font-bold text-xs"><Filter className="h-3.5 w-3.5 me-2" /> {t('common.filter')}</Button>
         </div>
         <CardContent className="p-0 overflow-x-auto">
           <Table>
             <TableHeader className="bg-slate-50">
               <TableRow>
-                <TableHead className="py-3 ps-6 text-start text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'الموظف' : 'Employee'}</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'النوع' : 'Type'}</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'الفترة' : 'Period'}</TableHead>
-                <TableHead className="text-center text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'أيام العمل' : 'Work Days'}</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'الحالة' : 'Status'}</TableHead>
+                <TableHead className="py-3 ps-6 text-start text-[10px] font-bold uppercase text-slate-500">{t('common.name')}</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{t('hr.type') || 'Type'}</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{t('hr.period') || 'Period'}</TableHead>
+                <TableHead className="text-center text-[10px] font-bold uppercase text-slate-500">{t('hr.workDays') || 'Work Days'}</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{t('common.status')}</TableHead>
                 <TableHead className="pe-6"></TableHead>
               </TableRow>
             </TableHeader>
@@ -100,7 +100,7 @@ export default function LeaveRequestsPage() {
               {loading ? (
                 <TableRow><TableCell colSpan={6} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></TableCell></TableRow>
               ) : filteredLeaves.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-20 italic text-slate-400 font-bold">{isRtl ? 'لا يوجد طلبات.' : 'No requests found.'}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-20 italic text-slate-400 font-bold">{t('hr.noRequests')}</TableCell></TableRow>
               ) : (
                 filteredLeaves.map((leave) => (
                   <TableRow 
@@ -133,12 +133,12 @@ export default function LeaveRequestsPage() {
                     </TableCell>
                     <TableCell className="text-start">
                        <Badge className={cn(
-                         "font-bold px-2 py-0.5 rounded-md border-0 text-[9px] uppercase",
-                         leave.status === 'approved' ? 'bg-emerald-50 text-emerald-600' : 
+                         "font-black px-2 py-0.5 rounded-md border-0 text-[9px] uppercase",
+                         leave.status === 'approved' || leave.status === 'on-leave' || leave.status === 'returned' || leave.status === 'commenced' ? 'bg-emerald-50 text-emerald-600' : 
                          leave.status === 'pending' ? 'bg-amber-50 text-amber-600' : 
                          'bg-rose-50 text-rose-600'
                        )}>
-                          {leave.status}
+                          {t('status.' + leave.status)}
                        </Badge>
                     </TableCell>
                     <TableCell className="pe-6 text-end">

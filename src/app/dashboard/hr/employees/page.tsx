@@ -22,12 +22,11 @@ import { Employee } from '@/types/hr';
 
 export default function EmployeesPage() {
   const { globalUser } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
+  const { t, isRtl, dir } = useLanguage();
   const { check, isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
-  const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
   const viewAccess = check('hr', 'view');
@@ -65,12 +64,12 @@ export default function EmployeesPage() {
       </div>
 
       <Card className="rounded-2xl shadow-sm border border-slate-100 overflow-hidden bg-white">
-        <div className="p-4 flex flex-row items-center justify-between gap-4 bg-slate-50/30 border-b">
+        <div className="p-4 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50/30 border-b">
           <div className="relative w-full max-md">
             <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input placeholder={t('common.search')} className="ps-11 h-11 border-slate-200 bg-white font-bold text-sm rounded-xl shadow-inner" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
           </div>
-          <Button variant="outline" className="h-11 px-4 border-2 rounded-xl font-black text-xs"><Filter className="h-4 w-4 me-2" /> {t('common.filter')}</Button>
+          <Button variant="outline" className="h-11 px-4 rounded-xl font-black text-xs"><Filter className="h-4 w-4 me-2" /> {t('common.filter')}</Button>
         </div>
         <CardContent className="p-0 overflow-x-auto">
           <Table>
@@ -87,7 +86,7 @@ export default function EmployeesPage() {
               {loading ? (
                 <TableRow><TableCell colSpan={5} className="text-center py-24"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/20" /></TableCell></TableRow>
               ) : filteredEmployees.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-24 text-slate-300 font-bold italic">No matching records.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-24 text-slate-300 font-bold italic">{t('common.noResults')}</TableCell></TableRow>
               ) : filteredEmployees.map((emp) => (
                 <TableRow key={emp.id} className="cursor-pointer border-b-slate-100 group hover:bg-primary/[0.01]" onClick={() => router.push(`/dashboard/hr/employees/${emp.id}`)}>
                   <TableCell className="ps-8 py-5 text-start">
@@ -107,7 +106,7 @@ export default function EmployeesPage() {
                        "font-black px-3 py-1 rounded-lg border-0 shadow-sm text-[8px] uppercase",
                        emp.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
                      )}>
-                        {emp.status}
+                        {t('status.' + emp.status)}
                      </Badge>
                   </TableCell>
                   {canSeeSalaries && (
