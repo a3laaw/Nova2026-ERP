@@ -19,19 +19,15 @@ import { paths } from '@/firebase/multi-tenant';
 import { BOQ } from '@/types/documents';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
-import { DocumentService } from '@/services/document-service';
-import { toast } from '@/hooks/use-toast';
 
 export default function BOQExplorerPage() {
-  const { globalUser, user } = useAuthContext();
+  const { globalUser } = useAuthContext();
   const { t, lang, dir, isRtl } = useLanguage();
-  const { isAdmin, permissions } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const companyId = globalUser?.companyId;
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const boqsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.boqs(companyId))) : null, 
@@ -42,25 +38,19 @@ export default function BOQExplorerPage() {
   const filteredBoqs = useMemo(() => {
     return (boqs || []).filter(boq => 
       (boq.boqNumber || "").toLowerCase().includes(searchTerm.toLowerCase()) || 
-      (boq.clientName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (boq.name || "").toLowerCase().includes(searchTerm.toLowerCase())
-    ).sort((a,b) => {
-       const dateA = a.createdAt?.toMillis?.() || 0;
-       const dateB = b.createdAt?.toMillis?.() || 0;
-       return dateB - dateA;
-    });
+      (boq.clientName || "").toLowerCase().includes(searchTerm.toLowerCase())
+    );
   }, [boqs, searchTerm]);
 
   return (
     <div className="w-full space-y-6 text-start animate-in fade-in duration-500" dir={dir}>
-      {/* Unified Header Design */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-6">
         <div className="flex items-center gap-4 text-start">
           <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/5">
             <FileSpreadsheet className="h-8 w-8" />
           </div>
           <div className="text-start">
-            <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{t('projects.boqexplorer')}</h1>
+            <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{t('boqexplorer')}</h1>
             <p className="text-xs font-bold text-muted-foreground italic mt-0.5">{t('projects.boqexplorer.desc')}</p>
           </div>
         </div>
@@ -85,9 +75,9 @@ export default function BOQExplorerPage() {
             <Table>
                <TableHeader className="bg-slate-50/50">
                   <TableRow className="border-b-0">
-                     <TableHead className="py-5 ps-10 text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'رقم المقايسة' : 'BOQ Number'}</TableHead>
+                     <TableHead className="py-5 ps-10 text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">رقم المقايسة</TableHead>
                      <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('clients')}</TableHead>
-                     <TableHead className="text-end text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'الميزانية' : 'Budget'}</TableHead>
+                     <TableHead className="text-end text-[10px] font-black uppercase text-slate-500 tracking-widest">الميزانية</TableHead>
                      <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('common.status')}</TableHead>
                      <TableHead className="pe-10"></TableHead>
                   </TableRow>
@@ -116,20 +106,13 @@ export default function BOQExplorerPage() {
                            "font-black px-3 py-1 rounded-lg border-0 shadow-sm text-[9px] uppercase", 
                            boq.status === 'approved' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
                          )}>
-                            {t('common.status') + ': ' + boq.status}
+                            {boq.status}
                          </Badge>
                       </TableCell>
-                      <TableCell className="pe-10 text-end" onClick={e => e.stopPropagation()}>
-                         <div className="flex justify-end gap-2">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-9 w-9 rounded-xl text-slate-300 group-hover:text-primary group-hover:bg-primary/5 transition-all"
-                              onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}
-                            >
-                               <ArrowRight className={cn("h-5 w-5", isRtl && "rotate-180")} />
-                            </Button>
-                         </div>
+                      <TableCell className="pe-10 text-end">
+                          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-slate-300 group-hover:text-primary transition-all">
+                             <ArrowRight className={cn("h-5 w-5", isRtl && "rotate-180")} />
+                          </Button>
                       </TableCell>
                     </TableRow>
                   ))}

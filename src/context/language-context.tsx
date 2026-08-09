@@ -13,18 +13,12 @@ interface LanguageContextType {
 }
 
 /**
- * القاموس السيادي الموحد (The Master Dictionary)
- * يحتوي على 100% من مفاتيح النظام المستخرجة لضمان عدم حدوث تراجع.
+ * القاموس الموحد الجديد (Clean Sheet) - المصدر الوحيد للحقيقة.
  */
 const translations: Record<Language, Record<string, string>> = {
   ar: {
-    // --- Navigation & Core ---
+    // التنقل الرئيسي (Sidebar & Nav)
     'dashboard': 'لوحة التحكم',
-    'logout': 'تسجيل الخروج',
-    'devconsole': 'لوحة المطور',
-    'userprofile': 'ملفي الشخصي',
-    'settings': 'الإعدادات',
-    'reports': 'التقارير',
     'crm': 'العملاء والفرص',
     'projects': 'المشاريع',
     'construction': 'المقاولات',
@@ -33,32 +27,48 @@ const translations: Record<Language, Record<string, string>> = {
     'procurement': 'المشتريات',
     'inventory': 'المخازن والعهد',
     'ai.hub': 'مركز الذكاء الاصطناعي',
+    'settings': 'الإعدادات',
+    'logout': 'تسجيل الخروج',
+    'userprofile': 'ملفي الشخصي',
+
+    // موديول المشاريع والمقايسات
     'activeprojects': 'المشاريع الجارية',
     'boqexplorer': 'جدول الكميات والميزانية',
+    'reports': 'التقارير',
+    'projects.addnew': 'إضافة مشروع',
+    'projects.boqexplorer.desc': 'إدارة واعتماد جداول الكميات والميزانيات المرجعية',
+
+    // موديول المقاولات (Field)
     'fieldradar': 'رادار الميدان',
     'workgroups': 'فرق العمل',
     'equipment': 'المعدات والآليات',
     'fieldlogs': 'تقارير الموقع',
+    'construction.radar': 'رادار العمليات الميدانية',
+    'construction.radar.desc': 'إدارة وتنسيق أطقم العمل والمهندسين في مواقع المشاريع الإنشائية',
+    'construction.groups': 'فرق العمل والمجموعات',
+    'construction.groups.desc': 'إدارة أطقم الميدان والتخصصات الفنية',
+
+    // موديول CRM
+    'leads': 'الفرص والعملاء',
+    'clients': 'إدارة العملاء',
+    'visitsdossier': 'سجل الزيارات',
+
+    // موديول الموارد البشرية
+    'staffrecords': 'شؤون الموظفين',
     'attendance': 'بصمة الحضور',
     'payroll': 'الرواتب',
     'leaverequests': 'الإجازات',
-    'payrollbatches': 'مسيرات الرواتب',
+    'reports.hub.title': 'مركز التقارير والرقابة',
+    'reports.hub.description': 'تحليل القوى العاملة والامتثال والإنتاجية الميدانية',
+
+    // موديول المحاسبة
     'chartofaccounts': 'شجرة الحسابات',
     'journalentries': 'قيود اليومية',
     'paymentvouchers': 'سندات الصرف',
     'receiptvouchers': 'سندات القبض',
     'financialreports': 'التقارير المالية',
-    'visitsdossier': 'سجل الزيارات',
-    'appointments': 'المواعيد',
-    'meetings': 'الاجتماعات',
-    'usersmanagement': 'المستخدمون والصلاحيات',
-    'companyidentity': 'بيانات الشركة',
-    'rolespermissions': 'الأدوار والوصول',
-    'workhours': 'ساعات العمل',
-    'templates': 'القوالب',
-    'settings.checklists': 'قواعد العمل',
 
-    // --- Dashboard Specific ---
+    // إحصائيات الداشبورد
     'dashboard.stats.revenue': 'إجمالي الإيرادات',
     'dashboard.stats.activeprojects': 'المشاريع الجارية',
     'dashboard.stats.workforce': 'القوى العاملة',
@@ -71,16 +81,8 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.units.employee': 'موظف',
     'dashboard.recent': 'العمليات الأخيرة',
     'dashboard.export': 'تصدير',
-    'projects.addnew': 'إضافة مشروع',
 
-    // --- Descriptions ---
-    'reports.hub.title': 'مركز التقارير',
-    'reports.hub.description': 'تحليل القوى العاملة والامتثال والإنتاجية الميدانية',
-    'construction.radar.desc': 'إدارة وتنسيق أطقم العمل والمهندسين في مواقع المشاريع الإنشائية',
-    'construction.groups.desc': 'إدارة أطقم الميدان والتخصصات',
-    'projects.boqexplorer.desc': 'إدارة واعتماد جداول الكميات والميزانيات المرجعية',
-
-    // --- Common Items ---
+    // الكلمات الشائعة (Common)
     'common.search': 'بحث...',
     'common.filter': 'تصفية',
     'common.save': 'حفظ',
@@ -94,41 +96,30 @@ const translations: Record<Language, Record<string, string>> = {
     'common.name': 'الاسم',
     'common.amount': 'المبلغ',
     'common.total': 'الإجمالي',
-    'common.saved': 'تم الحفظ بنجاح',
-    'common.error': 'خطأ في العملية',
     'common.noresults': 'لا توجد نتائج',
     'common.viewall': 'عرض الكل',
-    'common.back': 'العودة',
 
-    // --- CRM Table Headers ---
+    // حالات العميل (CRM Table)
     'clients.table.profile': 'بيانات العميل',
     'clients.table.staff': 'المسؤول',
     'clients.table.contact': 'الاتصال',
     'clients.table.status': 'الحالة',
-    'leads.title': 'الفرص والعملاء',
-    'clients.title': 'إدارة العملاء',
-
-    // --- Statuses ---
-    'status.active': 'نشط',
-    'status.pending': 'قيد الانتظار',
-    'status.completed': 'مكتمل',
-    'status.cancelled': 'ملغي',
-    'status.new': 'جديد',
     'status.contracted': 'متعاقد',
+    'status.new': 'جديد'
   },
   en: {
     'dashboard': 'Dashboard',
-    'logout': 'Logout',
-    'settings': 'Settings',
     'crm': 'CRM',
     'projects': 'Projects',
     'construction': 'Construction',
+    'accounting': 'Accounting',
+    'hr': 'Human Resources',
+    'settings': 'Settings',
     'common.search': 'Search...',
-    'common.save': 'Save',
     'dashboard.stats.revenue': 'Total Revenue',
     'dashboard.units.kwd': 'KWD',
     'reports.hub.title': 'Reports Center',
-    'reports.hub.description': 'Workforce and operational productivity analysis',
+    'reports.hub.description': 'Workforce and operational productivity analysis'
   }
 };
 
@@ -151,9 +142,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   const t = (key: string) => {
     if (!key) return '';
-    // البحث بطريقة غير حساسة لحالة الأحرف لمنع الفجوة المعرفية
-    const normalizedKey = key.toLowerCase();
-    return translations[lang]?.[normalizedKey] || translations[lang]?.[key] || key;
+    // بحث ذكي غير حساس لحالة الأحرف لضمان ثبات الترجمة
+    const lowerKey = key.toLowerCase();
+    return translations[lang]?.[lowerKey] || translations[lang]?.[key] || key;
   };
 
   return (
