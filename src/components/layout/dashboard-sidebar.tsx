@@ -61,8 +61,8 @@ export function DashboardSidebar() {
         url: "/dashboard/projects", 
         resource: 'projects',
         subItems: [
-          { title: t('projects.title'), url: "/dashboard/projects", icon: Layers },
-          { title: t('projects.boqExplorer'), url: "/dashboard/projects/boqs", icon: FileSpreadsheet },
+          { title: t('activeProjects'), url: "/dashboard/projects", icon: Layers },
+          { title: t('boqExplorer'), url: "/dashboard/projects/boqs", icon: FileSpreadsheet },
           { title: t('reports'), url: "/dashboard/reports", icon: FileText },
         ]
       },
@@ -72,10 +72,10 @@ export function DashboardSidebar() {
         url: "/dashboard/construction/bookings", 
         resource: 'projects',
         subItems: [
-          { title: t('construction.radar'), url: "/dashboard/construction/bookings", icon: MapPin },
-          { title: t('construction.groups'), url: "/dashboard/construction/groups", icon: Users },
-          { title: t('construction.equipment'), url: "/dashboard/equipment", icon: Truck },
-          { title: t('construction.reports'), url: "/dashboard/construction/field-visits", icon: FileText },
+          { title: t('fieldRadar'), url: "/dashboard/construction/bookings", icon: MapPin },
+          { title: t('workGroups'), url: "/dashboard/construction/groups", icon: Users },
+          { title: t('equipment'), url: "/dashboard/equipment", icon: Truck },
+          { title: t('fieldLogs'), url: "/dashboard/construction/field-visits", icon: FileText },
         ]
       },
       { 
@@ -97,7 +97,7 @@ export function DashboardSidebar() {
         subItems: [
           { title: t('staffRecords'), url: "/dashboard/hr/employees", icon: Users, hideIfOwnScope: true },
           { title: t('leaveRequests'), url: "/dashboard/hr/leaves", icon: Calendar },
-          { title: t('payrollBatches'), url: "/dashboard/hr/payroll", icon: Calculator, requiredAction: 'approve', hideIfOwnScope: true },
+          { title: t('payroll'), url: "/dashboard/hr/payroll", icon: Calculator, requiredAction: 'approve', hideIfOwnScope: true },
         ]
       },
       { 
@@ -129,8 +129,8 @@ export function DashboardSidebar() {
         resource: 'settings',
         subItems: [
           { title: t('usersManagement'), url: "/dashboard/settings/users", icon: Users },
-          { title: t('companyProfile'), url: "/dashboard/settings/company", icon: Building2 },
-          { title: t('checklists'), url: "/dashboard/settings/checklists", icon: Database },
+          { title: t('companyIdentity'), url: "/dashboard/settings/company", icon: Building2 },
+          { title: t('settings.checklists'), url: "/dashboard/settings/checklists", icon: Database },
           { title: t('rolesPermissions'), url: "/dashboard/settings/roles", icon: ShieldCheck },
           { title: t('workHours'), url: "/dashboard/settings/work-hours", icon: Clock },
           { title: t('userProfile'), url: "/dashboard/settings/profile", icon: UserCircle },
@@ -170,7 +170,7 @@ export function DashboardSidebar() {
           <div className="flex flex-col text-start px-2 border-b-2 border-orange-50 pb-4">
             <span className="font-headline font-black text-2xl text-slate-900 tracking-tighter leading-none">NovaFlow</span>
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-[8px] uppercase font-black tracking-[0.3em] text-[#e87c24]">{t('erpSystem')}</span>
+              <span className="text-[8px] uppercase font-black tracking-[0.3em] text-[#e87c24]">ERP SYSTEM</span>
               <div className="h-[1.5px] w-8 bg-[#e87c24] rounded-full" />
             </div>
           </div>
@@ -197,7 +197,7 @@ export function DashboardSidebar() {
         {!isCollapsed && (
           <div className="p-4 rounded-3xl bg-white border border-orange-100 shadow-xl ring-1 ring-black/[0.02] flex justify-between items-center">
              <Badge className="bg-[#e87c24] text-white text-[8px] font-black uppercase h-5 px-2 rounded-full">V2.8</Badge>
-             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{t('erpCloud')}</span>
+             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">CLOUD</span>
           </div>
         )}
       </SidebarFooter>
