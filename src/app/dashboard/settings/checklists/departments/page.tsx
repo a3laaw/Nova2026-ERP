@@ -97,11 +97,13 @@ export default function DepartmentsPage() {
             </Button>
           </DialogTrigger>
           <DialogContent className="rounded-xl p-8 max-w-xl border-0 shadow-3xl bg-white" dir={dir}>
-            <DialogHeader className="text-start"><DialogTitle className="font-black text-2xl">{deptForm.id ? t('common.edit') : t('newDept')}</DialogTitle></DialogHeader>
+            <DialogHeader className="text-start">
+               <DialogTitle className="font-black text-2xl">{deptForm.id ? t('common.edit') : t('newDept')}</DialogTitle>
+            </DialogHeader>
             <div className="grid grid-cols-2 gap-6 py-6 text-start">
               <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('common.nameAr')}</Label><Input value={deptForm.name || ''} onChange={e => setDeptForm({...deptForm, name: e.target.value})} className="h-11 border-2 font-black" /></div>
               <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('common.nameEn')}</Label><Input value={deptForm.nameEn || ''} onChange={e => setDeptForm({...deptForm, nameEn: e.target.value})} className="h-11 border-2 text-start font-bold" dir="ltr" /></div>
-              <div className="col-span-2 space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('common.notes')}</Label><Textarea value={deptForm.description || ''} onChange={e => setDeptForm({...deptForm, description: e.target.value})} className="min-h-[100px] border-2" /></div>
+              <div className="col-span-2 space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('common.description')}</Label><Textarea value={deptForm.description || ''} onChange={e => setDeptForm({...deptForm, description: e.target.value})} className="min-h-[100px] border-2" /></div>
             </div>
             <DialogFooter className="pt-4 border-t">
               <Button onClick={handleSaveDept} disabled={loadingAction === 'save_dept'} className="w-full h-14 rounded-2xl font-black text-xl">
@@ -140,7 +142,7 @@ export default function DepartmentsPage() {
         <div className={cn("lg:col-span-7", !selectedDept && 'opacity-60')}>
           <Card className="border-0 shadow-xl rounded-xl overflow-hidden bg-white ring-1 ring-black/5 text-start">
             <CardHeader className="bg-slate-50/50 border-b p-6 flex flex-row items-center justify-between">
-              <div><CardTitle className="text-lg font-black flex items-center gap-2"><Briefcase className="h-5 w-5 text-primary" /> {isRtl ? 'الوظائف' : 'Jobs'}</CardTitle></div>
+              <div><CardTitle className="text-lg font-black flex items-center gap-2"><Briefcase className="h-5 w-5 text-primary" /> {t('jobTitles')}</CardTitle></div>
               {selectedDept && (
                 <Button variant="outline" size="sm" className="rounded-xl h-10 px-6 font-black border-2" onClick={() => setIsJobOpen(true)}>
                   <Plus className="me-2 h-4 w-4" /> {t('common.add')}
@@ -171,7 +173,9 @@ export default function DepartmentsPage() {
 
       <Dialog open={isJobOpen} onOpenChange={setIsJobOpen}>
          <DialogContent className="rounded-xl p-8 max-w-xl border-0 shadow-3xl bg-white" dir={dir}>
-            <DialogHeader className="text-start"><DialogTitle className="font-black text-2xl">{isRtl ? 'إضافة وظيفة جديدة' : 'Add New Job'}</DialogTitle></DialogHeader>
+            <DialogHeader className="text-start">
+               <DialogTitle className="font-black text-2xl">{t('addJob')}</DialogTitle>
+            </DialogHeader>
             <div className="grid grid-cols-2 gap-6 py-6 text-start">
                <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('common.nameAr')}</Label><Input value={jobForm.name} onChange={e => setJobForm({...jobForm, name: e.target.value})} className="h-11 border-2 font-black" /></div>
                <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('common.nameEn')}</Label><Input value={jobForm.nameEn} onChange={e => setJobForm({...jobForm, nameEn: e.target.value})} className="h-11 border-2 text-start font-bold" dir="ltr" /></div>

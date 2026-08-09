@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -8,8 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   Landmark, Plus, Loader2, Search, 
-  Trash2, Edit3, ShieldCheck,
-  Save, X, AlertTriangle, Users
+  Trash2, Edit3, Save, X, AlertTriangle, Users
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
@@ -37,10 +35,9 @@ import { toast } from '@/hooks/use-toast';
 
 export default function HallsManagementPage() {
   const { globalUser, user } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
+  const { t, lang, dir, isRtl } = useLanguage();
   const { check } = usePermissions();
   const db = useFirestore();
-  const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -84,10 +81,10 @@ export default function HallsManagementPage() {
           createdAt: serverTimestamp()
         });
       }
-      toast({ title: t('saved') });
+      toast({ title: t('common.saved') });
       setEditingItem(null);
     } catch (e: any) {
-      toast({ variant: "destructive", title: t('error') });
+      toast({ variant: "destructive", title: t('common.error') });
     } finally {
       setLoadingAction(null);
     }
@@ -98,7 +95,7 @@ export default function HallsManagementPage() {
     setLoadingAction(`delete_${deletingId}`);
     try {
       await deleteDoc(doc(db, paths.meetingRooms(companyId), deletingId));
-      toast({ title: t('deleted') });
+      toast({ title: t('common.deleted') });
       setDeletingId(null);
     } finally {
       setLoadingAction(null);
@@ -113,7 +110,6 @@ export default function HallsManagementPage() {
             <Landmark className="h-7 w-7 text-primary" />
             {isRtl ? 'إدارة قاعات الاجتماعات' : 'Meeting Rooms Registry'}
           </h2>
-          <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">Define available physical resources</p>
         </div>
         
         {canCreate && (
@@ -130,23 +126,18 @@ export default function HallsManagementPage() {
         <CardHeader className="bg-slate-50/50 border-b p-6">
            <div className="relative w-full max-w-sm">
               <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-              <Input 
-                placeholder={t('search')} 
-                className="ps-12 h-11 bg-white border-slate-200 font-bold" 
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-              />
+              <Input placeholder={t('common.search')} className="ps-12 h-11 bg-white border-slate-200 font-bold" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
            </div>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
           <Table>
             <TableHeader className="bg-muted/30">
               <TableRow>
-                <TableHead className="py-6 ps-8 text-start">{t('name')}</TableHead>
+                <TableHead className="py-6 ps-8 text-start">{t('common.name')}</TableHead>
                 <TableHead className="text-start">{isRtl ? 'الاسم (إنجليزي)' : 'Name (EN)'}</TableHead>
                 <TableHead className="text-center">{isRtl ? 'السعة' : 'Capacity'}</TableHead>
                 <TableHead className="text-center">{t('order')}</TableHead>
-                <TableHead className="text-start">{t('status')}</TableHead>
+                <TableHead className="text-start">{t('common.status')}</TableHead>
                 <TableHead className="pe-8 text-end">{isRtl ? 'إجراءات' : 'Actions'}</TableHead>
               </TableRow>
             </TableHeader>
@@ -154,7 +145,7 @@ export default function HallsManagementPage() {
               {loading ? (
                 <TableRow><TableCell colSpan={6} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-20 italic text-slate-300 font-bold">{isRtl ? 'لا توجد قاعات مسجلة.' : 'No rooms found.'}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-20 italic text-slate-300 font-bold">{t('common.noResults')}</TableCell></TableRow>
               ) : (
                 filtered.map((room) => (
                   <TableRow key={room.id} className="hover:bg-primary/5 transition-colors group">
@@ -174,19 +165,10 @@ export default function HallsManagementPage() {
                     <TableCell className="pe-8 text-end">
                        <div className="flex justify-end gap-2">
                           {canEdit && (
-                             <Button variant="outline" size="icon" onClick={() => setEditingItem(room)} className="rounded-xl h-10 w-10 text-primary border-primary/10 hover:bg-primary hover:text-white transition-all">
-                                <Edit3 className="h-4 w-4" />
-                             </Button>
+                             <Button variant="outline" size="icon" onClick={() => setEditingItem(room)} className="rounded-xl h-10 w-10 text-primary border-primary/10 hover:bg-primary hover:text-white transition-all"><Edit3 className="h-4 w-4" /></Button>
                           )}
                           {canDelete && (
-                             <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={() => setDeletingId(room.id!)} 
-                              className="rounded-xl h-10 w-10 text-rose-300 hover:text-rose-600 hover:bg-rose-50"
-                             >
-                                <Trash2 className="h-4 w-4" />
-                             </Button>
+                             <Button variant="ghost" size="icon" onClick={() => setDeletingId(room.id!)} className="rounded-xl h-10 w-10 text-rose-300 hover:text-rose-600 hover:bg-rose-50"><Trash2 className="h-4 w-4" /></Button>
                           )}
                        </div>
                     </TableCell>
@@ -198,24 +180,23 @@ export default function HallsManagementPage() {
         </CardContent>
       </Card>
 
-      {/* Editor Dialog */}
       <Dialog open={!!editingItem} onOpenChange={open => !open && setEditingItem(null)}>
          <DialogContent className="rounded-xl p-0 overflow-hidden max-w-xl border-0 shadow-3xl bg-white" dir={dir}>
             <div className="bg-primary p-8 text-white text-start">
                <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3">
                   <Landmark className="h-8 w-8 text-white" />
-                  {editingItem?.id ? (isRtl ? 'تعديل بيانات القاعة' : 'Edit Room') : (isRtl ? 'إضافة قاعة جديدة' : 'Add Room')}
+                  {editingItem?.id ? t('edit') : t('common.add')}
                </DialogTitle>
             </div>
             
             <div className="p-10 space-y-6 text-start bg-white">
                <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
-                     <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'الاسم بالعربي' : 'Name (AR)'}</Label>
+                     <Label className="text-xs font-black uppercase text-slate-400">{t('common.nameAr')}</Label>
                      <Input value={editingItem?.name || ''} onChange={e => setEditingItem({...editingItem!, name: e.target.value})} className="h-12 rounded-xl border-2 font-black" />
                   </div>
                   <div className="space-y-2">
-                     <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'الاسم بالإنجليزي' : 'Name (EN)'}</Label>
+                     <Label className="text-xs font-black uppercase text-slate-400">{t('common.nameEn')}</Label>
                      <Input value={editingItem?.nameEn || ''} onChange={e => setEditingItem({...editingItem!, nameEn: e.target.value})} className="h-12 rounded-xl border-2 font-black text-start" dir="ltr" />
                   </div>
                </div>
@@ -226,46 +207,37 @@ export default function HallsManagementPage() {
                      <Input type="number" value={editingItem?.capacity || 0} onChange={e => setEditingItem({...editingItem!, capacity: Number(e.target.value)})} className="h-12 rounded-xl border-2 font-black" />
                   </div>
                   <div className="space-y-2">
-                     <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'ترتيب العرض' : 'Display Order'}</Label>
+                     <Label className="text-xs font-black uppercase text-slate-400">{t('order')}</Label>
                      <Input type="number" value={editingItem?.order || 0} onChange={e => setEditingItem({...editingItem!, order: Number(e.target.value)})} className="h-12 rounded-xl border-2 font-black" />
                   </div>
                </div>
 
                <div className="flex items-center justify-between p-6 bg-slate-50 rounded-2xl border-2">
-                  <div className="space-y-0.5">
-                     <Label className="font-black text-slate-700">{t('isActive')}</Label>
-                     <p className="text-[10px] text-slate-400 font-bold">{isRtl ? 'إتاحة القاعة للاستخدام في الرادار.' : 'Make room available in radar.'}</p>
-                  </div>
+                  <Label className="font-black text-slate-700">{t('common.isActive')}</Label>
                   <Switch checked={editingItem?.isActive !== false} onCheckedChange={v => setEditingItem({...editingItem!, isActive: v})} />
                </div>
             </div>
 
             <DialogFooter className="p-8 bg-slate-50 border-t">
-               <Button onClick={handleSave} disabled={loadingAction === 'save'} className="w-full h-14 rounded-2xl bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 border-b-8 border-orange-700 hover:scale-[1.02] transition-all">
-                  {loadingAction === 'save' ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6 me-2" />}
-                  {t('save')}
+               <Button onClick={handleSave} disabled={loadingAction === 'save'} className="w-full h-14 rounded-2xl font-black">
+                  {loadingAction === 'save' ? <Loader2 className="animate-spin" /> : t('common.save')}
                </Button>
             </DialogFooter>
          </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
       <AlertDialog open={!!deletingId} onOpenChange={open => !open && setDeletingId(null)}>
         <AlertDialogContent className="rounded-xl p-10 border-0 shadow-3xl bg-white" dir={dir}>
-          <div className="mx-auto w-20 h-20 bg-rose-50 text-rose-600 rounded-3xl flex items-center justify-center mb-6 ring-8 ring-rose-50/50">
-             <Trash2 className="h-10 w-10" />
-          </div>
-          <AlertDialogHeader className="text-center">
-             <AlertDialogTitle className="font-black text-3xl font-headline text-slate-900">{t('confirmDelete')}</AlertDialogTitle>
-             <AlertDialogDescription className="font-bold text-slate-400 mt-2 text-lg">
-                {isRtl ? 'سيتم حذف القاعة نهائياً من النظام، مما قد يؤدي لإزالة المواعيد التاريخية المرتبطة بها.' : 'This will permanently delete the hall, which may affect historical bookings.'}
+          <AlertDialogHeader>
+             <div className="mx-auto w-20 h-20 bg-rose-50 text-rose-600 rounded-3xl flex items-center justify-center mb-6 ring-8 ring-rose-50/50"><Trash2 className="h-10 w-10" /></div>
+             <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900">{t('common.confirmDelete')}</AlertDialogTitle>
+             <AlertDialogDescription className="text-start font-bold text-slate-400 mt-2 text-lg">
+                {isRtl ? 'سيتم حذف القاعة نهائياً من النظام، مما قد يؤدي لإزالة المواعيد التاريخية المرتبطة بها.' : 'This will permanently delete the hall and its historical links.'}
              </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-10 gap-4 flex flex-row">
-            <AlertDialogCancel className="flex-1 h-14 rounded-2xl font-bold border-2 bg-white">إلغاء</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="flex-[2] h-14 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200">
-               {isRtl ? 'نعم، احذف القاعة' : 'Confirm Delete'}
-            </AlertDialogAction>
+            <AlertDialogCancel className="flex-1 h-14 rounded-2xl font-bold border-2 bg-white">{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="flex-[2] h-14 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl">{t('common.confirm')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

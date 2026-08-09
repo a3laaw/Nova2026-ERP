@@ -29,7 +29,7 @@ export default function SettingsHubPage() {
     {
       id: 'users',
       title: t('usersManagement'),
-      description: isRtl ? 'إدارة حسابات الدخول وتفعيل الموظفين' : 'Manage users and access',
+      description: t('settings.users.desc'),
       icon: Users,
       color: 'text-orange-600',
       bg: 'bg-orange-50',
@@ -39,7 +39,7 @@ export default function SettingsHubPage() {
     {
       id: 'checklists',
       title: t('checklists'),
-      description: isRtl ? 'إدارة القواعد المرجعية والمسارات الفنية' : 'Manage references and paths',
+      description: t('settings.checklists.desc'),
       icon: Database,
       color: 'text-primary',
       bg: 'bg-primary/5',
@@ -49,7 +49,7 @@ export default function SettingsHubPage() {
     {
       id: 'templates',
       title: t('templates'),
-      description: t('templatesDesc'),
+      description: t('settings.templates.desc'),
       icon: LayoutTemplate,
       color: 'text-blue-600',
       bg: 'bg-blue-50',
@@ -59,7 +59,7 @@ export default function SettingsHubPage() {
     {
       id: 'roles',
       title: t('rolesPermissions'),
-      description: isRtl ? 'إدارة مصفوفة الأدوار والوصول' : 'Manage roles matrix',
+      description: t('settings.roles.desc'),
       icon: ShieldCheck,
       color: 'text-indigo-600',
       bg: 'bg-indigo-50',
@@ -69,7 +69,7 @@ export default function SettingsHubPage() {
     {
       id: 'work-hours',
       title: t('workHours'),
-      description: isRtl ? 'ضبط فترات الدوام والعطلات' : 'Set working hours',
+      description: t('settings.workHours.desc'),
       icon: Clock,
       color: 'text-amber-600',
       bg: 'bg-amber-50',
@@ -79,7 +79,7 @@ export default function SettingsHubPage() {
     {
       id: 'profile',
       title: t('profile'),
-      description: isRtl ? 'إعدادات الحساب الشخصي والخصوصية' : 'Personal account settings',
+      description: t('settings.profile.desc'),
       icon: UserCog,
       color: 'text-blue-600',
       bg: 'bg-blue-50',
@@ -95,8 +95,8 @@ export default function SettingsHubPage() {
           <Settings2 className="h-10 w-10 text-primary" />
           {t('settings')}
         </h1>
-        <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-          {isRtl ? 'إدارة تفضيلات المنشأة والقواعد التشغيلية' : 'Manage enterprise preferences'}
+        <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic text-start">
+          {t('settings.enterprise.desc')}
         </p>
       </div>
 
@@ -118,7 +118,7 @@ export default function SettingsHubPage() {
                 {card.description}
               </p>
               <div className="flex items-center gap-2 text-primary font-black text-sm group-hover:gap-4 transition-all">
-                {isRtl ? 'الانتقال للضبط' : 'Configure'}
+                {t('settings.configure')}
                 <ArrowLeft className={cn("h-4 w-4", !isRtl && "rotate-180")} />
               </div>
             </CardContent>

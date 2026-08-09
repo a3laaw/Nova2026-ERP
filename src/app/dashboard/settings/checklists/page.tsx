@@ -29,7 +29,7 @@ export default function TechnicalSetupPage() {
             {t('settings.checklists')}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic text-start">
-            {isRtl ? 'إدارة الدستور التشغيلي والقواعد المرجعية الموحدة للنظام' : 'Manage operational constitution and unified system references'}
+            {t('settings.checklists.desc')}
           </p>
         </div>
       </div>

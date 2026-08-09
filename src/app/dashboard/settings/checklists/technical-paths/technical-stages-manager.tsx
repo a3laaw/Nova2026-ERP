@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -10,7 +9,7 @@ import {
   Workflow, ArrowRight, Clock,
   ListChecks, ShieldCheck,
   GripVertical, ChevronUp, ChevronDown,
-  Building2, Check, Search, X
+  Building2, Check, Search, X, Save, Settings2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,10 +38,9 @@ interface Props {
 
 export function TechnicalStagesManager({ activityType, service: mainService, subService, onBack }: Props) {
   const { globalUser } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
+  const { t, lang, dir, isRtl } = useLanguage();
   const db = useFirestore();
   const companyId = globalUser?.companyId;
-  const isRtl = lang === 'ar';
 
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [form, setForm] = useState<Partial<TechnicalStage> | null>(null);
@@ -98,10 +96,10 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
       } else {
         await technicalPathService.addTechnicalStage(activityType.id!, mainService.id!, subService.id!, data);
       }
-      toast({ title: t('saved') });
+      toast({ title: t('common.saved') });
       setForm(null);
     } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+      toast({ variant: "destructive", title: t('common.error') });
     } finally {
       setLoadingAction(null);
     }
@@ -111,7 +109,6 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
     if (!technicalPathService || !stages) return;
     const newStages = [...sortedStages];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    
     if (targetIndex < 0 || targetIndex >= newStages.length) return;
 
     const temp = newStages[index];
@@ -121,21 +118,12 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
     setLoadingAction('reorder');
     try {
       await technicalPathService.reorderStages(activityType.id!, mainService.id!, subService.id!, newStages);
-      toast({ title: isRtl ? "تم تحديث ترتيب المسار" : "Order Updated" });
+      toast({ title: t('common.saved') });
     } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+      toast({ variant: "destructive", title: t('common.error') });
     } finally {
       setLoadingAction(null);
     }
-  };
-
-  const toggleDept = (deptId: string) => {
-    if (!form) return;
-    const current = form.allowedDepartmentIds || [];
-    const updated = current.includes(deptId) 
-      ? current.filter(id => id !== deptId) 
-      : [...current, deptId];
-    setForm({ ...form, allowedDepartmentIds: updated });
   };
 
   const getAncestors = (targetId: string, allStages: TechnicalStage[]) => {
@@ -171,7 +159,7 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
              <ArrowRight className={cn("h-4 w-4", !isRtl && 'rotate-180')} />
           </Button>
           <div className="text-start">
-            <h1 className="text-2xl font-black font-headline flex items-center gap-2">
+            <h1 className="text-2xl font-black font-headline flex items-center gap-2 text-slate-900">
               <Workflow className="h-6 w-6 text-primary" /> {isRtl ? 'هندسة مراحل العمل' : 'Work Stages Engineering'}
             </h1>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -196,45 +184,21 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
                 <div className="flex items-center p-5 justify-between">
                   <div className="text-start flex items-center gap-4">
                     <div className="flex flex-col gap-1">
-                       <Button 
-                         variant="ghost" 
-                         size="icon" 
-                         className="h-6 w-6 rounded-md text-slate-300 hover:text-primary disabled:opacity-20"
-                         disabled={idx === 0}
-                         onClick={() => handleMove(idx, 'up')}
-                       >
-                          <ChevronUp className="h-4 w-4" />
-                       </Button>
-                       <Button 
-                         variant="ghost" 
-                         size="icon" 
-                         className="h-6 w-6 rounded-md text-slate-300 hover:text-primary disabled:opacity-20"
-                         disabled={idx === sortedStages.length - 1}
-                         onClick={() => handleMove(idx, 'down')}
-                       >
-                          <ChevronDown className="h-4 w-4" />
-                       </Button>
+                       <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md text-slate-300 hover:text-primary disabled:opacity-20" disabled={idx === 0} onClick={() => handleMove(idx, 'up')}><ChevronUp className="h-4 w-4" /></Button>
+                       <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md text-slate-300 hover:text-primary disabled:opacity-20" disabled={idx === sortedStages.length - 1} onClick={() => handleMove(idx, 'down')}><ChevronDown className="h-4 w-4" /></Button>
                     </div>
                     <div>
                       <h3 className="font-black text-slate-800 text-base">{isRtl ? stage.name : stage.nameEn}</h3>
                       <div className="flex flex-wrap gap-3 mt-1">
                          <span className="text-[10px] font-black text-primary bg-primary/5 px-2 rounded">#{idx + 1}</span>
-                         {stage.isTimed && <span className="text-[10px] font-bold text-blue-600 flex items-center gap-1"><Clock className="h-3 w-3" /> {stage.timeTargetDays} {isRtl ? 'يوم' : 'Days'}</span>}
+                         {stage.isTimed && <span className="text-[10px] font-bold text-blue-600 flex items-center gap-1"><Clock className="h-3 w-3" /> {stage.timeTargetDays} {t('common.days')}</span>}
                          {stage.isNumeric && <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1"><ListChecks className="h-3 w-3" /> {isRtl ? 'مستهدف:' : 'Target:'} {stage.numericTarget}</span>}
-                         {stage.allowedDepartmentIds && stage.allowedDepartmentIds.length > 0 && (
-                           <div className="flex gap-1">
-                              {stage.allowedDepartmentIds.map(id => {
-                                 const dept = departments?.find(d => d.id === id);
-                                 return <Badge key={id} variant="outline" className="text-[7px] border-indigo-100 text-indigo-500 font-black">{isRtl ? dept?.name : dept?.nameEn}</Badge>
-                              })}
-                           </div>
-                         )}
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                     <Button variant="ghost" size="icon" onClick={() => setForm(stage)} className="h-10 w-10 rounded-xl text-blue-600 hover:bg-blue-50"><Edit3 className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => { if(confirm(t('confirmDelete'))) technicalPathService?.deleteTechnicalStage(activityType.id!, mainService.id!, subService.id!, stage.id!); }} className="h-10 w-10 rounded-xl text-destructive hover:bg-destructive/5"><Trash2 className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => { if(confirm(t('common.confirmDelete'))) technicalPathService?.deleteTechnicalStage(activityType.id!, mainService.id!, subService.id!, stage.id!); }} className="h-10 w-10 rounded-xl text-destructive hover:bg-destructive/5"><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 </div>
               </Card>
@@ -250,39 +214,33 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
               <div className="lg:col-span-7 p-8 space-y-6 overflow-y-auto bg-white border-e scrollbar-hide">
                 <DialogHeader className="text-start">
                   <DialogTitle className="text-2xl font-black font-headline flex items-center gap-2 text-slate-800">
-                    <ShieldCheck className="text-primary h-7 w-7" /> {form.id ? t('editStage') : t('addStage')}
+                    <ShieldCheck className="text-primary h-7 w-7" /> {form.id ? t('edit') : t('newPath')}
                   </DialogTitle>
                 </DialogHeader>
                 
                 <div className="space-y-5 py-2">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-xs font-black uppercase text-slate-400">{t('name')} (Ar)</Label>
+                      <Label className="text-xs font-black uppercase text-slate-400">{t('common.nameAr')}</Label>
                       <Input value={form.name || ''} onChange={e => setForm({...form, name: e.target.value})} className="h-11 border-2 font-bold" />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs font-black uppercase text-slate-400">{t('name')} (En)</Label>
+                      <Label className="text-xs font-black uppercase text-slate-400">{t('common.nameEn')}</Label>
                       <Input value={form.nameEn || ''} onChange={e => setForm({...form, nameEn: e.target.value})} className="h-11 border-2 font-bold text-start" dir="ltr" />
                     </div>
                   </div>
 
-                  {/* قسم تعيين الأقسام المسموح لها بالتنفيذ - مطور يدعم 100+ قسم */}
-                  <div className="p-6 bg-slate-50 rounded-xl border-2 space-y-4">
+                  <div className="p-6 bg-slate-50 rounded-xl border-2 space-y-4 text-start">
                     <div className="flex items-center gap-2 text-primary font-black text-xs uppercase tracking-widest">
                        <Building2 className="h-4 w-4" /> {isRtl ? 'الأقسام المسؤولة عن التنفيذ' : 'Responsible Departments'}
                     </div>
 
                     <Popover open={showDeptPicker} onOpenChange={setShowDeptPicker}>
                       <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full h-12 justify-between rounded-xl border-2 bg-white font-bold text-xs"
-                        >
+                        <Button variant="outline" className="w-full h-12 justify-between rounded-xl border-2 bg-white font-bold text-xs">
                           <div className="flex items-center gap-2 overflow-hidden">
                              {form.allowedDepartmentIds && form.allowedDepartmentIds.length > 0 ? (
-                               <Badge className="bg-primary text-white border-0 text-[10px] h-6 px-3">
-                                 {form.allowedDepartmentIds.length} {isRtl ? 'أقسام مختارة' : 'Selected'}
-                               </Badge>
+                               <Badge className="bg-primary text-white border-0 text-[10px] h-6 px-3">{form.allowedDepartmentIds.length} {isRtl ? 'أقسام مختارة' : 'Selected'}</Badge>
                              ) : (
                                <span className="text-slate-400">{isRtl ? '--- اختر الأقسام المعنية ---' : '--- Select Departments ---'}</span>
                              )}
@@ -294,72 +252,34 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
                          <div className="p-4 bg-slate-50 border-b">
                             <div className="relative">
                                <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
-                               <Input 
-                                 placeholder={isRtl ? "بحث في الأقسام..." : "Search departments..."}
-                                 className="h-10 ps-10 rounded-lg border-2 bg-white font-bold"
-                                 value={deptSearch}
-                                 onChange={e => setDeptSearch(e.target.value)}
-                               />
+                               <Input placeholder={isRtl ? "بحث في الأقسام..." : "Search departments..."} className="h-10 ps-10 rounded-lg border-2 bg-white font-bold" value={deptSearch} onChange={e => setDeptSearch(e.target.value)} />
                             </div>
                          </div>
                          <ScrollArea className="h-64">
                             <div className="p-2 space-y-1">
-                               {filteredDepts.length === 0 ? (
-                                 <div className="py-10 text-center text-xs text-slate-400 italic">No matches.</div>
-                               ) : filteredDepts.map(dept => {
+                               {filteredDepts.map(dept => {
                                  const isSelected = form.allowedDepartmentIds?.includes(dept.id!);
                                  return (
-                                   <div 
-                                     key={dept.id}
-                                     onClick={() => toggleDept(dept.id!)}
-                                     className={cn(
-                                       "flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all",
-                                       isSelected ? "bg-primary/5 text-primary" : "hover:bg-slate-50"
-                                     )}
-                                   >
-                                      <div className="flex items-center gap-3">
-                                         <Checkbox checked={isSelected} className="pointer-events-none" />
-                                         <span className="text-xs font-black">{isRtl ? dept.name : dept.nameEn}</span>
-                                      </div>
+                                   <div key={dept.id} onClick={() => {
+                                     const current = form.allowedDepartmentIds || [];
+                                     const updated = isSelected ? current.filter(id => id !== dept.id) : [...current, dept.id!];
+                                     setForm({ ...form, allowedDepartmentIds: updated });
+                                   }} className={cn("flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all", isSelected ? "bg-primary/5 text-primary" : "hover:bg-slate-50")}>
+                                      <div className="flex items-center gap-3"><Checkbox checked={isSelected} className="pointer-events-none" /><span className="text-xs font-black">{isRtl ? dept.name : dept.nameEn}</span></div>
                                       {isSelected && <Check className="h-3.5 w-3.5" />}
                                    </div>
                                  );
                                })}
                             </div>
                          </ScrollArea>
-                         <div className="p-3 bg-slate-50 border-t flex justify-between items-center">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{filteredDepts.length} Total</span>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={() => setForm({...form, allowedDepartmentIds: []})}
-                              className="h-7 text-rose-500 hover:bg-rose-50 font-black text-[10px] gap-1"
-                            >
-                               <X className="h-3 w-3" /> {isRtl ? 'تصفير' : 'Clear'}
-                            </Button>
+                         <div className="p-3 bg-slate-50 border-t flex justify-end">
+                            <Button variant="ghost" size="sm" onClick={() => setForm({...form, allowedDepartmentIds: []})} className="h-7 text-rose-500 font-black text-[10px] gap-1"><X className="h-3 w-3" /> {isRtl ? 'تصفير' : 'Clear'}</Button>
                          </div>
                       </PopoverContent>
                     </Popover>
-
-                    <div className="flex flex-wrap gap-2 mt-2">
-                       {form.allowedDepartmentIds?.map(id => {
-                          const dept = departments?.find(d => d.id === id);
-                          if (!dept) return null;
-                          return (
-                            <Badge key={id} variant="secondary" className="bg-primary/10 text-primary border-0 font-black text-[9px] gap-1 px-3">
-                               {isRtl ? dept.name : dept.nameEn}
-                               <X className="h-2.5 w-2.5 cursor-pointer hover:text-rose-600" onClick={(e) => { e.stopPropagation(); toggleDept(id); }} />
-                            </Badge>
-                          );
-                       })}
-                    </div>
-
-                    <p className="text-[9px] text-slate-400 font-bold italic leading-relaxed">
-                       {isRtl ? '* في حال عدم اختيار أي قسم، ستظهر المرحلة لكافة الموظفين تلقائياً.' : '* If no departments are selected, the stage will be visible to everyone.'}
-                    </p>
                   </div>
                   
-                  <div className="p-6 bg-slate-50 rounded-xl border-2 space-y-6">
+                  <div className="p-6 bg-slate-50 rounded-xl border-2 space-y-6 text-start">
                     <div className="flex items-center justify-between">
                         <Label className="font-black text-sm">{isRtl ? 'تتبع زمني' : 'Time Tracking'}</Label>
                         <Switch checked={form.isTimed || false} onCheckedChange={val => setForm({...form, isTimed: val})} />
@@ -373,43 +293,35 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
                     {form.isNumeric && <Input type="number" value={form.numericTarget || ''} onChange={e => setForm({...form, numericTarget: Number(e.target.value)})} className="h-11 bg-white border-2" placeholder={isRtl ? 'الكمية المستهدفة' : 'Target Qty'} />}
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-2 text-start">
                     <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'الوصف' : 'Description'}</Label>
                     <Textarea value={form.description || ''} onChange={e => setForm({...form, description: e.target.value})} className="rounded-xl border-2 min-h-[100px]" />
                   </div>
                 </div>
 
                 <DialogFooter className="pt-4 border-t">
-                  <Button onClick={handleSave} disabled={loadingAction === 'save'} className="w-full h-12 rounded-xl">
-                    {loadingAction === 'save' ? <Loader2 className="animate-spin" /> : t('save')}
+                  <Button onClick={handleSave} disabled={loadingAction === 'save'} className="w-full h-12 rounded-xl font-bold">
+                    {loadingAction === 'save' ? <Loader2 className="animate-spin" /> : t('common.save')}
                   </Button>
                 </DialogFooter>
               </div>
 
-              <div className="lg:col-span-5 bg-slate-50/50 p-8 flex flex-col overflow-y-auto scrollbar-hide">
-                <div className="mb-6 text-start">
-                  <h4 className="font-black text-lg flex items-center gap-2 text-slate-700"><ArrowRight className="h-5 w-5 text-primary" /> {t('nextStages')}</h4>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Dependency Mapping</p>
+              <div className="lg:col-span-5 bg-slate-50/50 p-8 flex flex-col overflow-y-auto scrollbar-hide text-start">
+                <div className="mb-6">
+                  <h4 className="font-black text-lg flex items-center gap-2 text-slate-700"><ArrowRight className="h-5 w-5 text-primary" /> {isRtl ? 'المراحل المربوطة' : 'Linked Stages'}</h4>
                 </div>
                 <ScrollArea className="flex-1">
                   <div className="space-y-2 pr-3">
                     {availableNextStages.length === 0 ? <div className="py-10 text-center bg-white/50 rounded-xl border-2 border-dashed"><p className="text-[10px] text-slate-400 font-bold px-4">لا توجد مراحل متاحة للربط.</p></div> : 
                       availableNextStages.map((s) => (
                         <div key={s.id} onClick={() => toggleNextStage(s.id!)} className={cn("p-4 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between group", form.nextStageIds?.includes(s.id!) ? "bg-white border-primary shadow-md" : "bg-white border-slate-100")}>
-                          <div className="flex items-center gap-3">
-                             <Checkbox id={`stage-${s.id}`} checked={form.nextStageIds?.includes(s.id!)} className="h-5 w-5 pointer-events-none" />
-                             <Label className="font-black text-xs block cursor-pointer text-slate-700">{isRtl ? s.name : s.nameEn}</Label>
-                          </div>
+                          <div className="flex items-center gap-3"><Checkbox checked={form.nextStageIds?.includes(s.id!)} className="pointer-events-none" /><Label className="font-black text-xs block cursor-pointer text-slate-700">{isRtl ? s.name : s.nameEn}</Label></div>
                           {form.nextStageIds?.includes(s.id!) && <Badge className="bg-primary text-white border-0 text-[8px] h-4">NEXT</Badge>}
                         </div>
                       ))
                     }
                   </div>
                 </ScrollArea>
-                <div className="mt-6 pt-4 border-t border-slate-200 flex justify-between items-center text-[10px] font-black uppercase text-slate-400">
-                  <span>{isRtl ? 'المراحل المربوطة' : 'Linked'}</span>
-                  <Badge variant="secondary" className="bg-primary text-white">{form.nextStageIds?.length || 0}</Badge>
-                </div>
               </div>
             </div>
           </DialogContent>

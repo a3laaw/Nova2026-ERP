@@ -34,10 +34,9 @@ import { TechnicalStagesManager } from './technical-stages-manager';
 
 export default function TechnicalPathsPage() {
   const { globalUser } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
+  const { t, lang, dir, isRtl } = useLanguage();
   const db = useFirestore();
   const companyId = globalUser?.companyId;
-  const isRtl = lang === 'ar';
 
   const [selectedActivity, setSelectedActivity] = useState<ActivityType | null>(null);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
@@ -71,7 +70,7 @@ export default function TechnicalPathsPage() {
       const data = { ...activityForm, order: activities?.length || 0, isActive: true, name: activityForm.name || '', nameEn: activityForm.nameEn || '' };
       if (activityForm.id) await pathService.updateActivityType(activityForm.id, data);
       else await pathService.addActivityType(data as any);
-      toast({ title: t('saved') });
+      toast({ title: t('common.saved') });
       setIsActOpen(false);
     } finally { setLoadingAction(null); }
   };
@@ -83,7 +82,7 @@ export default function TechnicalPathsPage() {
       const data = { ...serviceForm, order: services?.length || 0, isActive: true, name: serviceForm.name || '', nameEn: serviceForm.nameEn || '' };
       if (serviceForm.id) await pathService.updateService(selectedActivity.id, serviceForm.id, data);
       else await pathService.addService(selectedActivity.id, data);
-      toast({ title: t('saved') });
+      toast({ title: t('common.saved') });
       setIsSrvOpen(false);
     } finally { setLoadingAction(null); }
   };
@@ -95,7 +94,7 @@ export default function TechnicalPathsPage() {
       const data = { ...subForm, order: subServices?.length || 0, isActive: true, name: subForm.name || '', nameEn: subForm.nameEn || '' };
       if (subForm.id) await pathService.updateSubService(selectedActivity.id, selectedService.id, subForm.id, data);
       else await pathService.addSubService(selectedActivity.id, selectedService.id, data);
-      toast({ title: t('saved') });
+      toast({ title: t('common.saved') });
       setIsSubOpen(false);
     } finally { setLoadingAction(null); }
   };
@@ -115,7 +114,7 @@ export default function TechnicalPathsPage() {
         await pathService.deleteSubService(selectedActivity!.id!, selectedService!.id!, id);
         if (selectedSub?.id === id) setSelectedSub(null);
       }
-      toast({ title: t('deleted') });
+      toast({ title: t('common.deleted') });
     } finally {
       setLoadingAction(null);
       setDeletingContext(null);
@@ -130,10 +129,10 @@ export default function TechnicalPathsPage() {
     <div className="space-y-6 text-start">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-black font-headline flex items-center gap-3">
-          <Workflow className="h-6 w-6 text-primary" /> {isRtl ? 'هندسة المسارات الفنية' : 'Technical Path Engineering'}
+          <Workflow className="h-6 w-6 text-primary" /> {t('techRef')}
         </h2>
         <Button onClick={() => { setActivityForm({ name: '', nameEn: '' }); setIsActOpen(true); }} variant="default" className="h-11 shadow-lg shadow-primary/20">
-          <Plus className="me-2 h-4 w-4" /> {isRtl ? 'نشاط جديد' : 'New Activity'}
+          <Plus className="me-2 h-4 w-4" /> {t('newActivity')}
         </Button>
       </div>
 
@@ -176,13 +175,13 @@ export default function TechnicalPathsPage() {
 
         <div className={cn("lg:col-span-4", !selectedService && 'opacity-30')}>
           <Card className="border-0 shadow-lg rounded-xl overflow-hidden bg-white">
-            <CardHeader className="bg-slate-50 border-b p-4 flex flex-row items-center justify-between"><CardTitle className="text-xs font-black flex items-center gap-2 uppercase text-slate-400"><Layers className="h-4 w-4" /> {isRtl ? 'المسارات' : 'Sub-Services'}</CardTitle>{selectedService && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setSubForm({ name: '', nameEn: '' }); setIsSubOpen(true); }}><Plus className="h-5 w-5" /></Button>}</CardHeader>
+            <CardHeader className="bg-slate-50 border-b p-4 flex flex-row items-center justify-between"><CardTitle className="text-xs font-black flex items-center gap-2 uppercase text-slate-400"><Layers className="h-4 w-4" /> {isRtl ? 'المسارات' : 'Paths'}</CardTitle>{selectedService && <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setSubForm({ name: '', nameEn: '' }); setIsSubOpen(true); }}><Plus className="h-5 w-5" /></Button>}</CardHeader>
             <CardContent className="p-0 max-h-[500px] overflow-y-auto">
               {!selectedService ? <div className="p-10 text-center text-xs italic text-muted-foreground">اختر خدمة</div> : subLoading ? <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto" /></div> : subServices?.map(sub => (
                 <div key={sub.id} className={cn("p-5 border-b flex items-center justify-between group transition-all", selectedSub?.id === sub.id ? 'bg-emerald-50/50 border-s-4 border-s-emerald-500' : 'hover:bg-muted/30')}>
                   <span className="text-sm font-black">{isRtl ? sub.name : sub.nameEn}</span>
                   <div className="flex items-center gap-1 z-20">
-                    <Button onClick={() => { setSelectedSub(sub); setViewMode('stages'); }} variant="outline" size="sm" className="h-8 text-[10px]">إدارة المراحل</Button>
+                    <Button onClick={() => { setSelectedSub(sub); setViewMode('stages'); }} variant="outline" size="sm" className="h-8 text-[10px]">{isRtl ? 'إدارة المراحل' : 'Manage Stages'}</Button>
                     <div className="flex gap-1">
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600" onClick={(e) => { e.stopPropagation(); setSubForm(sub); setIsSubOpen(true); }}><Edit3 className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" disabled={loadingAction === `delete_${sub.id}`} onClick={(e) => { e.stopPropagation(); setDeletingContext({ id: sub.id!, type: 'sub' }); }}><Trash2 className="h-4 w-4" /></Button>
@@ -197,14 +196,14 @@ export default function TechnicalPathsPage() {
 
       <Dialog open={isActOpen} onOpenChange={setIsActOpen}>
         <DialogContent className="rounded-xl p-8" dir={dir}>
-          <DialogHeader><DialogTitle className="text-start font-black text-xl">{activityForm.id ? t('edit') : t('newActivity')}</DialogTitle></DialogHeader>
+          <DialogHeader className="text-start"><DialogTitle className="font-black text-xl">{activityForm.id ? t('common.edit') : t('newActivity')}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-4 text-start">
-            <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={activityForm.name || ''} onChange={e => setActivityForm({...activityForm, name: e.target.value})} className="h-11 border-2" /></div>
-            <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={activityForm.nameEn || ''} onChange={e => setActivityForm({...activityForm, nameEn: e.target.value})} className="h-11 border-2 text-start" dir="ltr" /></div>
+            <div className="space-y-2"><Label>{t('common.nameAr')}</Label><Input value={activityForm.name || ''} onChange={e => setActivityForm({...activityForm, name: e.target.value})} className="h-11 border-2 font-bold" /></div>
+            <div className="space-y-2"><Label>{t('common.nameEn')}</Label><Input value={activityForm.nameEn || ''} onChange={e => setActivityForm({...activityForm, nameEn: e.target.value})} className="h-11 border-2 font-bold text-start" dir="ltr" /></div>
           </div>
           <DialogFooter className="mt-8">
-            <Button onClick={handleSaveActivity} disabled={loadingAction === 'save_act'} className="w-full h-12 rounded-xl">
-              {loadingAction === 'save_act' ? <Loader2 className="animate-spin" /> : t('save')}
+            <Button onClick={handleSaveActivity} disabled={loadingAction === 'save_act'} className="w-full h-12 rounded-xl font-bold bg-primary text-white">
+              {loadingAction === 'save_act' ? <Loader2 className="animate-spin" /> : t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -212,14 +211,14 @@ export default function TechnicalPathsPage() {
 
       <Dialog open={isSrvOpen} onOpenChange={setIsSrvOpen}>
         <DialogContent className="rounded-xl p-8" dir={dir}>
-          <DialogHeader><DialogTitle className="text-start font-black text-xl">{serviceForm.id ? t('edit') : t('newService')}</DialogTitle></DialogHeader>
+          <DialogHeader className="text-start"><DialogTitle className="font-black text-xl">{serviceForm.id ? t('common.edit') : t('newService')}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-4 text-start">
-            <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={serviceForm.name || ''} onChange={e => setServiceForm({...serviceForm, name: e.target.value})} className="h-11 border-2" /></div>
-            <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={serviceForm.nameEn || ''} onChange={e => setServiceForm({...serviceForm, nameEn: e.target.value})} className="h-11 border-2 text-start" dir="ltr" /></div>
+            <div className="space-y-2"><Label>{t('common.nameAr')}</Label><Input value={serviceForm.name || ''} onChange={e => setServiceForm({...serviceForm, name: e.target.value})} className="h-11 border-2 font-bold" /></div>
+            <div className="space-y-2"><Label>{t('common.nameEn')}</Label><Input value={serviceForm.nameEn || ''} onChange={e => setServiceForm({...serviceForm, nameEn: e.target.value})} className="h-11 border-2 font-bold text-start" dir="ltr" /></div>
           </div>
           <DialogFooter className="mt-8">
-            <Button onClick={handleSaveService} disabled={loadingAction === 'save_srv'} className="w-full h-12 rounded-xl">
-              {loadingAction === 'save_srv' ? <Loader2 className="animate-spin" /> : t('save')}
+            <Button onClick={handleSaveService} disabled={loadingAction === 'save_srv'} className="w-full h-12 rounded-xl font-bold bg-primary text-white">
+              {loadingAction === 'save_srv' ? <Loader2 className="animate-spin" /> : t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -227,14 +226,14 @@ export default function TechnicalPathsPage() {
 
       <Dialog open={isSubOpen} onOpenChange={setIsSubOpen}>
         <DialogContent className="rounded-xl p-8" dir={dir}>
-          <DialogHeader><DialogTitle className="text-start font-black text-xl">{subForm.id ? t('edit') : t('newPath')}</DialogTitle></DialogHeader>
+          <DialogHeader className="text-start"><DialogTitle className="font-black text-xl">{subForm.id ? t('common.edit') : t('newPath')}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-4 text-start">
-            <div className="space-y-2"><Label>{t('name')} (Ar)</Label><Input value={subForm.name || ''} onChange={e => setSubForm({...subForm, name: e.target.value})} className="h-11 border-2" /></div>
-            <div className="space-y-2"><Label>{t('name')} (En)</Label><Input value={subForm.nameEn || ''} onChange={e => setSubForm({...subForm, nameEn: e.target.value})} className="h-11 border-2 text-start" dir="ltr" /></div>
+            <div className="space-y-2"><Label>{t('common.nameAr')}</Label><Input value={subForm.name || ''} onChange={e => setSubForm({...subForm, name: e.target.value})} className="h-11 border-2 font-bold" /></div>
+            <div className="space-y-2"><Label>{t('common.nameEn')}</Label><Input value={subForm.nameEn || ''} onChange={e => setSubForm({...subForm, nameEn: e.target.value})} className="h-11 border-2 font-bold text-start" dir="ltr" /></div>
           </div>
           <DialogFooter className="mt-8">
-            <Button onClick={handleSaveSub} disabled={loadingAction === 'save_sub'} className="w-full h-12 rounded-xl">
-              {loadingAction === 'save_sub' ? <Loader2 className="animate-spin" /> : t('save')}
+            <Button onClick={handleSaveSub} disabled={loadingAction === 'save_sub'} className="w-full h-12 rounded-xl font-bold bg-primary text-white">
+              {loadingAction === 'save_sub' ? <Loader2 className="animate-spin" /> : t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -244,15 +243,15 @@ export default function TechnicalPathsPage() {
         <AlertDialogContent className="rounded-xl p-8" dir={dir}>
           <AlertDialogHeader>
             <div className="mx-auto w-16 h-16 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center mb-4"><AlertTriangle className="h-8 w-8" /></div>
-            <AlertDialogTitle className="text-start font-black text-2xl">{t('confirmDelete')}</AlertDialogTitle>
+            <AlertDialogTitle className="text-start font-black text-2xl">{t('common.confirmDelete')}</AlertDialogTitle>
             <AlertDialogDescription className="text-start font-bold">
               {isRtl ? 'سيؤدي هذا لحذف كافة العناصر والخدمات التابعة لهذا المسار بشكل نهائي.' : 'This will permanently delete all sub-items and services linked to this path.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-8 gap-4">
-            <AlertDialogCancel className="rounded-xl h-11 font-bold border-2">{isRtl ? 'إلغاء' : 'Cancel'}</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-xl h-11 font-bold border-2">{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleFinalDelete} className="rounded-xl h-11 bg-rose-600 hover:bg-rose-700 text-white px-8">
-              {isRtl ? 'نعم، احذف' : 'Delete'}
+              {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
