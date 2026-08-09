@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -37,14 +38,12 @@ export default function GratuityCalculatorPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  // States
   const [selectedEmpId, setSelectedEmpId] = useState<string>("");
   const [noticeStartDate, setNoticeStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [noticeType, setNoticeType] = useState<NoticeType>('worked');
   const [terminationReason, setTerminationReason] = useState<TerminationReason>('resignation');
   const [result, setResult] = useState<SettlementResult | null>(null);
 
-  // Data Fetching
   const empsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.employees(companyId)), orderBy('fullName')) : null, 
   [db, companyId]);
@@ -56,47 +55,39 @@ export default function GratuityCalculatorPage() {
 
   const handleCalculate = () => {
     if (!selectedEmployee) {
-      toast({ variant: "destructive", title: isRtl ? "يرجى اختيار موظف أولاً" : "Please select an employee" });
+      toast({ variant: "destructive", title: t('hr.searchSelectEmployee') });
       return;
     }
     if (!selectedEmployee.hireDate) {
-      toast({ variant: "destructive", title: isRtl ? "الموظف ليس له تاريخ تعيين مسجل" : "Employee has no hire date recorded" });
+      toast({ variant: "destructive", title: t('hr.gratuity.legalNotes') });
       return;
     }
 
-    // الراتب الشامل الكامل (يشمل كل البدلات) — موحّد مع GratuityService
     const totalSalary = (selectedEmployee.basicSalary || 0)
                       + (selectedEmployee.housingAllowance || 0)
                       + (selectedEmployee.transportAllowance || 0)
                       + (selectedEmployee.otherAllowances || 0);
 
     if (totalSalary <= 0) {
-      toast({ variant: "destructive", title: isRtl ? "يجب ضبط راتب الموظف قبل الحساب" : "Employee salary must be configured" });
+      toast({ variant: "destructive", title: t('common.error') });
       return;
     }
 
     try {
-      // تحويل نموذج الإنذار من الصفحة إلى نموذج GratuityService وتحديد تاريخ نهاية الأثر
       let gNoticeType: GratuityCalculationInput['noticeType'] = 'served';
       let effectiveEndDate = noticeStartDate;
-      let noticeText = "تنازل متبادل عن مدة الإنذار";
+      let noticeText = t('hr.settlement.waivedPeriod');
 
       if (noticeType === 'worked') {
         gNoticeType = 'served';
         effectiveEndDate = format(addMonths(parseISO(noticeStartDate), 3), 'yyyy-MM-dd');
-        noticeText = "استيفاء فترة الإنذار (عمل فعلي 90 يوماً)";
+        noticeText = t('hr.settlement.workedNotice');
       } else if (noticeType === 'indemnity') {
         gNoticeType = 'not_served_by_employer';
         effectiveEndDate = noticeStartDate;
-        noticeText = "إنهاء فوري (استحقاق بدل إنذار 3 أشهر)";
-      } else {
-        // waived
-        gNoticeType = 'served';
-        effectiveEndDate = noticeStartDate;
-        noticeText = "تنازل متبادل عن مدة الإنذار";
+        noticeText = t('hr.settlement.indemnityPayout');
       }
 
-      // تحويل سبب إنهاء الخدمة (end_of_contract يُعامل كإنهاء من جهة العمل = مكافأة كاملة)
       const gReason: GratuityCalculationInput['reason'] =
         terminationReason === 'resignation' ? 'resignation'
         : terminationReason === 'misconduct' ? 'misconduct'
@@ -113,7 +104,6 @@ export default function GratuityCalculatorPage() {
 
       const g: GratuityResult = GratuityService.calculate(gInput);
 
-      // تحويل النتيجة إلى شكل SettlementResult ليعمل مكوّن SettlementBreakdown كما هو
       const mapped: SettlementResult = {
         gratuity: g.finalGratuity,
         leaveBalancePay: g.leaveBalancePay,
@@ -132,7 +122,6 @@ export default function GratuityCalculatorPage() {
       };
 
       setResult(mapped);
-      toast({ title: isRtl ? "تم التحليل القانوني بنجاح" : "Legal Analysis Complete" });
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error'), description: e.message });
     }
@@ -141,44 +130,42 @@ export default function GratuityCalculatorPage() {
   return (
     <div className="space-y-10 max-w-7xl mx-auto pb-20 animate-in fade-in duration-700" dir={dir}>
       
-      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-8 border-slate-100">
         <div className="text-start space-y-2">
            <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit border border-primary/10">
-              <Scale className="h-3 w-3" /> {isRtl ? 'محرك تسوية حقوق الموظفين - Nova Flow' : 'Nova Flow Employee Settlement Engine'}
+              <Scale className="h-3 w-3" /> {t('hr.settlement.engineTitle')}
            </div>
            <h1 className="text-4xl font-black font-headline text-slate-900 tracking-tight">
-             {isRtl ? 'حاسبة مستحقات نهاية الخدمة' : 'Final Settlement Calculator'}
+             {t('hr.settlement.calculatorTitle')}
            </h1>
            <p className="text-muted-foreground text-sm font-bold opacity-70 italic">
-             {isRtl ? 'حساب دقيق للمكافآت، الإجازات، وبدلات الإنذار وفق قانون العمل الكويتي.' : 'Precise calculation of gratuity, leaves, and notice based on Kuwait Labor Law.'}
+             {t('hr.gratuity.strictApplication')}
            </p>
         </div>
         <div className="flex gap-4">
            <Button variant="outline" onClick={() => window.print()} className="rounded-2xl border-2 h-14 px-8 font-black gap-2 hover:bg-slate-50 print:hidden transition-all">
-             <Printer className="h-5 w-5" /> {isRtl ? 'طباعة التقرير القانوني' : 'Print Legal Report'}
+             <Printer className="h-5 w-5" /> {t('hr.gratuity.printLegal')}
            </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
         
-        {/* Input Controls */}
         <div className="lg:col-span-4 space-y-6 print:hidden">
            <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
               <CardHeader className="bg-primary/5 border-b p-8 text-start">
                  <CardTitle className="text-lg font-black flex items-center gap-2">
                     <UserCircle className="h-5 w-5 text-primary" />
-                    {isRtl ? 'بيانات الموظف والترك' : 'Employee & Exit Data'}
+                    {t('hr.settlement.employeeData')}
                  </CardTitle>
               </CardHeader>
               <CardContent className="p-8 space-y-6 text-start">
                  
                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الموظف المستهدف' : 'Target Employee'}</Label>
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('hr.reports.dossierSearch')}</Label>
                     <Select value={selectedEmpId} onValueChange={setSelectedEmpId}>
                        <SelectTrigger className="h-14 rounded-2xl border-2 font-black">
-                          <SelectValue placeholder={isRtl ? "اختر موظفاً من القائمة" : "Select from list"} />
+                          <SelectValue placeholder={t('hr.settlement.selectFromList')} />
                        </SelectTrigger>
                        <SelectContent className="rounded-xl">
                           {empsLoading ? <div className="p-4 text-center"><Loader2 className="h-4 w-4 animate-spin mx-auto" /></div> : 
@@ -192,11 +179,11 @@ export default function GratuityCalculatorPage() {
                  {selectedEmployee && (
                     <div className="p-6 rounded-3xl bg-slate-50 border-2 border-white shadow-inner space-y-3 animate-in slide-in-from-top-2">
                        <div className="flex justify-between items-center">
-                          <span className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'تاريخ التعيين' : 'Hire Date'}</span>
+                          <span className="text-[10px] font-black text-slate-400 uppercase">{t('hr.hireDate')}</span>
                           <span className="font-mono text-xs font-black text-slate-800">{selectedEmployee.hireDate}</span>
                        </div>
                        <div className="flex justify-between items-center">
-                          <span className="text-[10px] font-black text-slate-400 uppercase">{isRtl ? 'الراتب الشامل' : 'Gross Salary'}</span>
+                          <span className="text-[10px] font-black text-slate-400 uppercase">{t('hr.settlement.grossSalary')}</span>
                           <span className="font-black text-emerald-600">{(selectedEmployee.basicSalary || 0) + (selectedEmployee.housingAllowance || 0) + (selectedEmployee.transportAllowance || 0) + (selectedEmployee.otherAllowances || 0)} KWD</span>
                        </div>
                     </div>
@@ -204,35 +191,35 @@ export default function GratuityCalculatorPage() {
 
                  <div className="space-y-4 pt-4 border-t border-slate-100">
                     <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'تاريخ بدء الإخطار' : 'Notice Start Date'}</Label>
+                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('hr.settlement.noticeStartDate')}</Label>
                        <SmartDateInput value={noticeStartDate} onChange={setNoticeStartDate} />
                     </div>
 
                     <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'التعامل مع فترة الإنذار' : 'Notice Handling'}</Label>
+                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('hr.settlement.noticeHandling')}</Label>
                        <Select value={noticeType} onValueChange={(v: any) => setNoticeType(v)}>
                           <SelectTrigger className="h-14 rounded-2xl border-2 font-black">
                              <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl">
-                             <SelectItem value="worked" className="font-bold">{isRtl ? 'استيفاء فترة الإنذار (عمل)' : 'Work during notice'}</SelectItem>
-                             <SelectItem value="indemnity" className="font-bold">{isRtl ? 'إنهاء فوري (صرف بدل)' : 'Indemnity payout'}</SelectItem>
-                             <SelectItem value="waived" className="font-bold">{isRtl ? 'تنازل متبادل عن المدة' : 'Waived period'}</SelectItem>
+                             <SelectItem value="worked" className="font-bold">{t('hr.settlement.workedNotice')}</SelectItem>
+                             <SelectItem value="indemnity" className="font-bold">{t('hr.settlement.indemnityPayout')}</SelectItem>
+                             <SelectItem value="waived" className="font-bold">{t('hr.settlement.waivedPeriod')}</SelectItem>
                           </SelectContent>
                        </Select>
                     </div>
 
                     <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'السبب القانوني للترك' : 'Termination Reason'}</Label>
+                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('hr.settlement.terminationReason')}</Label>
                        <Select value={terminationReason} onValueChange={(v: any) => setTerminationReason(v)}>
                           <SelectTrigger className="h-14 rounded-2xl border-2 font-black">
                              <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl">
-                             <SelectItem value="resignation" className="font-bold">{isRtl ? 'استقالة' : 'Resignation'}</SelectItem>
-                             <SelectItem value="termination" className="font-bold text-blue-600">{isRtl ? 'إنهاء خدمات (صاحب عمل)' : 'Termination'}</SelectItem>
-                             <SelectItem value="end_of_contract" className="font-bold">{isRtl ? 'انتهاء عقد' : 'Contract End'}</SelectItem>
-                             <SelectItem value="misconduct" className="font-bold text-rose-600">{isRtl ? 'فصل تأديبي (مادة 41)' : 'Misconduct'}</SelectItem>
+                             <SelectItem value="resignation" className="font-bold">{t('hr.settlement.resignation')}</SelectItem>
+                             <SelectItem value="termination" className="font-bold text-blue-600">{t('hr.settlement.termination')}</SelectItem>
+                             <SelectItem value="end_of_contract" className="font-bold">{t('hr.settlement.endOfContract')}</SelectItem>
+                             <SelectItem value="misconduct" className="font-bold text-rose-600">{t('hr.settlement.misconduct')}</SelectItem>
                           </SelectContent>
                        </Select>
                     </div>
@@ -244,7 +231,7 @@ export default function GratuityCalculatorPage() {
                    className="w-full h-20 rounded-[2rem] bg-primary text-white font-black text-2xl shadow-2xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all gap-4 border-b-8 border-orange-700"
                  >
                     <Sparkles className="h-8 w-8" />
-                    {isRtl ? 'تحليل المستحقات' : 'Analyze Now'}
+                    {t('common.confirm')}
                  </Button>
               </CardContent>
            </Card>
@@ -252,12 +239,11 @@ export default function GratuityCalculatorPage() {
            <div className="p-8 rounded-[2.5rem] bg-amber-50/50 border-2 border-dashed border-amber-200 flex items-start gap-4">
               <AlertTriangle className="h-6 w-6 text-amber-600 shrink-0 mt-1" />
               <p className="text-xs text-amber-800 font-bold leading-relaxed text-start">
-                 {isRtl ? 'تنبيه: يتم الحساب بناءً على سياسة الـ 26 يوماً المعتمدة في Nova ERP والراتب الشامل متضمناً كافة البدلات.' : 'Note: Calculation uses 26-day policy and Gross Salary including all allowances.'}
+                 {t('hr.settlement.policyNote')}
               </p>
            </div>
         </div>
 
-        {/* Results Analysis */}
         <div className="lg:col-span-8">
            {result ? (
              <SettlementBreakdown result={result} isRtl={isRtl} />
@@ -266,9 +252,9 @@ export default function GratuityCalculatorPage() {
                 <div className="w-32 h-32 bg-white rounded-[3rem] flex items-center justify-center text-slate-200 shadow-sm mb-8 ring-8 ring-slate-100">
                    <Calculator className="h-16 w-16" />
                 </div>
-                <h3 className="text-3xl font-black text-slate-400">{isRtl ? 'بانتظار تحديد الموظف' : 'Waiting for Selection'}</h3>
+                <h3 className="text-3xl font-black text-slate-400">{t('hr.settlement.waitingSelection')}</h3>
                 <p className="text-slate-300 font-bold mt-3 max-w-sm">
-                  {isRtl ? 'قم باختيار الموظف ونوع الإنذار من القائمة الجانبية لبدء المحاكاة القانونية للمستحقات.' : 'Select an employee and notice type to start the legal simulation.'}
+                  {t('hr.settlement.waitingHint')}
                 </p>
              </div>
            )}

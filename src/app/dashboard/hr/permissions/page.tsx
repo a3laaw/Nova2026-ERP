@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -58,10 +59,10 @@ export default function PermissionRequestsPage() {
         <div className="text-start">
           <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
             <Clock className="h-10 w-10 text-primary" />
-            {isRtl ? 'طلبات الاستئذان' : 'Permission Requests'}
+            {t('hr.permissions.title')}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {viewAccess.scope === 'own' ? (isRtl ? 'عرض سجلاتك الشخصية فقط' : 'Viewing your own records only') : (isRtl ? 'إدارة التأخيرات والانصراف المبكر' : 'Manage late arrivals and early departures')}
+            {viewAccess.scope === 'own' ? t('hr.ownRecordsOnly') : t('hr.manageAbsences')}
           </p>
         </div>
 
@@ -70,7 +71,7 @@ export default function PermissionRequestsPage() {
           className="bg-primary text-white font-black rounded-xl px-8 h-12 shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all"
         >
           <Plus className="me-2 h-5 w-5" />
-          {isRtl ? 'طلب استئذان جديد' : 'New Request'}
+          {t('common.add')}
         </Button>
       </div>
 
@@ -79,14 +80,14 @@ export default function PermissionRequestsPage() {
           <div className="relative w-full max-w-md">
             <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#FFA000]" />
             <Input 
-              placeholder={isRtl ? 'بحث...' : 'Search...'} 
+              placeholder={t('common.search')} 
               className="ps-12 rounded-xl h-11 bg-white border-slate-200 focus-visible:ring-primary/10 focus-visible:border-primary transition-all" 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <Button variant="outline" className="rounded-xl font-bold h-11 px-4 flex items-center gap-2 border-slate-200">
-             <Filter className="h-4 w-4 text-[#FFA000]" /> {isRtl ? 'تصفية' : 'Filter'}
+             <Filter className="h-4 w-4 text-[#FFA000]" /> {t('common.filter')}
           </Button>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
@@ -94,10 +95,10 @@ export default function PermissionRequestsPage() {
             <TableHeader className="bg-muted/10 border-b">
               <TableRow>
                 <TableHead className="py-5 ps-8 text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'الموظف' : 'Employee'}</TableHead>
-                <TableHead className="text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'النوع' : 'Type'}</TableHead>
-                <TableHead className="text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'التاريخ' : 'Date'}</TableHead>
-                <TableHead className="text-center font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'المدة' : 'Duration'}</TableHead>
-                <TableHead className="text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'الحالة' : 'Status'}</TableHead>
+                <TableHead className="text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{t('hr.type')}</TableHead>
+                <TableHead className="text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{t('common.date')}</TableHead>
+                <TableHead className="text-center font-black text-slate-500 uppercase text-[10px] tracking-widest">{t('hr.permissions.duration')}</TableHead>
+                <TableHead className="text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{t('common.status')}</TableHead>
                 <TableHead className="pe-8"></TableHead>
               </TableRow>
             </TableHeader>
@@ -105,7 +106,7 @@ export default function PermissionRequestsPage() {
               {loading ? (
                 <TableRow><TableCell colSpan={6} className="text-center py-24"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/30" /></TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-24 text-slate-400 font-bold italic">{isRtl ? 'لا يوجد طلبات.' : 'No requests found.'}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-24 text-slate-400 font-bold italic">{t('common.noResults')}</TableCell></TableRow>
               ) : (
                 filtered.map((req) => (
                   <TableRow 
@@ -123,7 +124,7 @@ export default function PermissionRequestsPage() {
                     </TableCell>
                     <TableCell className="text-start">
                        <Badge variant="outline" className="font-black border-slate-200 px-3 uppercase text-[9px] bg-white">
-                          {isRtl ? (req.type === 'late_arrival' ? 'حضور متأخر' : 'انصراف مبكر') : req.type}
+                          {req.type}
                        </Badge>
                     </TableCell>
                     <TableCell className="text-start font-mono text-xs font-bold text-slate-500">{req.date}</TableCell>
@@ -137,7 +138,7 @@ export default function PermissionRequestsPage() {
                          req.status === 'pending' ? 'bg-[#FFCA28]/10 text-[#FFCA28]' : 
                          'bg-rose-50 text-rose-600'
                        )}>
-                          {req.status}
+                          {t('status.' + req.status)}
                        </Badge>
                     </TableCell>
                     <TableCell className="text-center pe-8">

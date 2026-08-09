@@ -27,7 +27,7 @@ import { ar, enUS } from 'date-fns/locale';
 export default function LeaveStatementPage() {
   const empId = useParams().id as string;
   const { globalUser } = useAuthContext();
-  const { lang, dir } = useLanguage();
+  const { lang, dir, t } = useLanguage();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
@@ -101,23 +101,23 @@ export default function LeaveStatementPage() {
   }, [employee, rawLeaves, settings, isRtl]);
 
   if (empLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
-  if (!employee) return <div className="p-20 text-center font-black">{isRtl ? 'الموظف غير موجود' : 'Employee not found'}</div>;
+  if (!employee) return <div className="p-20 text-center font-black">{t('hr.notFound')}</div>;
 
   return (
     <div className="space-y-8 pb-20 animate-in fade-in duration-700" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 print:hidden">
         <div className="text-start">
-          <h1 className="text-3xl font-black font-headline">{isRtl ? 'كشف حركة رصيد الإجازات' : 'Detailed Leave Ledger'}</h1>
+          <h1 className="text-3xl font-black font-headline">{t('hr.reports.leaves.individualTitle')}</h1>
           <p className="text-xs font-bold text-muted-foreground mt-1 flex items-center gap-2">
-            <Scale className="h-3 w-3 text-primary" /> {isRtl ? 'تقرير مالي قانوني (المادة 70)' : 'Legal Statutory Report (Art. 70)'}
+            <Scale className="h-3 w-3 text-primary" /> {t('hr.reports.leaves.statutoryReport')}
           </p>
         </div>
-        <Button onClick={() => window.print()} className="rounded-2xl h-14 px-8 font-black gap-2 bg-primary text-white shadow-xl shadow-primary/20 hover:scale-105 transition-all">
-           <Printer className="h-5 w-5" /> {isRtl ? 'طباعة الكشف الرسمي' : 'Print Official Ledger'}
+        <Button onClick={() => window.print()} className="rounded-xl h-14 px-8 font-black gap-2 bg-primary text-white shadow-xl shadow-primary/20 hover:scale-105 transition-all">
+           <Printer className="h-5 w-5" /> {t('hr.reports.leaves.printOfficial')}
         </Button>
       </div>
 
-      <PrintWrapper title={isRtl ? "كشف حساب رصيد الإجازات السنوية" : "Statement of Annual Leave Balance"}>
+      <PrintWrapper title={t('hr.reports.leaves.statementTitle')}>
          <div className="space-y-10">
             <div className="p-10 rounded-[2.5rem] bg-slate-900 text-white flex flex-col md:flex-row justify-between items-center gap-8 shadow-2xl relative overflow-hidden">
                <div className="absolute top-0 right-0 p-8 opacity-5">
@@ -138,10 +138,10 @@ export default function LeaveStatementPage() {
                <table className="w-full text-sm text-start">
                   <thead className="bg-slate-50 border-b">
                      <tr className="font-black text-slate-500 uppercase text-[10px] tracking-widest">
-                        <th className="p-6 text-start">{isRtl ? 'التاريخ' : 'Date'}</th>
-                        <th className="p-6 text-start">{isRtl ? 'نوع العملية / الوصف' : 'Transaction'}</th>
-                        <th className="p-6 text-center">{isRtl ? 'الحركة' : 'Change'}</th>
-                        <th className="p-6 text-center">{isRtl ? 'الرصيد التراكمي' : 'Balance'}</th>
+                        <th className="p-6 text-start">{t('common.date')}</th>
+                        <th className="p-6 text-start">{t('hr.reports.statement')}</th>
+                        <th className="p-6 text-center">{t('hr.reports.attendance.absences')}</th>
+                        <th className="p-6 text-center">{t('hr.remainingBalance')}</th>
                      </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">

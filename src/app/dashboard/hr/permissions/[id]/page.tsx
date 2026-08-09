@@ -26,7 +26,7 @@ export default function PermissionDetailsPage() {
   const requestId = useParams().id as string;
   const { user, globalUser } = useAuthContext();
   const { t, lang, dir } = useLanguage();
-  const { permissions } = usePermissions();
+  const { permissions, isAdmin } = usePermissions();
   const db = useFirestore();
   const isRtl = lang === 'ar';
 
@@ -48,36 +48,34 @@ export default function PermissionDetailsPage() {
     setProcessing(true);
     try {
       await permService.updateRequestStatus(requestId, status, user.uid);
-      toast({ title: t('saved') });
+      toast({ title: t('common.saved') });
     } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+      toast({ variant: "destructive", title: t('common.error') });
     } finally {
       setProcessing(false);
     }
   };
 
   if (loading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
-  if (!request) return <div className="p-20 text-center text-slate-400 font-bold">{isRtl ? 'الطلب غير موجود' : 'Request not found'}</div>;
-
-  const isAdmin = globalUser?.role === 'admin' || globalUser?.role === 'Admin';
+  if (!request) return <div className="p-20 text-center text-slate-400 font-bold">{t('hr.requestNotFound')}</div>;
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto pb-20 animate-in fade-in duration-500" dir={dir}>
       <div className="flex items-center gap-4">
         <div className="text-start">
            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-black font-headline text-slate-900">{isRtl ? 'تفاصيل الاستئذان' : 'Permission Details'}</h1>
+              <h1 className="text-3xl font-black font-headline text-slate-900">{t('hr.permissions.detailsTitle')}</h1>
               <Badge className={cn(
-                "font-black px-4 py-1 rounded-xl shadow-sm",
+                "font-black px-4 py-1 rounded-xl shadow-sm uppercase",
                 request.status === 'approved' ? 'bg-emerald-500 text-white' : 
                 request.status === 'pending' ? 'bg-amber-50 text-amber-600 border-amber-200 border' : 
                 'bg-rose-50 text-white'
               )}>
-                 {request.status.toUpperCase()}
+                 {t('status.' + request.status)}
               </Badge>
            </div>
            <p className="text-xs font-bold text-muted-foreground mt-1 flex items-center gap-2">
-              <ShieldCheck className="h-3 w-3 text-emerald-500" /> {isRtl ? 'استئذان إداري معتمد' : 'Authorized HR Permission'}
+              <ShieldCheck className="h-3 w-3 text-emerald-500" /> {t('hr.permissions.authorizedTitle')}
            </p>
         </div>
       </div>
@@ -88,19 +86,19 @@ export default function PermissionDetailsPage() {
                <CardHeader className="bg-slate-50/50 border-b p-8">
                   <CardTitle className="text-xl font-black flex items-center gap-3 text-slate-800">
                      <User className="h-6 w-6 text-primary" />
-                     {isRtl ? 'بيانات الموظف والوقت' : 'Employee & Time Info'}
+                     {t('hr.permissions.employeeTimeInfo')}
                   </CardTitle>
                </CardHeader>
                <CardContent className="p-8 space-y-10">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                      <div className="space-y-1">
-                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اسم الموظف' : 'Employee Name'}</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.name')}</Label>
                         <p className="text-xl font-black text-slate-900">{request.userName}</p>
                      </div>
                   </div>
                   <div className="p-8 rounded-[2rem] bg-slate-50/50 border-2 border-slate-100 flex flex-col md:flex-row justify-between items-center gap-8">
                      <div className="text-center md:text-start space-y-1">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'التاريخ' : 'Date'}</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400">{t('common.date')}</Label>
                         <div className="flex items-center gap-2">
                            <Calendar className="h-4 w-4 text-primary" />
                            <p className="text-2xl font-black text-slate-900">{request.date}</p>
@@ -114,7 +112,7 @@ export default function PermissionDetailsPage() {
                <div className="flex gap-4">
                   <Button onClick={() => handleAction('approved')} disabled={processing} className="flex-1 h-20 rounded-[2rem] bg-emerald-600 text-white font-black text-2xl shadow-xl shadow-emerald-100 hover:scale-[1.02] transition-all gap-4">
                      {processing ? <Loader2 className="animate-spin" /> : <CheckCircle2 className="h-8 w-8" />}
-                     {isRtl ? 'اعتماد الاستئذان' : 'Approve Request'}
+                     {t('hr.permissions.approveBtn')}
                   </Button>
                </div>
             )}
