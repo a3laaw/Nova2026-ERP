@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -107,33 +108,33 @@ export default function WorkGroupsPage() {
 
   return (
     <div className="space-y-4 w-full animate-in fade-in duration-500" dir={dir}>
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-start">
         <div className="text-start">
            <h1 className="text-xl md:text-2xl font-bold text-slate-900">
              {t('construction.groups')}
            </h1>
-           <p className="text-xs text-muted-foreground font-medium">{isRtl ? 'إدارة أطقم الميدان والتخصصات.' : 'Field crew management.'}</p>
+           <p className="text-xs text-muted-foreground font-medium">{t('construction.groupsDesc')}</p>
         </div>
 
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="h-9 px-4 font-bold rounded-md shadow-sm">
-               <Plus className="h-4 w-4 me-2" /> {isRtl ? 'تكوين طاقم عمل' : 'New Group'}
+               <Plus className="h-4 w-4 me-2" /> {t('construction.newGroup')}
             </Button>
           </DialogTrigger>
           <DialogContent className="rounded-lg p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl" dir={dir}>
              <div className="bg-slate-50 p-6 text-slate-900 text-start border-b">
-                <DialogTitle className="text-lg font-bold">{isRtl ? 'إعداد طاقم جديد' : 'Setup Crew'}</DialogTitle>
+                <DialogTitle className="text-lg font-bold">{t('construction.setupCrew')}</DialogTitle>
              </div>
              
              <div className="p-6 space-y-4 text-start bg-white">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase text-slate-400">اسم الطاقم</Label>
+                      <Label className="text-[10px] font-bold uppercase text-slate-400">{isRtl ? 'اسم الطاقم' : 'Group Name'}</Label>
                       <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="h-9 border-slate-200 text-xs font-medium rounded-md" />
                    </div>
                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase text-slate-400">القسم المرجعي</Label>
+                      <Label className="text-[10px] font-bold uppercase text-slate-400">{t('orgRef')}</Label>
                       <Select value={form.departmentId} onValueChange={v => setForm({...form, departmentId: v, supervisorId: '', memberIds: []})}>
                          <SelectTrigger className="h-9 border-slate-200 text-xs font-medium rounded-md">
                             <SelectValue placeholder="..." />
@@ -146,7 +147,7 @@ export default function WorkGroupsPage() {
                 </div>
 
                 <div className={cn("space-y-1.5", !form.departmentId && "opacity-30 pointer-events-none")}>
-                   <Label className="text-[10px] font-bold uppercase text-slate-400">المشرف المسؤول</Label>
+                   <Label className="text-[10px] font-bold uppercase text-slate-400">{isRtl ? 'المشرف المسؤول' : 'Supervisor'}</Label>
                    <Select value={form.supervisorId} onValueChange={v => setForm({...form, supervisorId: v})}>
                       <SelectTrigger className="h-9 border-slate-200 text-xs font-medium rounded-md"><SelectValue placeholder="..." /></SelectTrigger>
                       <SelectContent className="rounded-md">
@@ -156,7 +157,7 @@ export default function WorkGroupsPage() {
                 </div>
 
                 <div className={cn("space-y-2 pt-2 border-t", !form.departmentId && "opacity-30 pointer-events-none")}>
-                   <Label className="text-[10px] font-bold uppercase text-slate-400">أعضاء الطاقم</Label>
+                   <Label className="text-[10px] font-bold uppercase text-slate-400">{isRtl ? 'أعضاء الطاقم' : 'Crew Members'}</Label>
                    <ScrollArea className="h-40 border rounded-md p-2 bg-slate-50/30">
                       <div className="grid grid-cols-1 gap-1.5">
                          {filteredEmployeesForSelection.filter(e => e.id !== form.supervisorId).map(e => {
@@ -186,7 +187,7 @@ export default function WorkGroupsPage() {
 
              <DialogFooter className="p-6 bg-slate-50 border-t">
                 <Button onClick={handleSave} disabled={loading || !form.name} size="sm" className="w-full h-10 font-bold rounded-md">
-                   {loading ? <Loader2 className="animate-spin h-4 w-4" /> : (isRtl ? 'حفظ الطاقم' : 'Save')}
+                   {loading ? <Loader2 className="animate-spin h-4 w-4" /> : t('common.save')}
                 </Button>
              </DialogFooter>
           </DialogContent>
@@ -194,7 +195,7 @@ export default function WorkGroupsPage() {
       </header>
 
       <Card className="rounded-lg shadow-sm border border-slate-100 overflow-hidden bg-white">
-         <div className="p-3 flex flex-row items-center justify-between gap-4 bg-slate-50/30">
+         <div className="p-3 flex flex-row items-center justify-between gap-4 bg-slate-50/30 border-b">
             <div className="relative w-full max-w-sm">
                <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                <Input 
@@ -210,9 +211,9 @@ export default function WorkGroupsPage() {
             <Table>
                <TableHeader className="bg-slate-50">
                   <TableRow>
-                     <TableHead className="py-3 ps-6 text-start text-[10px] font-bold uppercase text-slate-500">الطاقم / القسم</TableHead>
-                     <TableHead className="text-start text-[10px] font-bold uppercase text-slate-500">المشرف</TableHead>
-                     <TableHead className="text-center text-[10px] font-bold uppercase text-slate-500">العدد</TableHead>
+                     <TableHead className="py-3 ps-6 text-start text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'الطاقم / القسم' : 'Crew / Dept'}</TableHead>
+                     <TableHead className="text-start text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'المشرف' : 'Supervisor'}</TableHead>
+                     <TableHead className="text-center text-[10px] font-bold uppercase text-slate-500">{isRtl ? 'العدد' : 'Count'}</TableHead>
                      <TableHead className="pe-6"></TableHead>
                   </TableRow>
                </TableHeader>

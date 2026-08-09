@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useLanguage } from '@/context/language-context';
@@ -11,14 +12,14 @@ export default function AppointmentsListPage() {
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500 print:space-y-1 w-full" dir={dir}>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 print:mb-0">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 print:mb-0 text-start">
         <div className="text-start">
            <h1 className="text-xl md:text-2xl font-bold flex items-center gap-3 text-slate-900">
              <CalendarDays className="h-6 w-6 text-primary" />
-             {isRtl ? 'رادار المواعيد والزيارات' : 'Appointments Radar'}
+             {t('appointments.radar')}
            </h1>
            <p className="text-muted-foreground text-xs font-medium opacity-80 print:hidden">
-              {isRtl ? 'جدولة اللقاءات مع العملاء والزيارات الميدانية.' : 'Schedule client meetings and site visits.'}
+              {t('appointments.radarDesc')}
            </p>
         </div>
         
@@ -29,7 +30,7 @@ export default function AppointmentsListPage() {
           className="h-9 px-4 rounded-md border-slate-200 font-bold gap-2 bg-white shadow-sm hover:bg-slate-50 print:hidden"
         >
           <Printer className="h-3.5 w-3.5 text-primary" />
-          {isRtl ? 'طباعة الجدول' : 'Print Schedule'}
+          {t('appointments.printSchedule')}
         </Button>
       </div>
 

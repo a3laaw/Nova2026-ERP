@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -44,22 +45,22 @@ export default function FieldVisitsListPage() {
 
   return (
     <div className="space-y-4 w-full animate-in fade-in duration-500" dir={dir}>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-start">
         <div className="text-start">
            <h1 className="text-xl md:text-2xl font-bold text-slate-900">
              {t('construction.reports')}
            </h1>
            <p className="text-xs text-muted-foreground font-medium opacity-80">
-              {isRtl ? 'أرشيف تقارير الإنجاز الميداني الموثقة بالموارد.' : 'Archive of field logs and resources.'}
+              {t('construction.reportsDesc')}
            </p>
         </div>
         <Button onClick={() => router.push('/dashboard/construction/field-visits/new')} size="sm" className="h-9 px-4 font-bold rounded-md shadow-sm">
-          <Plus className="h-4 w-4 me-2" /> {isRtl ? 'تقرير جديد' : 'New Report'}
+          <Plus className="h-4 w-4 me-2" /> {t('construction.newReport')}
         </Button>
       </div>
 
       <Card className="rounded-lg shadow-sm border border-slate-100 overflow-hidden bg-white">
-        <div className="p-3 flex flex-row items-center justify-between gap-4 bg-slate-50/30">
+        <div className="p-3 flex flex-row items-center justify-between gap-4 bg-slate-50/30 border-b">
           <div className="relative w-full max-w-sm">
             <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input 

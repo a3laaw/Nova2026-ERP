@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -24,16 +25,16 @@ import { toast } from '@/hooks/use-toast';
 
 export default function BOQExplorerPage() {
   const { globalUser, user } = useAuthContext();
-  const { t, isRtl } = useLanguage();
+  const { t, lang, dir } = useLanguage();
   const { isAdmin, permissions } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const companyId = globalUser?.companyId;
+  const isRtl = lang === 'ar';
 
   const [searchTerm, setSearchTerm] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // استرجاع الاستعلام البسيط والمستقر لضمان ظهور كافة المقايسات
   const boqsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.boqs(companyId))) : null, 
   [db, companyId]);
@@ -67,7 +68,7 @@ export default function BOQExplorerPage() {
   };
 
   return (
-    <div className="w-full space-y-4 text-start animate-in fade-in duration-500">
+    <div className="w-full space-y-4 text-start animate-in fade-in duration-500" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start">
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-3 text-slate-900">
@@ -75,7 +76,7 @@ export default function BOQExplorerPage() {
             {t('projects.boqExplorer')}
           </h1>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 opacity-70">
-            {isRtl ? 'إدارة واعتماد جداول الكميات والميزانيات المرجعية' : 'Manage bill of quantities and baseline budgets'}
+            {t('projects.boqExplorer.desc')}
           </p>
         </div>
       </div>
@@ -102,7 +103,7 @@ export default function BOQExplorerPage() {
                      <TableHead className="py-3 ps-6 text-[10px] font-black uppercase text-slate-500">{t('projects.boqNumber')}</TableHead>
                      <TableHead className="py-3 text-[10px] font-black uppercase text-slate-500">{t('projects.clientName')}</TableHead>
                      <TableHead className="py-3 text-end text-[10px] font-black uppercase text-slate-500">{t('projects.budget')}</TableHead>
-                     <TableHead className="py-3 text-[10px] font-black uppercase text-slate-500">{t('projects.status')}</TableHead>
+                     <TableHead className="py-3 text-[10px] font-black uppercase text-slate-500">{t('common.status')}</TableHead>
                      <TableHead className="py-3 pe-6 text-end"></TableHead>
                   </TableRow>
                </TableHeader>
@@ -110,7 +111,7 @@ export default function BOQExplorerPage() {
                   {boqLoading ? (
                     <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></TableCell></TableRow>
                   ) : filteredBoqs.length === 0 ? (
-                     <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 text-xs font-bold italic">{isRtl ? 'لا يوجد مقايسات مسجلة حالياً.' : 'No BOQs registered yet.'}</TableCell></TableRow>
+                     <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-400 text-xs font-bold italic">{t('projects.noBoqsRegistered')}</TableCell></TableRow>
                   ) : filteredBoqs.map((boq) => (
                     <TableRow key={boq.id} className="hover:bg-slate-50/50 cursor-pointer transition-colors border-b-slate-100 group" onClick={() => router.push(`/dashboard/clients/${boq.clientId}/transactions/${boq.transactionId}/boq`)}>
                       <TableCell className="py-2.5 ps-6 text-start font-black text-slate-800 text-xs">

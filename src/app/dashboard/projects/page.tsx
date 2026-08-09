@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -62,15 +63,17 @@ export default function ProjectsPage() {
         </div>
 
         <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm"
+          <button 
+            type="button"
             onClick={() => setActiveFilter(activeFilter === 'all' ? 'contracting' : 'all')}
-            className={cn("h-9 px-4 rounded-md font-bold text-xs border-slate-200", activeFilter === 'contracting' ? "bg-primary/10 border-primary text-primary" : "bg-white")}
+            className={cn(
+              "h-9 px-4 rounded-md font-bold text-xs border flex items-center transition-all", 
+              activeFilter === 'contracting' ? "bg-primary/10 border-primary text-primary" : "bg-white border-slate-200"
+            )}
           >
             <TrendingUp className="h-4 w-4 me-2" />
-            {t('projects.contracting') || 'Field Service'}
-          </Button>
+            {t('projects.contracting')}
+          </button>
           <Button onClick={() => router.push('/dashboard/clients')} size="sm" className="h-9 px-4 rounded-md font-bold text-xs shadow-sm">
             <Plus className="h-4 w-4 me-2" /> {t('projects.addNew')}
           </Button>
@@ -113,9 +116,9 @@ export default function ProjectsPage() {
           <Table>
             <TableHeader className="bg-slate-50/50">
               <TableRow className="border-b-0">
-                <TableHead className="py-3 ps-6 text-[10px] font-bold uppercase text-slate-500">{t('projects.table.project') || 'Project'}</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{t('projects.table.progress') || 'Progress'}</TableHead>
-                <TableHead className="text-end text-[10px] font-bold uppercase text-slate-500">{t('projects.table.billing') || 'Billing'}</TableHead>
+                <TableHead className="py-3 ps-6 text-[10px] font-bold uppercase text-slate-500">{t('projects.table.project')}</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-slate-500">{t('projects.table.progress')}</TableHead>
+                <TableHead className="text-end text-[10px] font-bold uppercase text-slate-500">{t('projects.table.billing')}</TableHead>
                 <TableHead className="text-[10px] font-bold uppercase text-slate-500">{t('common.status')}</TableHead>
                 <TableHead className="pe-6"></TableHead>
               </TableRow>
@@ -124,7 +127,7 @@ export default function ProjectsPage() {
               {loading ? (
                 <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></TableCell></TableRow>
               ) : filteredProjects.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-20 italic text-slate-300 text-sm">{isRtl ? 'لا يوجد مشاريع جارية.' : 'No active projects.'}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-20 italic text-slate-400 text-sm font-bold">{t('projects.noActiveProjects')}</TableCell></TableRow>
               ) : filteredProjects.map((proj) => (
                 <TableRow key={proj.id} className="hover:bg-slate-50/50 cursor-pointer border-b-slate-100 group" onClick={() => router.push(`/dashboard/clients/${proj.clientId}/transactions/${proj.id}`)}>
                     <TableCell className="py-2.5 ps-6 text-start">
