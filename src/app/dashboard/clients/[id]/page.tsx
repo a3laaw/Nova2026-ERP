@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState } from 'react';
@@ -59,7 +58,7 @@ export default function ClientDetailsPage() {
     return match ? [parseFloat(match[1]), parseFloat(match[2])] as [number, number] : null;
   }, [client?.locationUrl]);
 
-  if (cLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
+  if (cLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!client) return <div className="p-20 text-center font-bold">404 - Not Found</div>;
 
   return (
@@ -72,7 +71,7 @@ export default function ClientDetailsPage() {
                    {client.fileNumber}
                 </Badge>
                 <h1 className="text-xl md:text-2xl font-bold text-slate-900">{client.nameAr}</h1>
-                <Badge variant="outline" className="text-[9px] font-bold uppercase px-2 h-5 rounded-md border-slate-200">{client.status}</Badge>
+                <Badge variant="outline" className="text-[9px] font-bold uppercase px-2 h-5 rounded-md border-slate-200">{t('status.' + client.status)}</Badge>
              </div>
           </div>
         </div>
@@ -80,7 +79,7 @@ export default function ClientDetailsPage() {
         <div className="flex gap-2">
            {canEditClient && (
              <Button onClick={() => router.push(`/dashboard/clients/${clientId}/edit`)} variant="outline" size="sm" className="h-9 px-4 rounded-md font-bold text-xs gap-2">
-               <Edit3 className="h-3.5 w-3.5" /> {t('clients.edit')}
+               <Edit3 className="h-3.5 w-3.5" /> {t('common.edit')}
              </Button>
            )}
            {canOpenTransaction && (
@@ -104,15 +103,15 @@ export default function ClientDetailsPage() {
                  </Badge>
               </CardHeader>
               <CardContent className="p-0">
-                 {transactions?.map((t) => (
-                    <div key={t.id} className="p-3 border-b border-slate-50 hover:bg-slate-50/50 transition-all cursor-pointer flex items-center justify-between group gap-4">
-                       <div className="flex items-center gap-3 flex-1 min-w-0" onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${t.id}`)}>
-                          <div className={cn("h-8 w-8 rounded-md flex items-center justify-center shrink-0 shadow-sm", t.status === 'completed' ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600")}>
+                 {transactions?.map((t_row) => (
+                    <div key={t_row.id} className="p-3 border-b border-slate-50 hover:bg-slate-50/50 transition-all cursor-pointer flex items-center justify-between group gap-4">
+                       <div className="flex items-center gap-3 flex-1 min-w-0" onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${t_row.id}`)}>
+                          <div className={cn("h-8 w-8 rounded-md flex items-center justify-center shrink-0 shadow-sm", t_row.status === 'completed' ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600")}>
                              <PlayCircle className="h-4 w-4" />
                           </div>
                           <div className="text-start truncate">
-                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">#{t.transactionNumber}</p>
-                             <h4 className="font-bold text-sm text-slate-800 leading-tight truncate">{t.subServiceName}</h4>
+                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">#{t_row.transactionNumber}</p>
+                             <h4 className="font-bold text-sm text-slate-800 leading-tight truncate">{t_row.subServiceName}</h4>
                           </div>
                        </div>
                        
@@ -121,32 +120,36 @@ export default function ClientDetailsPage() {
                              variant="ghost" 
                              size="sm" 
                              className="h-8 px-2 rounded-md text-[10px] font-bold gap-1.5 text-blue-600 hover:bg-blue-50"
-                             onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/clients/${clientId}/transactions/${t.id}?tab=documents`); }}
+                             onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/clients/${clientId}/transactions/${t_row.id}?tab=documents`); }}
                           >
                              <Receipt className="h-3.5 w-3.5" />
-                             {translate('clients.finance')}
+                             {t('clients.finance')}
                           </Button>
                           <Button 
                              variant="ghost" 
                              size="icon" 
                              className="h-8 w-8 rounded-md text-slate-300 hover:text-primary"
-                             onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${t.id}`)}
+                             onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${t_row.id}`)}
                           >
                              <ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} />
                           </Button>
                        </div>
                     </div>
                  ))}
-                 {!transactions?.length && <div className="py-10 text-center text-xs text-slate-300 italic">No transactions found.</div>}
+                 {!transactions?.length && <div className="py-10 text-center text-xs text-slate-300 italic">{t('common.noResults')}</div>}
               </CardContent>
            </Card>
            
-           <Card className="rounded-lg shadow-sm border-slate-100 bg-white overflow-hidden">
+           <Card className="rounded-lg shadow-sm border-slate-100 bg-white overflow-hidden text-start">
               <div className="grid grid-cols-1 md:grid-cols-2 h-full">
                  <div className="p-4 space-y-3 text-start border-e border-slate-50">
-                    <div className="flex items-center gap-2"><Compass className="h-4 w-4 text-blue-600" /><h3 className="text-[10px] font-bold uppercase text-slate-400">{t('clients.details.location')}</h3></div>
+                    <div className="flex items-center gap-2"><Compass className="h-4 w-4 text-blue-600" /><h3 className="text-[10px] font-bold uppercase text-slate-500">{t('clients.details.location')}</h3></div>
                     <div className="p-3 rounded-lg bg-slate-50 border border-slate-100"><p className="text-sm font-bold text-slate-800">{client.governorateName} / {client.areaName}</p></div>
-                    <div className="grid grid-cols-3 gap-2">{[{l:'B', v:client.block},{l:'S',v:client.street},{l:'P',v:client.houseNumber}].map((x,i)=>(<div key={i} className="p-2 rounded-md bg-white border border-slate-100 text-center"><span className="text-[8px] text-slate-400 block font-bold">{x.l}</span><span className="text-xs font-bold text-slate-800">{x.v||'-'}</span></div>))}</div>
+                    <div className="grid grid-cols-3 gap-2">
+                       <div className="p-2 rounded-md bg-white border border-slate-100 text-center"><span className="text-[8px] text-slate-400 block font-bold uppercase">B</span><span className="text-xs font-bold text-slate-800">{client.block || '-'}</span></div>
+                       <div className="p-2 rounded-md bg-white border border-slate-100 text-center"><span className="text-[8px] text-slate-400 block font-bold uppercase">S</span><span className="text-xs font-bold text-slate-800">{client.street || '-'}</span></div>
+                       <div className="p-2 rounded-md bg-white border border-slate-100 text-center"><span className="text-[8px] text-slate-400 block font-bold uppercase">P</span><span className="text-xs font-bold text-slate-800">{client.houseNumber || '-'}</span></div>
+                    </div>
                  </div>
                  <div className="p-0 bg-slate-50/30 flex items-center justify-center min-h-[160px]">
                     <div onClick={() => client.locationUrl && window.open(client.locationUrl, '_blank')} className={cn("relative h-full w-full rounded-none overflow-hidden z-0", coordinates ? "cursor-pointer" : "bg-white/50 border-dashed")}>
@@ -166,16 +169,17 @@ export default function ClientDetailsPage() {
               <div className="relative p-4">
                  <div className={cn("absolute top-0 bottom-0 w-[1px] bg-slate-100", isRtl ? "right-6" : "left-6")} />
                  <div className="space-y-4">
-                    {history?.sort((a,b)=>b.createdAt?.toMillis()-a.createdAt?.toMillis()).map((e)=>(
+                    {history?.sort((a,b)=> (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)).map((e)=>(
                        <div key={e.id} className="relative ps-6">
                           <div className={cn("absolute top-1 h-2 w-2 rounded-full border border-white z-10", e.type === 'status_change' ? "bg-blue-500" : e.type === 'system_log' ? "bg-primary" : "bg-amber-500", isRtl ? "right-[-4px]" : "left-[-4px]")} />
                           <div className="space-y-0.5">
                              <div className="flex justify-between items-center"><span className="text-[8px] font-bold text-slate-400 uppercase">{e.type}</span><span className="text-[8px] font-mono text-slate-300">{e.createdAt?.toDate().toLocaleDateString()}</span></div>
                              <p className="text-[11px] font-medium text-slate-700 leading-tight">{e.content}</p>
-                             <p className="text-[8px] text-primary font-bold">{e.userName}</p>
+                             <p className="text-[8px] text-primary font-bold uppercase">{e.userName}</p>
                           </div>
                        </div>
                     ))}
+                    {!history?.length && <div className="py-20 text-center opacity-30 italic text-xs">{t('common.noResults')}</div>}
                  </div>
               </div>
            </CardContent>

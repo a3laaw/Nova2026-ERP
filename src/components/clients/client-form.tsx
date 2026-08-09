@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +33,25 @@ import { LocationPickerDialog } from './location-picker-dialog';
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 
+const clientFormSchema = z.object({
+  fileNumber: z.string().min(1),
+  nameAr: z.string().min(3),
+  nameEn: z.string().optional(),
+  mobile: z.string().min(8),
+  email: z.string().email().optional().or(z.literal('')),
+  civilId: z.string().optional(),
+  governorateId: z.string().min(1),
+  governorateName: z.string().optional(),
+  areaId: z.string().min(1),
+  areaName: z.string().optional(),
+  block: z.string().optional(),
+  street: z.string().optional(),
+  houseNumber: z.string().optional(),
+  locationUrl: z.string().optional(),
+  assignedEngineerId: z.string().min(1),
+  assignedEngineerName: z.string().optional()
+});
+
 export function ClientForm({ initialData, onSubmit, loading }: { initialData?: any, onSubmit: (data: any) => void, loading?: boolean }) {
   const { dir, lang, t } = useLanguage();
   const { globalUser } = useAuthContext();
@@ -40,6 +61,7 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
   const companyId = globalUser?.companyId;
   
   const form = useForm({
+    resolver: zodResolver(clientFormSchema),
     defaultValues: initialData || { 
       fileNumber: '', 
       nameAr: '', 
@@ -56,7 +78,7 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
       houseNumber: '',
       locationUrl: '',
       assignedEngineerId: globalUser?.employeeId || '',
-      assignedEngineerName: globalUser?.fullName || globalUser?.username || '' // تصحيح: استخدام fullName بدلاً من البريد
+      assignedEngineerName: globalUser?.fullName || globalUser?.username || ''
     }
   });
 
@@ -104,22 +126,29 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
     }
   }, [assignedEngineerId, engineers, form]);
 
+  useEffect(() => {
+    if (selectedAreaId && areas) {
+      const area = areas.find(a => a.id === selectedAreaId);
+      if (area) form.setValue('areaName', isRtl ? area.name : area.nameEn);
+    }
+  }, [selectedAreaId, areas, isRtl, form]);
+
   const handleLocationSelect = (url: string) => {
     form.setValue('locationUrl', url);
   };
 
   return (
-    <form form={form} onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 text-start pb-20">
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 text-start pb-20">
       
       <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/[0.02]">
         <div className="bg-primary/5 p-6 border-b flex items-center justify-between">
-           <h3 className="text-base font-black font-headline text-slate-800">{isRtl ? 'البيانات الأساسية والقانونية' : 'Identity & Legal'}</h3>
+           <h3 className="text-base font-black font-headline text-slate-800">{t('clients.form.identity')}</h3>
            <UserPlus className="h-5 w-5 text-primary" />
         </div>
         <CardContent className="p-8 space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">رقم الملف</Label>
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.fileNumber')}</Label>
               <div className="relative">
                 <Input {...form.register('fileNumber')} readOnly className="h-12 rounded-2xl border-2 font-mono font-black bg-slate-50 text-primary border-slate-100 cursor-not-allowed" />
                 {generating && <RefreshCw className="absolute end-4 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary/40" />}
@@ -127,55 +156,55 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
             </div>
             <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">الاسم الكامل (Ar)</Label>
-                  <Input {...form.register('nameAr')} className="h-12 rounded-2xl border-2 font-bold focus:bg-white bg-slate-50/30" placeholder="أدخل الاسم بالعربي..." />
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.nameAr')}</Label>
+                  <Input {...form.register('nameAr')} className="h-12 rounded-2xl border-2 font-bold focus:bg-white bg-slate-50/30" />
                </div>
                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Name (En)</Label>
-                  <Input {...form.register('nameEn')} className="h-12 rounded-2xl border-2 font-bold text-start bg-slate-50/30" dir="ltr" placeholder="Enter Full Name..." />
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.nameEn')}</Label>
+                  <Input {...form.register('nameEn')} className="h-12 rounded-2xl border-2 font-bold text-start bg-slate-50/30" dir="ltr" />
                </div>
             </div>
             
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">الرقم المدني</Label>
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.civilId')}</Label>
               <div className="relative">
                  <Fingerprint className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
                  <Input {...form.register('civilId')} maxLength={12} className="h-12 rounded-2xl border-2 ps-11 font-mono font-bold bg-slate-50/30" />
               </div>
             </div>
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">الهاتف</Label>
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.mobile')}</Label>
               <Input {...form.register('mobile')} className="h-12 rounded-2xl border-2 font-bold bg-slate-50/30" placeholder="+965" />
             </div>
             <div className="md:col-span-2 space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">البريد الإلكتروني</Label>
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.email')}</Label>
               <div className="relative">
                  <Mail className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
-                 <Input {...form.register('email')} type="email" className="h-12 rounded-2xl border-2 ps-11 font-bold text-start bg-slate-50/30" dir="ltr" placeholder="email@example.com" />
+                 <Input {...form.register('email')} type="email" className="h-12 rounded-2xl border-2 ps-11 font-bold text-start bg-slate-50/30" dir="ltr" />
               </div>
             </div>
           </div>
 
           <div className="pt-6 border-t border-slate-50">
              <div className="bg-orange-50/50 p-6 rounded-3xl border-2 border-orange-100 flex flex-col md:flex-row items-center gap-6">
-                <div className="flex items-center gap-4 shrink-0">
+                <div className="flex items-center gap-4 shrink-0 text-start">
                    <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-[#e87c24] shadow-sm border border-orange-100">
                       <Briefcase className="h-6 w-6" />
                    </div>
                    <div className="text-start">
-                      <h4 className="font-black text-sm text-slate-800">{isRtl ? 'المهندس المختص' : 'Assigned Engineer'}</h4>
-                      <p className="text-[9px] font-bold text-slate-400 uppercase">{isRtl ? 'تحديد المسؤولية المعلوماتية للعميل' : 'Client Access Scope Assignment'}</p>
+                      <h4 className="font-black text-sm text-slate-800">{t('clients.form.engineer')}</h4>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase">{t('clients.form.assignment')}</p>
                    </div>
                 </div>
                 
-                <div className="flex-1 w-full">
+                <div className="flex-1 w-full text-start">
                    <Select 
                      disabled={!isAdmin} 
                      value={assignedEngineerId} 
                      onValueChange={(v) => form.setValue('assignedEngineerId', v)}
                    >
                       <SelectTrigger className="h-12 rounded-xl border-2 bg-white font-bold">
-                         <SelectValue placeholder={isRtl ? "اختر المهندس المسؤول..." : "Assign responsible engineer..."} />
+                         <SelectValue placeholder={t('common.search')} />
                       </SelectTrigger>
                       <SelectContent className="rounded-2xl border-0 shadow-2xl">
                          {engineers.map(eng => (
@@ -190,7 +219,7 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
                 {!isAdmin && (
                   <Badge className="bg-[#1e1b4b] text-white border-0 font-black text-[9px] px-4 py-2 rounded-xl uppercase shrink-0 gap-2">
                      <ShieldCheck className="h-3 w-3 text-primary" />
-                     {isRtl ? 'ربط تلقائي بالمسؤول' : 'Auto-Assigned'}
+                     {t('clients.form.autoAssigned')}
                   </Badge>
                 )}
              </div>
@@ -200,13 +229,13 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
 
       <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/[0.02]">
         <div className="bg-blue-50/30 p-6 border-b flex items-center justify-between">
-           <h3 className="text-base font-black font-headline text-slate-800">{isRtl ? 'رادار الموقع والعنوان الذكي' : 'Smart Location Radar'}</h3>
+           <h3 className="text-base font-black font-headline text-slate-800">{t('clients.form.locationRadar')}</h3>
            <MapPinned className="h-5 w-5 text-blue-600" />
         </div>
         <CardContent className="p-8 space-y-10">
            <div className="p-10 bg-slate-50/50 rounded-[3rem] border-2 border-dashed border-blue-100 relative">
               <Label className="absolute top-4 right-10 text-[10px] font-black uppercase text-blue-400 tracking-[0.1em]">
-                {isRtl ? 'رابط الموقع (GOOGLE MAPS)' : 'Google Maps Link'}
+                {t('clients.form.mapLink')}
               </Label>
               <div className={cn("flex items-center gap-4 pt-4", isRtl ? "flex-row-reverse" : "flex-row")}>
                  <Button 
@@ -215,7 +244,7 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
                    className="h-14 px-8 rounded-2xl bg-[#1e1b4b] text-white font-black text-sm gap-3 hover:bg-slate-800 transition-all shadow-2xl shadow-indigo-900/20 shrink-0"
                  >
                     <Search className="h-5 w-5 text-[#e87c24]" />
-                    {isRtl ? 'فتح الخريطة والبحث' : 'Open Map & Search'}
+                    {t('clients.form.openMap')}
                  </Button>
                  <div className="relative flex-1">
                     <Input 
@@ -231,7 +260,7 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
 
            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pt-4">
               <div className="space-y-2 text-start">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">المحافظة</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.governorate')}</Label>
                 <Select value={selectedGovId} onValueChange={(v) => { form.setValue('governorateId', v); form.setValue('areaId', ''); }}>
                    <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/30"><SelectValue placeholder="..." /></SelectTrigger>
                    <SelectContent className="rounded-2xl">
@@ -240,25 +269,25 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
                 </Select>
               </div>
               <div className="space-y-2 text-start">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">المنطقة</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.area')}</Label>
                 <Select disabled={!selectedGovId} value={selectedAreaId} onValueChange={(v) => form.setValue('areaId', v)}>
                    <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/30"><SelectValue placeholder="..." /></SelectTrigger>
-                   <SelectContent className="rounded-xl">
+                   <SelectContent className="rounded-2xl">
                       {areas?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}
                    </SelectContent>
                 </Select>
               </div>
               <div className="grid grid-cols-3 md:col-span-2 gap-4">
                  <div className="space-y-2 text-start">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">القطعة</Label>
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.block')}</Label>
                     <Input {...form.register('block')} className="h-12 rounded-xl border-2 font-bold text-center bg-slate-50/30" />
                  </div>
                  <div className="space-y-2 text-start">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">الشارع</Label>
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.street')}</Label>
                     <Input {...form.register('street')} className="h-12 rounded-xl border-2 font-bold text-center bg-slate-50/30" />
                  </div>
                  <div className="space-y-2 text-start">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">المنزل</Label>
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.house')}</Label>
                     <Input {...form.register('houseNumber')} className="h-12 rounded-xl border-2 font-bold text-center bg-slate-50/30" />
                  </div>
               </div>
@@ -270,10 +299,10 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
         <Button 
           type="submit" 
           disabled={loading || generating} 
-          className="h-20 rounded-[2.5rem] px-16 bg-primary text-white font-black text-2xl shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all gap-4 border-b-8 border-orange-700"
+          className="h-20 rounded-[2.5rem] px-16 bg-primary text-white font-black text-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all gap-4 border-b-8 border-orange-700"
         >
           {loading ? <Loader2 className="animate-spin h-8 w-8" /> : <Save className="h-8 w-8" />}
-          {initialData ? (isRtl ? 'تحديث السجل المرجعي' : 'Update Global Record') : (isRtl ? 'حفظ ملف العميل' : 'Confirm Registration')}
+          {initialData ? t('common.saveChanges') : t('common.confirm')}
         </Button>
       </div>
 

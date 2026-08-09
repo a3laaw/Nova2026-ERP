@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -120,7 +119,7 @@ export default function ClientsListPage() {
                   <TableCell className="ps-10 py-5 text-start">
                      <div className="flex flex-col text-start">
                         <span className="font-black text-slate-900 text-sm">{client.nameAr}</span>
-                        <span className="text-[10px] text-slate-400 font-mono font-bold mt-1">FILE: {client.fileNumber}</span>
+                        <span className="text-[10px] text-slate-400 font-mono font-bold mt-1 uppercase">FILE: {client.fileNumber}</span>
                      </div>
                   </TableCell>
                   <TableCell className="text-start">
@@ -132,7 +131,7 @@ export default function ClientsListPage() {
                        "font-black px-3 py-1 rounded-lg border-0 shadow-sm text-[9px] uppercase", 
                        client.status === 'contracted' ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'
                      )}>
-                        {client.status}
+                        {t('status.' + client.status)}
                      </Badge>
                   </TableCell>
                   <TableCell className="pe-10 text-end">
