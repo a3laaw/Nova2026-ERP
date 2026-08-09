@@ -15,7 +15,7 @@ interface LanguageContextType {
 
 const translations: Record<Language, Record<string, string>> = {
   ar: {
-    // Navigation & Layout (Batch 1)
+    // Navigation & Layout
     'dashboard': 'لوحة التحكم',
     'crm': 'العملاء والفرص',
     'leads': 'الفرص والعملاء',
@@ -58,32 +58,21 @@ const translations: Record<Language, Record<string, string>> = {
     'reports': 'التقارير',
     'equipment': 'المعدات والآليات',
     'fieldLogs': 'سجلات الميدان',
-    
-    // UI Logic Keys (Batch 1)
-    'inline.profile.link.failed': 'تعذر تحميل ملف الصلاحيات',
-    'inline.account.frozen': 'المنشأة مجمدة مؤقتاً',
-    'inline.awaiting.activation': 'بانتظار تفعيل المنشأة',
-    'inline.subscription.expired': 'انتهت صلاحية الوصول',
-    'inline.rotate.0': 'rotate-180',
-    'inline.flex.row': 'flex-row-reverse',
-    'inline.left': 'right',
-    'inline.right': 'left',
-    'inline.text.left': 'text-right',
-    'inline.end': 'start',
-    'inline.personal.workspace': 'شؤوني الوظيفية',
-    'inline.tax...reg.no': 'الرقم الضريبي / السجل:',
-    'inline.generated.on': 'تاريخ الاستخراج',
 
-    // CRM Batch
+    // CRM & Clients
     'crm.description': 'إدارة الفرص والمبيعات',
     'crm.newLead': 'فرصة جديدة',
     'clients.title': 'العملاء',
+    'clients.addNew': 'إضافة عميل',
     'clients.registerNew': 'تسجيل عميل جديد',
     'clients.registerNewDesc': 'فتح ملف تجاري جديد لربطه بالمعاملات الفنية',
     'clients.editProfile': 'تعديل بيانات العميل',
     'clients.newTransaction': 'فتح معاملة',
     'clients.finance': 'المالية',
     'clients.updateSuccess': 'تم تحديث بيانات العميل بنجاح.',
+    'clients.details.transactions': 'المعاملات الجارية',
+    'clients.details.location': 'الموقع والعنوان',
+    'clients.details.history': 'سجل الحركات',
     
     // Transactions & Contracts
     'transactions.newTitle': 'فتح معاملة فنية جديدة',
@@ -101,6 +90,36 @@ const translations: Record<Language, Record<string, string>> = {
     'contracts.markPaid': 'توثيق السداد',
     'contracts.commitAndSave': 'اعتماد وحفظ العقد',
     'quotations.commitAndSave': 'اعتماد وحفظ عرض السعر',
+
+    // Pricing & BOQ
+    'pricingMode': 'نمط التسعير',
+    'itemized': 'حسب البنود',
+    'fixed': 'سعر مقطوع',
+    'percentage': 'نسبة مئوية',
+    'at': 'عند',
+    'before': 'قبل',
+    'during': 'أثناء',
+    'after': 'بعد',
+    'contractSigning': 'توقيع العقد',
+    'totalQuoteValue': 'إجمالي قيمة العرض',
+    'defaultTerms': 'الشروط والأحكام',
+    'tab': 'تبويب',
+    'projects.details.radar': 'رادار المتابعة',
+    'projects.details.finance': 'الوثائق المالية',
+    'projects.details.locked': 'المسار الفني مقفل بانتظار الاعتماد المالي',
+    'projects.boqExplorer.noBoqs': 'لا توجد مقايسات مرتبطة. يرجى تفعيل قالب مقايسة.',
+    'projects.boqExplorer.sections': 'أقسام المقايسة',
+    'projects.voManager.title': 'الأوامر التغييرية (VO)',
+    'projects.voManager.voTitle': 'عنوان الأمر التغييري',
+    'projects.voManager.addAdjustment': 'إضافة تعديل فني',
+    'projects.voManager.reason': 'المبرر الفني للأمر',
+    'projects.boqExplorer.voSummary': 'ملخص التغييرات المقترحة',
+    'projects.boqExplorer.action': 'الإجراء',
+    'projects.voManager.increase': 'زيادة كمية',
+    'projects.voManager.decrease': 'نقص كمية',
+    'projects.voManager.omit': 'إلغاء بند',
+    'projects.voManager.newItem': 'بند جديد',
+    'projects.voManager.targetItem': 'البند المستهدف',
 
     // Common
     'common.save': 'حفظ',
@@ -136,7 +155,7 @@ const translations: Record<Language, Record<string, string>> = {
     'common.timeline': 'الزمني'
   },
   en: {
-    // Navigation & Layout (Batch 1)
+    // Navigation & Layout
     'dashboard': 'Dashboard',
     'crm': 'CRM',
     'leads': 'Leads',
@@ -179,32 +198,23 @@ const translations: Record<Language, Record<string, string>> = {
     'reports': 'Reports',
     'equipment': 'Equipment',
     'fieldLogs': 'Field Logs',
-    
-    // UI Logic Keys (Batch 1)
-    'inline.profile.link.failed': 'Profile Link Failed',
-    'inline.account.frozen': 'Account Frozen',
-    'inline.awaiting.activation': 'Awaiting Activation',
-    'inline.subscription.expired': 'Subscription Expired',
-    'inline.rotate.0': 'rotate-0',
-    'inline.flex.row': 'flex-row',
-    'inline.left': 'left',
-    'inline.right': 'right',
-    'inline.text.left': 'text-left',
-    'inline.end': 'end',
-    'inline.personal.workspace': 'Personal Workspace',
-    'inline.tax...reg.no': 'TAX / REG NO:',
-    'inline.generated.on': 'Generated On',
 
-    // CRM Batch
+    // CRM & Clients
     'crm.description': 'Manage Leads & Sales',
     'crm.newLead': 'New Lead',
     'clients.title': 'Clients',
+    'clients.addNew': 'Add Client',
     'clients.registerNew': 'Register New Client',
     'clients.registerNewDesc': 'Open new commercial file',
     'clients.editProfile': 'Edit Client Profile',
-    'clients.newTransaction': 'New Trans',
+    'clients.newTransaction': 'New Transaction',
     'clients.finance': 'Finance',
     'clients.updateSuccess': 'Client data updated successfully.',
+    'clients.details.transactions': 'Active Transactions',
+    'clients.details.location': 'Location & Address',
+    'clients.details.history': 'Action History',
+
+    // Transactions & Contracts
     'transactions.newTitle': 'New Technical Transaction',
     'transactions.pathAssignment': 'Path & Assignment',
     'transactions.targetDept': 'Target Department',
@@ -220,6 +230,36 @@ const translations: Record<Language, Record<string, string>> = {
     'contracts.markPaid': 'Mark Paid',
     'contracts.commitAndSave': 'Commit & Save',
     'quotations.commitAndSave': 'Commit & Save',
+
+    // Pricing & BOQ
+    'pricingMode': 'Pricing Mode',
+    'itemized': 'Itemized',
+    'fixed': 'Fixed Price',
+    'percentage': 'Percentage',
+    'at': 'At',
+    'before': 'Before',
+    'during': 'During',
+    'after': 'After',
+    'contractSigning': 'Contract Signing',
+    'totalQuoteValue': 'Total Quote Value',
+    'defaultTerms': 'Terms & Conditions',
+    'tab': 'Tab',
+    'projects.details.radar': 'Tracking Radar',
+    'projects.details.finance': 'Finance Documents',
+    'projects.details.locked': 'Path locked pending financial approval',
+    'projects.boqExplorer.noBoqs': 'No BOQs linked. Please activate a template.',
+    'projects.boqExplorer.sections': 'BOQ Sections',
+    'projects.voManager.title': 'Variation Orders (VO)',
+    'projects.voManager.voTitle': 'VO Title',
+    'projects.voManager.addAdjustment': 'Add Adjustment',
+    'projects.voManager.reason': 'Technical Reason',
+    'projects.boqExplorer.voSummary': 'Proposed Changes Summary',
+    'projects.boqExplorer.action': 'Action',
+    'projects.voManager.increase': 'Increase Qty',
+    'projects.voManager.decrease': 'Decrease Qty',
+    'projects.voManager.omit': 'Omit Item',
+    'projects.voManager.newItem': 'New Item',
+    'projects.voManager.targetItem': 'Target Item',
 
     // Common
     'common.save': 'Save',
