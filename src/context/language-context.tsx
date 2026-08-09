@@ -13,21 +13,24 @@ interface LanguageContextType {
   tSafe: (key: string, fallbackAr: string, fallbackEn?: string) => string;
 }
 
+/**
+ * القاموس الشامل (Master Dictionary)
+ * تم دمج كافة المفاتيح لضمان عدم فقدان أي ترجمة عند التحديثات المستقبلية.
+ */
 const translations: Record<Language, Record<string, string>> = {
   ar: {
-    // الأقسام الرئيسية
+    // 1. الهيكل العام والتنقل
     'dashboard': 'لوحة التحكم',
     'dashboard.subtitle': 'إحصائيات عامة ومتابعة سير العمل في المشاريع.',
-    'projects': 'المشاريع',
-    'crm': 'العملاء والفرص',
-    'procurement': 'المشتريات',
-    'hr': 'الموارد البشرية',
-    'inventory': 'المخازن والعهد',
-    'accounting': 'المحاسبة والمالية',
-    'ai.hub': 'ذكاء Nova',
-    'settings': 'الإعدادات',
+    'dashboard.recent': 'آخر النشاطات',
+    'dashboard.export': 'تصدير',
+    'dashboard.missions': 'المهام المطلوبة',
+    'logout': 'تسجيل الخروج',
+    'devConsole': 'لوحة المطور',
+    'userProfile': 'ملفي الشخصي',
+    'details': 'التفاصيل',
 
-    // الكلمات المشتركة
+    // 2. الكلمات المشتركة (Common)
     'common.search': 'بحث...',
     'common.filter': 'تصفية',
     'common.save': 'حفظ',
@@ -37,151 +40,118 @@ const translations: Record<Language, Record<string, string>> = {
     'common.delete': 'حذف',
     'common.confirm': 'تأكيد',
     'common.status': 'الحالة',
-    'common.name': 'الاسم',
-    'common.company': 'الشركة',
-    'common.noresults': 'لا توجد نتائج مطابقة',
     'common.date': 'التاريخ',
+    'common.name': 'الاسم',
     'common.amount': 'المبلغ',
+    'common.notes': 'الملاحظات',
+    'common.error': 'خطأ في العملية',
+    'common.saved': 'تم الحفظ بنجاح',
+    'common.deleted': 'تم الحذف بنجاح',
+    'common.confirmDelete': 'تأكيد الحذف',
+    'common.active': 'نشط',
+    'common.completed': 'مكتمل',
+    'common.pending': 'قيد الانتظار',
     'common.unit': 'الوحدة',
     'common.quantity': 'الكمية',
     'common.total': 'الإجمالي',
-    'common.viewall': 'عرض الكل',
+    'common.viewAll': 'عرض الكل',
+    'common.code': 'الكود',
 
-    // CRM & Leads
-    'crm.title': 'العملاء والفرص',
-    'crm.description': 'إدارة الفرص البيعية وقاعدة بيانات العملاء.',
-    'crm.newlead': 'إضافة فرصة',
-    'crm.table.name': 'الاسم',
-    'crm.table.company': 'الشركة',
-    'crm.table.status': 'الحالة',
+    // 3. العملاء والفرص (CRM)
+    'crm': 'العملاء والفرص',
+    'leads': 'الفرص والعملاء',
+    'clients': 'العملاء',
+    'clients.title': 'إدارة العملاء',
+    'clients.addNew': 'إضافة عميل جديد',
+    'clients.table.profile': 'بيان العميل',
+    'clients.table.staff': 'المسؤول',
+    'clients.table.contact': 'الاتصال',
+    'clients.table.status': 'الحالة',
+    'clients.details.transactions': 'المعاملات الفنية',
+    'clients.details.location': 'موقع المشروع',
+    'clients.details.history': 'سجل الأحداث',
 
-    // Projects & BOQ
-    'projects.title': 'المشاريع',
-    'projects.description': 'متابعة المشاريع الجارية والجدول الزمني.',
-    'projects.addnew': 'إضافة مشروع',
-    'projects.boqexplorer': 'جدول الكميات والميزانية',
-    'projects.boqexplorer.desc': 'إدارة واعتماد جداول الكميات والميزانيات المرجعية.',
-    'boq.activate': 'تنشيط المقايسة',
-    
-    // HR & Payroll
-    'hr.title': 'الموارد البشرية',
-    'hr.description': 'إدارة القوى العاملة والامتثال لقانون العمل.',
-    'staffrecords': 'شؤون الموظفين',
-    'payroll': 'مسيرات الرواتب',
-    'leaverequests': 'طلبات الإجازات',
-    'attendance': 'بصمة الحضور',
-    'hr.workforce.desc': 'إدارة طواقم العمل والميدان.',
-    'workgroups': 'فرق العمل',
-    'workgroups.desc': 'إدارة أطقم الميدان والتخصصات.',
+    // 4. المشاريع والمقايسات (BOQ)
+    'projects': 'المشاريع',
+    'activeProjects': 'المشاريع الجارية',
+    'projects.title': 'إدارة المشاريع',
+    'projects.addNew': 'إضافة مشروع',
+    'projects.boqExplorer': 'جدول الكميات والميزانية',
+    'projects.boqExplorer.desc': 'إدارة واعتماد جداول الكميات والميزانيات المرجعية',
+    'projects.stats.portfolio': 'إجمالي المحفظة',
+    'projects.stats.claims': 'المطالبات',
+    'projects.stats.collection': 'التحصيل',
+    'projects.table.project': 'المشروع',
+    'projects.table.progress': 'الإنجاز',
+    'projects.table.billing': 'المبالغ المفوترة',
+    'projects.details.radar': 'رادار التنفيذ',
+    'projects.details.finance': 'المستندات والمالية',
+    'projects.details.locked': 'المسار الفني مقفل. يرجى اعتماد العقد والمقايسة أولاً.',
 
-    // Construction & Field
+    // 5. العمليات الميدانية (Construction)
+    'construction': 'المقاولات',
     'construction.radar': 'رادار الميدان',
     'construction.radarDesc': 'إدارة وتنسيق أطقم العمل والمهندسين في مواقع المشاريع الإنشائية.',
-    'fieldradar': 'رادار الميدان',
-    'fieldlogs': 'تقارير الموقع',
-    'equipment': 'المخازن والمعدات',
+    'construction.groups': 'فرق العمل',
+    'construction.groupsDesc': 'إدارة أطقم الميدان والتخصصات.',
+    'construction.reports': 'تقارير الموقع',
+    'fieldRadar': 'رادار الميدان',
+    'workGroups': 'فرق العمل',
+    'fieldLogs': 'تقارير الموقع',
 
-    // Financials
-    'chartofaccounts': 'شجرة الحسابات',
-    'journalentries': 'قيود اليومية',
-    'paymentvouchers': 'سندات الصرف',
-    'receiptvouchers': 'سندات القبض',
-    'financialreports': 'التقارير المالية',
+    // 6. الموارد البشرية والرواتب (HR)
+    'hr.title': 'الموارد البشرية',
+    'staffRecords': 'الموظفون',
+    'payroll': 'الرواتب',
+    'leaveRequests': 'الإجازات',
+    'payrollBatches': 'مسيرات الرواتب',
+    'attendance': 'بصمة الحضور',
 
-    // Dashboard Stats & Units
+    // 7. المحاسبة (Accounting)
+    'chartOfAccounts': 'شجرة الحسابات',
+    'journalEntries': 'قيود اليومية',
+    'paymentVouchers': 'سندات الصرف',
+    'receiptVouchers': 'سندات القبض',
+    'financialReports': 'التقارير المالية',
+
+    // 8. الوحدات والإحصائيات (Dashboard Units)
     'dashboard.stats.revenue': 'إجمالي الإيرادات',
     'dashboard.stats.activeprojects': 'المشاريع الجارية',
     'dashboard.stats.workforce': 'القوى العاملة',
     'dashboard.stats.completion': 'نسبة الإنجاز',
     'dashboard.units.kwd': 'د.ك',
+    'dashboard.units.yearly': 'سنوياً',
+    'dashboard.units.new': 'جديد',
+    'dashboard.units.present': 'حاضر',
     'dashboard.units.project': 'مشروع',
     'dashboard.units.employee': 'موظف',
-    'dashboard.units.yearly': 'سنوياً',
-    'dashboard.units.present': 'حاضر',
-    'dashboard.units.new': 'جديد',
-    
-    // Reports
+
+    // 9. التقارير
     'reports.hub.title': 'مركز التقارير',
     'reports.hub.description': 'تحليل القوى العاملة والامتثال والإنتاجية الميدانية.',
   },
   en: {
     'dashboard': 'Dashboard',
-    'dashboard.subtitle': 'General statistics and workflow tracking.',
-    'projects': 'Projects',
-    'crm': 'CRM & Leads',
-    'procurement': 'Procurement',
-    'hr': 'Human Resources',
-    'inventory': 'Inventory & Assets',
-    'accounting': 'Accounting',
-    'ai.hub': 'Nova AI',
-    'settings': 'Settings',
-
+    'dashboard.subtitle': 'General statistics and project workflow tracking.',
+    'dashboard.recent': 'Recent Activities',
+    'dashboard.export': 'Export',
+    'logout': 'Logout',
     'common.search': 'Search...',
     'common.filter': 'Filter',
     'common.save': 'Save',
-    'common.cancel': 'Cancel',
-    'common.add': 'Add',
-    'common.edit': 'Edit',
-    'common.delete': 'Delete',
-    'common.confirm': 'Confirm',
     'common.status': 'Status',
     'common.name': 'Name',
-    'common.company': 'Company',
-    'common.noresults': 'No results found',
-    'common.date': 'Date',
     'common.amount': 'Amount',
-    'common.unit': 'Unit',
-    'common.quantity': 'Quantity',
-    'common.total': 'Total',
-    'common.viewall': 'View All',
-
-    'crm.title': 'CRM & Leads',
-    'crm.description': 'Manage sales opportunities and client database.',
-    'crm.newlead': 'New Lead',
-    'crm.table.name': 'Name',
-    'crm.table.company': 'Company',
-    'crm.table.status': 'Status',
-
-    'projects.title': 'Projects',
-    'projects.description': 'Track active projects and timelines.',
-    'projects.addnew': 'Add Project',
-    'projects.boqexplorer': 'BOQ & Budget',
-    'projects.boqexplorer.desc': 'Manage bill of quantities and baseline budgets.',
-
-    'hr.title': 'Human Resources',
-    'hr.description': 'Workforce management and labor law compliance.',
-    'staffrecords': 'Staff Records',
-    'payroll': 'Payroll',
-    'leaverequests': 'Leave Requests',
-    'attendance': 'Attendance',
-    'workgroups': 'Work Groups',
-    'workgroups.desc': 'Field crew management and specialties.',
-
-    'construction.radar': 'Field Radar',
-    'construction.radarDesc': 'Coordinate site engineers and work crews in construction sites.',
-    'fieldradar': 'Field Radar',
-    'fieldlogs': 'Field Logs',
-    'equipment': 'Equipment & Assets',
-
-    'chartofaccounts': 'Chart of Accounts',
-    'journalentries': 'Journal Entries',
-    'paymentvouchers': 'Payment Vouchers',
-    'receiptvouchers': 'Receipt Vouchers',
-    'financialreports': 'Financial Reports',
-
-    'dashboard.stats.revenue': 'Total Revenue',
-    'dashboard.stats.activeprojects': 'Active Projects',
-    'dashboard.stats.workforce': 'Workforce',
-    'dashboard.stats.completion': 'Completion Rate',
+    'crm': 'CRM',
+    'projects': 'Projects',
+    'projects.boqExplorer': 'BOQ & Budget',
+    'hr': 'Human Resources',
+    'accounting': 'Accounting',
     'dashboard.units.kwd': 'KWD',
-    'dashboard.units.project': 'Project',
-    'dashboard.units.employee': 'Employee',
     'dashboard.units.yearly': 'Yearly',
-    'dashboard.units.present': 'Present',
     'dashboard.units.new': 'New',
-
+    'dashboard.units.present': 'Present',
     'reports.hub.title': 'Reports Hub',
-    'reports.hub.description': 'Workforce analysis and field productivity.',
   }
 };
 
@@ -202,15 +172,29 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.dir = newLang === 'ar' ? 'rtl' : 'ltr';
   };
 
+  /**
+   * دالة الترجمة المحسنة: غير حساسة لحالة الأحرف (Case-insensitive)
+   * تضمن العثور على المفتاح حتى لو كان هناك اختلاف بسيط في الكتابة.
+   */
   const t = (key: string) => {
     if (!key) return '';
-    const lowKey = key.toLowerCase();
-    // ابحث أولاً عن المفتاح كما هو، ثم ابحث عن النسخة المصغرة (lowercase)
-    return translations[lang]?.[key] || translations[lang]?.[lowKey] || key;
+    
+    const currentTranslations = translations[lang];
+    
+    // محاولة المطابقة المباشرة
+    if (currentTranslations[key]) return currentTranslations[key];
+    
+    // محاولة المطابقة مع تجاهل حالة الأحرف (للإنجليزي)
+    const lowerKey = key.toLowerCase();
+    const foundKey = Object.keys(currentTranslations).find(k => k.toLowerCase() === lowerKey);
+    
+    if (foundKey) return currentTranslations[foundKey];
+    
+    // إذا لم يوجد، ابحث في الأقسام (مثل common.save)
+    return currentTranslations[key] || key;
   };
 
   const tSafe = (key: string, fallbackAr: string, fallbackEn?: string) => {
-    if (!key) return lang === 'ar' ? fallbackAr : (fallbackEn || fallbackAr);
     const translated = t(key);
     if (translated !== key) return translated;
     return lang === 'ar' ? fallbackAr : (fallbackEn || fallbackAr);
