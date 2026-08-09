@@ -42,11 +42,11 @@ export default function DashboardPage() {
   const chartConfig = {
     revenue: {
       label: "Revenue",
-      color: "hsl(var(--chart-1))",
+      color: "#FFA000",
     },
     expenses: {
       label: "Expenses",
-      color: "hsl(var(--chart-2))",
+      color: "#039BE5",
     },
   } satisfies ChartConfig;
 
@@ -61,7 +61,7 @@ export default function DashboardPage() {
       bg: "bg-blue-50",
     },
     {
-      title: t('dashboard.stats.activeProjects'),
+      title: t('dashboard.stats.activeprojects'),
       value: "24",
       change: t('dashboard.units.new'),
       unit: t('dashboard.units.project'),
@@ -99,13 +99,15 @@ export default function DashboardPage() {
           </div>
           <div className="text-start">
             <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{t('dashboard')}</h1>
-            <p className="text-xs font-bold text-muted-foreground italic mt-0.5">{isRtl ? 'نظرة عامة على أداء المنشأة وسير العمل' : 'Overview of organization performance and workflow'}</p>
+            <p className="text-xs font-bold text-muted-foreground italic mt-0.5">
+              {isRtl ? 'نظرة عامة على أداء المنشأة وسير العمل' : 'Overview of organization performance and workflow'}
+            </p>
           </div>
         </div>
 
         <div className="flex gap-3">
           <Button onClick={() => router.push('/dashboard/projects')} className="bg-primary text-white h-11 px-6 rounded-xl font-black shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all">
-             <Plus className="ms-2 h-4 w-4" /> {t('projects.addNew')}
+             <Plus className={cn("h-4 w-4", isRtl ? "ms-2" : "me-2")} /> {t('projects.addnew')}
           </Button>
           <Button variant="outline" className="h-11 px-6 rounded-xl font-black border-2 bg-white text-slate-400 gap-2">
              <FileText className="h-4 w-4" /> {t('dashboard.export')}
@@ -164,7 +166,7 @@ export default function DashboardPage() {
             </div>
             <div className="p-4 bg-slate-50/30 border-t">
               <Button variant="ghost" className="w-full h-8 text-[10px] font-black text-primary hover:bg-primary/5">
-                {t('common.viewAll')}
+                {t('common.viewall')}
               </Button>
             </div>
           </CardContent>

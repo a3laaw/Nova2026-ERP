@@ -90,16 +90,6 @@ export default function ReportsHubPage() {
           </Card>
         ))}
       </div>
-
-      <div className="p-12 rounded-[3rem] border-4 border-dashed border-primary/10 bg-slate-50/50 flex flex-col items-center justify-center text-center space-y-6">
-         <div className="h-20 w-20 bg-white rounded-3xl flex items-center justify-center text-primary shadow-xl ring-8 ring-white/50"><Sparkles className="h-10 w-10" /></div>
-         <div className="space-y-2">
-            <h3 className="text-2xl font-black text-slate-800">{isRtl ? 'ذكاء Nova للتقارير المخصصة' : 'Nova AI Custom Reporting'}</h3>
-            <p className="text-slate-500 font-bold max-w-lg leading-relaxed">
-              {isRtl ? 'قريباً: اطلب من Nova توليد أي تقرير تريده بلغة طبيعية وسيقوم المحرك ببنائه لك فوراً.' : 'Coming Soon: Ask Nova to generate any report in natural language and the engine will build it instantly.'}
-            </p>
-         </div>
-      </div>
     </div>
   );
 }

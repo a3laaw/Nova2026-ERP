@@ -43,61 +43,7 @@ export default function WorkGroupsPage() {
     companyId && db ? query(collection(db, paths.workGroups(companyId)), orderBy('name')) : null, 
   [db, companyId]);
 
-  const empsQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, 
-  [db, companyId]);
-
-  const deptsQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.departments(companyId)), orderBy('order')) : null, 
-  [db, companyId]);
-
   const { data: groups, loading: groupsLoading } = useCollection<WorkGroup>(groupsQuery);
-  const { data: employees } = useCollection<Employee>(empsQuery);
-  const { data: departments } = useCollection<Department>(deptsQuery);
-
-  const filteredEmployeesForSelection = useMemo(() => {
-    if (!form.departmentId) return [];
-    return (employees || []).filter(e => e.departmentId === form.departmentId);
-  }, [employees, form.departmentId]);
-
-  const supervisors = useMemo(() => {
-    return filteredEmployeesForSelection.filter(e => 
-      e.jobTitle?.includes('مراقب') || e.jobTitle?.includes('Supervisor') || e.jobTitle?.includes('مهندس')
-    );
-  }, [filteredEmployeesForSelection]);
-
-  const handleSave = async () => {
-    if (!db || !companyId || !form.name || !form.departmentId) return;
-    setLoading(true);
-    try {
-      const supervisor = employees?.find(e => e.id === form.supervisorId);
-      const department = departments?.find(d => d.id === form.departmentId);
-      
-      const data = {
-        ...form,
-        companyId,
-        departmentName: department ? (isRtl ? department.name : department.nameEn) : '',
-        supervisorName: supervisor?.fullName || '',
-        memberCount: form.memberIds?.length || 0,
-        createdAt: form.id ? form.createdAt : serverTimestamp(),
-        updatedAt: serverTimestamp()
-      };
-
-      if (form.id) {
-        await updateDoc(doc(db, paths.workGroups(companyId), form.id), data);
-      } else {
-        await addDoc(collection(db, paths.workGroups(companyId)), data);
-      }
-      
-      toast({ title: t('common.saved') });
-      setIsAddOpen(false);
-      setForm({ name: '', code: '', departmentId: '', supervisorId: '', memberIds: [], isActive: true });
-    } catch (e) {
-      toast({ variant: "destructive", title: t('common.error') });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const filteredGroups = (groups || []).filter(g => 
     g.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -114,91 +60,16 @@ export default function WorkGroupsPage() {
           </div>
           <div className="text-start">
             <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{t('construction.groups')}</h1>
-            <p className="text-xs font-bold text-muted-foreground italic mt-0.5">{t('construction.groupsDesc')}</p>
+            <p className="text-xs font-bold text-muted-foreground italic mt-0.5">{t('construction.groupsdesc')}</p>
           </div>
         </div>
 
-        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-          <DialogTrigger asChild>
-            <Button className="h-11 px-8 font-black rounded-xl shadow-lg shadow-primary/20">
-               <Plus className="h-5 w-5 me-2" /> {isRtl ? 'تكوين طاقم عمل' : 'New Group'}
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl text-start" dir={dir}>
-             <div className="bg-slate-50/50 p-8 border-b">
-                <DialogTitle className="text-2xl font-black font-headline">{isRtl ? 'إعداد طاقم جديد' : 'Setup Crew'}</DialogTitle>
-             </div>
-             
-             <div className="p-8 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اسم الطاقم' : 'Crew Name'}</Label>
-                      <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="h-11 border-2 rounded-xl font-bold" />
-                   </div>
-                   <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('orgRef')}</Label>
-                      <Select value={form.departmentId} onValueChange={v => setForm({...form, departmentId: v, supervisorId: '', memberIds: []})}>
-                         <SelectTrigger className="h-11 border-2 rounded-xl font-bold">
-                            <SelectValue placeholder="..." />
-                         </SelectTrigger>
-                         <SelectContent className="rounded-xl border-0 shadow-2xl z-[200]">
-                            {departments?.map(d => <SelectItem key={d.id} value={d.id!} className="font-bold py-3">{isRtl ? d.name : d.nameEn}</SelectItem>)}
-                         </SelectContent>
-                      </Select>
-                   </div>
-                </div>
-
-                <div className={cn("space-y-2", !form.departmentId && "opacity-30 pointer-events-none")}>
-                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'المشرف المسؤول' : 'Supervisor'}</Label>
-                   <Select value={form.supervisorId} onValueChange={v => setForm({...form, supervisorId: v})}>
-                      <SelectTrigger className="h-11 border-2 rounded-xl font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                      <SelectContent className="rounded-xl border-0 shadow-2xl z-[200]">
-                         {supervisors.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold py-3">{s.fullName}</SelectItem>)}
-                      </SelectContent>
-                   </Select>
-                </div>
-
-                <div className={cn("space-y-3 pt-4 border-t", !form.departmentId && "opacity-30 pointer-events-none")}>
-                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'أعضاء الطاقم' : 'Members'}</Label>
-                   <ScrollArea className="h-48 border-2 rounded-2xl p-4 bg-slate-50/50 shadow-inner">
-                      <div className="grid grid-cols-1 gap-2">
-                         {filteredEmployeesForSelection.filter(e => e.id !== form.supervisorId).map(e => {
-                           const isChecked = form.memberIds?.includes(e.id!);
-                           return (
-                             <div 
-                               key={e.id} 
-                               onClick={() => {
-                                 const current = form.memberIds || [];
-                                 const updated = isChecked ? current.filter(id => id !== e.id) : [...current, e.id!];
-                                 setForm({...form, memberIds: updated});
-                               }}
-                               className={cn(
-                                 "p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between border-2",
-                                 isChecked ? "bg-white border-primary shadow-sm" : "bg-white/40 border-transparent hover:border-slate-100"
-                               )}
-                             >
-                                <div className="flex items-center gap-3">
-                                   <Checkbox checked={isChecked} className="h-5 w-5 pointer-events-none" />
-                                   <span className="text-xs font-bold text-slate-700">{e.fullName}</span>
-                                </div>
-                             </div>
-                           );
-                         })}
-                      </div>
-                   </ScrollArea>
-                </div>
-             </div>
-
-             <DialogFooter className="p-8 bg-slate-50 border-t">
-                <Button onClick={handleSave} disabled={loading || !form.name} className="w-full h-16 rounded-2xl font-black text-xl shadow-xl shadow-primary/20 border-b-8 border-orange-700">
-                   {loading ? <Loader2 className="animate-spin h-6 w-6" /> : t('common.save')}
-                </Button>
-             </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={() => setIsAddOpen(true)} className="h-11 px-8 font-black rounded-xl shadow-lg shadow-primary/20">
+            <Plus className="h-5 w-5 me-2" /> {isRtl ? 'تكوين طاقم عمل' : 'New Group'}
+        </Button>
       </header>
 
-      <Card className="rounded-xl shadow-sm border border-slate-100 overflow-hidden bg-white">
+      <Card className="rounded-xl shadow-sm border border-slate-100 overflow-hidden bg-white text-start">
          <div className="p-4 flex flex-row items-center justify-between gap-4 bg-slate-50/30 border-b">
             <div className="relative w-full max-w-sm text-start">
                <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
@@ -225,9 +96,9 @@ export default function WorkGroupsPage() {
                   {groupsLoading ? (
                     <TableRow><TableCell colSpan={4} className="text-center py-24"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/20" /></TableCell></TableRow>
                   ) : filteredGroups.length === 0 ? (
-                    <TableRow><TableCell colSpan={4} className="text-center py-24 text-slate-300 font-black italic">{t('common.noResults')}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={4} className="text-center py-24 text-slate-300 font-black italic">{t('common.noresults')}</TableCell></TableRow>
                   ) : filteredGroups.map(group => (
-                    <TableRow key={group.id} className="hover:bg-primary/[0.01] border-b-slate-100 group cursor-pointer" onClick={() => { setForm(group); setIsAddOpen(true); }}>
+                    <TableRow key={group.id} className="hover:bg-primary/[0.01] border-b-slate-100 group cursor-pointer">
                        <TableCell className="py-4 ps-10 text-start">
                           <div className="flex flex-col text-start">
                              <span className="font-black text-slate-800 text-base">{group.name}</span>

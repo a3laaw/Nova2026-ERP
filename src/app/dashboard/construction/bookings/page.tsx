@@ -18,7 +18,7 @@ export default function ConstructionBookingsPage() {
           </div>
           <div className="text-start">
             <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{t('construction.radar')}</h1>
-            <p className="text-xs font-bold text-muted-foreground italic mt-0.5">{t('construction.radarDesc')}</p>
+            <p className="text-xs font-bold text-muted-foreground italic mt-0.5">{t('construction.radardesc')}</p>
           </div>
         </div>
         
@@ -29,7 +29,7 @@ export default function ConstructionBookingsPage() {
           className="h-11 px-6 rounded-xl border-2 font-black gap-2 bg-white shadow-sm hover:bg-slate-50 print:hidden"
         >
           <Printer className="h-4 w-4 text-primary" />
-          {t('construction.printRadar')}
+          {isRtl ? 'طباعة الرادار' : 'Print Radar'}
         </Button>
       </header>
 
