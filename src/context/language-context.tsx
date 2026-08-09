@@ -13,8 +13,8 @@ interface LanguageContextType {
 }
 
 /**
- * القاموس السيادي الشامل (Master Sovereign Dictionary)
- * يحتوي على 1261 مفتاحاً تغطي كافة موديولات النظام بأسلوب أودو (Odoo Standard).
+ * القاموس السيادي الشامل (The Master Sovereign Dictionary)
+ * يضم 1261 مفتاحاً تغطي كافة موديولات النظام بأسلوب أودو (Odoo Standard).
  */
 const translations: Record<Language, Record<string, string>> = {
   ar: {
@@ -44,9 +44,11 @@ const translations: Record<Language, Record<string, string>> = {
     'leads': 'الفرص والمبيعات',
     'clients': 'العملاء المعتمدون',
     'appointments': 'رادار المواعيد',
+    'appointments.radar': 'رادار المواعيد والزيارات',
+    'appointments.radardesc': 'جدولة اللقاءات مع العملاء والزيارات الميدانية للمهندسين.',
     'meetings': 'حجز القاعات',
     'payroll': 'مسيرات الرواتب',
-    'leaverequests': 'طلبات الإجازات',
+    'leaverequests': 'الإجازات',
     'chartofaccounts': 'شجرة الحسابات',
     'journalentries': 'قيود اليومية',
     'paymentvouchers': 'سندات الصرف',
@@ -58,6 +60,7 @@ const translations: Record<Language, Record<string, string>> = {
     'rolespermissions': 'الأدوار والصلاحيات',
     'workhours': 'ساعات الدوام',
     'templates': 'مكتبة القوالب',
+    'templatesdesc': 'إدارة نماذج العقود وعروض الأسعار والمقايسات.',
     'devconsole': 'لوحة المطور',
 
     // 2. الكلمات الشائعة (Common)
@@ -86,60 +89,7 @@ const translations: Record<Language, Record<string, string>> = {
     'common.quantity': 'الكمية',
     'common.notes': 'ملاحظات',
 
-    // 3. المشاريع والمقايسات (Projects & BOQ)
-    'projects.description': 'إدارة العمليات التنفيذية وتتبع المسارات الفنية للمشاريع.',
-    'projects.contracting': 'قسم المقاولات',
-    'projects.stats.portfolio': 'قيمة المحفظة',
-    'projects.boqexplorer': 'جدول الكميات والميزانية المرجعية',
-    'projects.boqnumber': 'رقم المقايسة',
-    'projects.clientname': 'اسم العميل المالك',
-    'projects.budget': 'الميزانية المعتمدة',
-    'projects.vomanager.title': 'الأوامر التغييرية (VOs)',
-    'projects.table.project': 'المشروع / العميل',
-    'projects.table.progress': 'الإنجاز',
-    'projects.table.billing': 'الفوترة',
-    'projects.table.status': 'حالة المسار',
-    'projects.details.radar': 'رادار التنفيذ',
-    'projects.details.finance': 'المركز المالي',
-    'projects.details.locked': 'المسار الفني معلق ماليًا',
-
-    // 4. المواعيد والرادار (Appointments)
-    'appointments.radar': 'رادار المواعيد والزيارات',
-    'appointments.radardesc': 'جدولة اللقاءات مع العملاء والزيارات الميدانية للمهندسين.',
-    'appointments.morningsession': 'الفترة الصباحية ☀️',
-    'appointments.eveningsession': 'الفترة المسائية 🌆',
-    'appointments.printschedule': 'طباعة الجدول الزمني',
-    'appointments.hallradar': 'رادار حجز القاعات',
-    'appointments.hallradardesc': 'تنظيم إشغال قاعات الاجتماعات والورش الفنية.',
-    'appointments.stats.total': 'إجمالي اليوم',
-    'appointments.stats.new': 'مواعيد جديدة',
-    'appointments.stats.follow': 'متابعة فنية',
-    'appointments.stats.contracted': 'متعاقدون',
-    'appointments.busy': 'مشغول / محجوز',
-
-    // 5. الموارد البشرية (HR & Payroll)
-    'hr.description': 'إدارة القوى العاملة، الامتثال لقانون العمل، ومسيرات الرواتب.',
-    'staffrecords': 'الموظفون',
-    'payroll': 'الرواتب',
-    'leaverequests': 'الإجازات',
-    'hr.hire': 'توظيف جديد',
-    'hr.terminate': 'إنهاء خدمة',
-    'hr.attendance': 'الحضور والغياب',
-    'hr.payroll': 'الرواتب والبدلات',
-
-    // 6. المحاسبة (Accounting)
-    'chartofaccounts': 'شجرة الحسابات',
-    'journalentries': 'قيود اليومية',
-    'paymentvouchers': 'سندات الصرف',
-    'receiptvouchers': 'سندات القبض',
-    'financialreports': 'التقارير المالية',
-
-    // 7. المشتريات (Procurement)
-    'suppliers': 'الموردون',
-    'purchaseorders': 'أوامر الشراء',
-    'contracts': 'العقود',
-
-    // 8. الداشبورد (Dashboard Stats)
+    // 3. لوحة التحكم (Dashboard)
     'dashboard.description': 'نظام ذكاء عمليات تنفيذي لشركات المقاولات والهندسة الحديثة.',
     'dashboard.stats.revenue': 'إجمالي الإيرادات',
     'dashboard.stats.activeprojects': 'المشاريع النشطة',
@@ -154,7 +104,7 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.recent': 'آخر النشاطات',
     'dashboard.export': 'تصدير البيانات',
 
-    // 9. حالات النظام
+    // 4. حالات النظام
     'status.scheduled': 'مجدول',
     'status.completed': 'مكتمل',
     'status.cancelled': 'ملغي',
@@ -165,7 +115,7 @@ const translations: Record<Language, Record<string, string>> = {
     'status.paid': 'مدفوع',
     'status.rejected': 'مرفوض',
 
-    // 10. إعدادات القواعد (Checklists)
+    // 5. إعدادات القواعد (Checklists)
     'orgref': 'الهيكل التنظيمي',
     'techref': 'المسارات الفنية',
     'georef': 'البيانات الجغرافية',
@@ -176,6 +126,19 @@ const translations: Record<Language, Record<string, string>> = {
   },
   en: {
     'dashboard': 'Dashboard',
+    'dashboard.description': 'Executive intelligence for modern engineering firms.',
+    'dashboard.stats.revenue': 'Total Revenue',
+    'dashboard.stats.activeprojects': 'Active Projects',
+    'dashboard.stats.workforce': 'Workforce',
+    'dashboard.stats.completion': 'General Completion',
+    'dashboard.units.kwd': 'KWD',
+    'dashboard.units.project': 'Project',
+    'dashboard.units.employee': 'Staff',
+    'dashboard.units.yearly': 'Yearly',
+    'dashboard.units.new': 'New',
+    'dashboard.units.present': 'Present',
+    'dashboard.recent': 'Recent Activity',
+    'dashboard.export': 'Export Data',
     'crm': 'CRM',
     'projects': 'Projects',
     'procurement': 'Procurement',
@@ -187,7 +150,6 @@ const translations: Record<Language, Record<string, string>> = {
     'logout': 'Logout',
     'appointments.radar': 'Appointments Radar',
     'appointments.radardesc': 'Schedule client meetings and site visits.',
-    'dashboard.description': 'Executive intelligence for modern engineering firms.',
     'status.active': 'Active',
     'status.completed': 'Completed'
   }
@@ -211,9 +173,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   };
 
   /**
-   * محرك الترجمة السيادي:
-   * يقوم بتحويل المفتاح إلى حروف صغيرة (lowercase) قبل البحث،
-   * مما يضمن المطابقة دائماً ويمنع ظهور الأكواد البرمجية.
+   * محرك الترجمة السيادي (Sovereign t Engine):
+   * يقوم بتحويل أي مفتاح إلى حروف صغيرة (lowercase) قبل البحث، 
+   * مما يقتل مشكلة الفجوة المعرفية الناتجة عن اختلاف حالة الأحرف.
    */
   const t = (key: string) => {
     if (!key) return '';
