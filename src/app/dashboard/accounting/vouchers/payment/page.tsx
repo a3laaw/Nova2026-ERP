@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
   Wallet, Plus, Loader2, Save, 
-  ArrowRight, Landmark, User, FileText
+  ArrowRight, Landmark, User, FileText, Briefcase
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where } from 'firebase/firestore';
@@ -36,6 +36,7 @@ export default function PaymentVouchersPage() {
     paymentMethod: 'cash' as any,
     accountId: '',
     cashAccountId: '',
+    projectId: '',
     notes: ''
   });
 
@@ -47,8 +48,13 @@ export default function PaymentVouchersPage() {
     companyId && db ? query(collection(db, paths.accounts(companyId))) : null, 
   [db, companyId]);
 
+  const projectsQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.transactions(companyId)), where('status', '!=', 'completed')) : null, 
+  [db, companyId]);
+
   const { data: vouchers, loading: vouchersLoading } = useCollection<Voucher>(vouchersQuery);
   const { data: accounts } = useCollection<Account>(accountsQuery);
+  const { data: projects } = useCollection<any>(projectsQuery);
 
   const cashAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.code.startsWith('101') || a.code.startsWith('102'))), [accounts]);
   const expenseAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.type === 'expense' || a.type === 'liability')), [accounts]);
@@ -66,7 +72,7 @@ export default function PaymentVouchersPage() {
       await service.createVoucher({ ...form, type: 'payment' }, user.uid);
       toast({ title: t('common.saved') });
       setIsAdding(false);
-      setForm({ date: new Date().toISOString().split('T')[0], amount: 0, personName: '', paymentMethod: 'cash', accountId: '', cashAccountId: '', notes: '' });
+      setForm({ date: new Date().toISOString().split('T')[0], amount: 0, personName: '', paymentMethod: 'cash', accountId: '', cashAccountId: '', projectId: '', notes: '' });
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
@@ -81,7 +87,7 @@ export default function PaymentVouchersPage() {
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
             <Wallet className="h-6 w-6 text-rose-600" /> {t('accounting.vouchers.paymentTitle')}
           </h1>
-          <p className="text-muted-foreground text-xs font-medium">{t('accounting.vouchers.paymentTitle')}</p>
+          <p className="text-muted-foreground text-xs font-medium">{isRtl ? 'إدارة المصروفات وربطها بمراكز تكلفة المشاريع' : 'Manage expenses and link to project cost centers'}</p>
         </div>
         <Button onClick={() => setIsAdding(!isAdding)} size="sm" className="h-9 px-6 font-bold gap-2 bg-rose-600 hover:bg-rose-700">
            {isAdding ? <ArrowRight className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
@@ -144,6 +150,24 @@ export default function PaymentVouchersPage() {
 
                  <div className="pt-6 border-t space-y-4">
                     <div className="space-y-2">
+                       <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5">
+                          <Briefcase className="h-3.5 w-3.5" /> {isRtl ? 'المشروع المرتبط (مركز التكلفة)' : 'Related Project (Cost Center)'}
+                       </Label>
+                       <Select value={form.projectId} onValueChange={v => setForm({...form, projectId: v})}>
+                          <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder={isRtl ? "اختر المشروع..." : "Select project..."} /></SelectTrigger>
+                          <SelectContent className="rounded-xl border-2 shadow-2xl">
+                             <SelectItem value="GENERAL" className="font-bold italic text-slate-400">{isRtl ? '--- بدون مشروع (عام) ---' : '--- No Project (General) ---'}</SelectItem>
+                             {projects?.map(p => <SelectItem key={p.id} value={p.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">
+                                <div className="flex flex-col text-start">
+                                   <span>{p.subServiceName}</span>
+                                   <span className="text-[9px] text-slate-400 font-mono">#{p.transactionNumber} | {p.clientName}</span>
+                                </div>
+                             </SelectItem>)}
+                          </SelectContent>
+                       </Select>
+                    </div>
+
+                    <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{t('accounting.vouchers.againstAccount')}</Label>
                        <Select value={form.accountId} onValueChange={v => setForm({...form, accountId: v})}>
                           <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
@@ -196,7 +220,7 @@ export default function PaymentVouchersPage() {
                     ) : vouchers?.length === 0 ? (
                       <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 font-bold italic">{t('common.noResults')}</TableCell></TableRow>
                     ) : vouchers?.map(v => (
-                      <TableRow key={v.id} className="hover:bg-slate-50/50 transition-colors border-b-slate-100">
+                      <TableRow key={v.id} className="hover:bg-slate-50/50 transition-colors border-b-slate-100 cursor-pointer">
                          <TableCell className="py-3 ps-6 text-start font-black text-slate-800">
                             <div className="flex flex-col">
                                <span>{v.voucherNumber}</span>

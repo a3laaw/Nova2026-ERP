@@ -230,7 +230,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                      <Label className="text-[9px] font-black uppercase text-slate-400">{tSafe('inline.reference.code', 'الكود المرجعي', 'Reference Code')}</Label>
                      <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} className="h-10 rounded-lg font-mono text-xs border-2" />
                   </div>
-                  <div className="flex items-center justify-between p-3 mt-4 bg-slate-50 rounded-xl border-2">
+                  <div className="flex items-center justify-between p-2 mt-4 bg-slate-50 rounded-xl border">
                      <Label className="text-[9px] font-black uppercase text-slate-500">{isRtl ? 'قالب افتراضي' : 'Default Template'}</Label>
                      <Switch checked={formData.isDefault || false} onCheckedChange={v => setFormData({...formData, isDefault: v})} />
                   </div>

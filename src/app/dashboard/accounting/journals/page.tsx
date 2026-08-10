@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { 
   FileText, Plus, Loader2, Save, 
   Trash2, ArrowRight, Calculator,
-  AlertTriangle
+  AlertTriangle, Briefcase
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -35,8 +35,8 @@ export default function JournalEntriesPage() {
     date: new Date().toISOString().split('T')[0],
     description: '',
     lines: [
-      { accountId: '', accountName: '', debit: 0, credit: 0, memo: '' },
-      { accountId: '', accountName: '', debit: 0, credit: 0, memo: '' }
+      { accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '' },
+      { accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '' }
     ] as JournalEntryLine[]
   });
 
@@ -48,8 +48,13 @@ export default function JournalEntriesPage() {
     companyId && db ? query(collection(db, paths.accounts(companyId))) : null, 
   [db, companyId]);
 
+  const projectsQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.transactions(companyId))) : null, 
+  [db, companyId]);
+
   const { data: journals, loading: journalsLoading } = useCollection<JournalEntry>(journalsQuery);
   const { data: accounts } = useCollection<Account>(accountsQuery);
+  const { data: projects } = useCollection<any>(projectsQuery);
 
   const availableAccounts = useMemo(() => accounts?.filter(a => !a.isGroup), [accounts]);
 
@@ -63,7 +68,7 @@ export default function JournalEntriesPage() {
   const isBalanced = Math.abs(totals.debit - totals.credit) < 0.001 && totals.debit > 0;
 
   const handleAddLine = () => {
-    setForm({ ...form, lines: [...form.lines, { accountId: '', accountName: '', debit: 0, credit: 0, memo: '' }] });
+    setForm({ ...form, lines: [...form.lines, { accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '' }] });
   };
 
   const handleRemoveLine = (idx: number) => {
@@ -89,7 +94,7 @@ export default function JournalEntriesPage() {
       await service.createJournalEntry(form, user.uid);
       toast({ title: t('common.saved') });
       setIsAdding(false);
-      setForm({ date: new Date().toISOString().split('T')[0], description: '', lines: [{ accountId: '', accountName: '', debit: 0, credit: 0, memo: '' }, { accountId: '', accountName: '', debit: 0, credit: 0, memo: '' }] });
+      setForm({ date: new Date().toISOString().split('T')[0], description: '', lines: [{ accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '' }, { accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '' }] });
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
@@ -133,7 +138,8 @@ export default function JournalEntriesPage() {
                  <Table>
                     <TableHeader className="bg-slate-50/50">
                        <TableRow>
-                          <TableHead className="w-[300px]">{isRtl ? 'الحساب' : 'Account'}</TableHead>
+                          <TableHead className="w-[200px]">{isRtl ? 'الحساب' : 'Account'}</TableHead>
+                          <TableHead className="w-[180px]">{isRtl ? 'المشروع (مركز تكلفة)' : 'Project (Cost Center)'}</TableHead>
                           <TableHead className="text-center">{isRtl ? 'مدين' : 'Debit'}</TableHead>
                           <TableHead className="text-center">{isRtl ? 'دائن' : 'Credit'}</TableHead>
                           <TableHead>{t('accounting.journals.lineMemo')}</TableHead>
@@ -145,22 +151,30 @@ export default function JournalEntriesPage() {
                          <TableRow key={idx} className="border-b-slate-50">
                             <TableCell className="p-2">
                                <Select value={line.accountId} onValueChange={v => updateLine(idx, 'accountId', v)}>
-                                  <SelectTrigger className="h-9 font-bold text-xs"><SelectValue placeholder="..." /></SelectTrigger>
-                                  <SelectContent className="rounded-xl">
-                                     {availableAccounts?.map(a => <SelectItem key={a.id} value={a.id} className="font-bold">{a.code} - {isRtl ? a.nameAr : a.nameEn}</SelectItem>)}
+                                  <SelectTrigger className="h-9 font-bold text-[10px]"><SelectValue placeholder="..." /></SelectTrigger>
+                                  <SelectContent className="rounded-xl border-2">
+                                     {availableAccounts?.map(a => <SelectItem key={a.id} value={a.id} className="font-bold text-[10px]">{a.code} - {isRtl ? a.nameAr : a.nameEn}</SelectItem>)}
+                                  </SelectContent>
+                               </Select>
+                            </TableCell>
+                            <TableCell className="p-2">
+                               <Select value={line.projectId} onValueChange={v => updateLine(idx, 'projectId', v)}>
+                                  <SelectTrigger className="h-9 font-bold text-[10px] bg-slate-50/50 border-primary/10"><SelectValue placeholder={isRtl ? "اختياري..." : "Optional..."} /></SelectTrigger>
+                                  <SelectContent className="rounded-xl border-2">
+                                     {projects?.map(p => <SelectItem key={p.id} value={p.id!} className="font-bold text-[10px]">{p.subServiceName}</SelectItem>)}
                                   </SelectContent>
                                </Select>
                             </TableCell>
                             <TableCell className="p-2"><Input type="number" step="0.001" value={line.debit || ''} onChange={e => updateLine(idx, 'debit', Number(e.target.value))} className="h-9 text-center font-black text-blue-600" /></TableCell>
                             <TableCell className="p-2"><Input type="number" step="0.001" value={line.credit || ''} onChange={e => updateLine(idx, 'credit', Number(e.target.value))} className="h-9 text-center font-black text-rose-600" /></TableCell>
-                            <TableCell className="p-2"><Input value={line.memo} onChange={e => updateLine(idx, 'memo', e.target.value)} className="h-9 text-xs" /></TableCell>
+                            <TableCell className="p-2"><Input value={line.memo} onChange={e => updateLine(idx, 'memo', e.target.value)} className="h-9 text-[10px]" /></TableCell>
                             <TableCell className="p-2"><Button variant="ghost" size="icon" onClick={() => handleRemoveLine(idx)} className="h-8 w-8 text-slate-300 hover:text-rose-500"><Trash2 className="h-4 w-4" /></Button></TableCell>
                          </TableRow>
                        ))}
                     </TableBody>
                     <tfoot className="bg-slate-50">
                        <tr>
-                          <td className="p-4"><Button variant="outline" size="sm" onClick={handleAddLine} className="font-bold text-[10px] h-8 px-4 rounded-lg border-2"><Plus className="h-3 w-3 me-1" /> {t('common.add')}</Button></td>
+                          <td className="p-4" colSpan={2}><Button variant="outline" size="sm" onClick={handleAddLine} className="font-bold text-[10px] h-8 px-4 rounded-lg border-2"><Plus className="h-3 w-3 me-1" /> {t('common.add')}</Button></td>
                           <td className="p-4 text-center font-black text-blue-600 text-lg">{totals.debit.toLocaleString()}</td>
                           <td className="p-4 text-center font-black text-rose-600 text-lg">{totals.credit.toLocaleString()}</td>
                           <td colSpan={2} className="p-4">

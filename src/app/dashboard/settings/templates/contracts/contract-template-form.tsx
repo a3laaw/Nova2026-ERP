@@ -384,7 +384,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
 
          <aside className="lg:col-span-4 space-y-6 text-start">
             <Card className="border-0 shadow-xl rounded-[2rem] bg-white ring-1 ring-black/5 overflow-hidden">
-               <CardHeader className="bg-slate-50 p-6 border-b">
+               <CardHeader className="bg-slate-50 p-6 border-b text-start">
                   <CardTitle className="text-xs font-black flex items-center gap-2 uppercase text-slate-400">
                      <Target className="h-4 w-4 text-primary" /> {isRtl ? 'السياق التشغيلي' : 'Operational Context'}
                   </CardTitle>
@@ -434,7 +434,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                </div>
             </div>
 
-            <div className="p-6 bg-amber-50 rounded-[2rem] border-2 border-dashed border-amber-200 flex items-start gap-4">
+            <div className="p-6 bg-amber-50 rounded-[2rem] border-2 border-dashed border-amber-200 flex items-start gap-4 text-start">
                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                <p className="text-[10px] text-amber-800 font-bold leading-relaxed">
                   {isRtl 

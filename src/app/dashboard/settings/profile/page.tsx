@@ -56,7 +56,6 @@ export default function ProfilePage() {
     try {
       const globalUserRef = doc(db, 'global_users', user.uid);
       const tenantUserRef = doc(db, 'companies', globalUser.companyId, 'users', user.uid);
-      const unifiedRoleCode = (globalUser.roleCode || globalUser.role || 'USER').toUpperCase();
 
       await updateProfile(auth.currentUser, { displayName: formData.fullName, photoURL: formData.photoUrl });
       await updateDoc(globalUserRef, { fullName: formData.fullName, username: formData.username, photoUrl: formData.photoUrl, updatedAt: serverTimestamp() });

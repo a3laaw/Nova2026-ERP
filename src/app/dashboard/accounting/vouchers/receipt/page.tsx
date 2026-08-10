@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { 
   Receipt, Plus, Loader2, Save, 
   ArrowRight, Landmark, Wallet,
-  User, Calendar, FileText
+  User, Calendar, FileText, Briefcase,
+  CheckCircle2, Sparkles
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where } from 'firebase/firestore';
@@ -21,6 +22,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { cn } from '@/lib/utils';
 
 export default function ReceiptVouchersPage() {
   const { globalUser, user } = useAuthContext();
@@ -37,6 +39,7 @@ export default function ReceiptVouchersPage() {
     paymentMethod: 'cash' as any,
     accountId: '',
     cashAccountId: '',
+    projectId: '',
     notes: ''
   });
 
@@ -48,11 +51,16 @@ export default function ReceiptVouchersPage() {
     companyId && db ? query(collection(db, paths.accounts(companyId))) : null, 
   [db, companyId]);
 
+  const projectsQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.transactions(companyId)), where('status', '!=', 'completed')) : null, 
+  [db, companyId]);
+
   const { data: vouchers, loading: vouchersLoading } = useCollection<Voucher>(vouchersQuery);
   const { data: accounts } = useCollection<Account>(accountsQuery);
+  const { data: projects } = useCollection<any>(projectsQuery);
 
-  const cashAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.code.startsWith('101') || a.code.startsWith('102'))), [accounts]);
-  const incomeAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && !a.code.startsWith('101') && !a.code.startsWith('102')), [accounts]);
+  const cashAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.code.startsWith('101') || a.code.startsWith('102') || a.type === 'asset')), [accounts]);
+  const incomeAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && a.type === 'revenue' || a.type === 'liability'), [accounts]);
 
   const handleSave = async () => {
     if (!db || !companyId || !user) return;
@@ -67,7 +75,7 @@ export default function ReceiptVouchersPage() {
       await service.createVoucher({ ...form, type: 'receipt' }, user.uid);
       toast({ title: t('common.saved') });
       setIsAdding(false);
-      setForm({ date: new Date().toISOString().split('T')[0], amount: 0, personName: '', paymentMethod: 'cash', accountId: '', cashAccountId: '', notes: '' });
+      setForm({ date: new Date().toISOString().split('T')[0], amount: 0, personName: '', paymentMethod: 'cash', accountId: '', cashAccountId: '', projectId: '', notes: '' });
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
@@ -82,7 +90,7 @@ export default function ReceiptVouchersPage() {
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
             <Receipt className="h-6 w-6 text-emerald-600" /> {t('accounting.vouchers.receiptTitle')}
           </h1>
-          <p className="text-muted-foreground text-xs font-medium">{t('accounting.vouchers.receiptTitle')}</p>
+          <p className="text-muted-foreground text-xs font-medium">{isRtl ? 'إدارة التحصيل المالي وربطه بمراكز التكلفة' : 'Manage revenue collection and link to cost centers'}</p>
         </div>
         <Button onClick={() => setIsAdding(!isAdding)} size="sm" className="h-9 px-6 font-bold gap-2 bg-emerald-600 hover:bg-emerald-700">
            {isAdding ? <ArrowRight className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
@@ -95,7 +103,7 @@ export default function ReceiptVouchersPage() {
            <Card className="lg:col-span-8 rounded-xl border-0 shadow-2xl bg-white overflow-hidden">
               <CardHeader className="bg-emerald-50 p-6 border-b text-start">
                  <CardTitle className="text-emerald-900 font-black flex items-center gap-3">
-                    <Plus className="h-5 w-5" /> {t('accounting.vouchers.issueReceipt')}
+                    <Sparkles className="h-5 w-5" /> {t('accounting.vouchers.issueReceipt')}
                  </CardTitle>
               </CardHeader>
               <CardContent className="p-8 space-y-6 text-start bg-white">
@@ -124,7 +132,7 @@ export default function ReceiptVouchersPage() {
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400">{t('paymentMethods')}</Label>
                        <Select value={form.paymentMethod} onValueChange={v => setForm({...form, paymentMethod: v})}>
-                          <SelectTrigger className="h-14 rounded-xl border-2 font-bold"><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="h-14 rounded-xl border-2 font-bold"><SelectValue /></SelectValue>
                           <SelectContent className="rounded-xl">
                              <SelectItem value="cash" className="font-bold">{isRtl ? 'نقدي' : 'Cash'}</SelectItem>
                              <SelectItem value="bank" className="font-bold">{isRtl ? 'شيك' : 'Check'}</SelectItem>
@@ -137,13 +145,31 @@ export default function ReceiptVouchersPage() {
                        <Select value={form.cashAccountId} onValueChange={v => setForm({...form, cashAccountId: v})}>
                           <SelectTrigger className="h-14 rounded-xl border-2 font-black text-blue-600"><SelectValue placeholder="..." /></SelectTrigger>
                           <SelectContent className="rounded-xl">
-                             {cashAccounts?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.nameAr : a.nameEn}</SelectItem>)}
+                             {cashAccounts?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{a.code} - {isRtl ? a.nameAr : a.nameEn}</SelectItem>)}
                           </SelectContent>
                        </Select>
                     </div>
                  </div>
 
-                 <div className="pt-6 border-t space-y-4">
+                 <div className="pt-6 border-t space-y-6">
+                    <div className="space-y-2">
+                       <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5">
+                          <Briefcase className="h-3.5 w-3.5" /> {isRtl ? 'المشروع المرتبط (مركز التكلفة)' : 'Related Project (Cost Center)'}
+                       </Label>
+                       <Select value={form.projectId} onValueChange={v => setForm({...form, projectId: v})}>
+                          <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder={isRtl ? "اختر المشروع..." : "Select project..."} /></SelectTrigger>
+                          <SelectContent className="rounded-xl border-2 shadow-2xl">
+                             <SelectItem value="GENERAL" className="font-bold italic text-slate-400">{isRtl ? '--- بدون مشروع (عام) ---' : '--- No Project (General) ---'}</SelectItem>
+                             {projects?.map(p => <SelectItem key={p.id} value={p.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">
+                                <div className="flex flex-col text-start">
+                                   <span>{p.subServiceName}</span>
+                                   <span className="text-[9px] text-slate-400 font-mono">#{p.transactionNumber} | {p.clientName}</span>
+                                </div>
+                             </SelectItem>)}
+                          </SelectContent>
+                       </Select>
+                    </div>
+
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{t('accounting.vouchers.againstAccount')}</Label>
                        <Select value={form.accountId} onValueChange={v => setForm({...form, accountId: v})}>
@@ -153,6 +179,7 @@ export default function ReceiptVouchersPage() {
                           </SelectContent>
                        </Select>
                     </div>
+
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400">{t('common.notes')}</Label>
                        <textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} className="w-full min-h-[100px] rounded-xl border-2 p-4 text-xs font-medium bg-slate-50/30" placeholder="..." />
@@ -173,7 +200,9 @@ export default function ReceiptVouchersPage() {
                  <div className="absolute top-0 right-0 p-6 opacity-10"><Landmark className="h-24 w-24" /></div>
                  <h4 className="font-black text-xs uppercase tracking-widest text-primary">{t('accounting.vouchers.autoRecon')}</h4>
                  <p className="text-[10px] font-bold text-slate-400 leading-relaxed">
-                    {t('accounting.vouchers.autoReconHint')}
+                    {isRtl 
+                      ? 'سيقوم النظام تلقائياً بإنشاء قيد محاسبي مزدوج يربط حساب النقدية بحساب الإيراد أو الذمة المختار مع تخصيص العملية لمركز تكلفة المشروع.' 
+                      : 'System will auto-generate a journal entry linking cash to revenue/receivable, assigned to the project cost center.'}
                  </p>
               </Card>
            </aside>
