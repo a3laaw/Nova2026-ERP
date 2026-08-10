@@ -88,13 +88,13 @@ export default function ReceiptVouchersPage() {
       <header className="flex justify-between items-center">
         <div className="text-start">
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-            <Receipt className="h-6 w-6 text-emerald-600" /> {t('accounting.vouchers.receiptTitle')}
+            <Receipt className="h-6 w-6 text-emerald-600" /> {isRtl ? 'سندات القبض' : 'Receipt Vouchers'}
           </h1>
           <p className="text-muted-foreground text-xs font-medium">{isRtl ? 'إدارة التحصيل المالي وربطه بمراكز التكلفة' : 'Manage revenue collection and link to cost centers'}</p>
         </div>
         <Button onClick={() => setIsAdding(!isAdding)} size="sm" className="h-9 px-6 font-bold gap-2 bg-emerald-600 hover:bg-emerald-700">
            {isAdding ? <ArrowRight className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-           {isAdding ? t('common.back') : t('accounting.vouchers.issueReceipt')}
+           {isAdding ? t('common.back') : (isRtl ? 'إصدار سند قبض' : 'Issue Receipt')}
         </Button>
       </header>
 
@@ -103,7 +103,7 @@ export default function ReceiptVouchersPage() {
            <Card className="lg:col-span-8 rounded-xl border-0 shadow-2xl bg-white overflow-hidden">
               <CardHeader className="bg-emerald-50 p-6 border-b text-start">
                  <CardTitle className="text-emerald-900 font-black flex items-center gap-3">
-                    <Sparkles className="h-5 w-5" /> {t('accounting.vouchers.issueReceipt')}
+                    <Sparkles className="h-5 w-5" /> {isRtl ? 'إصدار سند قبض جديد' : 'Issue New Receipt'}
                  </CardTitle>
               </CardHeader>
               <CardContent className="p-8 space-y-6 text-start bg-white">
@@ -113,7 +113,7 @@ export default function ReceiptVouchersPage() {
                        <Input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="h-10 rounded-lg" />
                     </div>
                     <div className="md:col-span-2 space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400">{t('accounting.vouchers.receivedFrom')}</Label>
+                       <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المقبوض من السيد' : 'Received From'}</Label>
                        <div className="relative">
                           <User className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
                           <Input value={form.personName} onChange={e => setForm({...form, personName: e.target.value})} className="h-10 rounded-lg ps-10 font-bold" placeholder="..." />
@@ -130,7 +130,7 @@ export default function ReceiptVouchersPage() {
                        </div>
                     </div>
                     <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400">{t('paymentMethods')}</Label>
+                       <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'طريقة الدفع' : 'Payment Method'}</Label>
                        <Select value={form.paymentMethod} onValueChange={v => setForm({...form, paymentMethod: v})}>
                           <SelectTrigger className="h-14 rounded-xl border-2 font-bold"><SelectValue /></SelectTrigger>
                           <SelectContent className="rounded-xl">
@@ -141,7 +141,7 @@ export default function ReceiptVouchersPage() {
                        </Select>
                     </div>
                     <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400">{t('accounting.vouchers.depositTo')}</Label>
+                       <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'إيداع في حساب' : 'Deposit To Account'}</Label>
                        <Select value={form.cashAccountId} onValueChange={v => setForm({...form, cashAccountId: v})}>
                           <SelectTrigger className="h-14 rounded-xl border-2 font-black text-blue-600"><SelectValue placeholder="..." /></SelectTrigger>
                           <SelectContent className="rounded-xl">
@@ -171,7 +171,7 @@ export default function ReceiptVouchersPage() {
                     </div>
 
                     <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{t('accounting.vouchers.againstAccount')}</Label>
+                       <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'مقابل حساب (إيراد)' : 'Against Account (Revenue)'}</Label>
                        <Select value={form.accountId} onValueChange={v => setForm({...form, accountId: v})}>
                           <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
                           <SelectContent className="rounded-xl">
@@ -198,11 +198,11 @@ export default function ReceiptVouchersPage() {
            <aside className="lg:col-span-4 space-y-6 text-start">
               <Card className="rounded-2xl border shadow-sm p-6 bg-slate-900 text-white space-y-4 overflow-hidden relative">
                  <div className="absolute top-0 right-0 p-6 opacity-10"><Landmark className="h-24 w-24" /></div>
-                 <h4 className="font-black text-xs uppercase tracking-widest text-primary">{t('accounting.vouchers.autoRecon')}</h4>
+                 <h4 className="font-black text-xs uppercase tracking-widest text-primary">{isRtl ? 'أتمتة مالية' : 'Financial Automation'}</h4>
                  <p className="text-[10px] font-bold text-slate-400 leading-relaxed">
                     {isRtl 
-                      ? 'سيقوم النظام تلقائياً بإنشاء قيد محاسبي مزدوج يربط حساب النقدية بحساب الإيراد أو الذمة المختار مع تخصيص العملية لمركز تكلفة المشروع.' 
-                      : 'System will auto-generate a journal entry linking xash to revenue/receivable, assigned to the project cost center.'}
+                      ? 'سيقوم النظام تلقائياً بإنشاء قيد محاسبي مزدوج يربط حساب النقدية بحساب الإيراد أو الذمة المختار مع تخصيص العملية لمركز تكلفة المشروع المختار.' 
+                      : 'System will auto-generate a journal entry linking cash to revenue/receivable, assigned to the selected project cost center.'}
                  </p>
               </Card>
            </aside>
