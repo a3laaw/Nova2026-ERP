@@ -88,6 +88,7 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.recent.attendanceLogged': 'تم تسجيل الحضور',
     'dashboard.recent.paymentVoucher': 'سند صرف مالي',
 
+
     // --- CRM & Clients ---
     'crm': 'العملاء والفرص',
     'crm.description': 'إدارة الفرص البيعية والمتابعة التجارية للعملاء',
@@ -274,10 +275,23 @@ const translations: Record<Language, Record<string, string>> = {
 
     // --- Accounting ---
     'chartOfAccounts': 'شجرة الحسابات',
+    'coa': 'شجرة الحسابات',
+    'COA': 'شجرة الحسابات',
+    'accounting.coa': 'شجرة الحسابات',
+    'accounting.coa.title': 'شجرة الحسابات',
+    'accounting': 'المحاسبة',
     'journalEntries': 'قيود اليومية',
     'paymentVouchers': 'سندات الصرف',
     'receiptVouchers': 'سندات القبض',
     'financialReports': 'التقارير المالية',
+    'vouchers': 'السندات',
+    'receipt': 'قبض',
+    'payment': 'صرف',
+    'journals': 'قيود اليومية',
+    'paymentVouchers': 'سندات الصرف',
+    'receiptVouchers': 'سندات القبض',
+    'journalEntries': 'قيود اليومية',
+    
 
     // --- Procurement & Suppliers ---
     'procurement': 'المشتريات',
@@ -1271,10 +1285,22 @@ const translations: Record<Language, Record<string, string>> = {
 
     // --- Accounting ---
     'chartOfAccounts': 'Chart of Accounts',
+    'coa': 'Chart of Accounts',
+    'COA': 'Chart of Accounts',
+    'accounting.coa': 'Chart of Accounts',
+    'accounting.coa.title': 'Chart of Accounts',
+    'accounting': 'Accounting',
     'journalEntries': 'Journal Entries',
     'paymentVouchers': 'Payment Vouchers',
     'receiptVouchers': 'Receipt Vouchers',
     'financialReports': 'Financial Reports',
+    'vouchers': 'Vouchers',
+    'receipt': 'Receipt',
+    'payment': 'Payment',
+    'journals': 'Journals',
+    'paymentVouchers': 'Payment Vouchers',
+    'receiptVouchers': 'Receipt Vouchers',
+    'journalEntries': 'Journal Entries',
 
     // --- Procurement & Suppliers ---
     'procurement': 'Procurement',
