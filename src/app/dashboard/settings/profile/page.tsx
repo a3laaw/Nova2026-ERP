@@ -20,7 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function ProfilePage() {
   const { user, globalUser, loading: authLoading } = useAuthContext();
-  const { t, lang, dir, isRtl } = useLanguage();
+  const { t, lang, dir, isRtl, tSafe } = useLanguage();
   const db = useFirestore();
   const auth = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -103,7 +103,7 @@ export default function ProfilePage() {
                  <div className="space-y-2"><Label className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{isRtl ? 'الاسم الكامل المعتمد' : 'Official Full Name'}</Label><Input value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} className="h-14 rounded-2xl bg-slate-50/50 border-2 font-black text-lg" /></div>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-50">
                     <div className="space-y-2"><Label className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{t('username')}</Label><Input value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} className="h-12 rounded-xl border-2 font-mono font-bold" /></div>
-                    <div className="space-y-2"><Label className="font-black text-[10px] text-slate-400 uppercase tracking-widest">Email</Label><Input value={user?.email || ''} readOnly className="h-12 rounded-xl bg-slate-100 border-slate-200 text-slate-400 font-bold font-mono text-xs cursor-not-allowed" /></div>
+                    <div className="space-y-2"><Label className="font-black text-[10px] text-slate-400 uppercase tracking-widest">{tSafe('common.email', 'البريد الإلكتروني', 'Email')}</Label><Input value={user?.email || ''} readOnly className="h-12 rounded-xl bg-slate-100 border-slate-200 text-slate-400 font-bold font-mono text-xs cursor-not-allowed" /></div>
                  </div>
               </CardContent>
            </Card>

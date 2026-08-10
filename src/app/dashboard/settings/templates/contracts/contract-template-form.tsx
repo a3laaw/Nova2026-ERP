@@ -41,7 +41,7 @@ interface Props {
 
 export function ContractTemplateForm({ template, onClose }: Props) {
   const { globalUser, user } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
+  const { t, lang, dir, tSafe } = useLanguage();
   const { permissions } = usePermissions();
   const db = useFirestore();
   const isRtl = lang === 'ar';
@@ -214,7 +214,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                      <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-9 rounded-lg border-2 font-bold text-xs" />
                   </div>
                   <div className="space-y-1">
-                     <Label className="text-[9px] font-black uppercase text-slate-400">Code</Label>
+                     <Label className="text-[9px] font-black uppercase text-slate-400">{tSafe('inline.code', 'الكود', 'Code')}</Label>
                      <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} className="h-9 rounded-lg font-mono text-xs border-2" />
                   </div>
                   <div className="flex items-center justify-between p-2 mt-4 bg-slate-50 rounded-lg border">

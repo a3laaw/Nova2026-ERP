@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 
 export default function SmartQuoteAnalyzerPage() {
-  const { t, lang, dir } = useLanguage();
+  const { t, lang, dir, tSafe } = useLanguage();
   const isRtl = lang === 'ar';
   
   const [quotes, setQuotes] = useState([{ supplierName: '', quoteText: '' }]);
@@ -83,7 +83,7 @@ export default function SmartQuoteAnalyzerPage() {
                 </CardHeader>
                 <CardContent className="p-5 space-y-4 text-start">
                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase text-slate-400">Supplier</Label>
+                      <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('common.supplier', 'المورد', 'Supplier')}</Label>
                       <Input 
                         value={quote.supplierName} 
                         onChange={e => updateQuote(idx, 'supplierName', e.target.value)}
@@ -91,7 +91,7 @@ export default function SmartQuoteAnalyzerPage() {
                       />
                    </div>
                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase text-slate-400">Content</Label>
+                      <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.content', 'المحتوى', 'Content')}</Label>
                       <Textarea 
                         value={quote.quoteText}
                         onChange={e => updateQuote(idx, 'quoteText', e.target.value)}
@@ -124,7 +124,7 @@ export default function SmartQuoteAnalyzerPage() {
                    </CardHeader>
                    <CardContent className="p-8 space-y-6">
                       <div className="p-5 bg-slate-50 rounded-2xl border-2 border-white shadow-inner space-y-2">
-                         <Badge className="bg-emerald-500 text-white font-black text-[9px] px-3 uppercase">Best Value</Badge>
+                         <Badge className="bg-emerald-50 text-white font-black text-[9px] px-3 uppercase">{tSafe('inline.best.value', 'أفضل قيمة', 'Best Value')}</Badge>
                          <h3 className="text-2xl font-black text-slate-900">{result.comparisonSummary.bestOverallSupplier}</h3>
                          <p className="text-xs font-bold text-slate-600 leading-relaxed">{result.comparisonSummary.recommendation}</p>
                       </div>

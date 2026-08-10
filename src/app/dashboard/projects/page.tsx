@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
 
 export default function ProjectsPage() {
   const { globalUser } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
+  const { t, tSafe, lang, dir } = useLanguage();
   const { check, isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
@@ -54,7 +54,6 @@ export default function ProjectsPage() {
 
   return (
     <div className="space-y-6 w-full animate-in fade-in duration-500" dir={dir}>
-      {/* Sovereign Header Design (H-14) */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-6 text-start">
         <div className="flex items-center gap-4 text-start">
           <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/5">
@@ -103,7 +102,7 @@ export default function ProjectsPage() {
          </Card>
          <Card className="rounded-xl shadow-sm border p-6 bg-white flex items-center justify-between group hover:shadow-md transition-all text-start">
             <div className="text-start">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Attendance</p>
+               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{tSafe('reports.stats.attendance', 'انضباط الحضور', 'Attendance')}</p>
                <h3 className="text-2xl font-black text-emerald-600 mt-1">88%</h3>
             </div>
             <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0"><CheckCircle2 className="h-6 w-6" /></div>
@@ -122,9 +121,9 @@ export default function ProjectsPage() {
           <Table>
             <TableHeader className="bg-slate-50/50">
               <TableRow className="border-b-0">
-                <TableHead className="py-5 ps-8 text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'المشروع' : 'Project'}</TableHead>
-                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'الإنجاز' : 'Progress'}</TableHead>
-                <TableHead className="text-end text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'الفوترة' : 'Billing'}</TableHead>
+                <TableHead className="py-5 ps-8 text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('projects.table.project')}</TableHead>
+                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('projects.table.progress')}</TableHead>
+                <TableHead className="text-end text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('projects.table.billing')}</TableHead>
                 <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('common.status')}</TableHead>
                 <TableHead className="pe-8"></TableHead>
               </TableRow>
@@ -143,13 +142,13 @@ export default function ProjectsPage() {
                           </div>
                           <div className="text-start truncate">
                              <span className="font-black text-slate-800 text-sm block leading-none truncate">{proj.subServiceName}</span>
-                             <span className="text-[10px] text-slate-400 font-bold mt-1.5 block truncate uppercase">CLIENT: {proj.clientName}</span>
+                             <span className="text-[10px] text-slate-400 font-bold mt-1.5 block truncate uppercase">{t('projects.clientName')}: {proj.clientName}</span>
                           </div>
                        </div>
                     </TableCell>
                     <TableCell className="text-start">
                        <Badge variant="outline" className="bg-blue-50 text-blue-600 font-black text-[9px] uppercase px-4 h-6 border-0 shadow-sm">
-                          PROGRESS 42%
+                          {tSafe('inline.progress', 'إنجاز', 'PROGRESS')} 42%
                        </Badge>
                     </TableCell>
                     <TableCell className="text-end pe-4">
@@ -162,7 +161,7 @@ export default function ProjectsPage() {
                          "font-black px-3 py-1 rounded-lg border-0 shadow-sm text-[9px] uppercase", 
                          proj.status === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'
                        )}>
-                          {t('common.status')}: {proj.status}
+                          {proj.status}
                        </Badge>
                     </TableCell>
                     <TableCell className="pe-8 text-end">

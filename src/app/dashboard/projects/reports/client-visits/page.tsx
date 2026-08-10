@@ -30,7 +30,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function ClientVisitsReportPage() {
   const { globalUser } = useAuthContext();
-  const { lang, dir, t } = useLanguage();
+  const { lang, dir, t, tSafe } = useLanguage();
   const db = useFirestore();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
@@ -173,7 +173,7 @@ export default function ClientVisitsReportPage() {
                   <div className="space-y-1">
                     <p className="font-black text-slate-800 text-sm">{item.displayDate}</p>
                     <p className="text-[10px] font-bold text-slate-400 uppercase">
-                      {isAppt ? new Date(item.start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'Field Log'}
+                      {isAppt ? new Date(item.start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : tSafe('inline.field.log', 'سجل ميداني', 'Field Log')}
                     </p>
                   </div>
                 </td>
@@ -194,7 +194,7 @@ export default function ClientVisitsReportPage() {
                           <div className="text-start space-y-1">
                             <p className="text-xs font-bold text-slate-700 leading-relaxed">{item.completedWork || t('clients.dossier.log.progress')}</p>
                             <div className="flex items-center gap-3 pt-1">
-                              <Badge className="bg-emerald-600 text-white font-black text-[8px] h-5 px-3">+{item.progressPercentage}% Completion</Badge>
+                              <Badge className="bg-emerald-600 text-white font-black text-[8px] h-5 px-3">+{item.progressPercentage}% {tSafe('inline.completion', 'إنجاز', 'Completion')}</Badge>
                             </div>
                           </div>
                         </div>
@@ -216,7 +216,7 @@ export default function ClientVisitsReportPage() {
                           <div key={`rev-${i}`} className="flex items-start gap-3 bg-accent/10 p-3 rounded-xl border-2 border-accent/20">
                             <RotateCcw className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                             <div className="text-start">
-                               <p className="text-[10px] font-black text-primary uppercase">Design Revision Logged</p>
+                               <p className="text-[10px] font-black text-primary uppercase">{tSafe('inline.design.revision.logged', 'تم تسجيل تعديل فني', 'Design Revision Logged')}</p>
                                <p className="text-xs font-bold text-slate-600 mt-0.5">{rev.content}</p>
                             </div>
                           </div>
@@ -232,7 +232,7 @@ export default function ClientVisitsReportPage() {
                     </Avatar>
                     <div className="text-start">
                       <p className="font-black text-xs text-slate-800">{item.engineerName}</p>
-                      <p className="text-[8px] font-black text-primary uppercase mt-0.5 tracking-widest">Sovereign Authority</p>
+                      <p className="text-[8px] font-black text-primary uppercase mt-0.5 tracking-widest">{tSafe('inline.sovereign.authority', 'الجهة السيادية', 'Sovereign Authority')}</p>
                     </div>
                   </div>
                 </td>
@@ -268,13 +268,13 @@ export default function ClientVisitsReportPage() {
           <div className="p-6 bg-orange-50 border-4 border-orange-100 rounded-[2rem] text-start space-y-4 shadow-xl">
              <div className="flex items-center gap-3 text-[#f97316]">
                 <AlertTriangle className="h-8 w-8" />
-                <h3 className="text-xl font-black">تنبيه: يتطلب النظام إنشاء فهرس سحابي</h3>
+                <h3 className="text-xl font-black">{tSafe('inline.index.warning', 'تنبيه: يتطلب النظام إنشاء فهرس سحابي', 'Warning: System requires cloud index creation')}</h3>
              </div>
              <p className="text-sm font-bold text-slate-700 leading-relaxed">
-               يرجى الضغط على الرابط أدناه لمرة واحدة لتمكين البحث الشامل في سجلات الميدان والمكتب. هذا إجراء تقني لضمان سرعة البحث في السحاب:
+                {tSafe('inline.index.warning.desc', 'يرجى الضغط على الرابط أدناه لمرة واحدة لتمكين البحث الشامل في سجلات الميدان والمكتب. هذا إجراء تقني لضمان سرعة البحث في السحاب:', 'Please click the link below once to enable comprehensive search in field and office logs. This is a technical procedure to ensure search speed in the cloud:')}
              </p>
              <Button className="bg-white border-2 border-orange-200 text-[#f97316] font-bold h-12 shadow-sm hover:bg-orange-50" onClick={() => window.open(indexError.split(': ')[1], '_blank')}>
-                إنشاء الفهرس الآن في Firebase Console
+                {tSafe('inline.create.index', 'إنشاء الفهرس الآن في Firebase Console', 'Create Index Now in Firebase Console')}
              </Button>
           </div>
         )}
@@ -320,7 +320,7 @@ export default function ClientVisitsReportPage() {
       ) : loadingTimeline ? (
         <div className="h-[400px] flex flex-col items-center justify-center gap-4 print:hidden">
            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">دمج السجلات السيادية...</p>
+           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">{tSafe('inline.merging.records', 'دمج السجلات السيادية...', 'Merging sovereign records...')}</p>
         </div>
       ) : (
         <PrintWrapper title={t('clients.dossier.statementTitle')}>
@@ -337,7 +337,7 @@ export default function ClientVisitsReportPage() {
                  </div>
                  <div className="relative z-10">
                     <div className="text-center bg-primary/5 p-6 rounded-3xl border-2 border-white shadow-inner min-w-[150px]">
-                       <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Total Entries</p>
+                       <p className="text-[8px] font-black text-slate-500 uppercase mb-1">{tSafe('inline.total.entries', 'إجمالي السجلات', 'Total Entries')}</p>
                        <p className="text-4xl font-black text-primary font-mono">{unifiedTimeline.length}</p>
                     </div>
                  </div>

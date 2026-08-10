@@ -27,7 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export default function AttendanceImportPage() {
   const { globalUser } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
+  const { t, tSafe, lang, dir } = useLanguage();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
@@ -37,7 +37,6 @@ export default function AttendanceImportPage() {
   const [saving, setSaving] = useState(false);
   const [preview, setPreview] = useState<ImportPreviewResult | null>(null);
 
-  // حالات الفترة المستهدفة
   const [month, setMonth] = useState(new Date().getMonth().toString());
   const [year, setYear] = useState(new Date().getFullYear().toString());
 
@@ -49,7 +48,7 @@ export default function AttendanceImportPage() {
     for (let y = startYear; y <= limitYear; y++) {
       years.push(y);
     }
-    return years; // تمت إزالة الترتيب التنازلي لإظهار الأقدم أولاً
+    return years;
   }, []);
 
   const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId))) : null, [db, companyId]);
@@ -57,12 +56,12 @@ export default function AttendanceImportPage() {
 
   const downloadTemplate = () => {
     const headers = [
-      isRtl ? "رقم_الموظف" : "EmployeeNum",
-      isRtl ? "التاريخ" : "Date",
-      isRtl ? "دخول_صباحي" : "CheckIn1",
-      isRtl ? "خروج_صباحي" : "CheckOut1",
-      isRtl ? "دخول_مسائي" : "CheckIn2",
-      isRtl ? "خروج_مسائي" : "CheckOut2"
+      tSafe('inline.emp.num', 'رقم_الموظف', 'EmployeeNum'),
+      tSafe('inline.date', 'التاريخ', 'Date'),
+      tSafe('inline.checkin1', 'دخول_صباحي', 'CheckIn1'),
+      tSafe('inline.checkout1', 'خروج_صباحي', 'CheckOut1'),
+      tSafe('inline.checkin2', 'دخول_مسائي', 'CheckIn2'),
+      tSafe('inline.checkout2', 'خروج_مسائي', 'CheckOut2')
     ];
     
     const data = [
@@ -74,7 +73,7 @@ export default function AttendanceImportPage() {
     const ws = XLSX.utils.aoa_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Attendance");
-    XLSX.writeFile(wb, isRtl ? "نموذج_حضور_نوفا.xlsx" : "NovaFlow_Attendance.xlsx");
+    XLSX.writeFile(wb, tSafe('inline.novaflow.attendance.xlsx', 'نموذج_حضور_نوفا.xlsx', 'NovaFlow_Attendance.xlsx'));
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -97,7 +96,7 @@ export default function AttendanceImportPage() {
           defval: '' 
         }) as any[][];
         
-        if (jsonData.length < 2) throw new Error(isRtl ? 'الملف فارغ أو غير صالح.' : 'File is empty or invalid.');
+        if (jsonData.length < 2) throw new Error(tSafe('inline.file.empty.invalid', 'الملف فارغ أو غير صالح.', 'File is empty or invalid.'));
 
         const rows: RawAttendanceRow[] = jsonData.slice(1).map(row => ({
           employeeNumber: String(row[0] || '').trim(),
@@ -126,7 +125,7 @@ export default function AttendanceImportPage() {
         if (result.errors.length > 0) {
           toast({ 
             variant: "destructive", 
-            title: isRtl ? "تنبيهات في البيانات" : "Import Warnings", 
+            title: tSafe('inline.import.warnings', 'تنبيهات في البيانات', 'Import Warnings'), 
             description: isRtl ? `تم اكتشاف ${result.errors.length} خطأ أو عدم تطابق.` : `Found ${result.errors.length} errors or mismatches.`
           });
         }
@@ -146,7 +145,7 @@ export default function AttendanceImportPage() {
     try {
       const importService = new AttendanceImportService(db, companyId);
       await importService.saveRecords(preview.records.filter(r => r.employeeId));
-      toast({ title: t('saved'), description: isRtl ? 'تم الاستيراد بنجاح.' : 'Import successful.' });
+      toast({ title: t('saved'), description: tSafe('inline.import.successful', 'تم الاستيراد بنجاح.', 'Import successful.') });
       router.push('/dashboard/hr');
     } catch (err) {
       toast({ variant: "destructive", title: t('error') });
@@ -163,10 +162,10 @@ export default function AttendanceImportPage() {
         <div className="text-start">
           <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
             <FileSpreadsheet className="h-10 w-10 text-primary" />
-            {isRtl ? 'استيراد الحضور الذكي (XLSX)' : 'Smart Attendance Import'}
+            {tSafe('inline.smart.attendance.import', 'استيراد الحضور الذكي (XLSX)', 'Smart Attendance Import')}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-            {isRtl ? 'يرجى تحديد الفترة المستهدفة قبل رفع الملف لضمان دقة البيانات.' : 'Please select target period before upload for data accuracy.'}
+            {tSafe('inline.select.target.period', 'يرجى تحديد الفترة المستهدفة قبل رفع الملف لضمان دقة البيانات.', 'Please select target period before upload for data accuracy.')}
           </p>
         </div>
         <Button 
@@ -175,14 +174,14 @@ export default function AttendanceImportPage() {
           className="rounded-xl font-black border-2 h-14 px-8 gap-3 bg-white shadow-sm hover:bg-slate-50 transition-all"
         >
           <Download className="h-5 w-5 text-primary" />
-          {isRtl ? 'تحميل نموذج إكسيل' : 'Download Template'}
+          {tSafe('inline.download.template', 'تحميل نموذج إكسيل', 'Download Template')}
         </Button>
       </div>
 
       <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
         <CardContent className="p-8 flex flex-col md:flex-row items-end gap-6 bg-slate-50/50">
            <div className="space-y-2 text-start flex-1">
-              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الشهر المستهدف' : 'Target Month'}</label>
+              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('inline.target.month', 'الشهر المستهدف', 'Target Month')}</label>
               <Select value={month} onValueChange={setMonth} disabled={!!preview}>
                  <SelectTrigger className="h-14 rounded-2xl border-2 bg-white font-black text-lg">
                     <SelectValue />
@@ -198,7 +197,7 @@ export default function AttendanceImportPage() {
            </div>
 
            <div className="space-y-2 text-start flex-1">
-              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'السنة المالية' : 'Fiscal Year'}</label>
+              <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('inline.fiscal.year', 'السنة المالية', 'Fiscal Year')}</label>
               <Select value={year} onValueChange={setYear} disabled={!!preview}>
                  <SelectTrigger className="h-14 rounded-2xl border-2 bg-white font-black text-lg">
                     <SelectValue />
@@ -214,7 +213,7 @@ export default function AttendanceImportPage() {
            <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 flex items-center gap-3 flex-1 h-14">
               <CalendarDays className="h-5 w-5 text-primary" />
               <p className="text-[10px] font-black text-primary uppercase leading-tight">
-                 {isRtl ? `سيتم فحص الملف لـ ${monthName} ${year}` : `Validating file for ${monthName} ${year}`}
+                 {tSafe('inline.validating.file', `سيتم فحص الملف لـ ${monthName} ${year}`, `Validating file for ${monthName} ${year}`)}
               </p>
            </div>
         </CardContent>
@@ -227,15 +226,15 @@ export default function AttendanceImportPage() {
                <UploadCloud className="h-12 w-12" />
              </div>
              <div className="space-y-3">
-               <h2 className="text-2xl font-black">{isRtl ? 'رفع ملف البصمة' : 'Upload Spreadsheet'}</h2>
-               <p className="text-slate-400 font-bold max-w-md mx-auto">{isRtl ? 'اختر ملف الإكسيل الذي يحتوي على بصمات الموظفين للفترة المحددة.' : 'Select the Excel file containing fingerprints for the selected period.'}</p>
+               <h2 className="text-2xl font-black">{tSafe('inline.upload.spreadsheet', 'رفع ملف البصمة', 'Upload Spreadsheet')}</h2>
+               <p className="text-slate-400 font-bold max-w-md mx-auto">{tSafe('inline.select.excel.file', 'اختر ملف الإكسيل الذي يحتوي على بصمات الموظفين للفترة المحددة.', 'Select the Excel file containing fingerprints for the selected period.')}</p>
              </div>
              
              <div className="flex flex-col items-center gap-4">
                 <label className="cursor-pointer group">
                    <div className="bg-primary text-white font-black px-16 py-6 rounded-2xl text-xl shadow-xl shadow-primary/20 group-hover:scale-105 transition-all flex items-center gap-3">
                      {importing ? <Loader2 className="animate-spin h-8 w-8" /> : <Plus className="h-8 w-8" />}
-                     {isRtl ? 'اختيار ومعالجة الملف' : 'Select & Process File'}
+                     {tSafe('inline.select.process.file', 'اختيار ومعالجة الملف', 'Select & Process File')}
                    </div>
                    <input 
                      type="file" 
@@ -253,12 +252,12 @@ export default function AttendanceImportPage() {
           <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
             <CardHeader className="bg-slate-50 border-b p-8 flex flex-row items-center justify-between">
                <div className="text-start">
-                  <CardTitle className="text-xl font-black">{isRtl ? `معاينة استيراد ${monthName} ${year}` : `Import Preview ${monthName} ${year}`}</CardTitle>
-                  <p className="text-xs font-bold text-muted-foreground mt-1">{isRtl ? `إجمالي السجلات الصالحة: ${preview.summary.valid}` : `Total valid records: ${preview.summary.valid}`}</p>
+                  <CardTitle className="text-xl font-black">{tSafe('inline.import.preview', `معاينة استيراد ${monthName} ${year}`, `Import Preview ${monthName} ${year}`)}</CardTitle>
+                  <p className="text-xs font-bold text-muted-foreground mt-1">{tSafe('inline.total.valid.records', `إجمالي السجلات الصالحة: ${preview.summary.valid}`, `Total valid records: ${preview.summary.valid}`)}</p>
                </div>
                <div className="flex gap-4">
                   <Button variant="outline" onClick={() => setPreview(null)} className="rounded-xl font-black h-12">
-                     {isRtl ? 'إلغاء وإعادة اختيار' : 'Cancel & Reset'}
+                     {tSafe('inline.cancel.reset', 'إلغاء وإعادة اختيار', 'Cancel & Reset')}
                   </Button>
                   <Button 
                     onClick={handleSave} 
@@ -266,7 +265,7 @@ export default function AttendanceImportPage() {
                     className="bg-emerald-600 text-white font-black rounded-xl h-12 px-10 shadow-xl shadow-emerald-100"
                   >
                      {saving ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="me-2 h-5 w-5" />}
-                     {isRtl ? 'اعتماد وحفظ السجلات' : 'Confirm & Save'}
+                     {tSafe('inline.confirm.save.records', 'اعتماد وحفظ السجلات', 'Confirm & Save')}
                   </Button>
                </div>
             </CardHeader>
@@ -274,11 +273,11 @@ export default function AttendanceImportPage() {
             {preview.errors.length > 0 && (
               <div className="px-8 py-4 bg-rose-50 border-b border-rose-100 space-y-2 text-start">
                  <h5 className="font-black text-rose-600 text-xs flex items-center gap-2 uppercase tracking-widest">
-                    <AlertTriangle className="h-4 w-4" /> {isRtl ? 'أخطاء وتنبيهات في الملف' : 'File Errors & Warnings'}
+                    <AlertTriangle className="h-4 w-4" /> {tSafe('inline.file.errors.warnings', 'أخطاء وتنبيهات في الملف', 'File Errors & Warnings')}
                  </h5>
                  <div className="max-h-24 overflow-y-auto">
                     {preview.errors.map((err, i) => (
-                       <p key={i} className="text-[10px] text-rose-700 font-bold">• سطر {err.row}: {err.message}</p>
+                       <p key={i} className="text-[10px] text-rose-700 font-bold">• {tSafe('inline.row', 'سطر', 'Row')} {err.row}: {err.message}</p>
                     ))}
                  </div>
               </div>
@@ -288,10 +287,10 @@ export default function AttendanceImportPage() {
                <Table>
                  <TableHeader className="bg-muted/30 sticky top-0 z-10">
                    <TableRow>
-                     <TableHead className="py-6 ps-8 text-start">{isRtl ? 'الموظف' : 'Employee'}</TableHead>
-                     <TableHead className="text-start">{isRtl ? 'التاريخ' : 'Date'}</TableHead>
-                     <TableHead className="text-center">{isRtl ? 'إجمالي التأخير' : 'Total Late'}</TableHead>
-                     <TableHead className="text-start pe-8">{isRtl ? 'الحالة' : 'Status'}</TableHead>
+                     <TableHead className="py-6 ps-8 text-start">{tSafe('inline.employee', 'الموظف', 'Employee')}</TableHead>
+                     <TableHead className="text-start">{tSafe('inline.date', 'التاريخ', 'Date')}</TableHead>
+                     <TableHead className="text-center">{tSafe('inline.total.late', 'إجمالي التأخير', 'Total Late')}</TableHead>
+                     <TableHead className="text-start pe-8">{tSafe('inline.status', 'الحالة', 'Status')}</TableHead>
                    </TableRow>
                  </TableHeader>
                  <TableBody>
@@ -302,7 +301,7 @@ export default function AttendanceImportPage() {
                        <TableCell className="text-center">
                           {rec.minutesLate && rec.minutesLate > 0 ? (
                             <Badge variant="destructive" className="bg-rose-50 text-rose-600 font-black border-0">
-                               {rec.minutesLate} {isRtl ? 'دقيقة' : 'min'}
+                               {rec.minutesLate} {tSafe('inline.min', 'دقيقة', 'min')}
                             </Badge>
                           ) : <span className="text-emerald-500 font-black text-xs uppercase tracking-tighter">{t('common.present')}</span>}
                        </TableCell>

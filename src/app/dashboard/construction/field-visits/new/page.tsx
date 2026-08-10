@@ -33,7 +33,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 
 function NewFieldVisitForm() {
   const { globalUser, user } = useAuthContext();
-  const { lang, dir, t } = useLanguage();
+  const { lang, dir, t, tSafe } = useLanguage();
   const { isAdmin } = usePermissions();
   const db = useFirestore();
   const firebaseApp = useFirebaseApp();
@@ -156,7 +156,6 @@ function NewFieldVisitForm() {
         };
      });
 
-     // إضافة المشرف أيضاً
      const supervisor = employees?.find(e => e.id === group.supervisorId);
      if (supervisor) {
         groupLabor.unshift({
@@ -209,7 +208,7 @@ function NewFieldVisitForm() {
       <div className="flex justify-between items-center border-b pb-4">
         <div className="text-start">
            <h1 className="text-xl md:text-2xl font-bold text-slate-900">{t('construction.reports')}</h1>
-           <p className="text-xs text-muted-foreground font-medium opacity-60 uppercase tracking-tighter">Sovereign Field Unit</p>
+           <p className="text-xs text-muted-foreground font-medium opacity-60 uppercase tracking-tighter">{tSafe('inline.sovereign.field.unit', 'وحدة ميدانية سيادية', 'Sovereign Field Unit')}</p>
         </div>
         <div className="flex gap-2">
            <Button variant="outline" size="sm" onClick={() => router.back()} className="h-9 font-bold">{t('common.cancel')}</Button>
@@ -250,7 +249,6 @@ function NewFieldVisitForm() {
                </CardContent>
             </Card>
 
-            {/* قسم العمالة مع استعادة المجموعات */}
             <Card className="rounded-lg shadow-sm border-slate-100 bg-white overflow-hidden">
                <CardHeader className="bg-slate-50 p-4 border-b">
                   <div className="flex justify-between items-center w-full">
@@ -269,7 +267,7 @@ function NewFieldVisitForm() {
                   </div>
 
                   <div className="flex justify-between items-center">
-                     <span className="text-[9px] font-bold text-slate-400 uppercase">قائمة الموظفين</span>
+                     <span className="text-[9px] font-bold text-slate-400 uppercase">{tSafe('inline.employee.list', 'قائمة الموظفين', 'Employee List')}</span>
                      <Button variant="ghost" size="sm" onClick={() => setLaborDetails([...laborDetails, { trade: '', count: 1, hours: 8, hourlyCostRef: 0 }])} className="h-6 text-[9px]"><Plus className="h-3 w-3" /></Button>
                   </div>
                   <div className="space-y-2">

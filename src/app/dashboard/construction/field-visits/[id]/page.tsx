@@ -26,7 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export default function FieldVisitDetailsPage() {
   const visitId = useParams().id as string;
   const { globalUser, user } = useAuthContext();
-  const { lang, dir, t } = useLanguage();
+  const { lang, dir, t, tSafe } = useLanguage();
   const { isAdmin, permissions } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
@@ -89,7 +89,7 @@ export default function FieldVisitDetailsPage() {
   };
 
   if (loading) return <div className="h-[40vh] flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
-  if (!visit) return <div className="p-20 text-center font-bold">404 - Not Found</div>;
+  if (!visit) return <div className="p-20 text-center font-bold">{tSafe('inline.not.found', '404 - غير موجود', '404 - Not Found')}</div>;
 
   return (
     <div className="space-y-4 w-full animate-in fade-in duration-500" dir={dir}>
@@ -100,7 +100,7 @@ export default function FieldVisitDetailsPage() {
            </Button>
            <div className="text-start">
               <h1 className="text-xl md:text-2xl font-bold text-slate-900">{t('construction.fieldLog')}</h1>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{visit.clientName} | Project: {visit.transactionNumber}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{visit.clientName} | {tSafe('inline.project', 'مشروع', 'Project')}: {visit.transactionNumber}</p>
            </div>
         </div>
         
@@ -151,9 +151,9 @@ export default function FieldVisitDetailsPage() {
                      <TableHeader className="bg-slate-50">
                         <TableRow className="border-0">
                            <TableHead className="ps-4 text-[10px] font-bold uppercase w-[50px]">#</TableHead>
-                           <TableHead className="text-[10px] font-bold uppercase">بند العمل</TableHead>
-                           <TableHead className="text-center text-[10px] font-bold uppercase w-[80px]">الكمية</TableHead>
-                           <TableHead className="text-[10px] font-bold uppercase">رد المسؤول</TableHead>
+                           <TableHead className="text-[10px] font-bold uppercase">{tSafe('inline.work.item', 'بند العمل', 'Work Item')}</TableHead>
+                           <TableHead className="text-center text-[10px] font-bold uppercase w-[80px]">{t('common.quantity')}</TableHead>
+                           <TableHead className="text-[10px] font-bold uppercase">{t('common.response')}</TableHead>
                         </TableRow>
                      </TableHeader>
                      <TableBody>
@@ -171,10 +171,10 @@ export default function FieldVisitDetailsPage() {
                                        <Select value={item.executionStatus || 'pending'} onValueChange={v => handleUpdateResponse(i, 'executionStatus', v)}>
                                           <SelectTrigger className="h-8 text-[10px] font-bold rounded-md"><SelectValue /></SelectTrigger>
                                           <SelectContent>
-                                             <SelectItem value="pending">بانتظار المراجعة</SelectItem>
-                                             <SelectItem value="completed" className="text-emerald-600">إنجاز كامل</SelectItem>
-                                             <SelectItem value="partial" className="text-amber-600">جزئي</SelectItem>
-                                             <SelectItem value="not_completed" className="text-rose-600">مرفوض</SelectItem>
+                                             <SelectItem value="pending">{tSafe('inline.pending.review', 'بانتظار المراجعة', 'Pending Review')}</SelectItem>
+                                             <SelectItem value="completed" className="text-emerald-600">{tSafe('inline.full.progress', 'إنجاز كامل', 'Full Progress')}</SelectItem>
+                                             <SelectItem value="partial" className="text-amber-600">{tSafe('inline.partial', 'جزئي', 'Partial')}</SelectItem>
+                                             <SelectItem value="not_completed" className="text-rose-600">{tSafe('inline.rejected', 'مرفوض', 'Rejected')}</SelectItem>
                                           </SelectContent>
                                        </Select>
                                     </div>
@@ -185,11 +185,11 @@ export default function FieldVisitDetailsPage() {
                                        item.executionStatus === 'partial' ? "bg-amber-500 text-white" :
                                        "bg-slate-100 text-slate-400"
                                     )}>
-                                       {item.executionStatus || 'Pending'}
+                                       {item.executionStatus ? tSafe(`inline.${item.executionStatus}`, item.executionStatus, item.executionStatus) : tSafe('inline.pending', 'بانتظار', 'Pending')}
                                     </Badge>
                                  )}
                               </td>
-                           </tr>
+                           </TableRow>
                         ))}
                      </TableBody>
                   </Table>
@@ -203,10 +203,10 @@ export default function FieldVisitDetailsPage() {
                      {visit.laborDetails?.map((l: any, i: number) => (
                         <div key={i} className="flex justify-between items-center text-xs p-2.5 bg-slate-50 rounded-lg border border-slate-100">
                            <span className="font-bold text-slate-700">{l.trade}</span>
-                           <span className="font-bold text-slate-400">{l.count} Staff</span>
+                           <span className="font-bold text-slate-400">{l.count} {tSafe('inline.staff', 'موظف', 'Staff')}</span>
                         </div>
                      ))}
-                     {!visit.laborDetails?.length && <p className="text-[10px] text-slate-300 italic">No labor logs.</p>}
+                     {!visit.laborDetails?.length && <p className="text-[10px] text-slate-300 italic">{tSafe('inline.no.labor.logs', 'لا توجد سجلات عمالة.', 'No labor logs.')}</p>}
                   </div>
                </div>
                <div className="space-y-3">
@@ -215,10 +215,10 @@ export default function FieldVisitDetailsPage() {
                      {visit.equipmentUsed?.map((e: any, i: number) => (
                         <div key={i} className="flex justify-between items-center text-xs p-2.5 bg-slate-50 rounded-lg border border-slate-100">
                            <span className="font-bold text-slate-700">{e.name}</span>
-                           <span className="font-bold text-primary">{e.hoursUsed} hrs</span>
+                           <span className="font-bold text-primary">{e.hoursUsed} {tSafe('inline.hrs', 'ساعة', 'hrs')}</span>
                         </div>
                      ))}
-                     {!visit.equipmentUsed?.length && <p className="text-[10px] text-slate-300 italic">No equipment logs.</p>}
+                     {!visit.equipmentUsed?.length && <p className="text-[10px] text-slate-300 italic">{tSafe('inline.no.equipment.logs', 'لا توجد سجلات معدات.', 'No equipment logs.')}</p>}
                   </div>
                </div>
             </div>

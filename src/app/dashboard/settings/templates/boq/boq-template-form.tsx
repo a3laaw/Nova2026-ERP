@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -46,7 +45,7 @@ interface Props {
 
 export function BOQTemplateForm({ template, onClose }: Props) {
   const { globalUser, user } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
+  const { t, lang, dir, tSafe } = useLanguage();
   const { permissions } = usePermissions();
   const db = useFirestore();
   const isRtl = lang === 'ar';
@@ -383,7 +382,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
         </div>
         <div className="flex items-center gap-4">
            <div className="flex flex-col text-end">
-              <span className="text-[9px] font-black text-slate-400 uppercase">Items Status</span>
+              <span className="text-[9px] font-black text-slate-400 uppercase">{tSafe('inline.items.status', 'حالة البنود', 'Items Status')}</span>
               <Badge variant="outline" className={cn("h-6 border-2 font-black text-[9px]", isMathValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>
                  {isMathValid ? 'BALANCED' : 'BUDGET MISMATCH'}
               </Badge>
@@ -405,7 +404,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                  </div>
                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5 text-start">
-                       <Label className="text-[10px] font-black uppercase text-slate-400">Code</Label>
+                       <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.code', 'الكود', 'Code')}</Label>
                        <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} className="h-11 rounded-xl border-2 font-mono font-black text-primary text-xs" />
                     </div>
                     <div className="flex items-center justify-between p-3 mt-4 bg-slate-50 rounded-xl border-2">
@@ -439,7 +438,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                     </div>
                     <div className={cn(
                       "h-10 w-10 rounded-2xl flex items-center justify-center shadow-lg transition-transform",
-                      isMathValid ? "bg-white text-emerald-600 rotate-12" : "bg-white text-orange-500"
+                      isMathValid ? "bg-white text-emerald-600 rotate-12" : "bg-white text-orange-50"
                     )}>
                        {isMathValid ? <CheckCircle2 className="h-6 w-6" /> : <AlertTriangle className="h-6 w-6" />}
                     </div>

@@ -43,7 +43,7 @@ interface Props {
 
 export function QuotationTemplateForm({ template, onClose }: Props) {
   const { globalUser, user } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
+  const { t, lang, dir, tSafe } = useLanguage();
   const { permissions } = usePermissions();
   const db = useFirestore();
   const isRtl = lang === 'ar';
@@ -227,7 +227,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                      <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-10 rounded-lg border-2 font-bold text-xs" />
                   </div>
                   <div className="space-y-1">
-                     <Label className="text-[9px] font-black uppercase text-slate-400">Reference Code</Label>
+                     <Label className="text-[9px] font-black uppercase text-slate-400">{tSafe('inline.reference.code', 'الكود المرجعي', 'Reference Code')}</Label>
                      <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} className="h-10 rounded-lg font-mono text-xs border-2" />
                   </div>
                   <div className="flex items-center justify-between p-3 mt-4 bg-slate-50 rounded-xl border-2">
@@ -328,7 +328,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                       <td className="p-2">
                                          <div className="space-y-1">
                                             <div className="flex items-center gap-1">
-                                               {m.boqReferenceNodeId && <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[6px] h-3 px-1">LINKED</Badge>}
+                                               {m.boqReferenceNodeId && <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[6px] h-3 px-1">{tSafe('inline.linked', 'مرتبط', 'LINKED')}</Badge>}
                                                <Input value={m.label} onChange={e => updateItem(idx, 'label', e.target.value)} className="h-8 rounded-lg font-bold text-[10px] bg-slate-50/50" />
                                             </div>
                                             {m.technicalStageId && m.technicalStageId !== 'NONE' && (
