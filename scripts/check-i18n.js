@@ -84,6 +84,26 @@ function extractDict(content, lang) {
   return keys;
 }
 
+function extractDictWithValues(content, lang) {
+  const startMarker = `${lang}: {`;
+  const start = content.indexOf(startMarker);
+  if (start === -1) throw new Error(`Could not find '${lang}: {' block`);
+  let depth = 0, i = start + startMarker.length - 1;
+  for (; i < content.length; i++) {
+    if (content[i] === '{') depth++;
+    if (content[i] === '}') {
+      depth--;
+      if (depth === 0) break;
+    }
+  }
+  const block = content.slice(start + startMarker.length, i);
+  const result = {};
+  const pairRegex = /^\s*'([^']+)'\s*:\s*'((?:[^'\\]|\\.)*)'/gm;
+  let m2;
+  while ((m2 = pairRegex.exec(block))) result[m2[1]] = m2[2];
+  return result;
+}
+
 function main() {
   const content = fs.readFileSync(LANG_FILE, 'utf-8');
   const arKeys = extractDict(content, 'ar');
@@ -126,6 +146,23 @@ function main() {
     usedButMissing.slice(0, 30).forEach(k => console.log('   -', k));
     if (usedButMissing.length > 30) console.log(`   ... و ${usedButMissing.length - 30} أخرى`);
     console.log();
+  }
+
+  // فحص إضافي: مفاتيح بقاموس ar لكن قيمتها إنجليزية فعلياً (غش شائع لإرضاء عدّاد المفاتيح)
+  const arDict = extractDictWithValues(content, 'ar');
+  const englishInArabic = [];
+  const asciiOnly = /^[A-Za-z0-9 .,:;&()/_\-'!?%+#@]+$/;
+  for (const [key, val] of Object.entries(arDict)) {
+    if (val && val.length > 1 && asciiOnly.test(val)) {
+      englishInArabic.push([key, val]);
+    }
+  }
+  if (englishInArabic.length) {
+    hasProblem = true;
+    console.log(`🔴🔴 تحذير خطير: ${englishInArabic.length} مفتاح بقاموس ar قيمته إنجليزية فعلياً (مو مترجمة):`);
+    englishInArabic.slice(0, 20).forEach(([k, v]) => console.log(`   - ${k} -> "${v}"`));
+    if (englishInArabic.length > 20) console.log(`   ... و ${englishInArabic.length - 20} أخرى`);
+    console.log('   هذا يعني القيم اتنسخت بدون ترجمة فعلية لمجرد إرضاء عدّاد المفاتيح.\n');
   }
 
   if (ternaryFiles.length) {
