@@ -30,19 +30,18 @@ import { UserService } from '@/services/user-service';
 import { SeedService } from '@/services/seed-service';
 
 export default function DeveloperDashboard() {
-  const { lang, dir, t } = useLanguage(); 
+  const { lang, dir, t, tSafe } = useLanguage(); 
   const { globalUser, loading: authLoading } = useAuthContext();
   const db = useFirestore();
   const isRtl = lang === 'ar';
   
-  const [activeTab, setActiveTab] = useState("integrity"); // الافتراضي هو الفحص الذي طلبته
+  const [activeTab, setActiveTab] = useState("integrity"); 
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [editingCompany, setEditingCompany] = useState<any>(null);
   const [deletingContext, setDeletingContext] = useState<{ id: string, type: 'request' | 'company' } | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [migrating, setMigrating] = useState(false);
 
-  // استعلامات البيانات العامة
   const companiesQuery = useMemo(() => 
     (db && globalUser?.isDeveloper) ? query(collection(db, 'companies')) : null, 
   [db, globalUser?.isDeveloper]);
@@ -54,7 +53,6 @@ export default function DeveloperDashboard() {
   const { data: companies, loading: companiesLoading } = useCollection<any>(companiesQuery);
   const { data: requests, loading: requestsLoading } = useCollection<any>(requestsQuery);
 
-  // --- أداة فحص مطابقة البيانات السيادية (Path Integrity Tool) ---
   const [diagTransaction, setDiagTransaction] = useState<any>(null);
   const [diagTemplates, setDiagTemplates] = useState<any[]>([]);
   const [loadingDiag, setLoadingDiag] = useState(false);
@@ -66,7 +64,6 @@ export default function DeveloperDashboard() {
       const targetCompanyId = 'comp_x898l4i70';
       const targetClientId = '8MbfW3Aexh8Nkz2adHOI';
 
-      // 1. جلب المعاملة
       const transQ = query(
         collection(db, 'companies', targetCompanyId, 'transactions'),
         where('clientId', '==', targetClientId),
@@ -76,15 +73,14 @@ export default function DeveloperDashboard() {
       const trans = transSnap.empty ? null : transSnap.docs[0].data();
       setDiagTransaction(trans);
 
-      // 2. جلب القوالب
       const tempsQ = collection(db, 'companies', targetCompanyId, 'boqTemplates');
       const tempsSnap = await getDocs(tempsQ);
       const temps = tempsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       setDiagTemplates(temps);
 
-      toast({ title: "اكتمل الفحص الميداني" });
+      toast({ title: tSafe('inline.diag.complete', 'اكتمل الفحص الميداني', 'Diagnostic Complete') });
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Diagnostic Error", description: e.message });
+      toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
       setLoadingDiag(false);
     }
@@ -96,7 +92,7 @@ export default function DeveloperDashboard() {
     const service = new SeedService(db, globalUser.companyId);
     try {
       const count = await service.runIdentityMigration();
-      toast({ title: isRtl ? "تم إصلاح الهويات" : "Identity Fixed", description: `Updated ${count} users.` });
+      toast({ title: tSafe('inline.identity.fixed', 'تم إصلاح الهويات', 'Identity Fixed'), description: `Updated ${count} users.` });
     } finally { setMigrating(false); }
   };
 
@@ -129,7 +125,7 @@ export default function DeveloperDashboard() {
       const uid = await userService.createUserAccount({ employeeId: empId, employeeName: req.contactName, email: req.email, username: req.proposedUsername || req.email.split('@')[0], password: req.proposedPassword, roleId: roleRef.id, roleCode: 'ADMIN', departmentId: deptRef.id });
       await setDoc(doc(db, 'companies', companyId, 'employees', empId), { id: empId, employeeNumber: '1001', fullName: req.contactName, email: req.email, mobile: req.phone, departmentId: deptRef.id, departmentName: 'الإدارة العليا', jobId: jobRef.id, jobTitle: 'المدير العام', status: 'active', employeeType: 'internal', hireDate: new Date().toISOString().split('T')[0], basicSalary: 0, annualLeaveBalance: 30, isActive: true, companyId: companyId, createdAt: serverTimestamp() });
       await updateDoc(doc(db, 'company_requests', req.id), { status: 'activated', activatedAt: serverTimestamp(), companyId: companyId, ownerUid: uid });
-      toast({ title: "Provisioning Success" });
+      toast({ title: tSafe('inline.provisioning.success', 'تم التأسيس بنجاح', 'Provisioning Success') });
     } finally { setProcessingId(null); }
   };
 
@@ -139,13 +135,13 @@ export default function DeveloperDashboard() {
     <div className="space-y-6 text-start" dir={dir}>
       <header className="flex justify-between items-end border-b pb-6">
         <div className="text-start">
-          <h2 className="text-2xl font-black font-headline text-slate-900">{isRtl ? 'لوحة تحكم المطور السيادية' : 'Sovereign Dev Console'}</h2>
-          <Badge className="bg-primary text-white border-0 text-[8px] uppercase px-3 rounded-full mt-2">{t('common.alert')}</Badge>
+          <h2 className="text-2xl font-black font-headline text-slate-900">{tSafe('inline.sovereign.dev.console', 'لوحة تحكم المطور السيادية', 'Sovereign Dev Console')}</h2>
+          <Badge className="bg-primary text-white border-0 text-[8px] uppercase px-3 rounded-full mt-2">{tSafe('inline.core.kernel.maintenance', 'صيانة النواة الأساسية', 'Core Kernel Maintenance')}</Badge>
         </div>
         <div className="flex gap-3">
            <Button onClick={handleIdentityMigration} disabled={migrating} variant="outline" className="h-10 rounded-xl border-2 font-black gap-2">
               {migrating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Fingerprint className="h-4 w-4" />}
-              {isRtl ? 'إصلاح الهويات' : 'Fix Identities'}
+              {tSafe('inline.fix.identities', 'إصلاح الهويات', 'Fix Identities')}
            </Button>
         </div>
       </header>
@@ -153,13 +149,13 @@ export default function DeveloperDashboard() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="bg-white border h-12 rounded-xl p-1.5 gap-2 mb-6 shadow-sm inline-flex">
            <TabsTrigger value="integrity" className="rounded-lg px-8 font-black text-xs data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2">
-              <SearchCode className="h-4 w-4" /> فحص مطابقة المسارات
+              <SearchCode className="h-4 w-4" /> {tSafe('inline.path.integrity', 'فحص مطابقة المسارات', 'Path Integrity')}
            </TabsTrigger>
            <TabsTrigger value="requests" className="rounded-lg px-8 font-black text-xs data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2">
-              <Zap className="h-4 w-4" /> طلبات التأسيس
+              <Zap className="h-4 w-4" /> {tSafe('inline.requests', 'طلبات التأسيس', 'Requests')}
            </TabsTrigger>
            <TabsTrigger value="companies" className="rounded-lg px-8 font-black text-xs data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2">
-              <Building2 className="h-4 w-4" /> المنشآت المفعلة
+              <Building2 className="h-4 w-4" /> {tSafe('inline.companies', 'المنشآت المفعلة', 'Companies')}
            </TabsTrigger>
         </TabsList>
 
@@ -167,25 +163,24 @@ export default function DeveloperDashboard() {
            <Card className="border-0 shadow-2xl rounded-3xl bg-white overflow-hidden ring-1 ring-black/5">
               <CardHeader className="bg-slate-50 p-8 border-b flex flex-row items-center justify-between">
                  <div className="text-start">
-                    <CardTitle className="text-xl font-black">أداة فحص سلامة الربط (Diagnostic Tool)</CardTitle>
-                    <p className="text-xs font-bold text-slate-400 mt-1">تقوم هذه الأداة بالتحقق من مطابقة `subServiceId` بين المعاملة والقوالب.</p>
+                    <CardTitle className="text-xl font-black">{tSafe('inline.diag.tool.title', 'أداة فحص سلامة الربط', 'Diagnostic Tool')}</CardTitle>
+                    <p className="text-xs font-bold text-slate-400 mt-1">{tSafe('inline.diag.tool.desc', 'تقوم هذه الأداة بالتحقق من مطابقة subServiceId بين المعاملة والقوالب.', 'This tool verifies subServiceId matching between transaction and templates.')}</p>
                  </div>
                  <Button onClick={runDiagnostics} disabled={loadingDiag} className="h-12 px-8 rounded-xl bg-slate-900 text-white font-black gap-2 shadow-xl">
                     {loadingDiag ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
-                    تشغيل الفحص الآن
+                    {tSafe('inline.run.diag', 'تشغيل الفحص الآن', 'Run Diagnostics')}
                  </Button>
               </CardHeader>
               <CardContent className="p-10 space-y-8">
                  {loadingDiag ? (
                    <div className="py-20 text-center"><Loader2 className="h-10 w-10 animate-spin mx-auto text-primary/20" /></div>
                  ) : !diagTransaction ? (
-                   <div className="py-20 text-center opacity-30 italic font-bold">لا يوجد بيانات للعرض. اضغط على تشغيل الفحص.</div>
+                   <div className="py-20 text-center opacity-30 italic font-bold">{tSafe('inline.no.data.diag', 'لا يوجد بيانات للعرض. اضغط على تشغيل الفحص.', 'No data to display. Click run diagnostics.')}</div>
                  ) : (
                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                      {/* عرض المعاملة */}
                       <div className="space-y-4">
                          <h4 className="text-sm font-black text-primary uppercase tracking-widest border-b pb-2 flex items-center gap-2">
-                            <ShieldCheck className="h-4 w-4" /> بيانات المعاملة المستهدفة
+                            <ShieldCheck className="h-4 w-4" /> {tSafe('inline.target.transaction', 'بيانات المعاملة المستهدفة', 'Target Transaction')}
                          </h4>
                          <div className="p-6 rounded-2xl bg-slate-50 border-2 border-slate-100 space-y-4 text-start">
                             <div className="space-y-1">
@@ -193,7 +188,7 @@ export default function DeveloperDashboard() {
                                <p className="text-xs font-mono font-bold bg-white p-2 rounded border truncate">{diagTransaction.id}</p>
                             </div>
                             <div className="space-y-1">
-                               <p className="text-[10px] font-black text-primary uppercase">subServiceId (The Key)</p>
+                               <p className="text-[10px] font-black text-primary uppercase">{tSafe('inline.subservice.key', 'مفتاح المسار الفرعي', 'subServiceId (The Key)')}</p>
                                <div className="bg-primary/10 text-primary p-3 rounded-xl border-2 border-primary/20 font-mono text-sm font-black break-all">
                                   {diagTransaction.subServiceId}
                                </div>
@@ -201,10 +196,9 @@ export default function DeveloperDashboard() {
                          </div>
                       </div>
 
-                      {/* عرض القوالب */}
                       <div className="space-y-4">
                          <h4 className="text-sm font-black text-blue-600 uppercase tracking-widest border-b pb-2 flex items-center gap-2">
-                            <Database className="h-4 w-4" /> القوالب المتوفرة (boqTemplates)
+                            <Database className="h-4 w-4" /> {tSafe('inline.available.templates', 'القوالب المتوفرة', 'Available Templates')}
                          </h4>
                          <div className="space-y-3">
                             {diagTemplates.map(t => {
@@ -217,15 +211,15 @@ export default function DeveloperDashboard() {
                                     <div className="flex justify-between items-start mb-2">
                                        <p className="font-black text-xs text-slate-800">{t.name}</p>
                                        <Badge className={isMatch ? "bg-emerald-600" : "bg-rose-600"}>
-                                          {isMatch ? "MATCHED ✅" : "MISMATCH ❌"}
+                                          {isMatch ? tSafe('inline.matched', 'مطابق', 'MATCHED') : tSafe('inline.mismatch', 'غير مطابق', 'MISMATCH')}
                                        </Badge>
                                     </div>
-                                    <p className="text-[9px] font-black text-slate-400 uppercase mb-1">subServiceId in Template:</p>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase mb-1">{tSafe('inline.subservice.in.template', 'المسار الفرعي في القالب:', 'subServiceId in Template:')}</p>
                                     <p className="text-xs font-mono font-bold bg-white/50 p-2 rounded truncate">{t.subServiceId}</p>
                                  </div>
                                );
                             })}
-                            {diagTemplates.length === 0 && <p className="text-xs font-bold text-rose-500 italic">No templates found in boqTemplates collection.</p>}
+                            {diagTemplates.length === 0 && <p className="text-xs font-bold text-rose-500 italic">{tSafe('inline.no.templates.found.db', 'لا توجد قوالب في قاعدة البيانات.', 'No templates found in database.')}</p>}
                          </div>
                       </div>
                    </div>
@@ -239,9 +233,9 @@ export default function DeveloperDashboard() {
               <Table>
                 <TableHeader className="bg-slate-50/50">
                   <TableRow>
-                    <TableHead className="py-4 ps-8">المنشأة</TableHead>
-                    <TableHead>النشاط</TableHead>
-                    <TableHead className="pe-8 text-end">الإجراء السيادي</TableHead>
+                    <TableHead className="py-4 ps-8">{t('common.company')}</TableHead>
+                    <TableHead>{t('common.name')}</TableHead>
+                    <TableHead className="pe-8 text-end">{tSafe('inline.sovereign.action', 'الإجراء السيادي', 'Sovereign Action')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -257,7 +251,7 @@ export default function DeveloperDashboard() {
                       <TableCell className="pe-8 text-end">
                          <Button onClick={() => handleActivate(req)} disabled={!!processingId} size="sm" className="h-10 px-6 gap-2 bg-emerald-600 text-white font-black shadow-lg shadow-emerald-100">
                             {processingId === req.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Rocket className="h-4 w-4" />}
-                            تأسيس وتفعيل
+                            {tSafe('inline.provision.activate', 'تأسيس وتفعيل', 'Provision & Activate')}
                          </Button>
                       </TableCell>
                     </TableRow>
@@ -272,9 +266,9 @@ export default function DeveloperDashboard() {
               <Table>
                 <TableHeader className="bg-slate-50/50">
                   <TableRow>
-                    <TableHead className="py-4 ps-8">المنشأة</TableHead>
-                    <TableHead>الحالة</TableHead>
-                    <TableHead className="pe-8 text-end">التحكم</TableHead>
+                    <TableHead className="py-4 ps-8">{t('common.company')}</TableHead>
+                    <TableHead>{t('common.status')}</TableHead>
+                    <TableHead className="pe-8 text-end">{tSafe('inline.control', 'التحكم', 'Control')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -289,14 +283,14 @@ export default function DeveloperDashboard() {
                       <TableCell>
                          <Badge className={cn(
                            "font-black text-[9px] uppercase px-3 py-1 rounded-md border-0 shadow-sm",
-                           comp.status === 'active' ? "bg-emerald-50 text-white" : "bg-rose-50 text-white"
+                           comp.status === 'active' ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
                          )}>
                             {comp.status}
                          </Badge>
                       </TableCell>
                       <TableCell className="pe-8 text-end">
                         <Button variant="outline" size="sm" onClick={() => setEditingCompany(comp)} className="h-9 gap-2 border-2 font-bold text-xs rounded-xl shadow-sm">
-                           <Settings2 className="h-3.5 w-3.5" /> إدارة التراخيص
+                           <Settings2 className="h-3.5 w-3.5" /> {tSafe('inline.manage.licenses', 'إدارة التراخيص', 'Manage Licenses')}
                         </Button>
                       </TableCell>
                     </TableRow>

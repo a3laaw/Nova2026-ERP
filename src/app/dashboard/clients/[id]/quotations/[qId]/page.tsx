@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useEffect, useState } from 'react';
@@ -36,7 +35,7 @@ import { DocumentService } from '@/services/document-service';
 import { toast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function QuotationViewPage() {
@@ -44,7 +43,7 @@ export default function QuotationViewPage() {
   const quotationId = params.qId as string;
   const clientId = params.id as string;
   const { globalUser, user } = useAuthContext();
-  const { lang, dir, t } = useLanguage();
+  const { lang, dir, t, tSafe } = useLanguage();
   const { permissions } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
@@ -96,7 +95,7 @@ export default function QuotationViewPage() {
       toast({ 
         variant: "destructive", 
         title: t('common.error'), 
-        description: isRtl ? `يجب أن يكون مجموع الحصص 100% (الحالي: ${stats.totalPercentage}%)` : `Total percentage must be 100%` 
+        description: tSafe('inline.percentage.error', `يجب أن يكون مجموع الحصص 100% (الحالي: ${stats.totalPercentage}%)`, `Total percentage must be 100% (Current: ${stats.totalPercentage}%)`)
       });
       return;
     }
@@ -189,13 +188,13 @@ export default function QuotationViewPage() {
   const getOrdinalLabel = (index: number) => {
     const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"];
     const enOrdinals = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
-    const base = isRtl ? "الدفعة" : "Installment";
+    const base = tSafe('inline.installment', 'الدفعة', 'Installment');
     const ordinal = isRtl ? (arOrdinals[index] || `#${index + 1}`) : (enOrdinals[index] || `#${index + 1}`);
     return `${base} ${ordinal}`;
   };
 
   if (loading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
-  if (!quote) return <div className="p-20 text-center font-black">404 - Not Found</div>;
+  if (!quote) return <div className="p-20 text-center font-black">{tSafe('inline.not.found', '404 - غير موجود', '404 - Not Found')}</div>;
 
   const activeItemsForDisplay = (editData.items || []).filter((i: any) => !i.deleted);
   const currentDisplayAmount = isEditing 
@@ -218,7 +217,7 @@ export default function QuotationViewPage() {
                  <h1 className="text-xl font-black text-slate-900">{t('common.quotation')}</h1>
                  <Badge variant="outline" className="h-6 px-4 font-black text-[9px] uppercase bg-primary text-white border-0 shadow-sm">{editData.status || quote.status}</Badge>
               </div>
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">REF: {quote.id.slice(-8).toUpperCase()} | {editData.pricingMode}</p>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">REF: {quote.id.slice(-8).toUpperCase()} | {t(editData.pricingMode || 'itemized')}</p>
            </div>
         </div>
         <div className="flex gap-2">
@@ -248,7 +247,7 @@ export default function QuotationViewPage() {
                   <Edit3 className="h-4 w-4" /> {t('common.editItems')}
                </Button>
                <Button onClick={() => window.print()} size="sm" className="rounded-xl h-10 px-8 font-black gap-2 bg-slate-900 text-white shadow-xl">
-                  <Printer className="h-4 w-4" /> {isRtl ? 'طباعة' : 'Print'}
+                  <Printer className="h-4 w-4" /> {t('common.print')}
                </Button>
              </>
            )}
@@ -261,7 +260,7 @@ export default function QuotationViewPage() {
                 <div className="flex items-center gap-4 text-start">
                   <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-lg"><Calculator className="h-5 w-5" /></div>
                   <div>
-                    <p className="text-[7px] font-black uppercase text-primary tracking-widest">Pricing Mode</p>
+                    <p className="text-[7px] font-black uppercase text-primary tracking-widest">{t('pricingMode')}</p>
                     {isEditing ? (
                       <Select value={editData.pricingMode} onValueChange={(v: PricingMode) => setEditForm({...editData, pricingMode: v})}>
                          <SelectTrigger className="h-8 w-32 rounded-md border-2 bg-white text-slate-900 font-black text-xs mt-0.5"><SelectValue /></SelectTrigger>
@@ -271,13 +270,13 @@ export default function QuotationViewPage() {
                             <SelectItem value="percentage" className="font-bold text-xs">{t('percentage')}</SelectItem>
                          </SelectContent>
                       </Select>
-                    ) : <span className="text-xs font-black uppercase text-slate-900">{editData.pricingMode}</span>}
+                    ) : <span className="text-xs font-black uppercase text-slate-900">{t(editData.pricingMode || 'itemized')}</span>}
                   </div>
                 </div>
                 
                 {(editData.pricingMode === 'percentage' || editData.pricingMode === 'fixed') && (
                   <div className="space-y-1 text-start w-32">
-                     <Label className="text-[10px] font-black uppercase text-primary tracking-widest">Target Budget</Label>
+                     <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{tSafe('inline.target.budget', 'الميزانية المستهدفة', 'Target Budget')}</Label>
                      {isEditing ? (
                        <div className="relative">
                           <Input 
@@ -296,11 +295,11 @@ export default function QuotationViewPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b-4 border-primary/20 pb-6">
                <div className="text-start space-y-4">
                   <div className="space-y-0.5">
-                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'السادة المحترمون /' : 'To:'}</p>
+                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{tSafe('inline.to', 'السادة المحترمون /', 'To:')}</p>
                      <p className="text-lg font-black text-slate-900">{quote.clientName}</p>
                   </div>
                   <div className="space-y-0.5">
-                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'الموضوع /' : 'Subject:'}</p>
+                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{tSafe('inline.subject', 'الموضوع /', 'Subject:')}</p>
                      {isEditing ? (
                         <Input value={editData.name} onChange={e => setEditForm({...editData, name: e.target.value})} className="font-bold border-2 h-10 rounded-xl text-sm" />
                      ) : (
@@ -313,11 +312,11 @@ export default function QuotationViewPage() {
             <div className="space-y-4 text-start">
                <div className="flex justify-between items-center">
                   <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                     <LayoutGrid className="h-4 w-4 text-primary" /> {isRtl ? 'جدول بنود التسعير والدفعات' : 'Pricing & Payments'}
+                     <LayoutGrid className="h-4 w-4 text-primary" /> {tSafe('inline.pricing.payments', 'جدول بنود التسعير والدفعات', 'Pricing & Payments')}
                   </h4>
                   {isEditing && (
                     <Button variant="outline" size="sm" onClick={addItem} className="rounded-xl font-black text-[10px] border-2 h-9 px-6 gap-2 bg-white hover:bg-primary/5">
-                       <Plus className="h-4 w-4" /> {isRtl ? 'إضافة بند' : 'Add Item'}
+                       <Plus className="h-4 w-4" /> {t('common.addLabel')}
                     </Button>
                   )}
                </div>
@@ -327,11 +326,11 @@ export default function QuotationViewPage() {
                      <thead className="bg-slate-50 border-b-2 border-slate-100 text-slate-500 font-black uppercase text-[10px] tracking-widest">
                         <tr className="font-black uppercase text-[9px] tracking-widest">
                            <th className="p-4 text-start w-10">#</th>
-                           <th className="p-4 text-start">{isRtl ? 'مسمى البند / الدفعة' : 'Description'}</th>
+                           <th className="p-4 text-start">{tSafe('inline.item.label', 'مسمى البند / الدفعة', 'Description')}</th>
                            {editData.pricingMode === 'percentage' && <th className="p-4 text-center w-20">%</th>}
-                           {isEditing && <th className="p-4 text-center w-28">{isRtl ? 'التوقيت' : 'Timing'}</th>}
-                           <th className="p-4 text-start w-48">{isRtl ? 'الارتباط الفني' : 'Technical Link'}</th>
-                           <th className="p-4 text-end pe-10 w-40">{isRtl ? 'القيمة' : 'Amount'}</th>
+                           {isEditing && <th className="p-4 text-center w-28">{tSafe('inline.timing', 'التوقيت', 'Timing')}</th>}
+                           <th className="p-4 text-start w-48">{tSafe('inline.technical.link', 'الارتباط الفني', 'Technical Link')}</th>
+                           <th className="p-4 text-end pe-10 w-40">{tSafe('inline.amount', 'القيمة', 'Amount')}</th>
                            {isEditing && <th className="p-4 w-12"></th>}
                         </tr>
                      </thead>
@@ -351,12 +350,12 @@ export default function QuotationViewPage() {
                                    {isEditing ? (
                                       <div className="space-y-2">
                                          <Input value={item.label} onChange={e => updateItem(originalIdx, 'label', e.target.value)} className="h-8 rounded-lg font-black text-sm bg-white" />
-                                         <Input value={item.description} onChange={e => updateItem(originalIdx, 'description', e.target.value)} className="h-7 text-[10px] font-medium opacity-70 bg-slate-50" placeholder={isRtl ? "وصف إضافي..." : "Add detail..."} />
+                                         <Input value={item.description} onChange={e => updateItem(originalIdx, 'description', e.target.value)} className="h-7 text-[10px] font-medium opacity-70 bg-slate-50" placeholder={tSafe('inline.add.detail', 'وصف إضافي...', 'Add detail...')} />
                                          
                                          {item.technicalStageId && item.technicalStageId !== 'NONE' && (
                                             <p className="text-[8px] font-black text-primary/60 italic flex items-center gap-1 mt-1">
                                                <Clock className="h-2 w-2" />
-                                               {t(item.timing || 'at')} {item.technicalStageId === 'SIGNING' ? 'Contract Signing' : linkedStageName}
+                                               {t(item.timing || 'at')} {item.technicalStageId === 'SIGNING' ? t('contractSigning') : linkedStageName}
                                             </p>
                                          )}
                                       </div>
@@ -367,7 +366,7 @@ export default function QuotationViewPage() {
                                          {item.technicalStageId && item.technicalStageId !== 'NONE' && (
                                             <p className="text-[10px] font-black text-primary/60 italic flex items-center gap-1">
                                                <Clock className="h-3 w-3" />
-                                               {t(item.timing || 'at')} {item.technicalStageId === 'SIGNING' ? 'Contract Signing' : linkedStageName}
+                                               {t(item.timing || 'at')} {item.technicalStageId === 'SIGNING' ? t('contractSigning') : linkedStageName}
                                             </p>
                                          )}
                                       </div>
@@ -406,13 +405,13 @@ export default function QuotationViewPage() {
                                            "h-8 rounded-lg border-2 font-black text-xs",
                                            (item.technicalStageId && item.technicalStageId !== 'NONE') ? "bg-primary/5 text-primary border-primary/20" : "bg-white"
                                          )}>
-                                            <SelectValue placeholder="Link Stage..." />
+                                            <SelectValue placeholder={tSafe('inline.link.stage', 'ربط فني...', 'Link Stage...')} />
                                          </SelectTrigger>
                                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
                                             <SelectItem value="SIGNING" className="font-black text-xs py-3">
-                                               <span className="flex items-center gap-2"><ShieldCheck className="h-3 w-3 text-emerald-500" /> Contract Signing</span>
+                                               <span className="flex items-center gap-2"><ShieldCheck className="h-3 w-3 text-emerald-500" /> {t('contractSigning')}</span>
                                             </SelectItem>
-                                            <SelectItem value="NONE" className="font-bold text-xs text-slate-400 italic">--- No Link ---</SelectItem>
+                                            <SelectItem value="NONE" className="font-bold text-xs text-slate-400 italic">{tSafe('inline.no.link', '--- بدون ربط ---', '--- No Link ---')}</SelectItem>
                                             {stages?.map(s => (
                                               <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3">
                                                  <span className="flex items-center gap-2"><Workflow className="h-3 w-3 text-primary" /> {s.name}</span>
@@ -425,7 +424,7 @@ export default function QuotationViewPage() {
                                         "font-black text-[10px] border-0 px-4 h-6 rounded-lg shadow-sm",
                                         item.technicalStageId === 'SIGNING' ? "bg-emerald-50 text-emerald-600" : (item.technicalStageId ? "bg-primary/5 text-primary" : "bg-slate-50 text-slate-300")
                                       )}>
-                                         {item.technicalStageId === 'SIGNING' ? 'Signing' : (item.technicalStageId ? (linkedStageName || 'Linked') : '---')}
+                                         {item.technicalStageId === 'SIGNING' ? tSafe('inline.signing', 'توقيع', 'Signing') : (item.technicalStageId ? (linkedStageName || tSafe('inline.linked', 'مرتبط', 'Linked')) : '---')}
                                       </Badge>
                                    )}
                                 </td>
@@ -447,14 +446,14 @@ export default function QuotationViewPage() {
                               <h3 className="text-base font-black font-headline uppercase tracking-tighter text-slate-900">{t('totalQuoteValue')}</h3>
                               {editData.pricingMode === 'percentage' && (
                                  <Badge className={cn("mt-2 border-0 text-[10px] font-black h-6 px-4 shadow-sm", stats.isValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>
-                                    {stats.isValid ? `BALANCED: ${stats.totalPercentage}%` : `MISMATCH: ${stats.totalPercentage}%`}
+                                    {stats.isValid ? `${tSafe('inline.balanced', 'متوازن', 'BALANCED')}: ${stats.totalPercentage}%` : `${tSafe('inline.mismatch', 'غير متوازن', 'MISMATCH')}: ${stats.totalPercentage}%`}
                                  </Badge>
                               )}
                            </td>
                            <td colSpan={2} className="p-8 text-end pe-10">
                               <div className="space-y-0.5">
                                  <h2 className="text-4xl font-black font-headline text-primary">{(currentDisplayAmount || 0).toLocaleString()}</h2>
-                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Kuwaiti Dinars</p>
+                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">{tSafe('inline.kuwaiti.dinars', 'دنانير كويتية', 'Kuwaiti Dinars')}</p>
                               </div>
                            </td>
                            {isEditing && <td></td>}

@@ -69,7 +69,7 @@ export function CommentSection({
   onlyComments = false
 }: Props) {
   const { user, globalUser } = useAuthContext();
-  const { lang, dir, t: translate, t } = useLanguage();
+  const { lang, dir, t, tSafe } = useLanguage();
   const { permissions, isAdmin } = usePermissions();
   const db = useFirestore();
   const isRtl = lang === 'ar';
@@ -135,7 +135,7 @@ export function CommentSection({
     if (!commentService || !user || !content.trim()) return;
     setLoading(true);
     try {
-      const officialName = globalUser?.fullName || user.displayName || 'مهندس غير معرف';
+      const officialName = globalUser?.fullName || user.displayName || tSafe('inline.unknown.engineer', 'مهندس غير معرف', 'Unknown Engineer');
       await commentService.addTransactionComment(transactionId, content, user.uid, officialName, filterStageId, selectedStageName, 'general', appointmentId);
       setContent("");
     } finally {
@@ -151,25 +151,25 @@ export function CommentSection({
              <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-inner"><MessageSquare className="h-5 w-5" /></div>
                 <div>
-                   <h3 className="text-sm font-black text-slate-800 leading-none">{title || (isRtl ? 'غرفة العمليات' : 'War Room')}</h3>
+                   <h3 className="text-sm font-black text-slate-800 leading-none">{title || t('inline.war.room')}</h3>
                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">{t('common.status')}</p>
                 </div>
              </div>
              {onClearFilter && filterStageId && (
                 <Button onClick={onClearFilter} variant="ghost" size="sm" className="h-8 rounded-lg text-[9px] font-black gap-2 bg-slate-900 text-white hover:bg-slate-800 px-3 shadow-lg">
-                  <X className="h-3 w-3" /> {isRtl ? 'عرض الكل' : 'View All'}
+                  <X className="h-3 w-3" /> {t('inline.view.all')}
                 </Button>
              )}
           </div>
 
           {!onlyComments && (
             <TabsList className={cn("grid w-full h-11 bg-slate-100/50 rounded-xl p-1 gap-1 mx-1", isAdmin ? "grid-cols-4" : "grid-cols-2")}>
-                <TabsTrigger value="active" className="rounded-lg text-[10px] font-black transition-all">{isRtl ? 'النشاط' : 'Active'}</TabsTrigger>
-                <TabsTrigger value="timeline" className="rounded-lg text-[10px] font-black transition-all">{isRtl ? 'الزمني' : 'Timeline'}</TabsTrigger>
+                <TabsTrigger value="active" className="rounded-lg text-[10px] font-black transition-all">{t('inline.active')}</TabsTrigger>
+                <TabsTrigger value="timeline" className="rounded-lg text-[10px] font-black transition-all">{t('inline.timeline')}</TabsTrigger>
                 {isAdmin && (
                   <>
-                    <TabsTrigger value="chat_archive" className="rounded-lg text-[10px] font-black gap-1.5 transition-all"><Archive className="h-3 w-3" /> {isRtl ? 'الأرشيف' : 'Archive'}</TabsTrigger>
-                    <TabsTrigger value="time_archive" className="rounded-lg text-[10px] font-black gap-1.5 transition-all"><Clock className="h-3 w-3" /> {isRtl ? 'الوقت' : 'Time'}</TabsTrigger>
+                    <TabsTrigger value="chat_archive" className="rounded-lg text-[10px] font-black gap-1.5 transition-all"><Archive className="h-3 w-3" /> {t('inline.archive')}</TabsTrigger>
+                    <TabsTrigger value="time_archive" className="rounded-lg text-[10px] font-black gap-1.5 transition-all"><Clock className="h-3 w-3" /> {t('inline.time')}</TabsTrigger>
                   </>
                 )}
             </TabsList>
@@ -183,7 +183,7 @@ export function CommentSection({
             ) : paginatedStream.length === 0 ? (
                <div className="py-20 text-center flex flex-col items-center gap-4 opacity-30">
                   <Zap className="h-12 w-12 text-slate-200" />
-                  <p className="text-xs font-black text-slate-400">{isRtl ? 'بانتظار الملاحظات الفنية' : 'Awaiting notes...'}</p>
+                  <p className="text-xs font-black text-slate-400">{t('inline.awaiting.notes')}</p>
                </div>
             ) : (
               paginatedStream.map((item: any) => (
@@ -208,8 +208,8 @@ export function CommentSection({
                       <div className="space-y-2 text-start">
                           <h4 className="font-black text-[11px] text-slate-900">{stage.name}</h4>
                           <div className="grid grid-cols-2 gap-3 bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm">
-                            <div className="space-y-0.5"><p className="text-[7px] font-black text-slate-400 uppercase">{t('common.at')}</p><p className="text-[8px] font-bold text-slate-600 truncate">{start ? start.toLocaleDateString(isRtl ? 'ar-KW' : 'en-US') : '---'}</p></div>
-                            <div className="space-y-0.5"><p className="text-[7px] font-black text-slate-400 uppercase">{t('common.back')}</p><p className="text-[8px] font-bold text-slate-600 truncate">{end ? end.toLocaleDateString(isRtl ? 'ar-KW' : 'en-US') : '---'}</p></div>
+                            <div className="space-y-0.5"><p className="text-[7px] font-black text-slate-400 uppercase">{t('inline.start')}</p><p className="text-[8px] font-bold text-slate-600 truncate">{start ? start.toLocaleDateString(isRtl ? 'ar-KW' : 'en-US') : '---'}</p></div>
+                            <div className="space-y-0.5"><p className="text-[7px] font-black text-slate-400 uppercase">{t('inline.end')}</p><p className="text-[8px] font-bold text-slate-600 truncate">{end ? end.toLocaleDateString(isRtl ? 'ar-KW' : 'en-US') : '---'}</p></div>
                           </div>
                       </div>
                     </div>
@@ -222,7 +222,7 @@ export function CommentSection({
           <div className="mt-auto pt-4 bg-white border-t border-slate-50 print:hidden shrink-0">
             <Card className="border-2 border-slate-100 shadow-2xl rounded-xl overflow-hidden bg-white ring-4 ring-black/[0.02]">
               <CardContent className="p-2 flex items-end gap-2">
-                <Textarea value={content} onChange={e => setContent(e.target.value)} placeholder={isRtl ? "اكتب تعليقاً في سجل المتابعة..." : "Write a technical note..."} className="min-h-[44px] max-h-[150px] rounded-xl border-0 focus-visible:ring-0 text-xs font-bold bg-slate-50/50 resize-none p-4" />
+                <Textarea value={content} onChange={e => setContent(e.target.value)} placeholder={t('inline.write.a.technical.note')} className="min-h-[44px] max-h-[150px] rounded-xl border-0 focus-visible:ring-0 text-xs font-bold bg-slate-50/50 resize-none p-4" />
                 <Button onClick={handleSubmit} disabled={loading || !content.trim()} size="icon" className="h-11 w-11 rounded-xl bg-primary text-white shadow-xl shadow-primary/20 shrink-0 hover:scale-110 transition-transform">
                     {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Send className={cn("h-5 w-5", isRtl && "rotate-180")} />}
                 </Button>
@@ -236,8 +236,9 @@ export function CommentSection({
 }
 
 function StreamItem({ item, isRtl, user, boqItems }: any) {
+   const { t } = useLanguage();
    const isLog = item.streamType === 'log' || item.streamType === 'timeline_log';
-   const displayName = item.userName || item.createdByName || (isRtl ? 'مهندس' : 'Engineer');
+   const displayName = item.userName || item.createdByName || t('inline.engineer');
 
    if (isLog) {
       const boqItem = boqItems?.find((i: any) => i.id === item.boqItemId);
@@ -258,7 +259,7 @@ function StreamItem({ item, isRtl, user, boqItems }: any) {
                  <div className="text-start flex-1">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                        <Badge variant="outline" className="text-[8px] font-black border-slate-200 bg-white text-slate-600 px-2">
-                          {isRevision ? (isRtl ? 'تعديل مسار' : 'Revision') : (boqItem?.referenceTitle || (isRtl ? 'إنجاز' : 'Progress'))}
+                          {isRevision ? t('inline.revision') : (boqItem?.referenceTitle || t('inline.progress'))}
                        </Badge>
                        {item.quantity > 0 && <Badge className="bg-emerald-600 text-white border-0 text-[8px] h-4 px-2">{item.quantity} QTY</Badge>}
                     </div>

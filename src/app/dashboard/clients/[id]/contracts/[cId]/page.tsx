@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useEffect, useState } from 'react';
@@ -35,7 +34,7 @@ import { DocumentService } from '@/services/document-service';
 import { toast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function ContractViewPage() {
@@ -43,7 +42,7 @@ export default function ContractViewPage() {
   const contractId = params.cId as string;
   const clientId = params.id as string;
   const { globalUser, user } = useAuthContext();
-  const { lang, dir, t } = useLanguage();
+  const { lang, dir, t, tSafe } = useLanguage();
   const { permissions, isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
@@ -107,7 +106,7 @@ export default function ContractViewPage() {
       toast({ 
         variant: "destructive", 
         title: t('common.error'), 
-        description: isRtl ? `يجب أن يكون مجموع الحصص 100% (الحالي: ${stats.totalPercentage}%)` : `Total percentage must be 100%` 
+        description: tSafe('inline.percentage.error', `يجب أن يكون مجموع الحصص 100% (الحالي: ${stats.totalPercentage}%)`, `Total percentage must be 100% (Current: ${stats.totalPercentage}%)`)
       });
       return;
     }
@@ -171,7 +170,7 @@ export default function ContractViewPage() {
   const getOrdinalLabel = (index: number) => {
     const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"];
     const enOrdinals = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
-    const base = isRtl ? "الدفعة" : "Installment";
+    const base = tSafe('inline.installment', 'الدفعة', 'Installment');
     const ordinal = isRtl ? (arOrdinals[index] || `#${index + 1}`) : (enOrdinals[index] || `#${index + 1}`);
     return `${base} ${ordinal}`;
   };
@@ -191,7 +190,7 @@ export default function ContractViewPage() {
   };
 
   if (loading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
-  if (!contract) return <div className="p-20 text-center font-black">404 - Not Found</div>;
+  if (!contract) return <div className="p-20 text-center font-black">{tSafe('inline.not.found', '404 - غير موجود', '404 - Not Found')}</div>;
 
   const currentDisplayAmount = editData.pricingMode === 'itemized' 
     ? stats.totalItemizedAmount 
@@ -218,7 +217,7 @@ export default function ContractViewPage() {
                     {editData.status || contract.status}
                  </Badge>
               </div>
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">REF: {contract.id.slice(-8).toUpperCase()} | {isRtl ? t(editData.pricingMode || '') : editData.pricingMode}</p>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">REF: {contract.id.slice(-8).toUpperCase()} | {t(editData.pricingMode || '')}</p>
            </div>
         </div>
         <div className="flex gap-2">
@@ -240,10 +239,10 @@ export default function ContractViewPage() {
            ) : (
              <>
                <Button onClick={() => setIsEditing(true)} variant="outline" size="sm" className="rounded-xl h-10 px-6 font-black gap-2 border-2 bg-white text-primary hover:bg-primary/5">
-                  <Edit3 className="h-4 w-4" /> {isRtl ? 'تعديل البنود' : 'Edit Contract'}
+                  <Edit3 className="h-4 w-4" /> {tSafe('inline.edit.contract', 'تعديل البنود', 'Edit Contract')}
                </Button>
                <Button onClick={() => window.print()} size="sm" className="rounded-xl h-10 px-8 font-black gap-2 bg-slate-900 text-white shadow-xl">
-                  <Printer className="h-4 w-4" /> {isRtl ? 'طباعة' : 'Print'}
+                  <Printer className="h-4 w-4" /> {t('common.print')}
                </Button>
              </>
            )}
@@ -272,7 +271,7 @@ export default function ContractViewPage() {
                 
                 {(editData.pricingMode === 'percentage' || editData.pricingMode === 'fixed') && (
                   <div className="space-y-1 text-start w-48">
-                     <Label className="text-[10px] font-black uppercase text-primary tracking-widest">Target Budget</Label>
+                     <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{tSafe('inline.target.budget', 'الميزانية المستهدفة', 'Target Budget')}</Label>
                      {isEditing ? (
                        <div className="relative">
                           <Input 
@@ -291,11 +290,11 @@ export default function ContractViewPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b-4 border-primary/20 pb-8">
                <div className="text-start space-y-4">
                   <div className="space-y-1">
-                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">First Party:</p>
+                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{tSafe('inline.first.party', 'الطرف الأول (العميل)', 'First Party:')}</p>
                      <p className="text-xl font-black text-slate-900">{contract.clientName}</p>
                   </div>
                   <div className="space-y-1">
-                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Subject:</p>
+                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{tSafe('inline.subject', 'الموضوع /', 'Subject:')}</p>
                      {isEditing ? (
                         <Input value={editData.name} onChange={e => setEditForm({...editData, name: e.target.value})} className="font-bold border-2 h-12 rounded-xl text-sm" />
                      ) : (
@@ -308,11 +307,11 @@ export default function ContractViewPage() {
             <div className="space-y-6 text-start">
                <div className="flex justify-between items-center px-2">
                   <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                     <Layers className="h-4 w-4 text-primary" /> {isRtl ? 'جدول الدفعات والمراحل الفنية' : 'Payment Milestones & Stages'}
+                     <Layers className="h-4 w-4 text-primary" /> {tSafe('inline.payment.milestones.pipeline', 'جدول الدفعات والربط الفني', 'Payment Milestones & Pipeline')}
                   </h4>
                   {isEditing && (
                     <Button variant="outline" size="sm" onClick={addMilestone} className="rounded-xl font-black text-[10px] border-2 h-9 px-6 gap-2 bg-white hover:bg-primary/5">
-                       <Plus className="h-4 w-4" /> {isRtl ? 'إضافة دفعة' : 'Add Payment'}
+                       <Plus className="h-4 w-4" /> {tSafe('inline.add.payment', 'إضافة دفعة', 'Add Payment')}
                     </Button>
                   )}
                </div>
@@ -322,11 +321,11 @@ export default function ContractViewPage() {
                      <thead className="bg-slate-50 border-b-2 border-slate-100 text-slate-500 font-black uppercase text-[10px] tracking-widest">
                         <tr>
                            <th className="p-5 w-10 text-start">#</th>
-                           <th className="p-5 text-start">{isRtl ? 'مسمى الدفعة المستحقة' : 'Milestone Name'}</th>
+                           <th className="p-5 text-start">{tSafe('inline.milestone.name', 'مسمى الدفعة', 'Milestone Name')}</th>
                            {editData.pricingMode === 'percentage' && <th className="p-5 text-center w-20">%</th>}
-                           {isEditing && <th className="p-5 text-center w-28">{isRtl ? 'التوقيت' : 'Timing'}</th>}
-                           <th className="p-5 text-start w-48">{isRtl ? 'المرحلة الفنية المربوطة' : 'Technical Link'}</th>
-                           <th className="p-5 text-end pe-10 w-40">{isRtl ? 'القيمة' : 'Amount'}</th>
+                           {isEditing && <th className="p-5 text-center w-28">{tSafe('inline.timing', 'التوقيت', 'Timing')}</th>}
+                           <th className="p-5 text-start w-48">{tSafe('inline.technical.link', 'الارتباط الفني', 'Technical Link')}</th>
+                           <th className="p-5 text-end pe-10 w-40">{tSafe('inline.amount', 'القيمة', 'Amount')}</th>
                            {isEditing && <th className="p-5 w-12"></th>}
                         </tr>
                      </thead>
@@ -348,7 +347,7 @@ export default function ContractViewPage() {
                                          {m.technicalStageId && m.technicalStageId !== 'NONE' && (
                                             <p className="text-[8px] font-black text-primary/60 italic flex items-center gap-1 mt-1">
                                                <Clock className="h-3 w-3" />
-                                               {t(m.timing || 'at')} {m.technicalStageId === 'SIGNING' ? 'Contract Signing' : linkedStageName}
+                                               {t(m.timing || 'at')} {m.technicalStageId === 'SIGNING' ? t('contractSigning') : linkedStageName}
                                             </p>
                                          )}
                                       </div>
@@ -358,7 +357,7 @@ export default function ContractViewPage() {
                                          {m.technicalStageId && m.technicalStageId !== 'NONE' && (
                                             <p className="text-[10px] font-black text-primary/60 italic flex items-center gap-1">
                                                <Clock className="h-3 w-3" />
-                                               {t(m.timing || 'at')} {m.technicalStageId === 'SIGNING' ? 'Contract Signing' : linkedStageName}
+                                               {t(m.timing || 'at')} {m.technicalStageId === 'SIGNING' ? t('contractSigning') : linkedStageName}
                                             </p>
                                          )}
                                       </div>
@@ -392,7 +391,7 @@ export default function ContractViewPage() {
                                       <Select value={m.technicalStageId || 'SIGNING'} onValueChange={v => updateMilestone(idx, 'technicalStageId', v)}>
                                          <SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs bg-white"><SelectValue /></SelectTrigger>
                                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
-                                            <SelectItem value="SIGNING" className="font-bold text-xs">توقيع العقد</SelectItem>
+                                            <SelectItem value="SIGNING" className="font-bold text-xs">{t('contractSigning')}</SelectItem>
                                             {stages?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50 text-start">
                                                <span className="flex items-center gap-2"><Workflow className="h-3 w-3 text-primary" /> {s.name}</span>
                                             </SelectItem>)}
@@ -403,7 +402,7 @@ export default function ContractViewPage() {
                                         "font-black text-[10px] border-0 px-4 h-6 rounded-lg shadow-sm",
                                         m.technicalStageId === 'SIGNING' ? "bg-emerald-50 text-emerald-600" : "bg-primary/5 text-primary"
                                       )}>
-                                         {m.technicalStageId === 'SIGNING' ? 'Signing' : (linkedStageName || 'Field Stage')}
+                                         {m.technicalStageId === 'SIGNING' ? tSafe('inline.signing', 'توقيع', 'Signing') : (linkedStageName || tSafe('inline.field.stage', 'مرحلة ميدانية', 'Field Stage'))}
                                       </Badge>
                                    )}
                                 </td>
@@ -426,17 +425,17 @@ export default function ContractViewPage() {
                      <tfoot className="bg-slate-50 border-t-4 border-primary">
                         <tr>
                            <td colSpan={editData.pricingMode === 'percentage' ? (isEditing ? 5 : 4) : (isEditing ? 4 : 3)} className="p-8 text-start">
-                              <h3 className="text-base font-black font-headline uppercase tracking-widest text-slate-900">{isRtl ? 'إجمالي قيمة العقد النهائية' : 'Total Contract Value'}</h3>
+                              <h3 className="text-base font-black font-headline uppercase tracking-widest text-slate-900">{tSafe('inline.total.contract.value', 'إجمالي قيمة العقد', 'Total Contract Value')}</h3>
                               {editData.pricingMode === 'percentage' && (
                                  <Badge className={cn("mt-2 border-0 text-[10px] font-black h-6 px-4 shadow-sm", stats.isValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>
-                                    {stats.isValid ? `BALANCED: 100%` : `MISMATCH: ${stats.totalPercentage}%`}
+                                    {stats.isValid ? `${tSafe('inline.balanced', 'متوازن', 'BALANCED')}: 100%` : `${tSafe('inline.mismatch', 'غير متوازن', 'MISMATCH')}: ${stats.totalPercentage}%`}
                                  </Badge>
                               )}
                            </td>
                            <td colSpan={2} className="p-8 text-end pe-10">
                               <div className="space-y-1">
                                  <h2 className="text-4xl font-black font-headline text-primary">{(currentDisplayAmount || 0).toLocaleString()}</h2>
-                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Kuwaiti Dinars</p>
+                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">{tSafe('inline.kuwaiti.dinars', 'دنانير كويتية', 'Kuwaiti Dinars')}</p>
                               </div>
                            </td>
                            {isEditing && <td></td>}
@@ -448,7 +447,7 @@ export default function ContractViewPage() {
 
             <div className="space-y-4 text-start pt-6">
                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 border-b-2 border-primary/20 pb-2">
-                  <Gavel className="h-5 w-5 text-primary" /> {isRtl ? 'البنود والالتزامات القانونية' : 'Legal Clauses & Obligations'}
+                  <Gavel className="h-5 w-5 text-primary" /> {tSafe('inline.legal.clauses.obligations', 'البنود والالتزامات القانونية', 'Legal Clauses & Obligations')}
                </h4>
                {isEditing ? (
                   <Textarea value={editData.legalText} onChange={e => setEditForm({...editData, legalText: e.target.value})} className="min-h-[300px] rounded-[2rem] border-2 p-8 text-sm font-bold leading-relaxed bg-slate-50/50 shadow-inner" />

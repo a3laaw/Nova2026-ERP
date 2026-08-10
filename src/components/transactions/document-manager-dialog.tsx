@@ -57,7 +57,7 @@ interface Props {
 }
 
 export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction, clientId, clientName }: Props) {
-  const { lang, dir, t } = useLanguage();
+  const { lang, dir, t, tSafe } = useLanguage();
   const { globalUser, user } = useAuthContext();
   const { permissions, isAdmin } = usePermissions();
   const db = useFirestore();
@@ -119,7 +119,8 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
     setLoading(true);
     try {
       const service = new DocumentService(db, companyId, permissions);
-      const name = `${type === 'quotation' ? (isRtl ? 'عرض سعر' : 'Quotation') : (isRtl ? 'عقد' : 'Contract')} - ${transaction.subServiceName}`;
+      const docPrefix = type === 'quotation' ? tSafe('inline.quotation', 'عرض سعر', 'Quotation') : tSafe('inline.contract', 'عقد', 'Contract');
+      const name = `${docPrefix} - ${transaction.subServiceName}`;
       const payload = { transactionId: transaction.id, clientId, clientName, name };
       
       let docId = "";
@@ -129,7 +130,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
         docId = await service.instantiateContractFromTemplate(selectedTemplateId, payload, user.uid, globalUser?.username || 'User');
       }
 
-      toast({ title: isRtl ? "تم تجهيز المسودة" : "Draft Ready" });
+      toast({ title: tSafe('inline.draft.ready', 'تم تجهيز المسودة', 'Draft Ready') });
       
       onClose();
       forceThaw();
@@ -156,7 +157,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
       } else {
         await service.deleteContract(deletingId);
       }
-      toast({ title: isRtl ? "تم حذف المستند بنجاح" : "Document deleted" });
+      toast({ title: tSafe('inline.document.deleted', 'تم حذف المستند بنجاح', 'Document deleted') });
       setDeletingId(null);
       forceThaw();
     } catch (e) {
@@ -176,7 +177,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
         isPaid: true,
         updatedAt: serverTimestamp() 
       });
-      toast({ title: isRtl ? "تم توثيق السداد" : "Payment Confirmed" });
+      toast({ title: tSafe('inline.payment.confirmed', 'تم توثيق السداد', 'Payment Confirmed') });
     } catch (e) {
       toast({ variant: "destructive", title: t('common.error') });
     } finally {
@@ -205,7 +206,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
                 </div>
                 <div>
                    <DialogTitle className="text-2xl font-black font-headline text-slate-900">
-                      {type === 'quotation' ? (isRtl ? 'عروض الأسعار' : 'Quotations') : (isRtl ? 'العقود الرسمية' : 'Formal Contracts')}
+                      {type === 'quotation' ? tSafe('inline.quotations', 'عروض الأسعار', 'Quotations') : tSafe('inline.formal.contracts', 'العقود الرسمية', 'Formal Contracts')}
                    </DialogTitle>
                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{transaction.transactionNumber}</p>
                 </div>
@@ -223,7 +224,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
                 <div className="p-8 rounded-[2rem] bg-slate-50 border-2 border-slate-100 space-y-6 shadow-inner">
                    <div className="space-y-2">
                       <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">
-                         {isRtl ? `اختر القالب المرجعي (${transaction.activityTypeName})` : `Choose Template (${transaction.activityTypeName})`}
+                         {tSafe('inline.choose.template', 'اختر القالب المرجعي', 'Choose Template')} ({transaction.activityTypeName})
                       </Label>
                       <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
                          <SelectTrigger className="h-12 rounded-xl border-2 bg-white font-bold text-sm">
@@ -235,7 +236,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
                                  <div className="flex flex-col text-start">
                                     <span>{temp.name}</span>
                                     {temp.subServiceId === transaction.subServiceId && (
-                                       <Badge className="bg-emerald-50 text-emerald-600 border-0 text-[7px] font-black h-4 w-fit mt-1">{t('common.active')}</Badge>
+                                       <Badge className="bg-emerald-50 text-emerald-600 border-0 text-[7px] font-black h-4 w-fit mt-1">{tSafe('inline.direct.matching.key', 'مطابقة مباشرة', 'DIRECT MATCH')}</Badge>
                                     )}
                                  </div>
                               </SelectItem>
@@ -255,7 +256,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
                      className="w-full h-14 rounded-2xl bg-primary text-white font-black text-sm gap-3 shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all border-b-4 border-orange-700"
                    >
                       {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
-                      {isRtl ? 'تجهيز المسودة للمراجعة' : 'Generate & Design'}
+                      {tSafe('inline.generate.design', 'تجهيز المسودة للمراجعة', 'Generate & Design')}
                    </Button>
                 </div>
              </div>
@@ -296,7 +297,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
                                  variant="outline" 
                                  className="h-8 px-3 rounded-lg bg-emerald-50 text-emerald-600 border-emerald-100 font-black text-[9px] gap-2 hover:bg-emerald-600 hover:text-white"
                                >
-                                  <Wallet className="h-3.5 w-3.5" /> {t('common.confirm')}
+                                  <Wallet className="h-3.5 w-3.5" /> {tSafe('inline.mark.paid', 'توثيق سداد', 'Mark Paid')}
                                </Button>
                              )}
                              <Button 
@@ -339,9 +340,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
              </div>
              <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">{t('common.confirmDelete')}</AlertDialogTitle>
              <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
-                {isRtl 
-                  ? 'سيتم حذف هذا المستند نهائياً من الأرشيف السحابي ولا يمكن التراجع عن هذا الإجراء.' 
-                  : 'Are you sure? This document will be permanently removed from the cloud archive.'}
+                {tSafe('inline.are.you.sure..this.document.will.be.permanently.removed.from.the.archive', 'هل أنت متأكد؟ سيتم حذف المستند نهائياً من الأرشيف ولا يمكن التراجع.', 'Are you sure? This document will be permanently removed from the archive.')}
              </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-12 gap-4 flex flex-row">

@@ -104,11 +104,11 @@ export default function SuppliersPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-6">
                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Phone</Label>
+                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.mobile')}</Label>
                       <Input value={newSupplier.phone} onChange={e => setNewSupplier({...newSupplier, phone: e.target.value})} className="h-12 rounded-xl border-2 font-mono" />
                    </div>
                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Email</Label>
+                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.email')}</Label>
                       <Input value={newSupplier.email} onChange={e => setNewSupplier({...newSupplier, email: e.target.value})} className="h-12 rounded-xl border-2 font-mono" />
                    </div>
                 </div>
@@ -152,8 +152,8 @@ export default function SuppliersPage() {
               <TableRow>
                 <TableHead className="py-6 ps-10 text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('suppliers')}</TableHead>
                 <TableHead className="text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('category')}</TableHead>
-                <TableHead className="text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">Contact</TableHead>
-                <TableHead className="text-center text-[10px] font-black uppercase text-slate-500 tracking-widest">Rating</TableHead>
+                <TableHead className="text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('clients.table.contact')}</TableHead>
+                <TableHead className="text-center text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('suppliers.rating')}</TableHead>
                 <TableHead className="pe-10"></TableHead>
               </TableRow>
             </TableHeader>

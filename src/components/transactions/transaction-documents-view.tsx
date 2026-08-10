@@ -44,12 +44,11 @@ interface Props {
 }
 
 export function TransactionDocumentsView({ transaction, clientId, clientName, isAdmin, permissions }: Props) {
-  const { lang, dir, t } = useLanguage();
+  const { lang, dir, t, tSafe } = useLanguage();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
   
-  // حارس البصمة: تأمين الوصول للمعرف
   const companyId = transaction?.companyId;
 
   const [loading, setLoading] = useState(false);
@@ -57,19 +56,16 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
   const [docTypeToCreate, setDocTypeToCreate] = useState<'quotation' | 'contract' | null>(null);
   const [deletingContext, setDeletingContext] = useState<{ id: string, type: 'quotation' | 'contract' } | null>(null);
 
-  // جلب عروض الأسعار المرتبطة بالمعاملة
   const quotesQuery = useMemo(() => 
     companyId && db && transaction?.id ? query(collection(db, paths.quotations(companyId)), where('transactionId', '==', transaction.id)) : null, 
   [db, companyId, transaction?.id]);
   const { data: quotes, loading: quotesLoading } = useCollection<any>(quotesQuery);
 
-  // جلب العقود المرتبطة بالمعاملة
   const contractsQuery = useMemo(() => 
     companyId && db && transaction?.id ? query(collection(db, paths.contracts(companyId)), where('transactionId', '==', transaction.id)) : null, 
   [db, companyId, transaction?.id]);
   const { data: contracts, loading: contractsLoading } = useCollection<any>(contractsQuery);
 
-  // جلب القوالب المفلترة سيادياً حسب نوع النشاط لضمان عدم التداخل
   const templatesQuery = useMemo(() => {
     if (!companyId || !db || !docTypeToCreate || !transaction?.activityTypeId) return null;
     const path = docTypeToCreate === 'quotation' ? paths.quotationTemplates(companyId) : paths.contractTemplates(companyId);
@@ -83,7 +79,6 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
   
   const { data: rawTemplates } = useCollection<any>(templatesQuery);
 
-  // فرز القوالب: إعطاء الأولوية للقوالب المرتبطة بنفس المسار الفني المباشر
   const templates = useMemo(() => {
     if (!rawTemplates) return [];
     return [...rawTemplates].sort((a, b) => {
@@ -93,7 +88,6 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
     });
   }, [rawTemplates, transaction?.subServiceId]);
 
-  // حماية نهائية من الرندر قبل توفر البيانات
   if (!transaction || !companyId) {
     return (
       <div className="py-20 text-center">
@@ -107,7 +101,8 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
     setLoading(true);
     try {
       const service = new DocumentService(db, companyId, permissions);
-      const name = `${docTypeToCreate === 'quotation' ? (isRtl ? 'عرض سعر' : 'Quotation') : (isRtl ? 'عقد' : 'Contract')} - ${transaction.subServiceName}`;
+      const docPrefix = docTypeToCreate === 'quotation' ? tSafe('inline.quotation', 'عرض سعر', 'Quotation') : tSafe('inline.contract', 'عقد', 'Contract');
+      const name = `${docPrefix} - ${transaction.subServiceName}`;
       const payload = { transactionId: transaction.id, clientId, clientName, name };
       
       let docId = "";
@@ -117,7 +112,7 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
         docId = await service.instantiateContractFromTemplate(selectedTemplateId, payload, 'SYSTEM', 'Admin');
       }
 
-      toast({ title: isRtl ? "تم تجهيز المسودة" : "Draft Ready" });
+      toast({ title: tSafe('inline.draft.ready', 'تم تجهيز المسودة', 'Draft Ready') });
       setDocTypeToCreate(null);
       setSelectedTemplateId("");
       
@@ -136,7 +131,7 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
       const service = new DocumentService(db, companyId, permissions);
       if (deletingContext.type === 'quotation') await service.deleteQuotation(deletingContext.id);
       else await service.deleteContract(deletingContext.id);
-      toast({ title: isRtl ? "تم الحذف بنجاح" : "Deleted" });
+      toast({ title: tSafe('inline.deleted', 'تم الحذف بنجاح', 'Deleted') });
       setDeletingContext(null);
     } catch (e) {
       toast({ variant: "destructive", title: t('error') });
@@ -151,7 +146,7 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
     try {
       const docRef = doc(db, paths.contracts(companyId), docId);
       await updateDoc(docRef, { status: 'paid', isPaid: true, updatedAt: serverTimestamp() });
-      toast({ title: isRtl ? "تم توثيق السداد" : "Payment Confirmed" });
+      toast({ title: tSafe('inline.payment.confirmed', 'تم توثيق السداد', 'Payment Confirmed') });
     } catch (e) {
       toast({ variant: "destructive", title: t('error') });
     } finally {
@@ -168,18 +163,18 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
              </div>
              <div>
                 <CardTitle className="text-xl font-black font-headline text-start">{title}</CardTitle>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-start">{data?.length || 0} {isRtl ? 'سجلات' : 'Records'}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-start">{data?.length || 0} {tSafe('inline.records', 'سجلات', 'Records')}</p>
              </div>
           </div>
           <Button onClick={() => setDocTypeToCreate(type)} variant="outline" className="h-10 rounded-xl font-black text-xs gap-2 border-2">
-             <Plus className="h-4 w-4" /> {isRtl ? 'إصدار جديد' : 'New'}
+             <Plus className="h-4 w-4" /> {tSafe('inline.new', 'إصدار جديد', 'New')}
           </Button>
        </CardHeader>
        <CardContent className="p-0">
           <Table>
              <TableBody>
                 {data?.length === 0 ? (
-                  <TableRow><TableCell className="py-20 text-center text-slate-300 italic font-bold text-xs">{isRtl ? 'لا يوجد مستندات حالياً.' : 'No documents yet.'}</TableCell></TableRow>
+                  <TableRow><TableCell className="py-20 text-center text-slate-300 italic font-bold text-xs">{tSafe('inline.no.documents.yet', 'لا يوجد مستندات حالياً.', 'No documents yet.')}</TableCell></TableRow>
                 ) : (
                   data?.map((item: any) => (
                     <TableRow key={item.id} className="hover:bg-slate-50/50 transition-colors border-b-slate-100 group">
@@ -206,7 +201,7 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
                           <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                              {type === 'contract' && !item.isPaid && isAdmin && (
                                <Button onClick={() => handleMarkAsPaid(item.id)} disabled={loading} variant="outline" className="h-9 px-4 rounded-xl bg-emerald-50 text-emerald-600 border-emerald-100 font-black text-[9px] gap-2 hover:bg-emerald-600 hover:text-white transition-all shadow-sm">
-                                  <Wallet className="h-4 w-4" /> {isRtl ? 'توثيق سداد' : 'Mark Paid'}
+                                  <Wallet className="h-4 w-4" /> {tSafe('inline.mark.paid', 'توثيق سداد', 'Mark Paid')}
                                </Button>
                              )}
                              <Button onClick={() => router.push(`/dashboard/clients/${clientId}/${type === 'quotation' ? 'quotations' : 'contracts'}/${item.id}`)} variant="outline" size="icon" className="rounded-xl h-9 w-9 text-primary border-primary/20 hover:bg-primary hover:text-white shadow-sm">
@@ -232,7 +227,7 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
          <DocList 
-           title={isRtl ? 'عروض الأسعار والمناقصات' : 'Quotations'} 
+           title={tSafe('inline.quotations', 'عروض الأسعار والمناقصات', 'Quotations')} 
            data={quotes} 
            type="quotation" 
            icon={FileText} 
@@ -240,7 +235,7 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
            bgClass="bg-blue-50" 
          />
          <DocList 
-           title={isRtl ? 'العقود الرسمية والملاحق' : 'Formal Contracts'} 
+           title={tSafe('inline.formal.contracts', 'العقود الرسمية والملاحق', 'Formal Contracts')} 
            data={contracts} 
            type="contract" 
            icon={Gavel} 
@@ -254,13 +249,13 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
             <div className="bg-[#1e1b4b] p-10 text-white text-start">
                <DialogTitle className="text-2xl font-black font-headline flex items-center gap-4">
                   <Sparkles className="h-8 w-8 text-primary" />
-                  {docTypeToCreate === 'quotation' ? (isRtl ? 'إصدار عرض سعر' : 'Issue Quote') : (isRtl ? 'إصدار عقد جديد' : 'Issue Contract')}
+                  {docTypeToCreate === 'quotation' ? tSafe('inline.issue.quote', 'إصدار عرض سعر', 'Issue Quote') : tSafe('inline.issue.contract', 'إصدار عقد جديد', 'Issue Contract')}
                </DialogTitle>
             </div>
             <div className="p-10 space-y-8 text-start bg-white">
                <div className="space-y-3">
                   <Label className="font-black text-xs uppercase text-slate-400 tracking-widest">
-                     {isRtl ? `اختر القالب المرجعي (${transaction.activityTypeName})` : `Choose Template (${transaction.activityTypeName})`}
+                     {tSafe('inline.choose.template', 'اختر القالب المرجعي', 'Choose Template')} ({transaction.activityTypeName})
                   </Label>
                   <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
                      <SelectTrigger className="h-14 rounded-2xl border-2 font-black text-lg">
@@ -272,7 +267,7 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
                             <div className="flex flex-col text-start">
                                <span>{t.name}</span>
                                {t.subServiceId === transaction.subServiceId && (
-                                  <Badge className="bg-emerald-50 text-emerald-600 border-0 text-[7px] font-black h-4 w-fit mt-1">{t('common.confirm')}</Badge>
+                                  <Badge className="bg-emerald-50 text-emerald-600 border-0 text-[7px] font-black h-4 w-fit mt-1">{tSafe('inline.direct.matching.key', 'مطابقة مباشرة', 'DIRECT MATCH')}</Badge>
                                )}
                             </div>
                           </SelectItem>
@@ -280,7 +275,7 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
                         {templates.length === 0 && (
                            <div className="p-8 text-center opacity-40">
                               <AlertTriangle className="h-8 w-8 mx-auto text-amber-500 mb-2" />
-                              <p className="text-[10px] font-black uppercase">{t('common.noResults')}</p>
+                              <p className="text-[10px] font-black uppercase">{tSafe('inline.no.templates.found', 'لا توجد قوالب لهذا النشاط', 'No Templates found for this Activity')}</p>
                            </div>
                         )}
                      </SelectContent>
@@ -288,7 +283,7 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
                </div>
                <Button onClick={handleCreate} disabled={loading || !selectedTemplateId} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 gap-3">
                   {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
-                  {isRtl ? 'تجهيز المسودة الآن' : 'Create Draft'}
+                  {tSafe('inline.create.draft', 'تجهيز المسودة الآن', 'Create Draft')}
                </Button>
             </div>
          </DialogContent>
@@ -300,15 +295,15 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
                <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
                   <AlertTriangle className="h-10 w-10" />
                </div>
-               <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">{isRtl ? 'تأكيد حذف المستند' : 'Confirm Delete'}</AlertDialogTitle>
+               <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">{tSafe('inline.confirm.delete', 'تأكيد حذف المستند', 'Confirm Delete')}</AlertDialogTitle>
                <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
-                  {isRtl ? 'هل أنت متأكد؟ سيتم حذف المستند نهائياً من الأرشيف ولا يمكن التراجع.' : 'Are you sure? This document will be permanently removed from the archive.'}
+                  {tSafe('inline.are.you.sure..this.document.will.be.permanently.removed.from.the.archive', 'هل أنت متأكد؟ سيتم حذف المستند نهائياً من الأرشيف ولا يمكن التراجع.', 'Are you sure? This document will be permanently removed from the archive.')}
                </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
-               <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2">إلغاء</AlertDialogCancel>
+               <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2">{t('common.cancel')}</AlertDialogCancel>
                <AlertDialogAction onClick={handleDelete} disabled={loading} className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200">
-                  {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (isRtl ? 'نعم، احذف نهائياً' : 'Delete Now')}
+                  {loading ? <Loader2 className="animate-spin h-5 w-5" /> : tSafe('inline.delete.now', 'نعم، احذف نهائياً', 'Delete Now')}
                </AlertDialogAction>
             </AlertDialogFooter>
          </AlertDialogContent>

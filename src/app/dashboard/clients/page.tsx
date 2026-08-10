@@ -107,9 +107,9 @@ export default function ClientsListPage() {
           <Table>
             <TableHeader className="bg-slate-50/50">
               <TableRow className="border-b-0">
-                <TableHead className="py-5 ps-10 text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">Client Profile</TableHead>
-                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest text-start">Engineer</TableHead>
-                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest text-start">Contact</TableHead>
+                <TableHead className="py-5 ps-10 text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('clients.table.profile')}</TableHead>
+                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest text-start">{t('clients.table.staff')}</TableHead>
+                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest text-start">{t('clients.table.contact')}</TableHead>
                 <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest text-start">{t('common.status')}</TableHead>
                 <TableHead className="pe-10"></TableHead>
               </TableRow>

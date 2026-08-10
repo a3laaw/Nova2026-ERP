@@ -45,7 +45,7 @@ export default function TransactionBOQProgressPage() {
   const clientId = params.id as string;
   const transactionId = params.tId as string;
   const { globalUser, user } = useAuthContext();
-  const { t, dir, isRtl } = useLanguage();
+  const { t, tSafe, dir, isRtl } = useLanguage();
   const { permissions, isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
@@ -251,7 +251,7 @@ export default function TransactionBOQProgressPage() {
                <TableHead className="pe-6 text-slate-500 font-bold text-[10px] text-end">{t('common.status')}</TableHead>
              </TableRow>
            </TableHeader>
-           <TableBody>{boqTree.length === 0 ? <TableRow><TableCell colSpan={11} className="py-40 text-center opacity-30"><Calculator className="h-10 w-10 mx-auto text-slate-200" /><p className="text-sm font-black mt-4">Empty</p></TableCell></TableRow> : boqTree.map((node, idx) => renderBOQTreeRows(node, (idx + 1).toString() + ".0"))}</TableBody>
+           <TableBody>{boqTree.length === 0 ? <TableRow><TableCell colSpan={11} className="py-40 text-center opacity-30"><Calculator className="h-10 w-10 mx-auto text-slate-200" /><p className="text-sm font-black mt-4">{tSafe('inline.empty', 'فارغ', 'Empty')}</p></TableCell></TableRow> : boqTree.map((node, idx) => renderBOQTreeRows(node, (idx + 1).toString() + ".0"))}</TableBody>
          </Table>
       </div>
 
