@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -141,7 +140,7 @@ export default function GratuityCalculatorPage() {
                           <SelectContent>
                              <SelectItem value="resignation" className="font-bold">{t('hr.settlement.resignation')}</SelectItem>
                              <SelectItem value="termination" className="font-bold">{t('hr.settlement.termination')}</SelectItem>
-                             <SelectItem value="retirement" className="font-bold">Retirement</SelectItem>
+                             <SelectItem value="retirement" className="font-bold">{t('common.status')}</SelectItem>
                              <SelectItem value="misconduct" className="font-bold text-rose-600">{t('hr.settlement.misconduct')}</SelectItem>
                           </SelectContent>
                        </Select>
@@ -179,7 +178,7 @@ export default function GratuityCalculatorPage() {
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('hr.gratuity.serviceYears')}</p>
                       <h3 className="text-3xl font-black text-slate-800">{result.serviceDuration.years} Y {result.serviceDuration.months} M</h3>
                    </Card>
-                   <Card className="border-0 shadow-lg rounded-[2rem] p-8 bg-white border-b-8 border-blue-500">
+                   <Card className="border-0 shadow-lg rounded-[2rem] bg-white p-8 border-b-8 border-blue-500">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('hr.gratuity.resignationFactor')}</p>
                       <h3 className="text-3xl font-black text-blue-600">{(result.resignationFactor * 100).toFixed(0)}%</h3>
                    </Card>

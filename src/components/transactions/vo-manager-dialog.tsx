@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -183,7 +182,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
               </div>
            </div>
            <div className="text-end relative z-10">
-              <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Impact</p>
+              <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">{t('common.total')}</p>
               <h3 className={cn("text-2xl font-black font-mono", netTotal >= 0 ? "text-emerald-600" : "text-rose-600")}>
                  {netTotal.toLocaleString()} <span className="text-xs opacity-40">KWD</span>
               </h3>
@@ -302,7 +301,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                          <Workflow className="h-3 w-3" /> {t('projects.voManager.linkExisting')}
                                       </Label>
                                       <Select value={item.technicalStageId} onValueChange={v => updateItem(idx, 'technicalStageId', v)}>
-                                         <SelectTrigger className="h-8 rounded-md border-2 font-bold bg-secondary/5 border-secondary/10"><SelectValue placeholder="..." /></SelectTrigger>
+                                         <SelectTrigger className="h-8 rounded-md border-2 font-bold bg-secondary/5 border-secondary/20"><SelectValue placeholder="..." /></SelectTrigger>
                                          <SelectContent className="rounded-lg z-[160]">
                                             {availableStages.map(s => (
                                                <SelectItem key={s.id} value={s.technicalStageId} className="font-bold text-[10px] py-1.5">
@@ -368,4 +367,3 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
     </Dialog>
   );
 }
-

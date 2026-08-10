@@ -44,7 +44,7 @@ export default function AccountingPage() {
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
             <Calculator className="h-6 w-6 text-primary" /> {t('accounting')}
           </h1>
-          <p className="text-muted-foreground text-xs font-medium">Smart AI Bank Reconciliation</p>
+          <p className="text-muted-foreground text-xs font-medium">{t('accounting.smartRecon')}</p>
         </div>
         <Button onClick={handleSmartReconciliation} disabled={reconciling} size="sm" className="h-9 px-6 font-bold gap-2">
            {reconciling ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}

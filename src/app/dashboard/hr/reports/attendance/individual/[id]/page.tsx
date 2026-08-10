@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -72,7 +71,7 @@ export default function IndividualAttendanceReport() {
                </Card>
                <Card className="border-0 shadow-lg rounded-[2rem] bg-white p-8 border-b-4 border-rose-500">
                   <p className="text-[10px] font-black text-slate-400 uppercase mb-2">{t('hr.reports.totalLateMins')}</p>
-                  <h3 className="text-4xl font-black text-rose-600">{stats.totalLateMins} <span className="text-xs">min</span></h3>
+                  <h3 className="text-4xl font-black text-rose-600">{stats.totalLateMins} <span className="text-xs">{t('inline.min')}</span></h3>
                </Card>
                <Card className="border-0 shadow-lg rounded-[2rem] bg-white p-8 border-b-4 border-emerald-500">
                   <p className="text-[10px] font-black text-slate-400 uppercase mb-2">{t('hr.reports.attendance.totalPresence')}</p>
@@ -93,8 +92,8 @@ export default function IndividualAttendanceReport() {
                      <thead className="bg-slate-50 border-b">
                         <tr className="font-black text-slate-500 uppercase text-[10px] tracking-widest">
                            <th className="p-6 text-start">{t('common.date')}</th>
-                           <th className="p-6 text-center">In</th>
-                           <th className="p-6 text-center">Out</th>
+                           <th className="p-6 text-center">{t('common.at')}</th>
+                           <th className="p-6 text-center">{t('common.back')}</th>
                            <th className="p-6 text-end pe-10">{t('common.status')}</th>
                         </tr>
                      </thead>

@@ -136,8 +136,8 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
                  <LocateFixed className="h-7 w-7" />
               </div>
               <div>
-                 <DialogTitle className="text-2xl font-black font-headline">Location Radar</DialogTitle>
-                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">Select site location on map</p>
+                 <DialogTitle className="text-2xl font-black font-headline">{t('clients.form.locationRadar')}</DialogTitle>
+                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">{t('clients.form.openMap')}</p>
               </div>
            </div>
            <Button variant="ghost" onClick={onClose} className="rounded-full h-10 w-10 text-slate-400 relative z-10"><X className="h-6 w-6" /></Button>

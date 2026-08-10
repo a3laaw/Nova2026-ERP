@@ -1,8 +1,8 @@
-
 "use client"
 
 import { Bell } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useLanguage } from "@/context/language-context"
 import {
   Popover,
   PopoverContent,
@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/popover"
 
 export function NotificationBell() {
+  const { t } = useLanguage();
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -20,7 +22,7 @@ export function NotificationBell() {
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="end">
         <div className="bg-muted p-4 border-b">
-          <h4 className="text-sm font-bold font-headline">Intelligence Notifications</h4>
+          <h4 className="text-sm font-bold font-headline">{t('ai.hub')}</h4>
           <p className="text-xs text-muted-foreground">You have 3 unread updates from the operational pipeline.</p>
         </div>
         <div className="max-h-80 overflow-y-auto">
@@ -38,7 +40,7 @@ export function NotificationBell() {
             </div>
           ))}
         </div>
-        <Button variant="ghost" className="w-full text-xs py-2 h-auto text-primary rounded-none">View All Notifications</Button>
+        <Button variant="ghost" className="w-full text-xs py-2 h-auto text-primary rounded-none">{t('common.viewAll')}</Button>
       </PopoverContent>
     </Popover>
   )

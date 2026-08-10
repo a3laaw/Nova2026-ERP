@@ -69,7 +69,7 @@ export function CommentSection({
   onlyComments = false
 }: Props) {
   const { user, globalUser } = useAuthContext();
-  const { lang, dir, t: translate } = useLanguage();
+  const { lang, dir, t: translate, t } = useLanguage();
   const { permissions, isAdmin } = usePermissions();
   const db = useFirestore();
   const isRtl = lang === 'ar';
@@ -152,7 +152,7 @@ export function CommentSection({
                 <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-inner"><MessageSquare className="h-5 w-5" /></div>
                 <div>
                    <h3 className="text-sm font-black text-slate-800 leading-none">{title || (isRtl ? 'غرفة العمليات' : 'War Room')}</h3>
-                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Sovereign Control Center</p>
+                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">{t('common.status')}</p>
                 </div>
              </div>
              {onClearFilter && filterStageId && (
@@ -208,8 +208,8 @@ export function CommentSection({
                       <div className="space-y-2 text-start">
                           <h4 className="font-black text-[11px] text-slate-900">{stage.name}</h4>
                           <div className="grid grid-cols-2 gap-3 bg-white p-2.5 rounded-xl border border-slate-100 shadow-sm">
-                            <div className="space-y-0.5"><p className="text-[7px] font-black text-slate-400 uppercase">Start</p><p className="text-[8px] font-bold text-slate-600 truncate">{start ? start.toLocaleDateString(isRtl ? 'ar-KW' : 'en-US') : '---'}</p></div>
-                            <div className="space-y-0.5"><p className="text-[7px] font-black text-slate-400 uppercase">End</p><p className="text-[8px] font-bold text-slate-600 truncate">{end ? end.toLocaleDateString(isRtl ? 'ar-KW' : 'en-US') : '---'}</p></div>
+                            <div className="space-y-0.5"><p className="text-[7px] font-black text-slate-400 uppercase">{t('common.at')}</p><p className="text-[8px] font-bold text-slate-600 truncate">{start ? start.toLocaleDateString(isRtl ? 'ar-KW' : 'en-US') : '---'}</p></div>
+                            <div className="space-y-0.5"><p className="text-[7px] font-black text-slate-400 uppercase">{t('common.back')}</p><p className="text-[8px] font-bold text-slate-600 truncate">{end ? end.toLocaleDateString(isRtl ? 'ar-KW' : 'en-US') : '---'}</p></div>
                           </div>
                       </div>
                     </div>

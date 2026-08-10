@@ -140,7 +140,7 @@ export default function DeveloperDashboard() {
       <header className="flex justify-between items-end border-b pb-6">
         <div className="text-start">
           <h2 className="text-2xl font-black font-headline text-slate-900">{isRtl ? 'لوحة تحكم المطور السيادية' : 'Sovereign Dev Console'}</h2>
-          <Badge className="bg-primary text-white border-0 text-[8px] uppercase px-3 rounded-full mt-2">Core Kernel Maintenance</Badge>
+          <Badge className="bg-primary text-white border-0 text-[8px] uppercase px-3 rounded-full mt-2">{t('common.alert')}</Badge>
         </div>
         <div className="flex gap-3">
            <Button onClick={handleIdentityMigration} disabled={migrating} variant="outline" className="h-10 rounded-xl border-2 font-black gap-2">
@@ -189,7 +189,7 @@ export default function DeveloperDashboard() {
                          </h4>
                          <div className="p-6 rounded-2xl bg-slate-50 border-2 border-slate-100 space-y-4 text-start">
                             <div className="space-y-1">
-                               <p className="text-[10px] font-black text-slate-400 uppercase">Transaction ID</p>
+                               <p className="text-[10px] font-black text-slate-400 uppercase">{t('projectId')}</p>
                                <p className="text-xs font-mono font-bold bg-white p-2 rounded border truncate">{diagTransaction.id}</p>
                             </div>
                             <div className="space-y-1">
@@ -289,7 +289,7 @@ export default function DeveloperDashboard() {
                       <TableCell>
                          <Badge className={cn(
                            "font-black text-[9px] uppercase px-3 py-1 rounded-md border-0 shadow-sm",
-                           comp.status === 'active' ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"
+                           comp.status === 'active' ? "bg-emerald-50 text-white" : "bg-rose-50 text-white"
                          )}>
                             {comp.status}
                          </Badge>
@@ -309,4 +309,3 @@ export default function DeveloperDashboard() {
     </div>
   );
 }
-

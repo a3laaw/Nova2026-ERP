@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -218,7 +217,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
              
              <div className="space-y-6">
                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest border-b-2 border-slate-50 pb-3 flex items-center gap-2">
-                   <Plus className="h-4 w-4 text-primary" /> {isRtl ? 'إصدار مسودة جديدة' : 'New Draft Issuance'}
+                   <Plus className="h-4 w-4 text-primary" /> {t('common.add')}
                 </h3>
                 
                 <div className="p-8 rounded-[2rem] bg-slate-50 border-2 border-slate-100 space-y-6 shadow-inner">
@@ -236,14 +235,14 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
                                  <div className="flex flex-col text-start">
                                     <span>{temp.name}</span>
                                     {temp.subServiceId === transaction.subServiceId && (
-                                       <Badge className="bg-emerald-50 text-emerald-600 border-0 text-[7px] font-black h-4 w-fit mt-1">DIRECT MATCH</Badge>
+                                       <Badge className="bg-emerald-50 text-emerald-600 border-0 text-[7px] font-black h-4 w-fit mt-1">{t('common.active')}</Badge>
                                     )}
                                  </div>
                               </SelectItem>
                             ))}
                             {templates.length === 0 && (
                                <div className="p-6 text-center text-slate-400 text-xs italic">
-                                  No templates found for this activity.
+                                  {t('common.noResults')}
                                </div>
                             )}
                          </SelectContent>
@@ -263,7 +262,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
 
              <div className="space-y-6">
                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest border-b-2 border-slate-50 pb-3 flex items-center gap-2">
-                   <History className="h-4 w-4 text-primary" /> {isRtl ? 'الأرشيف المستندي' : 'Document History'}
+                   <History className="h-4 w-4 text-primary" /> {t('common.records')}
                 </h3>
 
                 <div className="space-y-3">
@@ -271,7 +270,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
                      <div className="py-20 text-center"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></div>
                    ) : documents?.length === 0 ? (
                      <div className="py-20 text-center border-4 border-dashed rounded-3xl bg-slate-50/50 text-slate-300 font-bold italic text-sm">
-                        {isRtl ? 'لا يوجد سجلات سابقة.' : 'No historical documents found.'}
+                        {t('common.noResults')}
                      </div>
                    ) : (
                      documents?.map((doc: any) => (
@@ -297,7 +296,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
                                  variant="outline" 
                                  className="h-8 px-3 rounded-lg bg-emerald-50 text-emerald-600 border-emerald-100 font-black text-[9px] gap-2 hover:bg-emerald-600 hover:text-white"
                                >
-                                  <Wallet className="h-3.5 w-3.5" /> {isRtl ? 'دفع' : 'Paid'}
+                                  <Wallet className="h-3.5 w-3.5" /> {t('common.confirm')}
                                </Button>
                              )}
                              <Button 
@@ -327,7 +326,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
           </div>
 
           <DialogFooter className="p-8 bg-slate-50 border-t shrink-0">
-             <Button variant="outline" onClick={onClose} className="rounded-xl font-black h-12 px-10 bg-white border-2">إغلاق النافذة</Button>
+             <Button variant="outline" onClick={onClose} className="rounded-xl font-black h-12 px-10 bg-white border-2">{t('common.close')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -346,13 +345,13 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
              </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
-            <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white" onClick={() => { setDeletingId(null); forceThaw(); }}>إلغاء</AlertDialogCancel>
+            <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white" onClick={() => { setDeletingId(null); forceThaw(); }}>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleDelete} 
               disabled={loading}
               className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 text-white shadow-xl shadow-rose-200"
             >
-               {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (isRtl ? 'نعم، احذف المستند' : 'Confirm Deletion')}
+               {loading ? <Loader2 className="animate-spin h-5 w-5" /> : t('common.confirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

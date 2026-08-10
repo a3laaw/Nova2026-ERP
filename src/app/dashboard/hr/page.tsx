@@ -77,7 +77,7 @@ export default function HRDashboard() {
            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <Card className="rounded-[1.5rem] shadow-sm border bg-white p-6 text-start flex items-center justify-between group hover:shadow-lg transition-all">
                  <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Employees</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('hr.staffCount')}</p>
                     <h3 className="text-3xl font-black text-slate-900">{employees?.length || 0}</h3>
                  </div>
                  <div className="h-12 w-12 rounded-2xl bg-primary/5 text-primary flex items-center justify-center group-hover:scale-110 transition-transform">

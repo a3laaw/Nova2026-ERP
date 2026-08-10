@@ -105,12 +105,12 @@ export default function AIPage() {
               <div className="bg-primary/5 rounded-3xl p-8 border border-primary/20 space-y-6">
                 <div className="flex items-center justify-between border-b border-primary/10 pb-4">
                   <h3 className="font-headline font-bold text-xl">{isRtl ? 'القيد المحاسبي المقترح' : 'Proposed Journal Entry'}</h3>
-                  <Button variant="outline" size="sm" className="bg-white rounded-xl">Refine with AI</Button>
+                  <Button variant="outline" size="sm" className="bg-white rounded-xl">{t('common.retry')}</Button>
                 </div>
                 
                 {result.advice && (
                   <div className="space-y-2">
-                    <p className="text-[10px] font-black text-primary uppercase tracking-widest">Advisory Note</p>
+                    <p className="text-[10px] font-black text-primary uppercase tracking-widest">{t('common.notes')}</p>
                     <p className="text-lg font-bold leading-relaxed">{result.advice}</p>
                   </div>
                 )}
@@ -141,7 +141,7 @@ export default function AIPage() {
                         </tbody>
                         <tfoot className="bg-primary text-white font-black">
                           <tr>
-                            <td className="px-6 py-4 text-start">Total Balance</td>
+                            <td className="px-6 py-4 text-start">{t('common.total')}</td>
                             <td className="px-6 py-4 text-end font-mono">
                               {result.journalEntry.lines.reduce((acc: number, cur: any) => acc + (cur.debit || 0), 0).toLocaleString()}
                             </td>

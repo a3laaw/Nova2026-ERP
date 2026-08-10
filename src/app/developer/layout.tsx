@@ -51,7 +51,7 @@ export default function DeveloperLayout({
           <div className={lang === 'ar' ? "text-right" : "text-left"}>
             <h1 className="font-headline font-black text-xl leading-none text-slate-900">{t('devConsole')}</h1>
             <div className="flex items-center gap-2 mt-1">
-               <span className="text-[8px] text-primary font-black uppercase tracking-widest">Sovereign Control</span>
+               <span className="text-[8px] text-primary font-black uppercase tracking-widest">{t('devConsole')}</span>
                <div className="h-1 w-4 bg-primary/20 rounded-full" />
             </div>
           </div>

@@ -304,7 +304,7 @@ export default function AttendanceImportPage() {
                             <Badge variant="destructive" className="bg-rose-50 text-rose-600 font-black border-0">
                                {rec.minutesLate} {isRtl ? 'دقيقة' : 'min'}
                             </Badge>
-                          ) : <span className="text-emerald-500 font-black text-xs uppercase tracking-tighter">On Time</span>}
+                          ) : <span className="text-emerald-500 font-black text-xs uppercase tracking-tighter">{t('common.present')}</span>}
                        </TableCell>
                        <TableCell className="pe-8">
                           <Badge className={cn(

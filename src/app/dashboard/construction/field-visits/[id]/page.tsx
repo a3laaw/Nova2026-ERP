@@ -133,11 +133,11 @@ export default function FieldVisitDetailsPage() {
          <div className="space-y-8 text-start">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b pb-6">
                <div className="space-y-1">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase">Client Name</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">{t('projects.clientName')}</p>
                   <p className="text-lg font-bold text-slate-900">{visit.clientName}</p>
                </div>
                <div className="md:text-end space-y-1">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase">Execution Date</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">{t('common.date')}</p>
                   <p className="text-lg font-bold text-slate-900">{visit.visitDate}</p>
                </div>
             </div>
@@ -189,7 +189,7 @@ export default function FieldVisitDetailsPage() {
                                     </Badge>
                                  )}
                               </td>
-                           </TableRow>
+                           </tr>
                         ))}
                      </TableBody>
                   </Table>

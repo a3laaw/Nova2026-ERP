@@ -197,7 +197,7 @@ export function DashboardSidebar() {
         {!isCollapsed && (
           <div className="p-4 rounded-3xl bg-white border border-orange-100 shadow-xl ring-1 ring-black/[0.02] flex justify-between items-center">
              <Badge className="bg-[#e87c24] text-white text-[8px] font-black uppercase h-5 px-2 rounded-full">V2.8</Badge>
-             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">CLOUD</span>
+             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{t('common.status')}</span>
           </div>
         )}
       </SidebarFooter>

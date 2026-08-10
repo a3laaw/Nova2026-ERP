@@ -272,7 +272,7 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
                             <div className="flex flex-col text-start">
                                <span>{t.name}</span>
                                {t.subServiceId === transaction.subServiceId && (
-                                  <Badge className="bg-emerald-50 text-emerald-600 border-0 text-[7px] font-black h-4 w-fit mt-1">DIRECT MATCH</Badge>
+                                  <Badge className="bg-emerald-50 text-emerald-600 border-0 text-[7px] font-black h-4 w-fit mt-1">{t('common.confirm')}</Badge>
                                )}
                             </div>
                           </SelectItem>
@@ -280,7 +280,7 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
                         {templates.length === 0 && (
                            <div className="p-8 text-center opacity-40">
                               <AlertTriangle className="h-8 w-8 mx-auto text-amber-500 mb-2" />
-                              <p className="text-[10px] font-black uppercase">No Templates found for this Activity</p>
+                              <p className="text-[10px] font-black uppercase">{t('common.noResults')}</p>
                            </div>
                         )}
                      </SelectContent>
