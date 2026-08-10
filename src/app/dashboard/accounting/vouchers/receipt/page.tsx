@@ -132,7 +132,7 @@ export default function ReceiptVouchersPage() {
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400">{t('paymentMethods')}</Label>
                        <Select value={form.paymentMethod} onValueChange={v => setForm({...form, paymentMethod: v})}>
-                          <SelectTrigger className="h-14 rounded-xl border-2 font-bold"><SelectValue /></SelectValue>
+                          <SelectTrigger className="h-14 rounded-xl border-2 font-bold"><SelectValue /></SelectTrigger>
                           <SelectContent className="rounded-xl">
                              <SelectItem value="cash" className="font-bold">{isRtl ? 'نقدي' : 'Cash'}</SelectItem>
                              <SelectItem value="bank" className="font-bold">{isRtl ? 'شيك' : 'Check'}</SelectItem>
@@ -202,7 +202,7 @@ export default function ReceiptVouchersPage() {
                  <p className="text-[10px] font-bold text-slate-400 leading-relaxed">
                     {isRtl 
                       ? 'سيقوم النظام تلقائياً بإنشاء قيد محاسبي مزدوج يربط حساب النقدية بحساب الإيراد أو الذمة المختار مع تخصيص العملية لمركز تكلفة المشروع.' 
-                      : 'System will auto-generate a journal entry linking cash to revenue/receivable, assigned to the project cost center.'}
+                      : 'System will auto-generate a journal entry linking xash to revenue/receivable, assigned to the project cost center.'}
                  </p>
               </Card>
            </aside>
