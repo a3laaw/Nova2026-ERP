@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { 
   FileText, Plus, Loader2, Save, 
   Trash2, ArrowRight, Calculator,
-  AlertTriangle, Briefcase
+  LayoutGrid, DatabaseZap, Briefcase
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -15,9 +15,9 @@ import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { JournalEntry, Account, JournalEntryLine } from '@/types/accounting';
+import { CostCenter, ProfitCenter } from '@/types/cost-profit-centers';
 import { AccountingService } from '@/services/accounting-service';
 import { toast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -35,8 +35,8 @@ export default function JournalEntriesPage() {
     date: new Date().toISOString().split('T')[0],
     description: '',
     lines: [
-      { accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '' },
-      { accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '' }
+      { accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '', costCenterId: '', profitCenterId: '' },
+      { accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '', costCenterId: '', profitCenterId: '' }
     ] as JournalEntryLine[]
   });
 
@@ -52,9 +52,19 @@ export default function JournalEntriesPage() {
     companyId && db ? query(collection(db, paths.transactions(companyId))) : null, 
   [db, companyId]);
 
+  const costCentersQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.costCenters(companyId))) : null, 
+  [db, companyId]);
+
+  const profitCentersQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.profitCenters(companyId))) : null, 
+  [db, companyId]);
+
   const { data: journals, loading: journalsLoading } = useCollection<JournalEntry>(journalsQuery);
   const { data: accounts } = useCollection<Account>(accountsQuery);
   const { data: projects } = useCollection<any>(projectsQuery);
+  const { data: costCenters } = useCollection<CostCenter>(costCentersQuery);
+  const { data: profitCenters } = useCollection<ProfitCenter>(profitCentersQuery);
 
   const availableAccounts = useMemo(() => accounts?.filter(a => !a.isGroup), [accounts]);
 
@@ -68,7 +78,7 @@ export default function JournalEntriesPage() {
   const isBalanced = Math.abs(totals.debit - totals.credit) < 0.001 && totals.debit > 0;
 
   const handleAddLine = () => {
-    setForm({ ...form, lines: [...form.lines, { accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '' }] });
+    setForm({ ...form, lines: [...form.lines, { accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '', costCenterId: '', profitCenterId: '' }] });
   };
 
   const handleRemoveLine = (idx: number) => {
@@ -94,7 +104,7 @@ export default function JournalEntriesPage() {
       await service.createJournalEntry(form, user.uid);
       toast({ title: t('common.saved') });
       setIsAdding(false);
-      setForm({ date: new Date().toISOString().split('T')[0], description: '', lines: [{ accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '' }, { accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '' }] });
+      setForm({ date: new Date().toISOString().split('T')[0], description: '', lines: [{ accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '', costCenterId: '', profitCenterId: '' }, { accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '', costCenterId: '', profitCenterId: '' }] });
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
@@ -138,58 +148,79 @@ export default function JournalEntriesPage() {
                  <Table>
                     <TableHeader className="bg-slate-50/50">
                        <TableRow>
-                          <TableHead className="w-[200px]">{isRtl ? 'الحساب' : 'Account'}</TableHead>
-                          <TableHead className="w-[180px]">{isRtl ? 'المشروع (مركز تكلفة)' : 'Project (Cost Center)'}</TableHead>
-                          <TableHead className="text-center">{isRtl ? 'مدين' : 'Debit'}</TableHead>
-                          <TableHead className="text-center">{isRtl ? 'دائن' : 'Credit'}</TableHead>
-                          <TableHead>{t('accounting.journals.lineMemo')}</TableHead>
-                          <TableHead className="w-[50px]"></TableHead>
+                          <TableHead className="w-[180px]">{isRtl ? 'الحساب' : 'Account'}</TableHead>
+                          <TableHead className="w-[140px]">{isRtl ? 'المشروع' : 'Project'}</TableHead>
+                          <TableHead className="w-[140px]">{isRtl ? 'مركز التكلفة' : 'Cost Center'}</TableHead>
+                          <TableHead className="w-[140px]">{isRtl ? 'مركز الربحية' : 'Profit Center'}</TableHead>
+                          <TableHead className="text-center w-[100px]">{isRtl ? 'مدين' : 'Debit'}</TableHead>
+                          <TableHead className="text-center w-[100px]">{isRtl ? 'دائن' : 'Credit'}</TableHead>
+                          <TableHead className="w-[40px]"></TableHead>
                        </TableRow>
                     </TableHeader>
                     <TableBody>
                        {form.lines.map((line, idx) => (
                          <TableRow key={idx} className="border-b-slate-50">
-                            <TableCell className="p-2">
+                            <TableCell className="p-1">
                                <Select value={line.accountId} onValueChange={v => updateLine(idx, 'accountId', v)}>
                                   <SelectTrigger className="h-9 font-bold text-[10px]"><SelectValue placeholder="..." /></SelectTrigger>
                                   <SelectContent className="rounded-xl border-2">
-                                     {availableAccounts?.map(a => <SelectItem key={a.id} value={a.id} className="font-bold text-[10px]">{a.code} - {isRtl ? a.nameAr : a.nameEn}</SelectItem>)}
+                                     {availableAccounts?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold text-[10px]">{a.code} - {isRtl ? a.nameAr : a.nameEn}</SelectItem>)}
                                   </SelectContent>
                                </Select>
                             </TableCell>
-                            <TableCell className="p-2">
+                            <TableCell className="p-1">
                                <Select value={line.projectId} onValueChange={v => updateLine(idx, 'projectId', v)}>
-                                  <SelectTrigger className="h-9 font-bold text-[10px] bg-slate-50/50 border-primary/10"><SelectValue placeholder={isRtl ? "اختياري..." : "Optional..."} /></SelectTrigger>
+                                  <SelectTrigger className="h-9 font-bold text-[10px] bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
                                   <SelectContent className="rounded-xl border-2">
+                                     <SelectItem value="NONE" className="italic text-slate-400">---</SelectItem>
                                      {projects?.map(p => <SelectItem key={p.id} value={p.id!} className="font-bold text-[10px]">{p.subServiceName}</SelectItem>)}
                                   </SelectContent>
                                </Select>
                             </TableCell>
-                            <TableCell className="p-2"><Input type="number" step="0.001" value={line.debit || ''} onChange={e => updateLine(idx, 'debit', Number(e.target.value))} className="h-9 text-center font-black text-blue-600" /></TableCell>
-                            <TableCell className="p-2"><Input type="number" step="0.001" value={line.credit || ''} onChange={e => updateLine(idx, 'credit', Number(e.target.value))} className="h-9 text-center font-black text-rose-600" /></TableCell>
-                            <TableCell className="p-2"><Input value={line.memo} onChange={e => updateLine(idx, 'memo', e.target.value)} className="h-9 text-[10px]" /></TableCell>
-                            <TableCell className="p-2"><Button variant="ghost" size="icon" onClick={() => handleRemoveLine(idx)} className="h-8 w-8 text-slate-300 hover:text-rose-500"><Trash2 className="h-4 w-4" /></Button></TableCell>
+                            <TableCell className="p-1">
+                               <Select value={line.costCenterId} onValueChange={v => updateLine(idx, 'costCenterId', v)}>
+                                  <SelectTrigger className="h-9 font-bold text-[10px] bg-blue-50/20"><SelectValue placeholder="..." /></SelectTrigger>
+                                  <SelectContent className="rounded-xl border-2">
+                                     <SelectItem value="NONE" className="italic text-slate-400">---</SelectItem>
+                                     {costCenters?.map(c => <SelectItem key={c.id} value={c.id!} className="font-bold text-[10px]">{c.name}</SelectItem>)}
+                                  </SelectContent>
+                               </Select>
+                            </TableCell>
+                            <TableCell className="p-1">
+                               <Select value={line.profitCenterId} onValueChange={v => updateLine(idx, 'profitCenterId', v)}>
+                                  <SelectTrigger className="h-9 font-bold text-[10px] bg-emerald-50/20"><SelectValue placeholder="..." /></SelectTrigger>
+                                  <SelectContent className="rounded-xl border-2">
+                                     <SelectItem value="NONE" className="italic text-slate-400">---</SelectItem>
+                                     {profitCenters?.map(p => <SelectItem key={p.id} value={p.id!} className="font-bold text-[10px]">{p.name}</SelectItem>)}
+                                  </SelectContent>
+                               </Select>
+                            </TableCell>
+                            <TableCell className="p-1"><Input type="number" step="0.001" value={line.debit || ''} onChange={e => updateLine(idx, 'debit', Number(e.target.value))} className="h-9 text-center font-black text-blue-600" /></TableCell>
+                            <TableCell className="p-1"><Input type="number" step="0.001" value={line.credit || ''} onChange={e => updateLine(idx, 'credit', Number(e.target.value))} className="h-9 text-center font-black text-rose-600" /></TableCell>
+                            <TableCell className="p-1"><Button variant="ghost" size="icon" onClick={() => handleRemoveLine(idx)} className="h-8 w-8 text-slate-300 hover:text-rose-500"><Trash2 className="h-4 w-4" /></Button></TableCell>
                          </TableRow>
                        ))}
                     </TableBody>
                     <tfoot className="bg-slate-50">
                        <tr>
-                          <td className="p-4" colSpan={2}><Button variant="outline" size="sm" onClick={handleAddLine} className="font-bold text-[10px] h-8 px-4 rounded-lg border-2"><Plus className="h-3 w-3 me-1" /> {t('common.add')}</Button></td>
+                          <td className="p-4" colSpan={4}><Button variant="outline" size="sm" onClick={handleAddLine} className="font-bold text-[10px] h-8 px-4 rounded-lg border-2"><Plus className="h-3 w-3 me-1" /> {t('common.add')}</Button></td>
                           <td className="p-4 text-center font-black text-blue-600 text-lg">{totals.debit.toLocaleString()}</td>
                           <td className="p-4 text-center font-black text-rose-600 text-lg">{totals.credit.toLocaleString()}</td>
-                          <td colSpan={2} className="p-4">
-                             {isBalanced ? (
-                               <Badge className="bg-emerald-500 text-white font-black text-[10px] px-4 py-1">{t('accounting.journals.balanced')}</Badge>
-                             ) : (
-                               <Badge variant="destructive" className="font-black text-[10px] px-4 py-1">{t('accounting.journals.unbalanced')}</Badge>
-                             )}
-                          </td>
+                          <td className="p-4"></td>
                        </tr>
                     </tfoot>
                  </Table>
               </div>
 
-              <div className="flex justify-end gap-3 pt-6">
+              <div className="flex justify-between items-center bg-slate-50 p-6 rounded-2xl border-2 border-dashed">
+                 <div className="flex items-center gap-4">
+                    {isBalanced ? (
+                      <Badge className="bg-emerald-500 text-white font-black text-xs px-6 py-2 rounded-xl shadow-lg">{t('accounting.journals.balanced')}</Badge>
+                    ) : (
+                      <Badge variant="destructive" className="font-black text-xs px-6 py-2 rounded-xl shadow-lg">{t('accounting.journals.unbalanced')}</Badge>
+                    )}
+                    <p className="text-[10px] font-bold text-slate-400 max-w-xs">{isRtl ? 'سيتم فحص الأبعاد التحليلية (مراكز التكلفة والربحية) فور الضغط على ترحيل.' : 'Analytical dimensions (Cost/Profit centers) will be validated upon posting.'}</p>
+                 </div>
                  <Button onClick={handleSave} disabled={loading || !isBalanced} className="h-14 rounded-2xl px-12 bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2">
                     {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
                     {t('accounting.journals.postToLedger')}

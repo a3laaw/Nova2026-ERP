@@ -22,10 +22,16 @@ import {
   JournalEntryLine,
   AccountAnalyticalConfig
 } from '@/types/accounting';
+import { CostCenter, ProfitCenter } from '@/types/cost-profit-centers';
 import { nextSequential } from '@/lib/counters';
+import { AnalyticalValidationService } from './analytical-validation-service';
 
 export class AccountingService {
-  constructor(private db: Firestore, private companyId: string) {}
+  private validationService: AnalyticalValidationService;
+
+  constructor(private db: Firestore, private companyId: string) {
+    this.validationService = new AnalyticalValidationService();
+  }
 
   private getDefaultAnalyticalConfig(type: Account['type'], nature?: Account['expenseNature']): AccountAnalyticalConfig {
     const config: AccountAnalyticalConfig = {
@@ -55,69 +61,8 @@ export class AccountingService {
     return config;
   }
 
-  async ensureControlAccount(code: string, nameAr: string, nameEn: string, type: any, parentId: string | null = null) {
-    const q = query(collection(this.db, paths.accounts(this.companyId)), where('code', '==', code), limit(1));
-    const snap = await getDocs(q);
-    if (!snap.empty) return snap.docs[0].id;
-
-    const ref = doc(collection(this.db, paths.accounts(this.companyId)));
-    await setDoc(ref, {
-      id: ref.id,
-      code,
-      nameAr,
-      nameEn,
-      type,
-      parentId,
-      isGroup: true,
-      level: parentId ? 2 : 1,
-      isActive: true,
-      companyId: this.companyId,
-      createdAt: serverTimestamp()
-    });
-    return ref.id;
-  }
-
-  async createAutomaticSubAccount(parentCode: string, referenceId: string, referenceName: string, type: any) {
-    const q = query(
-      collection(this.db, paths.accounts(this.companyId)), 
-      where('referenceId', '==', referenceId),
-      limit(1)
-    );
-    const snap = await getDocs(q);
-    if (!snap.empty) return snap.docs[0].id;
-
-    const parentQuery = query(collection(this.db, paths.accounts(this.companyId)), where('code', '==', parentCode), limit(1));
-    const parentSnap = await getDocs(parentQuery);
-    const parent = parentSnap.empty ? null : parentSnap.docs[0].data() as Account;
-
-    const subCode = await nextSequential(this.db, this.companyId, `acc_${parentCode}`, parentCode, 4);
-
-    const ref = doc(collection(this.db, paths.accounts(this.companyId)));
-    const accountData = {
-      id: ref.id,
-      code: subCode,
-      nameAr: referenceName,
-      nameEn: referenceName,
-      type,
-      parentId: parentSnap.empty ? null : parentSnap.docs[0].id,
-      isGroup: false,
-      level: parent ? (parent.level + 1) : 1,
-      isActive: true,
-      referenceId: referenceId,
-      companyId: this.companyId,
-      analyticalConfig: this.getDefaultAnalyticalConfig(type),
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    };
-
-    await setDoc(ref, accountData);
-    return ref.id;
-  }
-
   async createAccount(data: Partial<Account>, userId: string) {
     const ref = doc(collection(this.db, paths.accounts(this.companyId)));
-    
-    // تطبيق القيم الافتراضية للتحليل
     const analyticalConfig = data.analyticalConfig || this.getDefaultAnalyticalConfig(data.type!, data.expenseNature);
 
     const accountData = {
@@ -141,6 +86,31 @@ export class AccountingService {
     if (Math.abs(totalDebit - totalCredit) > 0.001) {
       throw new Error('القيد غير متوازن: يجب أن يتساوى المدين مع الدائن.');
     }
+
+    // --- المرحلة 3: محرك التحقق التحليلي ---
+    if (data.lines) {
+      // 1. جلب البيانات المرجعية للتحقق
+      const accountsSnap = await getDocs(collection(this.db, paths.accounts(this.companyId)));
+      const costCentersSnap = await getDocs(collection(this.db, paths.costCenters(this.companyId)));
+      const profitCentersSnap = await getDocs(collection(this.db, paths.profitCenters(this.companyId)));
+
+      const allAccounts = accountsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Account));
+      const allCostCenters = costCentersSnap.docs.map(d => ({ id: d.id, ...d.data() } as CostCenter));
+      const allProfitCenters = profitCentersSnap.docs.map(d => ({ id: d.id, ...d.data() } as ProfitCenter));
+
+      // 2. فحص كل سطر
+      for (let i = 0; i < data.lines.length; i++) {
+        const line = data.lines[i];
+        const account = allAccounts.find(a => a.id === line.accountId);
+        if (!account) throw new Error(`الحساب في السطر ${i + 1} غير موجود.`);
+
+        const validation = this.validationService.validateLine(line, account, allCostCenters, allProfitCenters);
+        if (!validation.valid) {
+          throw new Error(`خطأ في السطر ${i + 1}: ${validation.error}`);
+        }
+      }
+    }
+    // ----------------------------------------
 
     const ref = doc(collection(this.db, paths.journalEntries(this.companyId)));
     const entryNumber = await nextSequential(this.db, this.companyId, 'journal_entry', 'JV-', 5);
@@ -207,5 +177,60 @@ export class AccountingService {
 
     await batch.commit();
     return voucherRef.id;
+  }
+
+  async ensureControlAccount(code: string, nameAr: string, nameEn: string, type: any, parentId: string | null = null) {
+    const q = query(collection(this.db, paths.accounts(this.companyId)), where('code', '==', code), limit(1));
+    const snap = await getDocs(q);
+    if (!snap.empty) return snap.docs[0].id;
+
+    const ref = doc(collection(this.db, paths.accounts(this.companyId)));
+    await setDoc(ref, {
+      id: ref.id,
+      code,
+      nameAr,
+      nameEn,
+      type,
+      parentId,
+      isGroup: true,
+      level: parentId ? 2 : 1,
+      isActive: true,
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
+    });
+    return ref.id;
+  }
+
+  async createAutomaticSubAccount(parentCode: string, referenceId: string, referenceName: string, type: any) {
+    const q = query(collection(this.db, paths.accounts(this.companyId)), where('referenceId', '==', referenceId), limit(1));
+    const snap = await getDocs(q);
+    if (!snap.empty) return snap.docs[0].id;
+
+    const parentQuery = query(collection(this.db, paths.accounts(this.companyId)), where('code', '==', parentCode), limit(1));
+    const parentSnap = await getDocs(parentQuery);
+    const parent = parentSnap.empty ? null : parentSnap.docs[0].data() as Account;
+
+    const subCode = await nextSequential(this.db, this.companyId, `acc_${parentCode}`, parentCode, 4);
+
+    const ref = doc(collection(this.db, paths.accounts(this.companyId)));
+    const accountData = {
+      id: ref.id,
+      code: subCode,
+      nameAr: referenceName,
+      nameEn: referenceName,
+      type,
+      parentId: parentSnap.empty ? null : parentSnap.docs[0].id,
+      isGroup: false,
+      level: parent ? (parent.level + 1) : 1,
+      isActive: true,
+      referenceId: referenceId,
+      companyId: this.companyId,
+      analyticalConfig: this.getDefaultAnalyticalConfig(type),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+
+    await setDoc(ref, accountData);
+    return ref.id;
   }
 }
