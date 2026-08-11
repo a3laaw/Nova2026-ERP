@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +31,7 @@ import { Transaction, StageInstance } from '@/types/transaction';
 import { BOQ, BOQItem } from '@/types/documents';
 import { usePermissions } from '@/hooks/use-permissions';
 import { BOQExecutionService } from '@/services/boq-execution-service';
+import { SmartDateInput } from '@/components/ui/smart-date-input';
 
 function NewFieldVisitForm() {
   const { globalUser, user } = useAuthContext();
@@ -344,7 +344,7 @@ function NewFieldVisitForm() {
                             </Select>
                          </div>
                          <Input type="number" value={l.count} onChange={e => { const nl = [...laborDetails]; nl[i].count = Number(e.target.value); setLaborDetails(nl); }} className="h-10 w-16 text-center font-black rounded-xl border-2" />
-                         <Button variant="ghost" size="icon" onClick={() => setLaborDetails(laborDetails.filter((_, idx) => idx !== i))} className="h-10 w-10 text-rose-300 hover:text-rose-600"><Trash2 className="h-4 w-4" /></Button>
+                         <Button variant="ghost" size="icon" onClick={() => setLaborDetails(laborDetails.filter((_, idx) => idx !== i))} className="h-10 w-10 text-rose-300 hover:text-rose-600 transition-colors"><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     ))}
                     <Button variant="outline" onClick={() => setLaborDetails([...laborDetails, { trade: '', count: 1, hours: 8, hourlyCostRef: 0 }])} className="w-full h-10 rounded-xl border-dashed border-2 font-black text-[10px] gap-2"><Plus className="h-3 w-3" /> {isRtl ? 'إضافة عامل' : 'Add Labor'}</Button>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -6,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   Plus, Search, Loader2, ArrowRight,
   Filter, Calendar, FileText
@@ -17,6 +17,7 @@ import { useLanguage } from '@/context/language-context';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { paths } from '@/firebase/multi-tenant';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function FieldVisitsListPage() {
   const { globalUser } = useAuthContext();
