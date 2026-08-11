@@ -10,7 +10,8 @@ import {
 } from 'recharts';
 import { 
   Calculator, Loader2, Printer, LayoutGrid, DatabaseZap, Activity,
-  TrendingUp, Wallet, Receipt, Briefcase, FileText, Target
+  TrendingUp, Wallet, Receipt, Briefcase, FileText, Target,
+  History
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, getDocs } from 'firebase/firestore';
@@ -191,6 +192,12 @@ export default function FinancialReportsPage() {
                   </table>
                </CardContent>
             </Card>
+
+            <div className="space-y-6 text-start">
+               <h3 className="font-black text-lg border-s-4 border-emerald-500 ps-3 flex items-center gap-2">
+                  <History className="h-5 w-5 text-emerald-500" /> {isRtl ? 'السجل التاريخي للتحليل' : 'Historical Analytics Log'}
+               </h3>
+            </div>
          </div>
       </div>
     </div>

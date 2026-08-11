@@ -7,7 +7,8 @@ import {
   Receipt, Plus, Loader2, Save, 
   ArrowRight, Landmark, Wallet,
   User, Calendar, FileText, Briefcase,
-  CheckCircle2, Sparkles, LayoutGrid, DatabaseZap, Gavel, Info
+  CheckCircle2, Sparkles, LayoutGrid, DatabaseZap, Gavel, Info,
+  History
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs } from 'firebase/firestore';
@@ -46,7 +47,7 @@ export default function ReceiptVouchersPage() {
     paymentMethod: 'cash' as any,
     accountId: '',
     cashAccountId: '',
-    projectId: '', // Used for Transaction lookup
+    projectId: '', 
     transactionId: '',
     contractId: '',
     costCenterId: '',
@@ -147,7 +148,6 @@ export default function ReceiptVouchersPage() {
     setLoading(true);
     try {
       const service = new AccountingService(db, companyId);
-      // Pass the new fields to the service
       await service.createVoucher({ ...form, type: 'receipt' }, user.uid);
       toast({ title: t('common.saved') });
       setIsAdding(false);
@@ -191,19 +191,17 @@ export default function ReceiptVouchersPage() {
               </CardHeader>
               <CardContent className="p-8 space-y-8 text-start bg-white">
                  
-                 {/* Step 1: Client & Transaction */}
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('inline.received.from', 'المقبوض من السيد (العميل)', 'Received From')}</Label>
                        <Select value={form.personName} onValueChange={v => {
-                         const c = clients?.find(x => x.nameAr === v || x.id === v);
                          setForm({ ...form, personName: v, transactionId: '', contractId: '', notes: '' });
                        }}>
                           <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white">
                              <SelectValue placeholder="..." />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl border shadow-2xl z-[160]">
-                             {clients?.map(c => <SelectItem key={c.id} value={c.nameAr} className="font-bold py-3 border-b last:border-0">{c.nameAr}</SelectItem>)}
+                             {clients?.map(c => <SelectItem key={c.id} value={c.nameAr} className="font-bold py-3 border-b last:border-0 border-slate-50">{c.nameAr}</SelectItem>)}
                           </SelectContent>
                        </Select>
                     </div>
@@ -223,13 +221,11 @@ export default function ReceiptVouchersPage() {
                                   </div>
                                </SelectItem>
                              ))}
-                             {!allTransactions?.some(t => t.clientName === form.personName) && <div className="p-4 text-center text-[10px] text-slate-400 italic">{tSafe('inline.no.active.transactions', 'لا يوجد معاملات جارية لهذا العميل', 'No active transactions')}</div>}
                           </SelectContent>
                        </Select>
                     </div>
                  </div>
 
-                 {/* Step 2: Contract Selection */}
                  {form.transactionId && (
                    <div className="space-y-2 animate-in slide-in-from-top-2">
                       <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5"><Gavel className="h-3 w-3" /> {tSafe('inline.linked.contract', 'العقد المعتمد (الارتباط المالي)', 'Linked Contract')}</Label>
@@ -257,7 +253,6 @@ export default function ReceiptVouchersPage() {
                    </div>
                  )}
 
-                 {/* Step 3: Amount & Payment Info */}
                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t">
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400">{t('common.amount')}</Label>
@@ -270,7 +265,9 @@ export default function ReceiptVouchersPage() {
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400">{t('paymentMethods')}</Label>
                        <Select value={form.paymentMethod} onValueChange={v => setForm({...form, paymentMethod: v})}>
-                          <SelectTrigger className="h-14 rounded-xl border-2 font-bold bg-white"><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="h-14 rounded-xl border-2 font-bold bg-white">
+                             <SelectValue />
+                          </SelectTrigger>
                           <SelectContent className="rounded-xl">
                              <SelectItem value="cash" className="font-bold">{isRtl ? 'نقدي' : 'Cash'}</SelectItem>
                              <SelectItem value="bank" className="font-bold">{isRtl ? 'شيك' : 'Check'}</SelectItem>
@@ -289,7 +286,6 @@ export default function ReceiptVouchersPage() {
                     </div>
                  </div>
 
-                 {/* Step 4: Ledger & Description */}
                  <div className="space-y-4 pt-6 border-t">
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{tSafe('inline.against.income', 'مقابل حساب (إيراد)', 'Against Account (Income)')}</Label>
@@ -314,7 +310,6 @@ export default function ReceiptVouchersPage() {
                          className="w-full min-h-[100px] rounded-2xl border-2 p-5 text-sm font-bold leading-relaxed bg-slate-50/30 focus:bg-white transition-all shadow-inner" 
                          placeholder="..." 
                        />
-                       <p className="text-[9px] font-bold text-slate-400 italic">{tSafe('inline.receipt.notes.hint', '* سيتم تطبيق المبلغ على الدفعات المستحقة في العقد بترتيب الأسبقية (FIFO).', '* Amount will be applied to outstanding milestones in sequence.')}</p>
                     </div>
                  </div>
 
