@@ -9,7 +9,7 @@ import {
   GitBranch, Plus, Loader2, Folder, 
   FileText, Search, ChevronRight, ChevronDown,
   Sparkles, DatabaseZap, Save, ShieldCheck,
-  Target, LayoutGrid
+  Target, LayoutGrid, Settings2, Edit3
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
