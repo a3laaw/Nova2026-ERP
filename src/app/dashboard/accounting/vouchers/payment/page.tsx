@@ -161,7 +161,7 @@ export default function PaymentVouchersPage() {
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400">{t('common.amount')}</Label>
                        <div className="relative">
-                          <Input type="number" step="0.001" value={form.amount || ''} onChange={e => setForm({...form, amount: Number(e.target.value)})} className="h-14 rounded-xl border-2 border-rose-100 bg-rose-50/20 text-center font-black text-2xl text-rose-600" />
+                          <Input type="number" step="0.001" value={form.amount === 0 ? "" : form.amount} onChange={e => setForm({...form, amount: e.target.value === '' ? 0 : Number(e.target.value)})} className="h-14 rounded-xl border-2 border-rose-100 bg-rose-50/20 text-center font-black text-2xl text-rose-600" />
                           <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-rose-200">KWD</div>
                        </div>
                     </div>
@@ -372,10 +372,10 @@ export default function PaymentVouchersPage() {
                       <Input 
                         type="number" 
                         step="0.001" 
-                        value={dist.amount || ''} 
+                        value={dist.amount === 0 ? "" : dist.amount} 
                         onChange={e => {
                            const nd = [...form.distributions];
-                           nd[idx].amount = Number(e.target.value);
+                           nd[idx].amount = e.target.value === '' ? 0 : Number(e.target.value);
                            setForm({ ...form, distributions: nd });
                         }}
                         className="h-9 rounded-lg border-2 font-black text-xs text-center" 

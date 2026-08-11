@@ -247,7 +247,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                            <Input 
                              type="number" 
                              value={formData.baseAmount === 0 ? "" : formData.baseAmount} 
-                             onChange={e => setFormData({...formData, baseAmount: e.target.value === "" ? 0 : Number(e.target.value)})} 
+                             onChange={e => setFormData({...formData, baseAmount: e.target.value === '' ? 0 : Number(e.target.value)})} 
                              className="h-7 rounded-md bg-white text-slate-900 font-black text-xs text-center shadow-inner" 
                            />
                         </div>
@@ -309,7 +309,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                       {formData.pricingMode === 'percentage' && (
                                         <td className="p-2">
                                            <div className="relative w-14 mx-auto">
-                                              <Input type="number" value={m.percentage === 0 ? "" : m.percentage} onChange={e => updateMilestone(idx, 'percentage', e.target.value === "" ? 0 : Number(e.target.value))} className="h-8 rounded-lg border-2 font-black text-center pe-5 text-[10px]" />
+                                              <Input type="number" value={m.percentage === 0 ? "" : m.percentage} onChange={e => updateMilestone(idx, 'percentage', e.target.value === '' ? 0 : Number(e.target.value))} className="h-8 rounded-lg border-2 font-black text-center pe-5 text-[10px]" />
                                               <Percent className="absolute right-1 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
                                            </div>
                                         </td>
@@ -327,7 +327,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                       </td>
                                       <td className="p-2">
                                          <Select value={m.technicalStageId || 'SIGNING'} onValueChange={v => updateMilestone(idx, 'technicalStageId', v)}>
-                                            <SelectTrigger className="h-8 rounded-lg border-2 font-bold text-[9px] bg-white"><SelectValue /></SelectTrigger>
+                                            <SelectTrigger className="h-8 rounded-lg border-2 font-black text-[9px] bg-white"><SelectValue /></SelectTrigger>
                                             <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
                                                <SelectItem value="SIGNING" className="font-bold text-[10px]">{isRtl ? 'توقيع العقد' : 'Contract Signing'}</SelectItem>
                                                {pathStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px] py-2 border-b last:border-0 border-slate-50">
@@ -338,7 +338,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                       </td>
                                       <td className="p-2 text-end pe-6 w-32">
                                          {formData.pricingMode === 'itemized' ? (
-                                            <Input type="number" step="0.001" value={m.amount === 0 ? "" : m.amount} onChange={e => updateMilestone(idx, 'amount', e.target.value === "" ? 0 : Number(e.target.value))} className="h-8 w-24 ms-auto text-end font-black text-emerald-600 text-[10px]" />
+                                            <Input type="number" step="0.001" value={m.amount === 0 ? "" : m.amount} onChange={e => updateMilestone(idx, 'amount', e.target.value === '' ? 0 : Number(e.target.value))} className="h-8 w-24 ms-auto text-end font-black text-emerald-600 text-[10px]" />
                                          ) : (
                                             <span className="font-mono font-black text-emerald-600">{(lineAmount || 0).toLocaleString()} <span className="text-[8px] opacity-40">KWD</span></span>
                                          )}

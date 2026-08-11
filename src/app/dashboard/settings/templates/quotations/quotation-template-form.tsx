@@ -261,7 +261,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                            <Input 
                              type="number" 
                              value={formData.baseAmount === 0 ? "" : formData.baseAmount} 
-                             onChange={e => setFormData({...formData, baseAmount: e.target.value === "" ? 0 : Number(e.target.value)})} 
+                             onChange={e => setFormData({...formData, baseAmount: e.target.value === '' ? 0 : Number(e.target.value)})} 
                              className="h-7 rounded-md bg-white text-slate-900 font-black text-xs text-center shadow-inner" 
                            />
                         </div>
@@ -341,7 +341,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                       {formData.pricingMode === 'percentage' && (
                                         <td className="p-2">
                                            <div className="relative w-14 mx-auto">
-                                              <Input type="number" value={m.percentage === 0 ? "" : m.percentage} onChange={e => updateItem(idx, 'percentage', e.target.value === "" ? 0 : Number(e.target.value))} className="h-8 rounded-lg border-2 font-black text-center pe-5 text-[10px]" />
+                                              <Input type="number" value={m.percentage === 0 ? "" : m.percentage} onChange={e => updateItem(idx, 'percentage', e.target.value === '' ? 0 : Number(e.target.value))} className="h-8 rounded-lg border-2 font-black text-center pe-5 text-[10px]" />
                                               <Percent className="absolute right-1 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
                                            </div>
                                         </td>
@@ -379,9 +379,9 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                       <td className="p-2 text-end pe-6 w-32">
                                          {formData.pricingMode === 'itemized' ? (
                                             <div className="flex items-center gap-1 justify-end">
-                                               <Input type="number" step="1" value={m.quantity || 1} onChange={e => updateItem(idx, 'quantity', Number(e.target.value))} className="h-7 w-10 text-center text-[8px] border-2" />
+                                               <Input type="number" step="1" value={m.quantity || 1} onChange={e => updateItem(idx, 'quantity', e.target.value === '' ? 1 : Number(e.target.value))} className="h-7 w-10 text-center text-[8px] border-2" />
                                                <X className="h-2 w-2 opacity-20" />
-                                               <Input type="number" step="0.001" value={m.unitPrice === 0 ? "" : m.unitPrice} onChange={e => updateItem(idx, 'unitPrice', e.target.value === "" ? 0 : Number(e.target.value))} className="h-8 w-16 text-end font-black text-emerald-600 text-[9px] bg-slate-50 border-2" />
+                                               <Input type="number" step="0.001" value={m.unitPrice === 0 ? "" : m.unitPrice} onChange={e => updateItem(idx, 'unitPrice', e.target.value === '' ? 0 : Number(e.target.value))} className="h-8 w-16 text-end font-black text-emerald-600 text-[9px] bg-slate-50 border-2" />
                                             </div>
                                          ) : (
                                             <span className="font-mono font-black text-emerald-600 text-xs">{(lineAmount || 0).toLocaleString()} <span className="text-[8px] opacity-40">KWD</span></span>

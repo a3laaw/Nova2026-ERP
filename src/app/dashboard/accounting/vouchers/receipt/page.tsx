@@ -8,7 +8,7 @@ import {
   ArrowRight, Landmark, Wallet,
   User, Calendar, FileText, Briefcase,
   CheckCircle2, Sparkles, LayoutGrid, DatabaseZap, Gavel, Info,
-  History as HistoryIcon, Percent, Calculator
+  History, Percent, Calculator
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs } from 'firebase/firestore';
@@ -282,7 +282,7 @@ export default function ReceiptVouchersPage() {
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400">{t('common.amount')}</Label>
                        <div className="relative">
-                          <Input type="number" step="0.001" value={form.amount || ''} onChange={e => setForm({...form, amount: Number(e.target.value)})} className="h-14 rounded-xl border-2 border-emerald-100 bg-emerald-50/20 text-center font-black text-2xl text-emerald-600" />
+                          <Input type="number" step="0.001" value={form.amount === 0 ? "" : form.amount} onChange={e => setForm({...form, amount: e.target.value === '' ? 0 : Number(e.target.value)})} className="h-14 rounded-xl border-2 border-emerald-100 bg-emerald-50/20 text-center font-black text-2xl text-emerald-600" />
                           <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-emerald-200">KWD</div>
                           {milestonesLoading && <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />}
                        </div>
@@ -397,7 +397,7 @@ export default function ReceiptVouchersPage() {
                  {form.contractId && milestonesStatus.length > 0 && (
                    <div className="relative z-10 pt-6 border-t border-white/10 space-y-4">
                       <h5 className="text-[10px] font-black text-primary uppercase tracking-widest flex items-center gap-2">
-                        <HistoryIcon className="h-3.5 w-3.5" /> {tSafe('inline.contract.snapshot', 'حالة دفعات العقد الحالية', 'Contract Snapshot')}
+                        <History className="h-3.5 w-3.5" /> {tSafe('inline.contract.snapshot', 'حالة دفعات العقد الحالية', 'Contract Snapshot')}
                       </h5>
                       <div className="space-y-2">
                          {milestonesStatus.map((m, i) => (
