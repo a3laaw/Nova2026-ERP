@@ -63,6 +63,9 @@ export function DashboardSidebar() {
         subItems: [
           { title: t('activeProjects'), url: "/dashboard/projects", icon: Layers },
           { title: t('boqExplorer'), url: "/dashboard/projects/boqs", icon: FileSpreadsheet },
+          { title: t('subcontractors'), url: "/dashboard/procurement/subcontractors", icon: HardHat },
+          { title: t('ownerClaims'), url: "/dashboard/accounting/claims", icon: Receipt },
+          { title: t('subConClaims'), url: "/dashboard/procurement/sub-claims", icon: Handshake },
           { title: t('reports'), url: "/dashboard/reports", icon: FileText },
         ]
       },
@@ -85,9 +88,7 @@ export function DashboardSidebar() {
         resource: 'procurement',
         subItems: [
           { title: t('suppliers'), url: "/dashboard/procurement/suppliers", icon: Truck },
-          { title: t('subcontractors'), url: "/dashboard/procurement/subcontractors", icon: HardHat },
           { title: t('contracts'), url: "/dashboard/procurement/contracts", icon: Gavel },
-          { title: t('subConClaims'), url: "/dashboard/procurement/sub-claims", icon: Handshake },
           { title: t('aiAnalysis'), url: "/dashboard/ai", icon: FileSearch },
         ]
       },
@@ -109,7 +110,6 @@ export function DashboardSidebar() {
         resource: 'accounting',
         subItems: [
           { title: t('chartOfAccounts'), url: "/dashboard/accounting/coa", icon: GitBranch },
-          { title: t('ownerClaims'), url: "/dashboard/accounting/claims", icon: Receipt },
           { title: t('receiptVouchers'), url: "/dashboard/accounting/vouchers/receipt", icon: Receipt },
           { title: t('paymentVouchers'), icon: Wallet, url: "/dashboard/accounting/vouchers/payment" },
           { title: t('journalEntries'), url: "/dashboard/accounting/journals", icon: FileText },
