@@ -92,6 +92,10 @@ export default function JournalEntriesPage() {
        const acc = availableAccounts?.find(a => a.id === val);
        newLines[idx].accountName = isRtl ? acc?.nameAr || '' : acc?.nameEn || '';
     }
+    if (field === 'projectId') {
+       newLines[idx].costCenterId = '';
+       newLines[idx].profitCenterId = '';
+    }
     (newLines[idx] as any)[field] = val;
     setForm({ ...form, lines: newLines });
   };
@@ -116,7 +120,7 @@ export default function JournalEntriesPage() {
     <div className="space-y-4 animate-in fade-in" dir={dir}>
       <header className="flex justify-between items-center">
         <div className="text-start">
-          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2 text-slate-900">
             <Calculator className="h-6 w-6 text-primary" /> {t('accounting.journals.title')}
           </h1>
           <p className="text-muted-foreground text-xs font-medium">{t('accounting.journals.desc')}</p>
@@ -158,48 +162,53 @@ export default function JournalEntriesPage() {
                        </TableRow>
                     </TableHeader>
                     <TableBody>
-                       {form.lines.map((line, idx) => (
-                         <TableRow key={idx} className="border-b-slate-50">
-                            <TableCell className="p-1">
-                               <Select value={line.accountId} onValueChange={v => updateLine(idx, 'accountId', v)}>
-                                  <SelectTrigger className="h-9 font-bold text-[10px]"><SelectValue placeholder="..." /></SelectTrigger>
-                                  <SelectContent className="rounded-xl border-2">
-                                     {availableAccounts?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold text-[10px]">{a.code} - {isRtl ? a.nameAr : a.nameEn}</SelectItem>)}
-                                  </SelectContent>
-                               </Select>
-                            </TableCell>
-                            <TableCell className="p-1">
-                               <Select value={line.projectId} onValueChange={v => updateLine(idx, 'projectId', v)}>
-                                  <SelectTrigger className="h-9 font-bold text-[10px] bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
-                                  <SelectContent className="rounded-xl border-2">
-                                     <SelectItem value="NONE" className="italic text-slate-400">---</SelectItem>
-                                     {projects?.map(p => <SelectItem key={p.id} value={p.id!} className="font-bold text-[10px]">{p.subServiceName}</SelectItem>)}
-                                  </SelectContent>
-                               </Select>
-                            </TableCell>
-                            <TableCell className="p-1">
-                               <Select value={line.costCenterId} onValueChange={v => updateLine(idx, 'costCenterId', v)}>
-                                  <SelectTrigger className="h-9 font-bold text-[10px] bg-blue-50/20"><SelectValue placeholder="..." /></SelectTrigger>
-                                  <SelectContent className="rounded-xl border-2">
-                                     <SelectItem value="NONE" className="italic text-slate-400">---</SelectItem>
-                                     {costCenters?.map(c => <SelectItem key={c.id} value={c.id!} className="font-bold text-[10px]">{c.name}</SelectItem>)}
-                                  </SelectContent>
-                               </Select>
-                            </TableCell>
-                            <TableCell className="p-1">
-                               <Select value={line.profitCenterId} onValueChange={v => updateLine(idx, 'profitCenterId', v)}>
-                                  <SelectTrigger className="h-9 font-bold text-[10px] bg-emerald-50/20"><SelectValue placeholder="..." /></SelectTrigger>
-                                  <SelectContent className="rounded-xl border-2">
-                                     <SelectItem value="NONE" className="italic text-slate-400">---</SelectItem>
-                                     {profitCenters?.map(p => <SelectItem key={p.id} value={p.id!} className="font-bold text-[10px]">{p.name}</SelectItem>)}
-                                  </SelectContent>
-                               </Select>
-                            </TableCell>
-                            <TableCell className="p-1"><Input type="number" step="0.001" value={line.debit || ''} onChange={e => updateLine(idx, 'debit', Number(e.target.value))} className="h-9 text-center font-black text-blue-600" /></TableCell>
-                            <TableCell className="p-1"><Input type="number" step="0.001" value={line.credit || ''} onChange={e => updateLine(idx, 'credit', Number(e.target.value))} className="h-9 text-center font-black text-rose-600" /></TableCell>
-                            <TableCell className="p-1"><Button variant="ghost" size="icon" onClick={() => handleRemoveLine(idx)} className="h-8 w-8 text-slate-300 hover:text-rose-500"><Trash2 className="h-4 w-4" /></Button></TableCell>
-                         </TableRow>
-                       ))}
+                       {form.lines.map((line, idx) => {
+                         const filteredCC = costCenters?.filter(cc => cc.isAdministrative || (line.projectId && cc.projectId === line.projectId));
+                         const filteredPC = profitCenters?.filter(pc => line.projectId && pc.projectId === line.projectId);
+
+                         return (
+                           <TableRow key={idx} className="border-b-slate-50">
+                              <TableCell className="p-1">
+                                 <Select value={line.accountId} onValueChange={v => updateLine(idx, 'accountId', v)}>
+                                    <SelectTrigger className="h-9 font-bold text-[10px]"><SelectValue placeholder="..." /></SelectTrigger>
+                                    <SelectContent className="rounded-xl border-2">
+                                       {availableAccounts?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold text-[10px]">{a.code} - {isRtl ? a.nameAr : a.nameEn}</SelectItem>)}
+                                    </SelectContent>
+                                 </Select>
+                              </TableCell>
+                              <TableCell className="p-1">
+                                 <Select value={line.projectId} onValueChange={v => updateLine(idx, 'projectId', v)}>
+                                    <SelectTrigger className="h-9 font-bold text-[10px] bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
+                                    <SelectContent className="rounded-xl border-2">
+                                       <SelectItem value="NONE" className="italic text-slate-400">---</SelectItem>
+                                       {projects?.map(p => <SelectItem key={p.id} value={p.id!} className="font-bold text-[10px]">{p.subServiceName}</SelectItem>)}
+                                    </SelectContent>
+                                 </Select>
+                              </TableCell>
+                              <TableCell className="p-1">
+                                 <Select disabled={!line.projectId && !costCenters?.some(c => c.isAdministrative)} value={line.costCenterId} onValueChange={v => updateLine(idx, 'costCenterId', v)}>
+                                    <SelectTrigger className="h-9 font-bold text-[10px] bg-blue-50/20"><SelectValue placeholder="..." /></SelectTrigger>
+                                    <SelectContent className="rounded-xl border-2">
+                                       <SelectItem value="NONE" className="italic text-slate-400">---</SelectItem>
+                                       {filteredCC?.map(c => <SelectItem key={c.id} value={c.id!} className="font-bold text-[10px]">{c.name}</SelectItem>)}
+                                    </SelectContent>
+                                 </Select>
+                              </TableCell>
+                              <TableCell className="p-1">
+                                 <Select disabled={!line.projectId} value={line.profitCenterId} onValueChange={v => updateLine(idx, 'profitCenterId', v)}>
+                                    <SelectTrigger className="h-9 font-bold text-[10px] bg-emerald-50/20"><SelectValue placeholder="..." /></SelectTrigger>
+                                    <SelectContent className="rounded-xl border-2">
+                                       <SelectItem value="NONE" className="italic text-slate-400">---</SelectItem>
+                                       {filteredPC?.map(p => <SelectItem key={p.id} value={p.id!} className="font-bold text-[10px]">{p.name}</SelectItem>)}
+                                    </SelectContent>
+                                 </Select>
+                              </TableCell>
+                              <TableCell className="p-1"><Input type="number" step="0.001" value={line.debit || ''} onChange={e => updateLine(idx, 'debit', Number(e.target.value))} className="h-9 text-center font-black text-blue-600" /></TableCell>
+                              <TableCell className="p-1"><Input type="number" step="0.001" value={line.credit || ''} onChange={e => updateLine(idx, 'credit', Number(e.target.value))} className="h-9 text-center font-black text-rose-600" /></TableCell>
+                              <TableCell className="p-1"><Button variant="ghost" size="icon" onClick={() => handleRemoveLine(idx)} className="h-8 w-8 text-slate-300 hover:text-rose-500"><Trash2 className="h-4 w-4" /></Button></TableCell>
+                           </TableRow>
+                         );
+                       })}
                     </TableBody>
                     <tfoot className="bg-slate-50">
                        <tr>

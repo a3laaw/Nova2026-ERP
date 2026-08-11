@@ -7,7 +7,7 @@ import {
   Receipt, Plus, Loader2, Save, 
   ArrowRight, Landmark, Wallet,
   User, Calendar, FileText, Briefcase,
-  CheckCircle2, Sparkles
+  CheckCircle2, Sparkles, LayoutGrid, DatabaseZap
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where } from 'firebase/firestore';
@@ -15,6 +15,7 @@ import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { Voucher, Account } from '@/types/accounting';
+import { CostCenter, ProfitCenter } from '@/types/cost-profit-centers';
 import { AccountingService } from '@/services/accounting-service';
 import { toast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
@@ -26,7 +27,7 @@ import { cn } from '@/lib/utils';
 
 export default function ReceiptVouchersPage() {
   const { globalUser, user } = useAuthContext();
-  const { t, dir, isRtl } = useLanguage();
+  const { t, dir, isRtl, tSafe } = useLanguage();
   const db = useFirestore();
   const companyId = globalUser?.companyId;
 
@@ -40,6 +41,8 @@ export default function ReceiptVouchersPage() {
     accountId: '',
     cashAccountId: '',
     projectId: '',
+    costCenterId: '',
+    profitCenterId: '',
     notes: ''
   });
 
@@ -55,12 +58,30 @@ export default function ReceiptVouchersPage() {
     companyId && db ? query(collection(db, paths.transactions(companyId)), where('status', '!=', 'completed')) : null, 
   [db, companyId]);
 
+  const costCentersQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.costCenters(companyId))) : null, 
+  [db, companyId]);
+
+  const profitCentersQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.profitCenters(companyId))) : null, 
+  [db, companyId]);
+
   const { data: vouchers, loading: vouchersLoading } = useCollection<Voucher>(vouchersQuery);
   const { data: accounts } = useCollection<Account>(accountsQuery);
   const { data: projects } = useCollection<any>(projectsQuery);
+  const { data: costCenters } = useCollection<CostCenter>(costCentersQuery);
+  const { data: profitCenters } = useCollection<ProfitCenter>(profitCentersQuery);
 
   const cashAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.code.startsWith('101') || a.code.startsWith('102') || a.type === 'asset')), [accounts]);
   const incomeAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && a.type === 'revenue' || a.type === 'liability'), [accounts]);
+
+  const filteredCC = useMemo(() => {
+    return costCenters?.filter(cc => cc.isAdministrative || (form.projectId && cc.projectId === form.projectId));
+  }, [costCenters, form.projectId]);
+
+  const filteredPC = useMemo(() => {
+    return profitCenters?.filter(pc => form.projectId && pc.projectId === form.projectId);
+  }, [profitCenters, form.projectId]);
 
   const handleSave = async () => {
     if (!db || !companyId || !user) return;
@@ -75,7 +96,7 @@ export default function ReceiptVouchersPage() {
       await service.createVoucher({ ...form, type: 'receipt' }, user.uid);
       toast({ title: t('common.saved') });
       setIsAdding(false);
-      setForm({ date: new Date().toISOString().split('T')[0], amount: 0, personName: '', paymentMethod: 'cash', accountId: '', cashAccountId: '', projectId: '', notes: '' });
+      setForm({ date: new Date().toISOString().split('T')[0], amount: 0, personName: '', paymentMethod: 'cash', accountId: '', cashAccountId: '', projectId: '', costCenterId: '', profitCenterId: '', notes: '' });
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
@@ -152,22 +173,41 @@ export default function ReceiptVouchersPage() {
                  </div>
 
                  <div className="pt-6 border-t space-y-6">
-                    <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5">
-                          <Briefcase className="h-3.5 w-3.5" /> {isRtl ? 'المشروع المرتبط (مركز التكلفة)' : 'Related Project (Cost Center)'}
-                       </Label>
-                       <Select value={form.projectId} onValueChange={v => setForm({...form, projectId: v})}>
-                          <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder={isRtl ? "اختر المشروع..." : "Select project..."} /></SelectTrigger>
-                          <SelectContent className="rounded-xl border-2 shadow-2xl">
-                             <SelectItem value="GENERAL" className="font-bold italic text-slate-400">{isRtl ? '--- بدون مشروع (عام) ---' : '--- No Project (General) ---'}</SelectItem>
-                             {projects?.map(p => <SelectItem key={p.id} value={p.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">
-                                <div className="flex flex-col text-start">
-                                   <span>{p.subServiceName}</span>
-                                   <span className="text-[9px] text-slate-400 font-mono">#{p.transactionNumber} | {p.clientName}</span>
-                                </div>
-                             </SelectItem>)}
-                          </SelectContent>
-                       </Select>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                       <div className="space-y-2">
+                          <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5">
+                             <Briefcase className="h-3.5 w-3.5" /> {isRtl ? 'المشروع المرتبط' : 'Related Project'}
+                          </Label>
+                          <Select value={form.projectId} onValueChange={v => setForm({...form, projectId: v, costCenterId: '', profitCenterId: ''})}>
+                             <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
+                             <SelectContent className="rounded-xl border-2 shadow-2xl">
+                                <SelectItem value="GENERAL" className="font-bold italic text-slate-400">{isRtl ? '--- بدون مشروع (عام) ---' : '--- No Project (General) ---'}</SelectItem>
+                                {projects?.map(p => <SelectItem key={p.id} value={p.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">{p.subServiceName}</SelectItem>)}
+                             </SelectContent>
+                          </Select>
+                       </div>
+                       <div className="space-y-2">
+                          <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5">
+                             <LayoutGrid className="h-3.5 w-3.5" /> {tSafe('inline.cost_center', 'مركز التكلفة', 'Cost Center')}
+                          </Label>
+                          <Select value={form.costCenterId} onValueChange={v => setForm({...form, costCenterId: v})}>
+                             <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
+                             <SelectContent className="rounded-xl border-2 shadow-2xl">
+                                {filteredCC?.map(cc => <SelectItem key={cc.id} value={cc.id!} className="font-bold">{cc.name}</SelectItem>)}
+                             </SelectContent>
+                          </Select>
+                       </div>
+                       <div className="space-y-2">
+                          <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5">
+                             <DatabaseZap className="h-3.5 w-3.5" /> {tSafe('inline.profit_center', 'مركز الربحية', 'Profit Center')}
+                          </Label>
+                          <Select value={form.profitCenterId} onValueChange={v => setForm({...form, profitCenterId: v})}>
+                             <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
+                             <SelectContent className="rounded-xl border-2 shadow-2xl">
+                                {filteredPC?.map(pc => <SelectItem key={pc.id} value={pc.id!} className="font-bold">{pc.name}</SelectItem>)}
+                             </SelectContent>
+                          </Select>
+                       </div>
                     </div>
 
                     <div className="space-y-2">

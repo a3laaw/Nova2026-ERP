@@ -70,5 +70,7 @@ export interface Voucher extends BaseReference {
   journalEntryId?: string;
   notes?: string;
   projectId?: string;
+  costCenterId?: string;
+  profitCenterId?: string;
   createdBy: string;
 }

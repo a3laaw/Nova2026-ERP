@@ -142,9 +142,25 @@ export class AccountingService {
     const lines: JournalEntryLine[] = [];
     if (data.type === 'receipt') {
       lines.push({ accountId: data.cashAccountId!, accountName: 'حساب النقدية', debit: data.amount!, credit: 0 });
-      lines.push({ accountId: data.accountId!, accountName: 'حساب الطرف الآخر', debit: 0, credit: data.amount!, projectId: data.projectId });
+      lines.push({ 
+        accountId: data.accountId!, 
+        accountName: 'حساب الطرف الآخر', 
+        debit: 0, 
+        credit: data.amount!, 
+        projectId: data.projectId,
+        costCenterId: data.costCenterId,
+        profitCenterId: data.profitCenterId
+      });
     } else {
-      lines.push({ accountId: data.accountId!, accountName: 'حساب الطرف الآخر', debit: data.amount!, credit: 0, projectId: data.projectId });
+      lines.push({ 
+        accountId: data.accountId!, 
+        accountName: 'حساب الطرف الآخر', 
+        debit: data.amount!, 
+        credit: 0, 
+        projectId: data.projectId,
+        costCenterId: data.costCenterId,
+        profitCenterId: data.profitCenterId
+      });
       lines.push({ accountId: data.cashAccountId!, accountName: 'حساب النقدية', debit: 0, credit: data.amount! });
     }
 
