@@ -79,8 +79,21 @@ export default function ReceiptVouchersPage() {
 
   const [contracts, setContracts] = useState<Contract[]>([]);
 
-  // Filtering accounts - Restricted to Cash & Banks only
-  const cashAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.code.startsWith('101') || a.code.startsWith('102') || a.code === '1201')), [accounts]);
+  // الفلترة الذكية لحسابات الإيداع بناءً على طريقة الدفع وبناءً على الإعدادات اليدوية في دليل الحسابات
+  const cashAccounts = useMemo(() => {
+    if (!accounts) return [];
+    return accounts.filter(a => {
+      if (a.isGroup) return false;
+      // 1. الفلترة بناءً على الإعدادات اليدوية (The User Control)
+      if (a.allowedPaymentMethods && a.allowedPaymentMethods.length > 0) {
+        return a.allowedPaymentMethods.includes(form.paymentMethod);
+      }
+      // 2. الفلترة التلقائية للأكواد القياسية (Fallback)
+      if (form.paymentMethod === 'cash') return a.code.startsWith('101') || a.code.startsWith('1201');
+      if (form.paymentMethod === 'bank' || form.paymentMethod === 'transfer') return a.code.startsWith('102') || a.code.startsWith('1201');
+      return a.type === 'asset' && !a.code.startsWith('1202') && !a.code.startsWith('1205');
+    });
+  }, [accounts, form.paymentMethod]);
   
   // Income Accounts
   const incomeAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.type === 'revenue' || a.type === 'liability' || a.code.startsWith('1202'))), [accounts]);
@@ -259,7 +272,7 @@ export default function ReceiptVouchersPage() {
                     </div>
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400">{t('paymentMethods')}</Label>
-                       <Select value={form.paymentMethod} onValueChange={v => setForm({...form, paymentMethod: v})}>
+                       <Select value={form.paymentMethod} onValueChange={v => setForm({...form, paymentMethod: v, cashAccountId: ''})}>
                           <SelectTrigger className="h-14 rounded-xl border-2 font-bold bg-white">
                              <SelectValue />
                           </SelectTrigger>
@@ -358,7 +371,7 @@ export default function ReceiptVouchersPage() {
               <Table>
                  <TableHeader className="bg-slate-50">
                     <TableRow>
-                       <TableHead className="py-5 ps-8 text-start text-[10px] font-black uppercase tracking-widest">{isRtl ? 'رقم السند / التاريخ' : 'Voucher No. / Date'}</TableHead>
+                       <TableHead className="py-5 ps-8 text-start text-[10px] font-black uppercase tracking-widest">{tSafe('inline.voucher.no', 'رقم السند / التاريخ', 'Voucher No. / Date')}</TableHead>
                        <TableHead className="text-start text-[10px] font-black uppercase tracking-widest">{tSafe('inline.from.client', 'من العميل', 'From Client')}</TableHead>
                        <TableHead className="text-start text-[10px] font-black uppercase tracking-widest">{tSafe('inline.milestone', 'الدفعة المسددة', 'Milestone')}</TableHead>
                        <TableHead className="text-end text-[10px] font-black uppercase tracking-widest">{t('common.amount')}</TableHead>

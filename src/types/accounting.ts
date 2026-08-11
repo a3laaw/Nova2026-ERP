@@ -25,6 +25,7 @@ export interface Account extends BaseReference {
   
   expenseNature?: 'direct' | 'administrative';
   analyticalConfig?: AccountAnalyticalConfig;
+  allowedPaymentMethods?: ('cash' | 'bank' | 'transfer')[]; // طرق الدفع المسموحة لهذا الحساب
 }
 
 export interface JournalEntryLine {

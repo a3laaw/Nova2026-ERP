@@ -9,7 +9,8 @@ import {
   GitBranch, Plus, Loader2, Folder, 
   FileText, Search, ChevronRight, ChevronDown,
   Sparkles, DatabaseZap, Save, ShieldCheck,
-  Target, LayoutGrid, Settings2, Edit3
+  Target, LayoutGrid, Settings2, Edit3, History,
+  Check
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -37,6 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function ChartOfAccountsPage() {
   const { globalUser, user } = useAuthContext();
@@ -53,6 +55,7 @@ export default function ChartOfAccountsPage() {
   const [form, setForm] = useState<Partial<Account>>({
     nameAr: '', nameEn: '', code: '', type: 'asset', isGroup: false, parentId: null,
     expenseNature: 'administrative',
+    allowedPaymentMethods: [],
     analyticalConfig: { costCenter: 'not_allowed', profitCenter: 'not_allowed', project: 'not_allowed', distributionAllowed: false }
   });
 
@@ -90,6 +93,7 @@ export default function ChartOfAccountsPage() {
       parentId: parent?.id || null,
       level: parent ? parent.level + 1 : 1,
       expenseNature: 'administrative',
+      allowedPaymentMethods: [],
       analyticalConfig: { costCenter: 'not_allowed', profitCenter: 'not_allowed', project: 'not_allowed', distributionAllowed: false }
     });
     setIsAdding(true);
@@ -98,6 +102,7 @@ export default function ChartOfAccountsPage() {
   const openEditDialog = (account: Account) => {
     setForm({
       ...account,
+      allowedPaymentMethods: account.allowedPaymentMethods || [],
       analyticalConfig: account.analyticalConfig || { costCenter: 'not_allowed', profitCenter: 'not_allowed', project: 'not_allowed', distributionAllowed: false }
     });
     setIsAdding(true);
@@ -298,6 +303,33 @@ export default function ChartOfAccountsPage() {
                     <Input value={form.nameEn} onChange={e => setForm({...form, nameEn: e.target.value})} className="h-14 rounded-2xl border-2 font-black text-lg text-start" dir="ltr" />
                  </div>
               </div>
+
+              {form.type === 'asset' && !form.isGroup && (
+                <div className="p-6 rounded-2xl bg-blue-50 border-2 border-dashed border-blue-200 space-y-4 animate-in fade-in">
+                   <Label className="text-[10px] font-black uppercase text-blue-600 tracking-widest flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4" /> {tSafe('inline.payment_links', 'ربط الدفع والتحصيل', 'Payment Links')}
+                   </Label>
+                   <p className="text-[10px] font-bold text-blue-400 mb-2">{tSafe('inline.payment_methods_hint', 'حدد طرق الدفع التي يظهر فيها هذا الحساب عند إصدار سند قبض/صرف.', 'Specify payment methods where this account appears in vouchers.')}</p>
+                   <div className="flex flex-wrap gap-4">
+                      {['cash', 'bank', 'transfer'].map(method => (
+                        <div key={method} className="flex items-center space-x-2 space-x-reverse">
+                           <Checkbox 
+                             id={`method-${method}`} 
+                             checked={form.allowedPaymentMethods?.includes(method as any)}
+                             onCheckedChange={(checked) => {
+                               const current = form.allowedPaymentMethods || [];
+                               const updated = checked 
+                                ? [...current, method as any] 
+                                : current.filter(m => m !== method);
+                               setForm({...form, allowedPaymentMethods: updated});
+                             }}
+                           />
+                           <Label htmlFor={`method-${method}`} className="font-bold text-xs cursor-pointer">{tSafe(`inline.${method}`, method, method)}</Label>
+                        </div>
+                      ))}
+                   </div>
+                </div>
+              )}
 
               {form.type === 'expense' && (
                 <div className="p-6 rounded-2xl bg-slate-50 border-2 border-dashed border-primary/20 space-y-4 animate-in fade-in">

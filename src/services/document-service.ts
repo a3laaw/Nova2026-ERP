@@ -51,7 +51,7 @@ export class DocumentService {
     await updateDoc(docRef, updates);
 
     const finalStatus = data.status || currentData.status;
-    if (['approved', 'paid', 'active'].includes(finalStatus)) {
+    if (['approved', 'paid', 'active', 'signed'].includes(finalStatus)) {
        // 1. ترقية العميل إلى "متعاقد"
        const clientRef = doc(this.db, paths.clients(this.companyId), currentData.clientId);
        await updateDoc(clientRef, { status: 'contracted', updatedAt: serverTimestamp() });
