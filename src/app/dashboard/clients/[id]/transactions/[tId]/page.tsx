@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect, Suspense } from 'react';
@@ -25,7 +24,6 @@ import { Transaction, StageInstance } from '@/types/transaction';
 import { TransactionService } from '@/services/transaction-service';
 import { BOQ, Contract, BOQItem } from '@/types/documents';
 import { BOQTemplate } from '@/types/templates';
-import { Subcontractor } from '@/types/procurement';
 import { CommentSection } from '@/components/transactions/comment-section';
 import { DocumentService } from '@/services/document-service';
 import { BOQExecutionService } from '@/services/boq-execution-service';
