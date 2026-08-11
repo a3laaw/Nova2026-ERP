@@ -42,7 +42,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 
 export default function ChartOfAccountsPage() {
   const { globalUser, user } = useAuthContext();
-  const { t, tSafe, dir, isRtl } = useLanguage();
+  const { t, tSafe, dir, isRtl, lang } = useLanguage();
   const db = useFirestore();
   const companyId = globalUser?.companyId;
 
@@ -159,7 +159,7 @@ export default function ChartOfAccountsPage() {
               {account.isGroup ? <Folder className="h-4 w-4 text-amber-500" /> : <FileText className="h-4 w-4 text-blue-400" />}
               
               <span className="text-[10px] font-black font-mono text-primary bg-slate-100 px-2 py-0.5 rounded uppercase">{account.code}</span>
-              <span className="text-xs truncate">{isRtl ? account.nameAr : account.nameEn}</span>
+              <span className="text-xs truncate">{tSafe('data.account.name', account.nameAr, account.nameEn)}</span>
               
               <Badge variant="outline" className="ms-auto text-[8px] uppercase font-black border-2 h-5">
                 {account.type}
@@ -288,11 +288,11 @@ export default function ChartOfAccountsPage() {
                     <Select value={form.type} onValueChange={(v: any) => setForm({...form, type: v})}>
                        <SelectTrigger className="h-12 rounded-xl border-2 font-black text-base"><SelectValue /></SelectTrigger>
                        <SelectContent className="rounded-xl border-0 shadow-2xl z-[200]">
-                          <SelectItem value="asset" className="font-bold py-3 border-b last:border-0">{isRtl ? 'أصول (Asset)' : 'Assets'}</SelectItem>
-                          <SelectItem value="liability" className="font-bold py-3 border-b last:border-0">{isRtl ? 'التزامات (Liability)' : 'Liabilities'}</SelectItem>
-                          <SelectItem value="equity" className="font-bold py-3 border-b last:border-0">{isRtl ? 'حقوق ملكية (Equity)' : 'Equity'}</SelectItem>
-                          <SelectItem value="revenue" className="font-bold py-3 border-b last:border-0">{isRtl ? 'إيرادات (Revenue)' : 'Revenue'}</SelectItem>
-                          <SelectItem value="expense" className="font-bold py-3 border-b last:border-0">{isRtl ? 'مصروفات (Expense)' : 'Expenses'}</SelectItem>
+                          <SelectItem value="asset" className="font-bold py-3 border-b last:border-0">{tSafe('inline.coa.assets', 'أصول (Asset)', 'Assets')}</SelectItem>
+                          <SelectItem value="liability" className="font-bold py-3 border-b last:border-0">{tSafe('inline.coa.liabilities', 'التزامات (Liability)', 'Liabilities')}</SelectItem>
+                          <SelectItem value="equity" className="font-bold py-3 border-b last:border-0">{tSafe('inline.coa.equity', 'حقوق ملكية (Equity)', 'Equity')}</SelectItem>
+                          <SelectItem value="revenue" className="font-bold py-3 border-b last:border-0">{tSafe('inline.coa.revenue', 'إيرادات (Revenue)', 'Revenue')}</SelectItem>
+                          <SelectItem value="expense" className="font-bold py-3 border-b last:border-0">{tSafe('inline.coa.expenses', 'مصروفات (Expense)', 'Expenses')}</SelectItem>
                        </SelectContent>
                     </Select>
                  </div>
@@ -329,7 +329,7 @@ export default function ChartOfAccountsPage() {
                                setForm({...form, allowedPaymentMethods: updated});
                              }}
                            />
-                           <Label htmlFor={`method-${pm.code}`} className="font-bold text-xs cursor-pointer">{isRtl ? pm.name : (pm.nameEn || pm.name)}</Label>
+                           <Label htmlFor={`method-${pm.code}`} className="font-bold text-xs cursor-pointer">{tSafe('data.pm.name', pm.name, pm.nameEn || pm.name)}</Label>
                         </div>
                       ))}
                    </div>

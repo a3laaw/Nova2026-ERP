@@ -25,7 +25,7 @@ import { Label } from '@/components/ui/label';
 
 export default function JournalEntriesPage() {
   const { globalUser, user } = useAuthContext();
-  const { t, dir, isRtl } = useLanguage();
+  const { t, tSafe, dir, isRtl } = useLanguage();
   const db = useFirestore();
   const companyId = globalUser?.companyId;
 
@@ -152,12 +152,12 @@ export default function JournalEntriesPage() {
                  <Table>
                     <TableHeader className="bg-slate-50/50">
                        <TableRow>
-                          <TableHead className="w-[180px]">{isRtl ? 'الحساب' : 'Account'}</TableHead>
-                          <TableHead className="w-[140px]">{isRtl ? 'المشروع' : 'Project'}</TableHead>
-                          <TableHead className="w-[140px]">{isRtl ? 'مركز التكلفة' : 'Cost Center'}</TableHead>
-                          <TableHead className="w-[140px]">{isRtl ? 'مركز الربحية' : 'Profit Center'}</TableHead>
-                          <TableHead className="text-center w-[100px]">{isRtl ? 'مدين' : 'Debit'}</TableHead>
-                          <TableHead className="text-center w-[100px]">{isRtl ? 'دائن' : 'Credit'}</TableHead>
+                          <TableHead className="w-[180px]">{tSafe('inline.account', 'الحساب', 'Account')}</TableHead>
+                          <TableHead className="w-[140px]">{tSafe('inline.project', 'المشروع', 'Project')}</TableHead>
+                          <TableHead className="w-[140px]">{tSafe('inline.cost_center', 'مركز التكلفة', 'Cost Center')}</TableHead>
+                          <TableHead className="w-[140px]">{tSafe('inline.profit_center', 'مركز الربحية', 'Profit Center')}</TableHead>
+                          <TableHead className="text-center w-[100px]">{tSafe('inline.debit', 'مدين', 'Debit')}</TableHead>
+                          <TableHead className="text-center w-[100px]">{tSafe('inline.credit', 'دائن', 'Credit')}</TableHead>
                           <TableHead className="w-[40px]"></TableHead>
                        </TableRow>
                     </TableHeader>
@@ -172,7 +172,7 @@ export default function JournalEntriesPage() {
                                  <Select value={line.accountId} onValueChange={v => updateLine(idx, 'accountId', v)}>
                                     <SelectTrigger className="h-9 font-bold text-[10px]"><SelectValue placeholder="..." /></SelectTrigger>
                                     <SelectContent className="rounded-xl border-2">
-                                       {availableAccounts?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold text-[10px]">{a.code} - {isRtl ? a.nameAr : a.nameEn}</SelectItem>)}
+                                       {availableAccounts?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold text-[10px]">{a.code} - {tSafe('data.account.name', a.nameAr, a.nameEn)}</SelectItem>)}
                                     </SelectContent>
                                  </Select>
                               </TableCell>
@@ -228,7 +228,7 @@ export default function JournalEntriesPage() {
                     ) : (
                       <Badge variant="destructive" className="font-black text-xs px-6 py-2 rounded-xl shadow-lg">{t('accounting.journals.unbalanced')}</Badge>
                     )}
-                    <p className="text-[10px] font-bold text-slate-400 max-w-xs">{isRtl ? 'سيتم فحص الأبعاد التحليلية (مراكز التكلفة والربحية) فور الضغط على ترحيل.' : 'Analytical dimensions (Cost/Profit centers) will be validated upon posting.'}</p>
+                    <p className="text-[10px] font-bold text-slate-400 max-w-xs">{tSafe('inline.analytical_validation_hint', 'سيتم فحص الأبعاد التحليلية (مراكز التكلفة والربحية) فور الضغط على ترحيل.', 'Analytical dimensions (Cost/Profit centers) will be validated upon posting.')}</p>
                  </div>
                  <Button onClick={handleSave} disabled={loading || !isBalanced} className="h-14 rounded-2xl px-12 bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2">
                     {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
@@ -243,7 +243,7 @@ export default function JournalEntriesPage() {
               <Table>
                  <TableHeader className="bg-slate-50">
                     <TableRow>
-                       <TableHead className="py-3 ps-6 text-start">{isRtl ? 'رقم القيد / التاريخ' : 'Entry No. / Date'}</TableHead>
+                       <TableHead className="py-3 ps-6 text-start">{tSafe('inline.entry_date', 'رقم القيد / التاريخ', 'Entry No. / Date')}</TableHead>
                        <TableHead className="text-start">{t('common.notes')}</TableHead>
                        <TableHead className="text-end">{t('common.amount')}</TableHead>
                        <TableHead className="text-center">{t('common.status')}</TableHead>

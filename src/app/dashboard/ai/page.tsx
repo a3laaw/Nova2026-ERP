@@ -11,7 +11,7 @@ import { useLanguage } from "@/context/language-context"
 import { usePermissions } from "@/hooks/use-permissions"
 
 export default function AIPage() {
-  const { t, dir, isRtl } = useLanguage();
+  const { t, tSafe, dir, isRtl } = useLanguage();
   const { check } = usePermissions();
   const [query, setQuery] = useState("")
   const [loading, setLoading] = useState(false)
@@ -48,22 +48,22 @@ export default function AIPage() {
         <Card className="border-2 border-primary/10 hover:border-primary/30 transition-all shadow-md bg-white rounded-3xl cursor-pointer group">
           <CardHeader className="pb-2 text-start">
             <Calculator className="h-8 w-8 text-primary mb-2 group-hover:scale-110 transition-transform" />
-            <CardTitle className="text-lg font-bold font-headline">{isRtl ? 'مساعد محاسبي' : 'Accounting Assistant'}</CardTitle>
-            <CardDescription className="font-bold">{isRtl ? 'صياغة قيود اليومية أو الحصول على استشارات محاسبية ذكية.' : 'Draft journal entries or get expert advice.'}</CardDescription>
+            <CardTitle className="text-lg font-bold font-headline">{tSafe('inline.accounting_assistant', 'مساعد محاسبي', 'Accounting Assistant')}</CardTitle>
+            <CardDescription className="font-bold">{tSafe('inline.accounting_assistant_desc', 'صياغة قيود اليومية أو الحصول على استشارات محاسبية ذكية.', 'Draft journal entries or get expert advice.')}</CardDescription>
           </CardHeader>
         </Card>
         <Card className="border-2 border-primary/10 hover:border-primary/30 transition-all shadow-md bg-white rounded-3xl cursor-pointer group opacity-60">
           <CardHeader className="pb-2 text-start">
             <FileSearch className="h-8 w-8 text-blue-500 mb-2 group-hover:scale-110 transition-transform" />
-            <CardTitle className="text-lg font-bold font-headline">{isRtl ? 'محلل العروض' : 'Quote Analyzer'}</CardTitle>
-            <CardDescription className="font-bold">{isRtl ? 'رفع عروض الموردين وتحليلها والمقارنة الفنية والمالية.' : 'Upload quotes and compare technically/financially.'}</CardDescription>
+            <CardTitle className="text-lg font-bold font-headline">{tSafe('inline.quote_analyzer', 'محلل العروض', 'Quote Analyzer')}</CardTitle>
+            <CardDescription className="font-bold">{tSafe('inline.quote_analyzer_desc', 'رفع عروض الموردين وتحليلها والمقارنة الفنية والمالية.', 'Upload quotes and compare technically/financially.')}</CardDescription>
           </CardHeader>
         </Card>
         <Card className="border-2 border-primary/10 hover:border-primary/30 transition-all shadow-md bg-white rounded-3xl cursor-pointer group opacity-60">
           <CardHeader className="pb-2 text-start">
             <TrendingUp className="h-8 w-8 text-green-500 mb-2 group-hover:scale-110 transition-transform" />
-            <CardTitle className="text-lg font-bold font-headline">{isRtl ? 'توقع السيولة' : 'Cash Flow Forecast'}</CardTitle>
-            <CardDescription className="font-bold">{isRtl ? 'تحليل التدفقات النقدية بناءً على إنجاز المقايسات.' : 'Project liquidity based on BOQ progress.'}</CardDescription>
+            <CardTitle className="text-lg font-bold font-headline">{tSafe('inline.cash_flow_forecast', 'توقع السيولة', 'Cash Flow Forecast')}</CardTitle>
+            <CardDescription className="font-bold">{tSafe('inline.cash_flow_forecast_desc', 'تحليل التدفقات النقدية بناءً على إنجاز المقايسات.', 'Project liquidity based on BOQ progress.')}</CardDescription>
           </CardHeader>
         </Card>
       </div>
@@ -72,14 +72,14 @@ export default function AIPage() {
         <CardHeader className="bg-slate-50 p-8">
           <CardTitle className="font-headline font-bold text-2xl flex items-center gap-2">
             <Wand2 className="h-6 w-6 text-primary" />
-            {isRtl ? 'محطة الذكاء المحاسبي' : 'Accounting Intelligence Terminal'}
+            {tSafe('inline.accounting_intelligence_terminal', 'محطة الذكاء المحاسبي', 'Accounting Intelligence Terminal')}
           </CardTitle>
-          <CardDescription className="font-bold">{isRtl ? 'صف العملية المالية بلغة طبيعية (مثلاً: استلمنا دفعة 5,000 من العميل أ كدفعة مقدمة).' : 'Describe a transaction in natural language to generate entries.'}</CardDescription>
+          <CardDescription className="font-bold">{tSafe('inline.accounting_terminal_desc', 'صف العملية المالية بلغة طبيعية (مثلاً: استلمنا دفعة 5,000 من العميل أ كدفعة مقدمة).', 'Describe a transaction in natural language to generate entries.')}</CardDescription>
         </CardHeader>
         <CardContent className="p-8 space-y-6">
           <div className="space-y-4">
             <Textarea 
-              placeholder={isRtl ? "اكتب هنا تفاصيل العملية..." : "Enter transaction description..."}
+              placeholder={tSafe('inline.transaction_description_placeholder', "اكتب هنا تفاصيل العملية...", "Enter transaction description...")}
               className="min-h-[150px] text-lg p-6 rounded-2xl border-2 border-muted focus:border-primary/50 transition-all font-bold"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -95,7 +95,7 @@ export default function AIPage() {
                 ) : (
                   <Send className="h-6 w-6" />
                 )}
-                {isRtl ? 'تحليل وتوليد القيد' : 'Analyze & Draft Entry'}
+                {tSafe('inline.analyze_and_draft_entry', 'تحليل وتوليد القيد', 'Analyze & Draft Entry')}
               </Button>
             </div>
           </div>
@@ -104,7 +104,7 @@ export default function AIPage() {
             <div className="animate-in slide-in-from-bottom-4 duration-500 text-start">
               <div className="bg-primary/5 rounded-3xl p-8 border border-primary/20 space-y-6">
                 <div className="flex items-center justify-between border-b border-primary/10 pb-4">
-                  <h3 className="font-headline font-bold text-xl">{isRtl ? 'القيد المحاسبي المقترح' : 'Proposed Journal Entry'}</h3>
+                  <h3 className="font-headline font-bold text-xl">{tSafe('inline.proposed_journal_entry', 'القيد المحاسبي المقترح', 'Proposed Journal Entry')}</h3>
                   <Button variant="outline" size="sm" className="bg-white rounded-xl">{t('common.retry')}</Button>
                 </div>
                 
@@ -125,9 +125,9 @@ export default function AIPage() {
                       <table className="w-full text-sm">
                         <thead className="bg-muted/30 border-b">
                           <tr>
-                            <th className="px-6 py-4 text-start font-black">{isRtl ? 'الحساب' : 'Account Name'}</th>
-                            <th className="px-6 py-4 text-end font-black">{isRtl ? 'مدين ($)' : 'Debit ($)'}</th>
-                            <th className="px-6 py-4 text-end font-black">{isRtl ? 'دائن ($)' : 'Credit ($)'}</th>
+                            <th className="px-6 py-4 text-start font-black">{tSafe('inline.account_name', 'الحساب', 'Account Name')}</th>
+                            <th className="px-6 py-4 text-end font-black">{tSafe('inline.debit_with_symbol', 'مدين ($)', 'Debit ($)')}</th>
+                            <th className="px-6 py-4 text-end font-black">{tSafe('inline.credit_with_symbol', 'دائن ($)', 'Credit ($)')}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y">

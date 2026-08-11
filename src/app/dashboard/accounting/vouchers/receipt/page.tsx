@@ -31,7 +31,7 @@ import { useRouter } from 'next/navigation';
 
 export default function ReceiptVouchersPage() {
   const { globalUser, user } = useAuthContext();
-  const { t, dir, isRtl, tSafe } = useLanguage();
+  const { t, dir, isRtl, tSafe, lang } = useLanguage();
   const db = useFirestore();
   const router = useRouter();
   const companyId = globalUser?.companyId;
@@ -165,7 +165,7 @@ export default function ReceiptVouchersPage() {
     try {
       const service = new AccountingService(db, companyId);
       const voucherId = await service.createVoucher({ ...form, type: 'receipt' }, user.uid);
-      toast({ title: t('common.saved'), description: "تم إنشاء السند وحفظ القيد كمسودة." });
+      toast({ title: t('common.saved'), description: tSafe('inline.voucher_created_msg', "تم إنشاء السند وحفظ القيد كمسودة.", "Voucher created and entry saved as draft.") });
       setIsAdding(false);
       router.push(`/dashboard/accounting/vouchers/receipt/${voucherId}`);
     } catch (e: any) {
@@ -287,7 +287,7 @@ export default function ReceiptVouchersPage() {
                              {paymentMethods?.map((pm: any) => (
                                <SelectItem key={pm.code} value={pm.code} className="font-bold py-3 border-b last:border-0 border-slate-50 text-xs">
                                   <div className="flex justify-between items-center gap-4 w-full">
-                                     <span>{isRtl ? pm.name : (pm.nameEn || pm.name)}</span>
+                                     <span>{tSafe('data.pm.name', pm.name, pm.nameEn || pm.name)}</span>
                                      {(pm.feePercentage > 0 || pm.feeFixedAmount > 0) && (
                                        <Badge variant="outline" className="text-[7px] font-black bg-rose-50 text-rose-500 border-rose-100 h-4 uppercase">
                                           - Commission
@@ -306,10 +306,10 @@ export default function ReceiptVouchersPage() {
                              <SelectValue placeholder="..." />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
-                             {cashAccounts?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">{a.code} - {isRtl ? a.nameAr : a.nameEn}</SelectItem>)}
+                             {cashAccounts?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">{a.code} - {tSafe('data.account.name', a.nameAr, a.nameEn)}</SelectItem>)}
                              {cashAccounts.length === 0 && form.paymentMethod && (
                                <div className="p-4 text-center text-rose-500 text-[10px] font-bold">
-                                  لا يوجد حساب مفعل لطريقة الدفع هذه في دليل الحسابات.
+                                  {tSafe('inline.no_active_account_for_pm', 'لا يوجد حساب مفعل لطريقة الدفع هذه في دليل الحسابات.', 'No active account found for this payment method in the chart of accounts.')}
                                </div>
                              )}
                           </SelectContent>
@@ -344,7 +344,7 @@ export default function ReceiptVouchersPage() {
                        <Select value={form.accountId} onValueChange={v => setForm({...form, accountId: v})}>
                           <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
                           <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
-                             {incomeAccounts?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">{a.code} - {isRtl ? a.nameAr : a.nameEn}</SelectItem>)}
+                             {incomeAccounts?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">{a.code} - {tSafe('data.account.name', a.nameAr, a.nameEn)}</SelectItem>)}
                           </SelectContent>
                        </Select>
                     </div>
@@ -368,7 +368,7 @@ export default function ReceiptVouchersPage() {
                  <div className="flex justify-end gap-3 pt-4">
                     <Button onClick={handleSave} disabled={loading || !form.contractId} className="h-14 rounded-2xl px-12 bg-emerald-600 text-white font-black text-lg shadow-xl shadow-emerald-100 hover:scale-[1.02] transition-all gap-2 border-b-4 border-emerald-800">
                        {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
-                       {isRtl ? 'تأكيد وإصدار السند' : 'Confirm & Issue'}
+                       {tSafe('inline.confirm_issue_btn', 'تأكيد وإصدار السند', 'Confirm & Issue')}
                     </Button>
                  </div>
               </CardContent>

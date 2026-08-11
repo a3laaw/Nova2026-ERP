@@ -116,7 +116,7 @@ export default function FinancialReportsPage() {
                      <Target className="h-6 w-6 text-primary" /> {isRtl ? 'ربحية المشاريع' : 'Project Profitability'}
                   </CardTitle>
                </div>
-               <Badge className="bg-primary text-white border-0 font-black">ROI ACTIVE</Badge>
+               <Badge className="bg-primary text-white border-0 font-black">{tSafe('inline.roi.active', 'العائد على الاستثمار نشط', 'ROI ACTIVE')}</Badge>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
                <table className="w-full text-start">

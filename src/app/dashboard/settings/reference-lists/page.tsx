@@ -240,11 +240,11 @@ export default function ReferenceListsPage() {
                               <TableCell className="text-center font-bold text-slate-400">#{item.order}</TableCell>
                               <TableCell className="text-start">
                                  <div className="flex flex-wrap gap-2">
-                                    {item.isSystem && <Badge className="bg-slate-900 text-white text-[8px] font-black uppercase">SYSTEM</Badge>}
+                                    {item.isSystem && <Badge className="bg-slate-900 text-white text-[8px] font-black uppercase">{tSafe('inline.system', 'النظام', 'SYSTEM')}</Badge>}
                                     {item.isActive ? (
-                                      <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-emerald-100 text-[8px] font-black uppercase">ACTIVE</Badge>
+                                      <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-emerald-100 text-[8px] font-black uppercase">{tSafe('inline.active', 'نشط', 'ACTIVE')}</Badge>
                                     ) : (
-                                      <Badge variant="outline" className="bg-rose-50 text-rose-600 border-rose-100 text-[8px] font-black uppercase">INACTIVE</Badge>
+                                      <Badge variant="outline" className="bg-rose-50 text-rose-600 border-rose-100 text-[8px] font-black uppercase">{tSafe('inline.inactive', 'غير نشط', 'INACTIVE')}</Badge>
                                     )}
                                  </div>
                               </TableCell>

@@ -316,7 +316,7 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
                       availableNextStages.map((s) => (
                         <div key={s.id} onClick={() => toggleNextStage(s.id!)} className={cn("p-4 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between group", form.nextStageIds?.includes(s.id!) ? "bg-white border-primary shadow-md" : "bg-white border-slate-100")}>
                           <div className="flex items-center gap-3"><Checkbox checked={form.nextStageIds?.includes(s.id!)} className="pointer-events-none" /><Label className="font-black text-xs block cursor-pointer text-slate-700">{isRtl ? s.name : s.nameEn}</Label></div>
-                          {form.nextStageIds?.includes(s.id!) && <Badge className="bg-primary text-white border-0 text-[8px] h-4">NEXT</Badge>}
+                          {form.nextStageIds?.includes(s.id!) && <Badge className="bg-primary text-white border-0 text-[8px] h-4">{tSafe('inline.primary', 'رئيسي', 'PRIMARY')}</Badge>}
                         </div>
                       ))
                     }
