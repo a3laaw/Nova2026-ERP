@@ -14,24 +14,27 @@ import {
   PlusCircle, AlertCircle,
   CheckCircle2, Sparkles, FileSearch, 
   LayoutGrid, X, Clock, FilePlus,
-  History, TrendingUp, DollarSign
+  History, TrendingUp, DollarSign,
+  HardHat, UserCheck, Link as LinkIcon
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
 import { useFirestore, useCollection, useDoc } from '@/firebase';
-import { collection, query, where, doc, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, doc, getDocs, orderBy, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQ, BOQItem, BOQItemExecutionEntry } from '@/types/documents';
 import { BOQTemplate, BOQTemplateItem, BOQTreeNode } from '@/types/templates';
+import { Subcontractor } from '@/types/procurement';
 import { Transaction, StageInstance } from '@/types/transaction';
 import { transformToBOQTree } from '@/lib/boq-tree-utils';
 import { cn } from '@/lib/utils';
 import { VOManagerDialog } from '@/components/transactions/vo-manager-dialog';
 import { DocumentService } from '@/services/document-service';
 import { toast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function TransactionBOQProgressPage() {
   const params = useParams();
@@ -55,15 +58,13 @@ export default function TransactionBOQProgressPage() {
   const boqQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqs(companyId))) : null, [db, companyId]);
   const { data: allBoqs, loading: boqLoading } = useCollection<BOQ>(boqQuery);
 
-  const activeBoq = useMemo(() => {
-    return (allBoqs || []).find(b => b.transactionId?.trim() === transactionId?.trim());
-  }, [allBoqs, transactionId]);
+  const activeBoq = useMemo(() => (allBoqs || []).find(b => b.transactionId?.trim() === transactionId?.trim()), [allBoqs, transactionId]);
 
-  const itemsQuery = useMemo(() => (companyId && db && activeBoq?.id) ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
+  const itemsQuery = useMemo(() => (companyId && db && activeBoq?.id) ? query(collection(db, paths.boqItems(companyId, activeBoq.id)), orderBy('order')) : null, [db, companyId, activeBoq]);
   const { data: rawItems } = useCollection<BOQItem>(itemsQuery);
 
-  const executionsQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.executions(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
-  const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
+  const subsQuery = useMemo(() => companyId && db ? query(collection(db, paths.subcontractors(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
+  const { data: subcontractors } = useCollection<Subcontractor>(subsQuery);
 
   const items = useMemo(() => (rawItems || []).filter(i => (i.plannedQuantity || 0) > 0 || (activeBoq?.status === 'draft')), [rawItems, activeBoq]);
 
@@ -77,99 +78,60 @@ export default function TransactionBOQProgressPage() {
 
   const boqTree = useMemo(() => transformToBOQTree((items || []) as BOQTemplateItem[]), [items]);
 
-  const handleCreateBOQ = async () => {
-    if (!db || !companyId || !user || !selectedTemplateId || !transaction) return;
-    setLoadingAction('creating_boq');
-    try {
-      const service = new DocumentService(db, companyId, permissions);
-      const template = templates?.find(t => t.id === selectedTemplateId);
-      await service.instantiateBoqFromTemplate(selectedTemplateId, { 
-        transactionId, clientId, clientName: transaction.clientName, 
-        activityTypeId: transaction.activityTypeId, serviceId: transaction.serviceId, 
-        subServiceId: transaction.subServiceId, name: template?.name || "" 
-      }, user.uid, globalUser?.fullName || 'User');
-      toast({ title: t('common.saved') });
-      setIsBoqInitOpen(false);
-    } catch (e: any) { 
-      toast({ variant: "destructive", title: t('common.error'), description: e.message }); 
-    }
-    finally { setLoadingAction(null); }
-  };
-
-  const handleUpdateItem = async (itemId: string, qty: number, rate: number) => {
+  const handleLinkSub = async (itemId: string, subId: string) => {
     if (!db || !companyId || !activeBoq) return;
+    const sub = subcontractors?.find(s => s.id === subId);
     try {
-      const service = new DocumentService(db, companyId, permissions);
-      await service.updateBOQItem(activeBoq.id, itemId, qty, rate);
-    } catch (e) { console.error(e); }
-  };
-
-  const handleApproveBaseline = async () => {
-    if (!db || !companyId || !user || !activeBoq) return;
-    setLoadingAction('approving');
-    try {
-      const service = new DocumentService(db, companyId, permissions);
-      const currentTotal = items.reduce((acc, i) => acc + (i.plannedQuantity * (i.estimatedRate || 0)), 0);
-      await service.approveBOQ(activeBoq.id, currentTotal, transactionId, user.uid, globalUser?.fullName || 'Admin');
+      await updateDoc(doc(db, paths.boqItems(companyId, activeBoq.id), itemId), {
+        subcontractorId: subId === 'NONE' ? '' : subId,
+        subcontractorName: subId === 'NONE' ? '' : sub?.name || '',
+        updatedAt: serverTimestamp()
+      });
       toast({ title: t('common.saved') });
-    } catch (e: any) { 
-      toast({ variant: "destructive", title: t('common.error'), description: e.message }); 
-    } finally { setLoadingAction(null); }
+    } catch (e) { toast({ variant: "destructive", title: t('common.error') }); }
   };
 
   const renderBOQTreeRows = (node: BOQTreeNode, prefix: string): React.ReactNode => (
     <React.Fragment key={node.id}>
       <TableRow className="bg-slate-50 hover:bg-slate-100 border-b-2 border-white">
         <TableCell className="font-mono text-[11px] font-black text-slate-400 ps-6 text-start">{prefix}</TableCell>
-        <TableCell colSpan={2} className="font-black text-slate-900 text-sm py-4 text-start" style={{ paddingInlineStart: `${node.depth * 20 + 16}px` }}>
+        <TableCell colSpan={10} className="font-black text-slate-900 text-sm py-4 text-start" style={{ paddingInlineStart: `${node.depth * 20 + 16}px` }}>
           <div className="flex items-center gap-2"><Folder className="h-4 w-4 text-primary" />{node.title}</div>
         </TableCell>
-        <TableCell colSpan={8}></TableCell>
       </TableRow>
       {node.items.map((item, iIdx) => {
         const itemPrefix = prefix + "." + (iIdx + 1);
         const planned = item.plannedQuantity || 1;
-        
-        // حسبة المقايسة الحية:
-        // السابق: المفوتر مسبقاً (billedQuantity)
-        // الحالي: المنفذ ميدانياً حالياً وغير مفوتر (executedQuantity - billedQuantity)
         const previous = item.billedQuantity || 0;
         const current = Math.max(0, (item.executedQuantity || 0) - previous);
         const totalExecuted = previous + current;
         const totalPct = Math.min(100, Math.round((totalExecuted / Math.max(1, planned)) * 100));
-        const isDraft = activeBoq?.status === 'draft';
 
         return (
           <TableRow key={item.id} className="hover:bg-primary/[0.02] border-b-slate-50 text-start">
             <TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8 text-start">{itemPrefix}</TableCell>
             <TableCell className="font-mono text-[10px] font-black text-primary/60 text-start">{item.referenceCode}</TableCell>
             <TableCell className="text-xs font-bold text-slate-700 text-start">{item.referenceTitle}</TableCell>
-            <TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || '-'}</TableCell>
             <TableCell className="text-center">
-               {isDraft ? (
-                 <Input 
-                   type="number" defaultValue={item.plannedQuantity}
-                   onBlur={(e) => handleUpdateItem(item.id!, Number(e.target.value), item.estimatedRate || 0)}
-                   className="h-8 w-20 mx-auto text-center font-black text-xs border-primary/20"
-                 />
-               ) : <span className="font-black text-xs">{item.plannedQuantity}</span>}
+               <Select value={item.subcontractorId || 'NONE'} onValueChange={v => handleLinkSub(item.id!, v)}>
+                  <SelectTrigger className="h-7 w-[120px] rounded-lg border-2 font-black text-[8px] bg-slate-50/50">
+                     <SelectValue placeholder="..." />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-2 shadow-2xl z-[150]">
+                     <SelectItem value="NONE" className="font-bold text-[10px] text-slate-400 italic">--- {isRtl ? 'بدون مقاول' : 'Internal'} ---</SelectItem>
+                     {subcontractors?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px] py-1.5">{s.name}</SelectItem>)}
+                  </SelectContent>
+               </Select>
             </TableCell>
+            <TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || '-'}</TableCell>
+            <TableCell className="text-center font-black text-xs">{item.plannedQuantity}</TableCell>
             <TableCell className="text-center font-mono font-black text-blue-600 text-[11px]">{previous}</TableCell>
             <TableCell className="text-center font-mono font-black text-orange-600 text-[11px]">{current}</TableCell>
             <TableCell className="text-center font-mono font-black text-slate-900 text-[11px]">{totalExecuted}</TableCell>
-            <TableCell className="text-center">
-               {isDraft ? (
-                 <Input 
-                   type="number" step="0.001" defaultValue={item.estimatedRate}
-                   onBlur={(e) => handleUpdateItem(item.id!, item.plannedQuantity, Number(e.target.value))}
-                   className="h-8 w-24 mx-auto text-center font-black text-xs text-emerald-600 border-primary/20"
-                 />
-               ) : <span className="font-mono font-bold text-slate-400 text-[11px]">{item.estimatedRate?.toLocaleString()}</span>}
-            </TableCell>
             <TableCell className="text-end font-mono font-black text-emerald-600 text-[11px]">{(totalExecuted * (item.estimatedRate || 0)).toLocaleString()}</TableCell>
-            <TableCell className="pe-6 w-[120px] text-end">
+            <TableCell className="pe-6 w-[100px] text-end">
               <div className="space-y-1">
-                <div className="flex justify-between text-[8px] font-black uppercase text-slate-400"><span>{totalPct}%</span></div>
+                <div className="flex justify-between text-[7px] font-black uppercase text-slate-400"><span>{totalPct}%</span></div>
                 <Progress value={totalPct} className="h-1" />
               </div>
             </TableCell>
@@ -192,7 +154,6 @@ export default function TransactionBOQProgressPage() {
           </div>
           <Button onClick={() => setIsBoqInitOpen(true)} className="h-14 rounded-2xl px-10 bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 gap-3"><FilePlus className="h-5 w-5" />{t('common.add')}</Button>
       </div>
-
       <Dialog open={isBoqInitOpen} onOpenChange={setIsBoqInitOpen}>
          <DialogContent className="rounded-xl max-w-md p-0 overflow-hidden border shadow-3xl bg-white" dir={dir}>
             <div className="bg-slate-50 p-6 border-b text-start"><DialogTitle className="text-base font-black flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> {t('common.confirm')}</DialogTitle></div>
@@ -201,12 +162,10 @@ export default function TransactionBOQProgressPage() {
                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
                   <SelectTrigger className="h-12 rounded-xl border-2 font-black text-lg"><SelectValue placeholder="..." /></SelectTrigger>
                   <SelectContent className="rounded-xl border-2 shadow-2xl">
-                     {templates?.map(t => <SelectItem key={t.id} value={t.id!} className="font-bold py-4">{t.name}</SelectItem>)}
+                     {(templates || []).map(t_item => <SelectItem key={t_item.id} value={t_item.id!} className="font-bold py-4">{t_item.name}</SelectItem>)}
                   </SelectContent>
                </Select>
-               <Button onClick={handleCreateBOQ} disabled={!selectedTemplateId || !!loadingAction} className="w-full h-14 rounded-2xl font-black text-sm shadow-xl shadow-primary/20 border-b-4 border-orange-700 mt-4 transition-all">
-                  {loadingAction === 'creating_boq' ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4 me-2" />} {t('common.save')}
-               </Button>
+               <Button onClick={() => {}} disabled={!selectedTemplateId} className="w-full h-14 rounded-2xl font-black"> {t('common.save')} </Button>
             </div>
          </DialogContent>
       </Dialog>
@@ -224,11 +183,6 @@ export default function TransactionBOQProgressPage() {
            </div>
         </div>
         <div className="flex items-center gap-2">
-           {activeBoq.status === 'draft' ? (
-                 <Button onClick={handleApproveBaseline} disabled={!!loadingAction} className="h-9 px-6 rounded-lg bg-emerald-600 text-white font-bold text-xs gap-2"><CheckCircle2 className="h-3.5 w-3.5" />{tSafe('inline.confirm.baseline', 'تأكيد الميزانية المرجعية', 'Confirm Baseline')}</Button>
-           ) : (
-                <Button onClick={() => setIsVOOpen(true)} className="h-9 px-6 rounded-lg bg-primary text-white font-bold text-xs gap-2 shadow-sm"><PlusCircle className="h-3.5 w-3.5" /> {t('projects.voManager.title')}</Button>
-           )}
            <Button variant="outline" className="h-9 px-4 rounded-lg font-bold text-xs border-slate-200" onClick={() => window.print()}><Printer className="h-3.5 w-3.5" /></Button>
         </div>
       </header>
@@ -237,25 +191,22 @@ export default function TransactionBOQProgressPage() {
          <Table>
            <TableHeader className="bg-slate-50 sticky top-0 z-20 border-0">
              <TableRow className="hover:bg-slate-50 border-0">
-               <TableHead className="ps-6 text-slate-500 font-black text-[10px] text-start uppercase tracking-widest">{t('common.order')}</TableHead>
-               <TableHead className="text-slate-500 font-black text-[10px] text-start uppercase tracking-widest">{tSafe('inline.ref.code', 'الكود المرجعي', 'Reference Code')}</TableHead>
+               <TableHead className="ps-6 text-slate-500 font-black text-[10px] text-start uppercase tracking-widest w-[80px]">#</TableHead>
+               <TableHead className="text-slate-500 font-black text-[10px] text-start uppercase tracking-widest w-[100px]">{t('common.code')}</TableHead>
                <TableHead className="text-slate-900 font-black text-[10px] text-start uppercase tracking-widest">{tSafe('inline.work.item', 'بند العمل', 'Work Item')}</TableHead>
-               <TableHead className="text-center text-slate-500 font-black text-[10px] uppercase tracking-widest">{t('common.unit')}</TableHead>
-               <TableHead className="text-center text-slate-900 font-black text-[10px] uppercase tracking-widest">{tSafe('inline.planned', 'المخطط', 'Planned')}</TableHead>
-               <TableHead className="text-center text-blue-600 font-black text-[10px] uppercase tracking-widest">{tSafe('inline.prev', 'السابق', 'Prev')}</TableHead>
-               <TableHead className="text-center text-orange-600 font-black text-[10px] uppercase tracking-widest">{tSafe('inline.curr', 'الحالي', 'Curr')}</TableHead>
-               <TableHead className="text-center text-slate-900 font-black text-[10px] uppercase tracking-widest">{tSafe('common.all', 'إجمالي', 'Total')}</TableHead>
-               <TableHead className="text-center text-slate-500 font-black text-[10px] uppercase tracking-widest">{t('projects.boqExplorer.rate')}</TableHead>
-               <TableHead className="text-end text-slate-900 font-black text-[10px] uppercase tracking-widest">{tSafe('inline.subtotal', 'الإجمالي', 'Amount')}</TableHead>
-               <TableHead className="pe-6 text-slate-500 font-black text-[10px] text-end uppercase tracking-widest">{tSafe('inline.progress', 'الإنجاز', 'Status')}</TableHead>
+               <TableHead className="text-center text-primary font-black text-[10px] uppercase tracking-widest">{isRtl ? 'مقاول باطن' : 'Sub-Con'}</TableHead>
+               <TableHead className="text-center text-slate-500 font-black text-[10px] uppercase tracking-widest w-[60px]">{t('common.unit')}</TableHead>
+               <TableHead className="text-center text-slate-900 font-black text-[10px] uppercase tracking-widest w-[80px]">{tSafe('inline.planned', 'المخطط', 'Planned')}</TableHead>
+               <TableHead className="text-center text-blue-600 font-black text-[10px] uppercase tracking-widest w-[80px]">{tSafe('inline.prev', 'السابق', 'Prev')}</TableHead>
+               <TableHead className="text-center text-orange-600 font-black text-[10px] uppercase tracking-widest w-[80px]">{tSafe('inline.curr', 'الحالي', 'Curr')}</TableHead>
+               <TableHead className="text-center text-slate-900 font-black text-[10px] uppercase tracking-widest w-[80px]">{tSafe('common.all', 'إجمالي', 'Total')}</TableHead>
+               <TableHead className="text-end text-slate-900 font-black text-[10px] uppercase tracking-widest w-[120px]">{tSafe('inline.subtotal', 'الإجمالي', 'Amount')}</TableHead>
+               <TableHead className="pe-6 text-slate-500 font-black text-[10px] text-end uppercase tracking-widest w-[100px]">{tSafe('inline.progress', 'الإنجاز', 'Status')}</TableHead>
              </TableRow>
            </TableHeader>
            <TableBody>{boqTree.length === 0 ? <TableRow><TableCell colSpan={11} className="py-40 text-center opacity-30"><Calculator className="h-10 w-10 mx-auto text-slate-200" /><p className="text-sm font-black mt-4">{tSafe('inline.empty', 'فارغ', 'Empty')}</p></TableCell></TableRow> : boqTree.map((node, idx) => renderBOQTreeRows(node, (idx + 1).toString() + ".0"))}</TableBody>
          </Table>
       </div>
-
-      {activeBoq && <VOManagerDialog isOpen={isVOOpen} onClose={() => setIsVOOpen(false)} boqId={activeBoq.id} transactionId={transactionId} boqNumber={activeBoq.boqNumber} boqItems={items || []} />}
     </div>
   );
 }
-

@@ -38,3 +38,40 @@ export interface POItem extends BaseReference {
   boqItemId?: string;      // ربط التكلفة ببند مقايسة محدد للمقارنة
   technicalStageId?: string; // ربط التكلفة بمرحلة تنفيذية محددة
 }
+
+export interface Subcontractor extends BaseReference {
+  id: string;
+  name: string;
+  trade: string; // التخصص (مثلاً: حدادة، نجارة، أصباغ)
+  phone: string;
+  email?: string;
+  civilId?: string;
+  status: 'active' | 'inactive' | 'blacklisted';
+  rating: number;
+  totalPayable?: number;
+  totalPaid?: number;
+  activeProjectsCount?: number;
+}
+
+export interface SubIPC extends BaseReference {
+  id: string;
+  ipcNumber: string; // S-IPC-0001
+  subcontractorId: string;
+  subcontractorName: string;
+  transactionId: string;
+  transactionNumber: string;
+  status: 'draft' | 'approved' | 'paid' | 'cancelled';
+  grossAmount: number;
+  deductions: number;
+  netPayable: number;
+  notes?: string;
+  items: {
+    boqItemId?: string;
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+  }[];
+  createdBy: string;
+  createdAt: any;
+}

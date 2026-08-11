@@ -24,9 +24,11 @@ import { Transaction, StageInstance } from '@/types/transaction';
 import { TransactionService } from '@/services/transaction-service';
 import { BOQ, Contract, BOQItem } from '@/types/documents';
 import { BOQTemplate } from '@/types/templates';
+import { Subcontractor } from '@/types/procurement';
 import { CommentSection } from '@/components/transactions/comment-section';
 import { DocumentService } from '@/services/document-service';
 import { BOQExecutionService } from '@/services/boq-execution-service';
+import { BillingService } from '@/services/billing-service';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { TransactionDocumentsView } from '@/components/transactions/transaction-documents-view';
@@ -89,6 +91,9 @@ function TransactionDetailsContent() {
 
   const contractsQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.contracts(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
   const { data: contracts } = useCollection<Contract>(contractsQuery);
+
+  const subsQuery = useMemo(() => companyId && db ? query(collection(db, paths.subcontractors(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
+  const { data: subcontractors } = useCollection<Subcontractor>(subsQuery);
 
   const hasApprovedContract = useMemo(() => {
     return contracts?.some(c => ['approved', 'paid', 'active', 'signed'].includes(c.status || '') || c.isPaid);
@@ -159,7 +164,25 @@ function TransactionDetailsContent() {
   const handleCompleteStage = async (stage: StageInstance) => {
     if (!transactionService || !user || !stage.id) return;
     setProcessingId(stage.id);
-    try { await transactionService.completeStage(transactionId, stage.id, user.uid, currentUserName, globalUser?.departmentId); toast({ title: t('common.completed') }); }
+    try { 
+      await transactionService.completeStage(transactionId, stage.id, user.uid, currentUserName, globalUser?.departmentId); 
+      
+      // أتمتة مستخلص مقاول الباطن إذا كان معيناً للمرحلة
+      if (stage.subcontractorId && stage.subcontractorPrice) {
+         const billing = new BillingService(db!, companyId!);
+         await billing.generateSubcontractorIPC(
+           transactionId, 
+           stage.subcontractorId, 
+           stage.subcontractorName!, 
+           stage.subcontractorPrice, 
+           `إتمام المرحلة الفنية: ${stage.name}`,
+           user.uid
+         );
+         toast({ title: isRtl ? 'تم توليد مستخلص مقاول باطن' : 'Sub-IPC Generated' });
+      }
+      
+      toast({ title: t('common.completed') }); 
+    }
     catch (e: any) { toast({ variant: "destructive", title: t('common.error'), description: e.message }); }
     finally { setProcessingId(null); }
   };
@@ -174,6 +197,20 @@ function TransactionDetailsContent() {
     setLoadingAction('logging');
     try {
       await boqExecService.recordBOQItemExecution(activeBoq!.id, logForm.itemId, activeStageForLog.technicalStageId, Number(logForm.quantity), user!.uid, currentUserName, logForm.notes, activeStageForLog.id!);
+      
+      // أتمتة مالية لمقاول الباطن إذا كان مرتبطاً بالبند
+      if (item?.subcontractorId && item.estimatedRate) {
+         const billing = new BillingService(db!, companyId!);
+         await billing.generateSubcontractorIPC(
+            transactionId,
+            item.subcontractorId,
+            item.subcontractorName || 'Subcon',
+            Number(logForm.quantity) * (item.estimatedRate * 0.7), // افتراض تكلفة المقاول 70% من الفئة
+            `إنجاز ميداني لبند: ${item.referenceTitle} - كمية: ${logForm.quantity}`,
+            user!.uid
+         );
+      }
+      
       toast({ title: t('common.saved') });
       setIsLogOpen(false);
       setLogForm({ sectionId: '', itemId: '', quantity: '', notes: '' });
@@ -374,14 +411,22 @@ function TransactionDetailsContent() {
             </div>
             <div className="p-8 space-y-6 text-start">
                <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase text-slate-400">اسم المقاول</Label>
-                  <Input value={subForm.subcontractorName} onChange={e => setSubForm({...subForm, subcontractorName: e.target.value})} className="h-11 border-2 rounded-xl font-bold" />
+                  <Label className="text-xs font-black uppercase text-slate-400">اختيار المقاول</Label>
+                  <Select value={subForm.subcontractorId} onValueChange={v => {
+                    const s = subcontractors?.find(x => x.id === v);
+                    setSubForm({...subForm, subcontractorId: v, subcontractorName: s?.name || ''});
+                  }}>
+                    <SelectTrigger className="h-11 border-2 rounded-xl font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                    <SelectContent className="rounded-xl z-[160]">
+                       {subcontractors?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{s.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                </div>
                <div className="space-y-2">
                   <Label className="text-xs font-black uppercase text-slate-400">سعر التعاقد (KWD)</Label>
                   <Input type="number" value={subForm.price} onChange={e => setSubForm({...subForm, price: Number(e.target.value)})} className="h-11 border-2 rounded-xl font-black text-emerald-600 text-lg" />
                </div>
-               <Button onClick={handleSaveSubcon} disabled={!subForm.subcontractorName || !!loadingAction} className="w-full h-14 rounded-2xl bg-primary text-white font-black">
+               <Button onClick={handleSaveSubcon} disabled={!subForm.subcontractorId || !!loadingAction} className="w-full h-14 rounded-2xl bg-primary text-white font-black">
                   {loadingAction === 'subcon' ? <Loader2 className="animate-spin h-4 w-4" /> : t('common.save')}
                </Button>
             </div>

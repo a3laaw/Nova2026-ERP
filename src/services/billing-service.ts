@@ -12,22 +12,24 @@ import {
   writeBatch,
   increment,
   limit,
+  setDoc,
   addDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQItem, Contract, InterimPaymentCertificate } from '@/types/documents';
+import { SubIPC } from '@/types/procurement';
 import { nextSequential } from '@/lib/counters';
 import { MilestoneTiming } from '@/types/templates';
 
 /**
- * محرك الفوترة والمستخلصات السيادي المطور (Sovereign Billing Engine V2).
- * يدعم التوليد التلقائي بناءً على مراحل المسار الفني وشروط الدفع.
+ * محرك الفوترة السيادي المطور (Sovereign Billing Engine V3).
+ * يدعم مستخلصات المالك (Owner) ومستخلصات مقاولي الباطن (Sub-IPCs).
  */
 export class BillingService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * إطلاق مطالبة مالية بناءً على حدث في المسار الفني (تلقائي)
+   * إطلاق مطالبة مالية للمالك بناءً على شرط دفع (Milestone Trigger)
    */
   async triggerMilestoneBilling(
     transactionId: string, 
@@ -36,7 +38,6 @@ export class BillingService {
     userId: string,
     userName: string
   ) {
-    // 1. جلب العقد المعتمد
     const contractsSnap = await getDocs(query(
       collection(this.db, paths.contracts(this.companyId)), 
       where('transactionId', '==', transactionId),
@@ -47,7 +48,6 @@ export class BillingService {
     if (contractsSnap.empty) return null;
     const contract = { id: contractsSnap.docs[0].id, ...contractsSnap.docs[0].data() } as Contract;
 
-    // 2. البحث عن الدفعات المرتبطة بهذه المرحلة وهذا التوقيت
     const targetMilestones = contract.milestones.filter(m => 
       m.technicalStageId === technicalStageId && m.timing === timing
     );
@@ -56,100 +56,71 @@ export class BillingService {
 
     const batch = writeBatch(this.db);
     const ipcRef = doc(collection(this.db, paths.ipcs(this.companyId)));
-    const ipcNumber = await nextSequential(this.db, this.companyId, `ipc_${contract.id}`, '', 0, 1);
+    const ipcNumber = await nextSequential(this.db, this.companyId, `ipc_owner_${transactionId}`, 'IPC-', 4);
 
     const totalAmount = targetMilestones.reduce((acc, m) => {
        const mAmt = m.amount || (contract.totalAmount * (m.percentage || 0)) / 100;
        return acc + mAmt;
     }, 0);
 
-    const ipcData: any = {
+    const ipcData = {
       id: ipcRef.id,
-      ipcNumber: Number(ipcNumber),
+      ipcNumber: ipcNumber,
       transactionId,
       contractId: contract.id,
       clientId: contract.clientId,
       clientName: contract.clientName,
       status: 'draft',
-      name: `مستخلص آلي - ${targetMilestones.map(m => m.name).join(' & ')}`,
+      name: `مستخلص (${timing}) - ${targetMilestones.map(m => m.name).join(' & ')}`,
       grossAmount: totalAmount,
-      netPayable: totalAmount, // تبسيط للمسودة
+      netPayable: totalAmount,
       milestonesTriggered: targetMilestones.map(m => m.name),
       companyId: this.companyId,
       createdBy: userId,
       createdByName: userName,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      createdAt: serverTimestamp()
     };
 
     batch.set(ipcRef, ipcData);
-
-    // توثيق في التايملاين
-    const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
-    batch.set(timelineRef, {
-      transactionId,
-      type: 'billing_triggered',
-      content: `[أتمتة مالية] تم توليد مستخلص آلي بقيمة ${totalAmount.toLocaleString()} KWD بناءً على شرط الدفع (${timing}) للمرحلة المذكورة.`,
-      userId,
-      userName,
-      companyId: this.companyId,
-      createdAt: serverTimestamp()
-    });
-
     await batch.commit();
     return ipcRef.id;
   }
 
   /**
-   * توليد مستخلص بناءً على الكميات الميدانية (للمقاولات)
+   * توليد مسودة مستخلص لمقاول باطن بناءً على إنجاز مرحلة أو بنود مقايسة
    */
-  async generateQuantityIPC(transactionId: string, userId: string, userName: string) {
-    const boqsSnap = await getDocs(query(collection(this.db, paths.boqs(this.companyId)), where('transactionId', '==', transactionId)));
-    if (boqsSnap.empty) throw new Error('NO_ACTIVE_BOQ');
-    const boqId = boqsSnap.docs[0].id;
+  async generateSubcontractorIPC(
+    transactionId: string,
+    subcontractorId: string,
+    subcontractorName: string,
+    amount: number,
+    description: string,
+    userId: string
+  ) {
+    const ipcRef = doc(collection(this.db, paths.subIpcs(this.companyId)));
+    const ipcNumber = await nextSequential(this.db, this.companyId, `ipc_sub_${subcontractorId}`, 'S-IPC-', 4);
     
-    const itemsSnap = await getDocs(collection(this.db, paths.boqItems(this.companyId, boqId)));
-    const allItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as BOQItem));
-    
-    // الكميات الجاهزة للفوترة (المنفذ > المفوتر)
-    const billableItems = allItems.filter(i => (i.executedQuantity || 0) > (i.billedQuantity || 0));
-    if (billableItems.length === 0) throw new Error('NO_NEW_PROGRESS');
+    const transSnap = await getDoc(doc(this.db, paths.transactions(this.companyId), transactionId));
+    const transData = transSnap.data();
 
-    const ipcRef = doc(collection(this.db, paths.ipcs(this.companyId)));
-    const ipcNumber = await nextSequential(this.db, this.companyId, `ipc_q_${transactionId}`, '', 0, 1);
-
-    let gross = 0;
-    const lines = billableItems.map(item => {
-      const current = (item.executedQuantity || 0) - (item.billedQuantity || 0);
-      const amt = current * (item.estimatedRate || 0);
-      gross += amt;
-      return {
-        boqItemId: item.id,
-        description: item.referenceTitle,
-        previousQty: item.billedQuantity || 0,
-        currentQty: current,
-        totalQty: item.executedQuantity,
-        rate: item.estimatedRate,
-        amount: amt
-      };
-    });
-
-    const ipcData = {
+    const subIpcData: Partial<SubIPC> = {
       id: ipcRef.id,
-      ipcNumber: Number(ipcNumber),
+      ipcNumber: ipcNumber,
+      subcontractorId,
+      subcontractorName,
       transactionId,
+      transactionNumber: transData?.transactionNumber || '',
       status: 'draft',
-      type: 'quantity_based',
-      lineItems: lines,
-      grossAmount: gross,
-      netPayable: gross,
+      grossAmount: amount,
+      deductions: 0,
+      netPayable: amount,
+      notes: description,
       companyId: this.companyId,
       createdBy: userId,
-      createdByName: userName,
       createdAt: serverTimestamp()
     };
 
-    await setDoc(ipcRef, ipcData);
+    await setDoc(ipcRef, subIpcData);
     return ipcRef.id;
   }
 }
