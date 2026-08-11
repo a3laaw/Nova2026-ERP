@@ -10,10 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Loader2, Check, FileSpreadsheet, Zap, Workflow, ArrowRight,
   Sparkles, FilePlus, Lock, Plus, Save, CheckCircle2, RotateCcw,
-  MessageSquare, Pencil, History, Hammer, X
+  MessageSquare, Pencil, History, Hammer, X, AlertTriangle, Undo2
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { collection, query, orderBy, where, doc, serverTimestamp, addDoc } from 'firebase/firestore';
+import { collection, query, orderBy, where, doc, serverTimestamp, addDoc, updateDoc } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -53,8 +53,12 @@ function TransactionDetailsContent() {
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [isBoqInitOpen, setIsBoqInitOpen] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  
+  // States for Revisions and Reverts
   const [isRevisionOpen, setIsRevisionOpen] = useState(false);
   const [revisionNote, setRevisionNote] = useState("");
+  const [revertingStage, setRevertingStage] = useState<StageInstance | null>(null);
+  const [revertReason, setRevertReason] = useState("");
 
   useEffect(() => {
     const tab = searchParams.get('tab');
@@ -130,6 +134,38 @@ function TransactionDetailsContent() {
     finally { setProcessingId(null); }
   };
 
+  const handleRevertStage = async () => {
+    if (!db || !companyId || !revertingStage || !revertReason.trim()) return;
+    setLoadingAction('revert');
+    try {
+      const stageRef = doc(db, paths.transactionStages(companyId, transactionId), revertingStage.id!);
+      await updateDoc(stageRef, {
+        status: 'in-progress',
+        completedAt: null,
+        completedBy: null,
+        updatedAt: serverTimestamp()
+      });
+
+      const timelineRef = collection(db, paths.transactionTimeline(companyId, transactionId));
+      await addDoc(timelineRef, {
+        transactionId,
+        stageId: revertingStage.id,
+        type: 'stage_reopen',
+        content: tSafe('inline.reason.for.reverting.stage', 'سبب التراجع عن اكتمال المرحلة:', 'Reason for reverting stage:') + " " + revertReason,
+        userId: user!.uid,
+        userName: currentUserName,
+        companyId,
+        createdAt: serverTimestamp()
+      });
+
+      toast({ title: tSafe('inline.reverted', 'تم التراجع', 'Reverted') });
+      setRevertingStage(null);
+      setRevertReason("");
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
   const handleCreateBOQ = async () => {
     if (!db || !companyId || !user || !selectedTemplateId || !transaction) return;
     setLoadingAction('creating_boq');
@@ -167,6 +203,14 @@ function TransactionDetailsContent() {
           companyId,
           createdAt: serverTimestamp()
        });
+
+       // Increment revision count on the first in-progress stage if possible
+       const activeStage = stages.find(s => s.status === 'in-progress');
+       if (activeStage) {
+          const stageRef = doc(db, paths.transactionStages(companyId, transactionId), activeStage.id!);
+          await updateDoc(stageRef, { revisionCount: (activeStage.revisionCount || 0) + 1 });
+       }
+
        toast({ title: tSafe('inline.revision_added', 'تم تسجيل التعديل الفني', 'Revision recorded') });
        setRevisionNote("");
        setIsRevisionOpen(false);
@@ -194,11 +238,11 @@ function TransactionDetailsContent() {
            </Button>
            {activeBoq ? (
              <button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className={cn("h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border flex items-center shadow-sm", activeBoq.status !== 'approved' ? "border-amber-200 bg-amber-50 text-amber-600" : "border-slate-200 bg-white")}>
-                 <FileSpreadsheet className="h-3 w-3" /> {activeBoq.status === 'approved' ? t('projects.boqExplorer') : t('common.pending')}
+                 <FileSpreadsheet className="h-3 w-3" /> {activeBoq.status === 'approved' ? tSafe('inline.boq', 'المقايسة المعتمدة', 'BOQ') : t('common.pending')}
              </button>
            ) : (
              <Button onClick={() => setIsBoqInitOpen(true)} variant="outline" size="sm" className="h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border-slate-200 shadow-sm">
-                <FilePlus className="h-3.5 w-3.5" /> {t('common.add')}
+                <FilePlus className="h-3.5 w-3.5" /> {tSafe('inline.create.boq', 'إنشاء مقايسة', 'Create BOQ')}
              </Button>
            )}
         </div>
@@ -209,11 +253,11 @@ function TransactionDetailsContent() {
              <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="w-full">
                 <TabsList className="bg-slate-100/50 p-1 rounded-md h-9 gap-1 shadow-sm mb-4 inline-flex">
                    <TabsTrigger value="pipeline" className="rounded-sm text-[10px] font-black px-4 h-full data-[state=active]:bg-white data-[state=active]:text-primary transition-all">
-                      {t('projects.details.radar')}
+                      {tSafe('projects.details.radar', 'رادار التنفيذ', 'Execution Radar')}
                    </TabsTrigger>
                    {canSeeFinance && (
                      <TabsTrigger value="documents" className="rounded-sm text-[10px] font-black px-4 h-full data-[state=active]:bg-white data-[state=active]:text-primary transition-all">
-                        {t('projects.details.finance')}
+                        {tSafe('projects.details.finance', 'المستندات والمالية', 'Docs & Finance')}
                      </TabsTrigger>
                    )}
                 </TabsList>
@@ -222,14 +266,14 @@ function TransactionDetailsContent() {
                    {isFinancialLockActive ? (
                       <Card className="border-2 border-dashed rounded-[1.5rem] bg-white p-12 text-center space-y-4">
                          <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto"><Lock className="h-8 w-8 text-slate-200" /></div>
-                         <h3 className="text-sm font-black text-slate-900">{t('projects.details.locked')}</h3>
+                         <h3 className="text-sm font-black text-slate-900">{tSafe('projects.details.locked', 'المسار الفني مقفل. يرجى اعتماد العقد والمقايسة أولاً.', 'Path locked. Approve contract and BOQ first.')}</h3>
                          <div className="flex justify-center gap-3 pt-4">
                             <Button onClick={() => setActiveTab('documents')} variant="outline" size="sm" className="h-8 font-bold px-6 text-[10px] rounded-md shadow-sm border-2">
-                               <Plus className="h-3.5 w-3.5 me-2" /> {t('contracts')}
+                               <Plus className="h-3.5 w-3.5 me-2" /> {tSafe('inline.contracts', 'إصدار العقد', 'Contracts')}
                             </Button>
                             {!transaction?.activityTypeName?.includes('استشارات') && !transaction?.activityTypeName?.includes('Consulting') && (
                                <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} size="sm" className="h-8 font-bold px-6 text-[10px] rounded-md shadow-sm">
-                                  <FileSpreadsheet className="h-3.5 w-3.5 me-2" /> {t('projects.boqExplorer')}
+                                  <FileSpreadsheet className="h-3.5 w-3.5 me-2" /> {tSafe('projects.boqExplorer', 'جدول الكميات والميزانية', 'BOQ Explorer')}
                                </Button>
                             )}
                          </div>
@@ -237,9 +281,9 @@ function TransactionDetailsContent() {
                    ) : !stages.length ? (
                       <Card className="py-20 text-center bg-white rounded-lg border-2 border-dashed space-y-4 shadow-none">
                         <Workflow className="h-8 w-8 text-slate-100 mx-auto" />
-                        <h3 className="text-xs font-bold text-slate-900">{t('common.pending')}</h3>
+                        <h3 className="text-xs font-bold text-slate-900">{tSafe('inline.awaiting.launch', 'بانتظار إطلاق المسار', 'Awaiting Launch')}</h3>
                         <Button onClick={() => transactionService?.initializeTechnicalPath(transactionId, transaction?.activityTypeId || '', transaction?.serviceId || '', transaction?.subServiceId || '', user!.uid)} disabled={loadingAction === 'init'} size="sm" className="h-8 font-bold px-6 text-[10px] rounded-md shadow-sm">
-                           <Zap className="h-3.5 w-3.5 me-2" /> {t('common.confirm')}
+                           <Zap className="h-3.5 w-3.5 me-2" /> {tSafe('inline.launch.path', 'تفعيل المسار', 'Launch Path')}
                         </Button>
                       </Card>
                    ) : (
@@ -256,7 +300,14 @@ function TransactionDetailsContent() {
                                   <CardContent className="p-3 flex items-center justify-between gap-4 text-start">
                                      <div className="flex items-center gap-3 flex-1 min-w-0">
                                         <div className={cn("h-6 w-6 rounded-md flex items-center justify-center font-bold text-[10px] shrink-0", stage.status === 'completed' ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-400")}>{stage.status === 'completed' ? <Check className="h-3 w-3" /> : (idx + 1)}</div>
-                                        <h4 className="font-bold text-xs text-slate-900 truncate">{stage.name}</h4>
+                                        <div className="flex flex-col min-w-0">
+                                           <h4 className="font-bold text-xs text-slate-900 truncate">{stage.name}</h4>
+                                           {(stage.revisionCount || 0) > 0 && (
+                                              <span className="text-[8px] font-black text-orange-500 uppercase flex items-center gap-1">
+                                                 <RotateCcw className="h-2 w-2" /> {stage.revisionCount} {tSafe('inline.revisions', 'تعديلات', 'Revisions')}
+                                              </span>
+                                           )}
+                                        </div>
                                      </div>
                                      <div className="flex gap-1.5 items-center">
                                            {isOperationalFrontier && (
@@ -268,6 +319,11 @@ function TransactionDetailsContent() {
                                                   {processingId === stage.id ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : tSafe('inline.complete_btn', 'إتمام العمل', 'Complete')}
                                                 </Button>}
                                               </>
+                                           )}
+                                           {stage.status === 'completed' && isAdmin && (
+                                              <Button onClick={() => setRevertingStage(stage)} variant="ghost" size="icon" className="h-7 w-7 rounded-md text-slate-300 hover:text-rose-500">
+                                                 <Undo2 className="h-3.5 w-3.5" />
+                                              </Button>
                                            )}
                                      </div>
                                   </CardContent>
@@ -291,6 +347,7 @@ function TransactionDetailsContent() {
           </div>
       </div>
 
+      {/* Revision Dialog */}
       <Dialog open={isRevisionOpen} onOpenChange={setIsRevisionOpen}>
          <DialogContent className="rounded-xl max-w-lg p-0 overflow-hidden bg-white border-0 shadow-3xl" dir={dir}>
             <div className="bg-orange-50 p-8 text-orange-900 text-start border-b">
@@ -306,11 +363,27 @@ function TransactionDetailsContent() {
          </DialogContent>
       </Dialog>
 
+      {/* Revert Dialog */}
+      <Dialog open={!!revertingStage} onOpenChange={(v) => !v && setRevertingStage(null)}>
+         <DialogContent className="rounded-xl max-w-md p-0 overflow-hidden bg-white border-0 shadow-3xl" dir={dir}>
+            <div className="bg-rose-50 p-8 text-rose-900 text-start border-b">
+               <DialogTitle className="text-xl font-black flex items-center gap-3"><Undo2 className="h-6 w-6 text-rose-500" /> {tSafe('inline.revert_stage', 'تراجع عن اكتمال المرحلة', 'Revert Stage Completion')}</DialogTitle>
+            </div>
+            <div className="p-8 space-y-4 text-start">
+               <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.revert_reason', 'المبرر الفني للتراجع', 'Technical Reason')}</Label>
+               <Textarea value={revertReason} onChange={e => setRevertReason(e.target.value)} placeholder="..." className="min-h-[100px] rounded-xl border-2" />
+               <Button onClick={handleRevertStage} disabled={!revertReason.trim() || !!loadingAction} className="w-full h-14 rounded-xl font-black bg-rose-600 text-white shadow-xl">
+                  {loadingAction === 'revert' ? <Loader2 className="h-5 w-5 animate-spin" /> : tSafe('inline.confirm_revert', 'تأكيد التراجع الآن', 'Confirm Revert')}
+               </Button>
+            </div>
+         </DialogContent>
+      </Dialog>
+
       <Dialog open={isBoqInitOpen} onOpenChange={setIsBoqInitOpen}>
          <DialogContent className="rounded-xl max-w-md p-0 overflow-hidden border shadow-3xl bg-white" dir={dir}>
             <div className="bg-slate-50 p-6 border-b text-start"><DialogTitle className="text-base font-black flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> {t('common.confirm')}</DialogTitle></div>
             <div className="p-8 space-y-4 text-start">
-               <Label className="text-[10px] font-black uppercase text-slate-400">{t('templates')}</Label>
+               <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('templates', 'القوالب', 'Templates')}</Label>
                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
                   <SelectTrigger className="h-12 rounded-xl border-2 font-black text-lg"><SelectValue placeholder="..." /></SelectTrigger>
                   <SelectContent className="rounded-xl border-2 shadow-2xl">

@@ -59,7 +59,7 @@ export default function GeneralListsPage() {
     let path = '';
     const pathFn = paths[activeTab as keyof typeof paths];
     if (pathFn && typeof pathFn === 'function') {
-      path = pathFn(companyId);
+      path = (pathFn as Function)(companyId);
     } else {
       path = `companies/${companyId}/customReferenceLists/${activeTab}/items`;
     }
@@ -107,12 +107,12 @@ export default function GeneralListsPage() {
   };
 
   const menuItems: { id: ReferenceListType, label: string, icon: any }[] = [
-    { id: 'unitTypes', label: t('unitTypes'), icon: Scale },
-    { id: 'paymentMethods', label: t('paymentMethods'), icon: CreditCard },
-    { id: 'paymentConditionTypes', label: t('paymentConditionTypes'), icon: DollarSign },
-    { id: 'milestoneTimingTypes', label: t('milestoneTimingTypes'), icon: Clock },
-    { id: 'itemCategories', label: t('itemCategories'), icon: Package },
-    { id: 'costTypeCategories', label: t('costTypeCategories'), icon: LayoutGrid },
+    { id: 'unitTypes', label: tSafe('unitTypes', 'وحدات القياس', 'Unit Types'), icon: Scale },
+    { id: 'paymentMethods', label: tSafe('paymentMethods', 'طرق الدفع', 'Payment Methods'), icon: CreditCard },
+    { id: 'paymentConditionTypes', label: tSafe('paymentConditionTypes', 'شروط الدفع', 'Payment Conditions'), icon: DollarSign },
+    { id: 'milestoneTimingTypes', label: tSafe('milestoneTimingTypes', 'توقيت الدفعات', 'Milestone Timing'), icon: Clock },
+    { id: 'itemCategories', label: tSafe('itemCategories', 'تصنيفات المواد', 'Material Categories'), icon: Package },
+    { id: 'costTypeCategories', label: tSafe('costTypeCategories', 'أنواع التكاليف', 'Cost Categories'), icon: LayoutGrid },
   ];
 
   return (
@@ -157,7 +157,7 @@ export default function GeneralListsPage() {
                         <TableHead className="py-6 ps-8 text-start">{t('common.name')}</TableHead>
                         <TableHead className="text-start">{t('common.code')}</TableHead>
                         {activeTab === 'paymentMethods' && <TableHead className="text-center">{tSafe('inline.commissions', 'العمولة', 'Commissions')}</TableHead>}
-                        <TableHead className="text-center">{t('order')}</TableHead>
+                        <TableHead className="text-center">{tSafe('order', 'الترتيب', 'Order')}</TableHead>
                         <TableHead className="text-start">{t('common.status')}</TableHead>
                         <TableHead className="pe-8 text-end">{tSafe('inline.actions', 'إجراءات', 'Actions')}</TableHead>
                      </TableRow>
@@ -203,7 +203,7 @@ export default function GeneralListsPage() {
             <div className="p-10 space-y-6 text-start bg-white">
                <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('common.code')}</Label><Input value={editingItem?.code || ''} onChange={e => setEditingItem({...editingItem, code: e.target.value.toUpperCase().replace(/\s+/g, '_')})} className="h-11 border-2 font-mono font-black" /></div>
-                  <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('order')}</Label><Input type="number" value={editingItem?.order === 0 ? '' : (editingItem?.order || '')} onChange={e => setEditingItem({...editingItem, order: e.target.value === '' ? 0 : Number(e.target.value)})} className="h-11 border-2" /></div>
+                  <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{tSafe('order', 'الترتيب', 'Order')}</Label><Input type="number" value={editingItem?.order === 0 ? '' : (editingItem?.order || '')} onChange={e => setEditingItem({...editingItem, order: e.target.value === '' ? 0 : Number(e.target.value)})} className="h-11 border-2" /></div>
                </div>
                <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('common.name')}</Label><Input value={editingItem?.name || ''} onChange={e => setEditingItem({...editingItem, name: e.target.value})} className="h-11 border-2" /></div>
                
