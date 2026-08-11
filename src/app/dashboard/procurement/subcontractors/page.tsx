@@ -25,7 +25,7 @@ import { Subcontractor } from '@/types/procurement';
 
 export default function SubcontractorsPage() {
   const { globalUser } = useAuthContext();
-  const { t, lang, dir, isRtl, tSafe } = useLanguage();
+  const { t, lang, dir, isRtl } = useLanguage();
   const db = useFirestore();
   const companyId = globalUser?.companyId;
 

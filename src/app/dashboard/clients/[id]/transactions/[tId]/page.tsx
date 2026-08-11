@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect, Suspense } from 'react';
@@ -118,7 +119,7 @@ function TransactionDetailsContent() {
   const stagesQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order', 'asc')) : null, [db, companyId, transactionId]);
   const { data: stages } = useCollection<StageInstance>(stagesQuery);
 
-  const progressPercent = useMemo(() => stages.length ? Math.round((stages.filter(s => s.status === 'completed').length / stages.length) * 100) : 0, [stages]);
+  const progressPercent = useMemo(() => (stages?.length || 0) ? Math.round((stages.filter(s => s.status === 'completed').length / stages.length) * 100) : 0, [stages]);
 
   const transactionService = useMemo(() => (db && companyId) ? new TransactionService(db, companyId, permissions) : null, [db, companyId, permissions]);
   const boqExecService = useMemo(() => (db && companyId) ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
@@ -283,7 +284,7 @@ function TransactionDetailsContent() {
                                                 )}
                                               </>
                                            )}
-                                           {stage.status === 'pending' && (idx === 0 || stages[idx-1].status === 'completed') && <Button onClick={() => handleStartStage(stage.id!)} size="sm" className="h-8 px-6 text-[10px] font-black">{tSafe('inline.start_btn', 'مباشرة', 'Start')}</Button>}
+                                           {stage.status === 'pending' && (idx === 0 || (stages[idx-1] && stages[idx-1].status === 'completed')) && <Button onClick={() => handleStartStage(stage.id!)} size="sm" className="h-8 px-6 text-[10px] font-black">{tSafe('inline.start_btn', 'مباشرة', 'Start')}</Button>}
                                            {stage.status === 'in-progress' && <Button onClick={() => handleCompleteStage(stage)} size="sm" className="h-8 px-6 text-[10px] font-black bg-emerald-600 text-white hover:bg-emerald-700">{tSafe('inline.complete_btn', 'إتمام', 'Complete')}</Button>}
                                            {stage.status === 'completed' && isAdmin && <Button onClick={() => setRevertingStage(stage)} variant="ghost" size="icon" className="h-8 w-8 text-rose-300 hover:text-rose-600"><Undo2 className="h-4 w-4" /></Button>}
                                         </div>
