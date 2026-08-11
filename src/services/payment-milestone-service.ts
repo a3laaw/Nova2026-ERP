@@ -7,8 +7,7 @@ import {
   query, 
   where, 
   doc, 
-  getDoc,
-  orderBy 
+  getDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Contract } from '@/types/documents';
@@ -31,6 +30,7 @@ export class PaymentMilestoneService {
 
   /**
    * جلب حالة سداد دفعات العقد بالتفصيل
+   * تم تعديل الاستعلام ليعمل بدون الحاجة لفهرس (Index) خارجي
    */
   async getMilestonesStatus(contractId: string): Promise<MilestonePaymentStatus[]> {
     const contractRef = doc(this.db, paths.contracts(this.companyId), contractId);
@@ -41,20 +41,24 @@ export class PaymentMilestoneService {
     const milestones = contract.milestones || [];
     const totalAmount = contract.totalAmount || 0;
 
-    // 1. جلب كافة سندات القبض المرتبطة بهذا العقد (مرتبة بالأقدم أولاً)
+    // 1. جلب كافة سندات القبض المرتبطة بهذا العقد داخل نطاق المنشأة
     const vouchersQuery = query(
       collection(this.db, paths.vouchers(this.companyId)),
       where('contractId', '==', contractId),
-      where('type', '==', 'receipt'),
-      orderBy('createdAt', 'asc')
+      where('type', '==', 'receipt')
     );
+    
     const vouchersSnap = await getDocs(vouchersQuery);
-    const allVouchers = vouchersSnap.docs.map(d => d.data() as Voucher);
+    
+    // 2. فرز البيانات برمجياً (In-memory) لتجنب الحاجة لفهرس مركب في Firestore
+    const allVouchers = vouchersSnap.docs
+      .map(d => d.data() as Voucher)
+      .sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
 
-    // 2. حساب إجمالي ما تم تحصيله
+    // 3. حساب إجمالي ما تم تحصيله
     let poolOfPaidMoney = allVouchers.reduce((acc, v) => acc + (v.amount || 0), 0);
 
-    // 3. توزيع الرصيد على الدفعات بنظام FIFO
+    // 4. توزيع الرصيد على الدفعات بنظام FIFO
     return milestones.map((m) => {
       // حساب قيمة الدفعة (دعم النمطين: مبلغ ثابت أو نسبة)
       const mAmount = m.amount || (totalAmount * (m.percentage || 0)) / 100;
@@ -101,7 +105,7 @@ export class PaymentMilestoneService {
       remainingNewMoney -= applied;
     }
 
-    // بناء النص العربي
+    // بناء النص العربي للبيان المحاسبي
     let description = "";
     if (breakdown.length === 0) {
        description = `تم استلام مبلغ إضافي بقيمة ${newAmount} د.ك فائض عن قيمة العقد.`;
@@ -122,8 +126,10 @@ export class PaymentMilestoneService {
        
        if (fulls.length > 1) {
           description = `تم سداد الدفعات (${fulls.map(f => f.milestoneName).join(' و ')}) بالكامل`;
-       } else {
+       } else if (fulls.length === 1) {
           description = `تم سداد ${fulls[0].milestoneName} بالكامل`;
+       } else {
+          description = `تم سداد أجزاء من عدة دفعات`;
        }
 
        if (!last.fullyPaid) {
