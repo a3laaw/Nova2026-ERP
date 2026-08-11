@@ -135,7 +135,7 @@ export default function TransactionBOQProgressPage() {
             <TableCell className="font-mono text-[10px] font-black text-primary/60 text-start">{item.referenceCode}</TableCell>
             <TableCell className="text-xs font-bold text-slate-700 text-start">{item.referenceTitle}</TableCell>
             <TableCell className="text-center">
-               <Select disabled={isDraft} value={item.subcontractorId || 'NONE'} onValueChange={v => handleLinkSub(item.id!, v)}>
+               <Select value={item.subcontractorId || 'NONE'} onValueChange={v => handleLinkSub(item.id!, v)}>
                   <SelectTrigger className="h-7 w-[120px] rounded-lg border-2 font-black text-[8px] bg-slate-50/50">
                      <SelectValue placeholder="..." />
                   </SelectTrigger>
