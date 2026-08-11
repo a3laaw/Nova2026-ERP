@@ -43,12 +43,12 @@ export default function ReceiptVoucherDetailPage() {
   const { data: voucher, loading } = useDoc<Voucher>(voucherRef);
 
   if (loading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
-  if (!voucher) return <div className="p-20 text-center font-black">404 - Document Not Found</div>;
+  if (!voucher) return <div className="p-20 text-center font-black">{tSafe('inline.not.found', '404 - غير موجود', '404 - Not Found')}</div>;
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-700" dir={dir}>
       <div className="flex justify-between items-center print:hidden">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 text-start">
            <Button 
              variant="ghost" 
              onClick={() => router.push('/dashboard/accounting/vouchers/receipt')} 

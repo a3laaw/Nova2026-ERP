@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { 
   Wallet, Plus, Loader2, Save, 
   ArrowRight, Landmark, User, FileText, Briefcase, LayoutGrid, DatabaseZap,
-  Split, Trash2, CheckCircle2
+  Split, Trash2, CheckCircle2, History
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where } from 'firebase/firestore';
@@ -126,7 +126,7 @@ export default function PaymentVouchersPage() {
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
             <Wallet className="h-6 w-6 text-rose-600" /> {t('accounting.vouchers.paymentTitle')}
           </h1>
-          <p className="text-muted-foreground text-xs font-medium">{isRtl ? 'إدارة المصروفات وربطها بمراكز تكلفة المشاريع' : 'Manage expenses and link to project cost centers'}</p>
+          <p className="text-muted-foreground text-xs font-medium">{tSafe('inline.payment.desc', 'إدارة المصروفات وربطها بمراكز تكلفة المشاريع', 'Manage expenses and link to project cost centers')}</p>
         </div>
         <Button onClick={() => setIsAdding(!isAdding)} size="sm" className="h-9 px-6 font-bold gap-2 bg-rose-600 hover:bg-rose-700">
            {isAdding ? <ArrowRight className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
@@ -195,15 +195,13 @@ export default function PaymentVouchersPage() {
                  <div className="pt-6 border-t space-y-4">
                     <div className="flex justify-between items-center mb-2">
                        <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{t('accounting.vouchers.againstAccount')}</Label>
-                       <Button 
+                       <button 
                          type="button" 
-                         variant="outline" 
-                         size="sm" 
                          onClick={() => { setIsDistOpen(true); if(form.distributions.length === 0) handleAddDist(); }} 
-                         className="h-8 rounded-xl font-black text-[10px] gap-2 border-primary/20 text-primary"
+                         className="flex items-center gap-2 text-primary font-black text-[10px] uppercase hover:underline"
                        >
-                          <Split className="h-3 w-3" /> {isRtl ? 'توزيع المصروف' : 'Distribute Expense'}
-                       </Button>
+                          <Split className="h-3 w-3" /> {tSafe('inline.distribute.expense', 'توزيع المصروف', 'Distribute Expense')}
+                       </button>
                     </div>
 
                     <div className="space-y-4">
@@ -217,7 +215,7 @@ export default function PaymentVouchersPage() {
                        {form.distributions.length > 0 ? (
                          <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl flex items-center justify-between">
                             <span className="text-[10px] font-black text-primary uppercase">{isRtl ? `موزع على ${form.distributions.length} مشاريع` : `Distributed across ${form.distributions.length} projects`}</span>
-                            <Badge className="bg-emerald-50 text-white border-0">{isDistBalanced ? 'BALANCED' : 'MISMATCH'}</Badge>
+                            <Badge className={isDistBalanced ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"}>{isDistBalanced ? 'BALANCED' : 'MISMATCH'}</Badge>
                          </div>
                        ) : (
                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -251,9 +249,9 @@ export default function PaymentVouchersPage() {
                  </div>
 
                  <div className="flex justify-end gap-3 pt-6">
-                    <Button onClick={handleSave} disabled={loading || (form.distributions.length > 0 && !isDistBalanced)} className="h-14 rounded-2xl px-12 bg-rose-600 text-white font-black text-lg shadow-xl shadow-rose-100 hover:scale-[1.02] transition-all gap-2">
+                    <Button onClick={handleSave} disabled={loading || (form.distributions.length > 0 && !isDistBalanced)} className="h-14 rounded-2xl px-12 bg-rose-600 text-white font-black text-lg shadow-xl shadow-rose-100 hover:scale-[1.02] transition-all gap-2 border-b-4 border-rose-800">
                        {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
-                       {isRtl ? 'تأكيد وإصدار السند' : 'Confirm & Issue'}
+                       {tSafe('inline.confirm.issue', 'تأكيد وإصدار السند', 'Confirm & Issue')}
                     </Button>
                  </div>
               </CardContent>
@@ -275,10 +273,10 @@ export default function PaymentVouchersPage() {
               <Table>
                  <TableHeader className="bg-slate-50">
                     <TableRow>
-                       <TableHead className="py-3 ps-6 text-start">{isRtl ? 'رقم السند / التاريخ' : 'Voucher No. / Date'}</TableHead>
-                       <TableHead className="text-start">{isRtl ? 'إلى السيد' : 'Paid To'}</TableHead>
+                       <TableHead className="py-3 ps-6 text-start">{tSafe('inline.voucher.no.date', 'رقم السند / التاريخ', 'Voucher No. / Date')}</TableHead>
+                       <TableHead className="text-start">{tSafe('inline.paid.to', 'إلى السيد', 'Paid To')}</TableHead>
                        <TableHead className="text-end">{t('common.amount')}</TableHead>
-                       <TableHead className="text-center">{isRtl ? 'طريقة الدفع' : 'Payment Method'}</TableHead>
+                       <TableHead className="text-center">{tSafe('inline.payment.method', 'طريقة الدفع', 'Payment Method')}</TableHead>
                        <TableHead className="pe-6"></TableHead>
                     </TableRow>
                  </TableHeader>
@@ -315,11 +313,11 @@ export default function PaymentVouchersPage() {
            <div className="bg-primary p-8 text-white text-start">
               <div className="flex justify-between items-center">
                  <div>
-                    <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3"><Split className="h-8 w-8" /> {isRtl ? 'توزيع المصروف المشترك' : 'Joint Expense Distribution'}</DialogTitle>
-                    <p className="text-white/60 font-bold text-xs mt-2 uppercase tracking-widest">{isRtl ? 'إجمالي السند:' : 'Voucher Total:'} {form.amount.toLocaleString()} KWD</p>
+                    <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3"><Split className="h-8 w-8" /> {tSafe('inline.joint.dist', 'توزيع المصروف المشترك', 'Joint Expense Distribution')}</DialogTitle>
+                    <p className="text-white/60 font-bold text-xs mt-2 uppercase tracking-widest">{tSafe('inline.voucher.total', 'إجمالي السند:', 'Voucher Total:')} {form.amount.toLocaleString()} KWD</p>
                  </div>
                  <div className="text-end">
-                    <p className="text-[10px] font-black text-white/40 uppercase">{isRtl ? 'إجمالي التوزيع' : 'Total Distributed'}</p>
+                    <p className="text-[10px] font-black text-white/40 uppercase">{tSafe('inline.total.dist', 'إجمالي التوزيع', 'Total Distributed')}</p>
                     <h3 className={cn("text-3xl font-black", isDistBalanced ? "text-emerald-300" : "text-rose-300")}>{distSum.toLocaleString()}</h3>
                  </div>
               </div>
@@ -390,9 +388,9 @@ export default function PaymentVouchersPage() {
            </div>
 
            <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4">
-              <Button variant="ghost" onClick={() => { setForm({...form, distributions: []}); setIsDistOpen(false); }} className="flex-1 font-bold text-slate-400">{isRtl ? 'إلغاء التوزيع' : 'Cancel Distribution'}</Button>
+              <Button variant="ghost" onClick={() => { setForm({...form, distributions: []}); setIsDistOpen(false); }} className="flex-1 font-bold text-slate-400">{tSafe('inline.cancel.dist', 'إلغاء التوزيع', 'Cancel Distribution')}</Button>
               <Button onClick={() => setIsDistOpen(false)} disabled={!isDistBalanced} className="flex-[2] h-14 rounded-2xl bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 gap-3 border-b-8 border-orange-700">
-                 <CheckCircle2 className="h-6 w-6" /> {isRtl ? 'اعتماد التوزيع' : 'Confirm Distribution'}
+                 <CheckCircle2 className="h-6 w-6" /> {tSafe('inline.confirm.dist', 'اعتماد التوزيع', 'Confirm Distribution')}
               </Button>
            </DialogFooter>
         </DialogContent>

@@ -38,7 +38,7 @@ import { toast } from '@/hooks/use-toast';
 
 export default function GeneralListsPage() {
   const { globalUser, user } = useAuthContext();
-  const { t, lang, dir, isRtl } = useLanguage();
+  const { t, tSafe, lang, dir, isRtl } = useLanguage();
   const { check } = usePermissions();
   const db = useFirestore();
   const companyId = globalUser?.companyId;
@@ -57,7 +57,7 @@ export default function GeneralListsPage() {
     if (!companyId || !db) return null;
     let path = '';
     if (paths[activeTab as keyof typeof paths] && typeof paths[activeTab as keyof typeof paths] === 'function') {
-      path = (paths[activeTab as keyof typeof paths] as Function)(this.companyId);
+      path = (paths[activeTab as keyof typeof paths] as Function)(companyId);
     } else {
       path = `companies/${companyId}/customReferenceLists/${activeTab}/items`;
     }
@@ -157,10 +157,10 @@ export default function GeneralListsPage() {
                      <TableRow>
                         <TableHead className="py-6 ps-8 text-start">{t('common.name')}</TableHead>
                         <TableHead className="text-start">{t('common.code')}</TableHead>
-                        {activeTab === 'paymentMethods' && <TableHead className="text-center">{isRtl ? 'العمولة' : 'Commissions'}</TableHead>}
+                        {activeTab === 'paymentMethods' && <TableHead className="text-center">{tSafe('inline.commissions', 'العمولة', 'Commissions')}</TableHead>}
                         <TableHead className="text-center">{t('order')}</TableHead>
                         <TableHead className="text-start">{t('common.status')}</TableHead>
-                        <TableHead className="pe-8 text-end">{isRtl ? 'إجراءات' : 'Actions'}</TableHead>
+                        <TableHead className="pe-8 text-end">{tSafe('inline.actions', 'إجراءات', 'Actions')}</TableHead>
                      </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -169,7 +169,7 @@ export default function GeneralListsPage() {
                      ) : (
                        filtered.map((item) => (
                          <TableRow key={item.id} className="hover:bg-primary/5 transition-colors border-b-slate-100 group">
-                            <TableCell className="py-6 ps-8 text-start font-black text-slate-800">{isRtl ? item.name : (item.nameEn || item.name)}</TableCell>
+                            <TableCell className="py-6 ps-8 text-start font-black text-slate-800">{tSafe('data.item.name', item.name, item.nameEn || item.name)}</TableCell>
                             <TableCell className="text-start"><code className="text-[10px] bg-slate-100 px-2 py-0.5 rounded font-mono text-primary font-black uppercase">{item.code}</code></TableCell>
                             {activeTab === 'paymentMethods' && (
                                <TableCell className="text-center">
@@ -211,11 +211,11 @@ export default function GeneralListsPage() {
                {activeTab === 'paymentMethods' && (
                   <div className="p-6 rounded-2xl bg-blue-50 border-2 border-dashed border-blue-200 space-y-6">
                      <div className="flex items-center gap-2 text-blue-600 font-black text-xs uppercase tracking-widest">
-                        <Percent className="h-4 w-4" /> {isRtl ? 'إعدادات عمولات البنوك' : 'Bank Commission Rules'}
+                        <Percent className="h-4 w-4" /> {tSafe('inline.bank.comm.rules', 'إعدادات عمولات البنوك', 'Bank Commission Rules')}
                      </div>
                      <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-2">
-                           <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'النسبة المئوية (%)' : 'Percentage (%)'}</Label>
+                           <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.percentage', 'النسبة المئوية (%)', 'Percentage (%)')}</Label>
                            <Input 
                              type="number" 
                              step="0.01" 
@@ -227,10 +227,10 @@ export default function GeneralListsPage() {
                              className="h-11 border-2 bg-white font-black" 
                              placeholder="مثال: 2.5"
                            />
-                           <p className="text-[8px] font-bold text-slate-400 italic">{isRtl ? 'اكتب 2.5 لتمثيل نسبة 2.5%' : 'Type 2.5 for 2.5%'}</p>
+                           <p className="text-[8px] font-bold text-slate-400 italic">{tSafe('inline.percentage.hint', 'اكتب 2.5 لتمثيل نسبة 2.5%', 'Type 2.5 for 2.5%')}</p>
                         </div>
                         <div className="space-y-2">
-                           <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'مبلغ ثابت (KWD)' : 'Fixed Amount'}</Label>
+                           <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.fixed.amount', 'مبلغ ثابت (KWD)', 'Fixed Amount')}</Label>
                            <Input 
                              type="number" 
                              step="0.001" 
@@ -246,9 +246,26 @@ export default function GeneralListsPage() {
 
                <div className="flex items-center justify-between p-6 bg-slate-50 rounded-xl border-2"><Label className="font-black text-slate-700">{t('common.isActive')}</Label><Switch checked={editingItem?.isActive !== false} onCheckedChange={v => setEditingItem({...editingItem!, isActive: v})} /></div>
             </div>
+            <div className="p-8 rounded-b-xl bg-slate-50 border-t flex items-start gap-4">
+               <Info className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
+               <p className="text-[10px] text-slate-500 font-bold leading-relaxed">{tSafe('inline.available.lists', 'إتاحة العنصر للاستخدام في القوائم.', 'Make item available in select lists.')}</p>
+            </div>
             <DialogFooter className="p-8 bg-slate-50 border-t"><Button onClick={handleSave} disabled={loadingAction === 'save'} className="w-full h-12 rounded-xl">{loadingAction === 'save' ? <Loader2 className="animate-spin" /> : <Save className="h-5 w-5 me-2" />}{t('common.save')}</Button></DialogFooter>
          </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent className="rounded-xl p-8" dir={dir}>
+          <AlertDialogHeader>
+            <div className="mx-auto w-16 h-16 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center mb-4"><Trash2 className="h-8 w-8" /></div>
+            <AlertDialogTitle className="text-start font-black text-2xl">{t('common.confirmDelete')}</AlertDialogTitle>
+            <AlertDialogDescription className="text-start font-bold">
+               {tSafe('inline.confirm_delete_msg', 'هل أنت متأكد من حذف هذا العنصر؟ قد يؤثر ذلك على البيانات التاريخية المرتبطة به.', 'Are you sure? This may affect historical data.')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-8 gap-4"><AlertDialogCancel className="rounded-xl h-11 border-2">{t('common.cancel')}</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="rounded-xl h-11 bg-rose-600 hover:bg-rose-700 text-white px-8">{t('common.confirm')}</AlertDialogAction></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

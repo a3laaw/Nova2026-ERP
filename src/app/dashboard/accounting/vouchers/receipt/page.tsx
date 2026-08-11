@@ -176,7 +176,12 @@ export default function ReceiptVouchersPage() {
   };
 
   const sortedVouchers = useMemo(() => {
-    return [...(vouchers || [])].sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+    const list = [...(vouchers || [])];
+    return list.sort((a, b) => {
+       const dA = a.createdAt?.toMillis?.() || 0;
+       const dB = b.createdAt?.toMillis?.() || 0;
+       return dB - dA;
+    });
   }, [vouchers]);
 
   return (
