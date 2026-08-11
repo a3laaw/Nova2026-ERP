@@ -106,6 +106,7 @@ function TransactionDetailsContent() {
   const allTemplatesQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqTemplates(companyId))) : null, [db, companyId]);
   const { data: allTemplates } = useCollection<BOQTemplate>(allTemplatesQuery);
 
+  // الربط السيادي: فلترة القوالب بناءً على المسار الفني للمشروع (The DNA Link)
   const templates = useMemo(() => {
     if (!allTemplates || !transaction) return [];
     return allTemplates.filter(t => t.subServiceId === transaction.subServiceId);
@@ -280,7 +281,7 @@ function TransactionDetailsContent() {
                                                 {!isDesignProject ? (
                                                   <Button onClick={() => { setActiveStageForLog(stage); setIsLogOpen(true); }} size="sm" className="h-8 px-4 text-[10px] font-black"><Hammer className="h-3.5 w-3.5 me-1" /> {tSafe('inline.log_progress', 'تسجيل إنجاز', 'Log Progress')}</Button>
                                                 ) : (
-                                                  <Button onClick={() => { setRevisionForm({ content: '', stageId: stage.id!, stageName: stage.name }); setIsRevisionOpen(true); }} variant="outline" size="sm" className="h-8 px-4 text-[10px] font-black gap-2 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 shadow-sm"><RotateCcw className="h-3.5 w-3.5" /> {tSafe('inline.add_revision', 'تسجيل تعديل فني', 'Add Revision')}</Button>
+                                                  <Button onClick={() => { setRevisionForm({ content: '', stageId: stage.id!, stageName: stage.name }); setIsRevisionOpen(revision => !revision); }} variant="outline" size="sm" className="h-8 px-4 text-[10px] font-black gap-2 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 shadow-sm"><RotateCcw className="h-3.5 w-3.5" /> {tSafe('inline.add_revision', 'تسجيل تعديل فني', 'Add Revision')}</Button>
                                                 )}
                                               </>
                                            )}

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
@@ -105,6 +106,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
 
   const { data: rawTemplates } = useCollection<any>(templatesQuery);
 
+  // الربط السيادي المطور: فرز القوالب لتقديم تلك المطابقة للمسار الفني للمشروع أولاً
   const templates = useMemo(() => {
     if (!rawTemplates) return [];
     return [...rawTemplates].sort((a, b) => {
@@ -241,11 +243,6 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
                                  </div>
                               </SelectItem>
                             ))}
-                            {templates.length === 0 && (
-                               <div className="p-6 text-center text-slate-400 text-xs italic">
-                                  {t('common.noResults')}
-                               </div>
-                            )}
                          </SelectContent>
                       </Select>
                    </div>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -25,12 +24,16 @@ import { Subcontractor } from '@/types/procurement';
 
 export default function SubcontractorsPage() {
   const { globalUser, user } = useAuthContext();
-  const { t, lang, dir, isRtl } = useLanguage();
+  const { t, lang, dir, isRtl, tSafe } = useLanguage(); // أضفنا tSafe
   const db = useFirestore();
   const companyId = globalUser?.companyId;
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [isAdding, setIsAdding] = useState(false);
+  
+  // تم الفصل بين متغير فتح النافذة ومتغير الحفظ
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  
   const [form, setForm] = useState({ name: '', trade: '', phone: '', email: '', civilId: '' });
 
   const subsQuery = useMemo(() => 
@@ -41,7 +44,7 @@ export default function SubcontractorsPage() {
 
   const handleAdd = async () => {
     if (!db || !companyId || !form.name || !user) return;
-    setIsAdding(true);
+    setIsSaving(true); // تفعيل حالة التحميل للزر فقط
     try {
       await addDoc(collection(db, paths.subcontractors(companyId)), {
         ...form,
@@ -54,11 +57,12 @@ export default function SubcontractorsPage() {
       });
       toast({ title: t('common.saved') });
       setForm({ name: '', trade: '', phone: '', email: '', civilId: '' });
-      setIsAdding(false);
+      setIsDialogOpen(false); // إغلاق النافذة بعد نجاح الحفظ
     } catch (e: any) {
       console.error(e);
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
-      setIsAdding(false);
+    } finally {
+      setIsSaving(false); // إيقاف حالة التحميل للزر
     }
   };
 
@@ -78,9 +82,9 @@ export default function SubcontractorsPage() {
            <p className="text-muted-foreground text-sm font-bold opacity-70 italic">{isRtl ? 'إدارة وتتبع مطالبات مقاولي الباطن المربوطة بالمشاريع.' : 'Manage and track subcontractor claims linked to projects.'}</p>
         </div>
 
-        <Dialog open={isAdding} onOpenChange={setIsAdding}>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="h-14 px-10 font-black rounded-2xl bg-slate-900 text-white shadow-2xl hover:scale-105 transition-all gap-3 border-b-8 border-slate-700">
+            <Button onClick={() => setIsDialogOpen(true)} className="h-14 px-10 font-black rounded-2xl bg-slate-900 text-white shadow-2xl hover:scale-105 transition-all gap-3 border-b-8 border-slate-700">
                <Plus className="h-6 w-6 text-primary" />
                {isRtl ? 'إضافة مقاول باطن' : 'Add Subcontractor'}
             </Button>
@@ -113,8 +117,9 @@ export default function SubcontractorsPage() {
                 </div>
              </div>
              <DialogFooter className="p-8 bg-slate-50 border-t">
-                <Button onClick={handleAdd} disabled={isAdding || !form.name} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl border-b-8 border-orange-700">
-                   {isAdding ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="me-2 h-6 w-6" />}
+                {/* تم تغيير isAdding إلى isSaving هنا */}
+                <Button onClick={handleAdd} disabled={isSaving || !form.name} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl border-b-8 border-orange-700">
+                   {isSaving ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="me-2 h-6 w-6" />}
                    {isRtl ? 'حفظ المقاول' : 'Save Subcontractor'}
                 </Button>
              </DialogFooter>

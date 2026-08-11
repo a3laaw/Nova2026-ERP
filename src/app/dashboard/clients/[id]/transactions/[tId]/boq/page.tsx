@@ -89,6 +89,7 @@ export default function TransactionBOQProgressPage() {
   const allTemplatesQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqTemplates(companyId))) : null, [db, companyId]);
   const { data: allTemplates } = useCollection<BOQTemplate>(allTemplatesQuery);
 
+  // الربط السيادي المطور: فلترة القوالب لضمان مطابقة المسار الفني بدقة (Preventing mismatched BOQs)
   const templates = useMemo(() => {
      if (!allTemplates || !transaction?.subServiceId) return [];
      return allTemplates.filter(temp => (temp.subServiceId?.trim() === transaction.subServiceId.trim()) && temp.isActive !== false);
@@ -142,13 +143,8 @@ export default function TransactionBOQProgressPage() {
         const itemPrefix = prefix + "." + (iIdx + 1);
         const planned = item.plannedQuantity || 0;
         const totalExecuted = item.executedQuantity || 0;
-        
-        // حساب الكمية "السابقة" من المستخلصات المعتمدة
         const previousBilled = billedQuantitiesMap.get(item.id!) || 0;
-        
-        // "الحالي" هو المنجز ميدانياً الذي لم يفوتر بعد
         const currentToBill = Math.max(0, totalExecuted - previousBilled);
-        
         const totalPct = Math.min(100, Math.round((totalExecuted / Math.max(1, planned)) * 100));
         const isDraft = activeBoq?.status === 'draft';
 
@@ -259,7 +255,7 @@ export default function TransactionBOQProgressPage() {
              <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">{transaction?.clientName}</p>
            </div>
            {activeBoq.status === 'draft' && (
-             <Badge className="bg-amber-50 text-amber-600 border-amber-200 font-black text-[8px] uppercase px-3">{tSafe('inline.study.mode', 'مرحلة الدراسة', 'STUDY MODE')}</Badge>
+             <Badge className="bg-amber-50 text-amber-600 border-amber-200 font-black text-[8px] uppercase px-3">STUDY MODE</Badge>
            )}
         </div>
         <div className="flex items-center gap-2">
