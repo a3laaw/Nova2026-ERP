@@ -14,7 +14,8 @@ import {
   User,
   Calendar,
   Wallet,
-  CheckCircle2
+  CheckCircle2,
+  History
 } from "lucide-react";
 import { useFirestore, useDoc } from '@/firebase';
 import { doc } from 'firebase/firestore';

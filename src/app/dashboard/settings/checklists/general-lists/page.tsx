@@ -57,7 +57,7 @@ export default function GeneralListsPage() {
     if (!companyId || !db) return null;
     let path = '';
     if (paths[activeTab as keyof typeof paths] && typeof paths[activeTab as keyof typeof paths] === 'function') {
-      path = (paths[activeTab as keyof typeof paths] as Function)(companyId);
+      path = (paths[activeTab as keyof typeof paths] as Function)(this.companyId);
     } else {
       path = `companies/${companyId}/customReferenceLists/${activeTab}/items`;
     }

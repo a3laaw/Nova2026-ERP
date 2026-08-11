@@ -70,7 +70,6 @@ export class PaymentMilestoneService {
 
   /**
    * توليد بيان سند القبض المطور (Sovereign Narrative Engine)
-   * تم التحديث لحساب المتبقي من الدفعة وإجمالي العقد.
    */
   generateReceiptDescription(
     milestonesStatus: MilestonePaymentStatus[],
