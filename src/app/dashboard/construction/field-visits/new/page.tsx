@@ -15,10 +15,10 @@ import {
 import { 
   Save, Loader2, ArrowRight, Camera, Users, Target,
   Plus, CheckCircle2, Trash2, Truck, LayoutGrid, Sparkles,
-  Workflow, Clock, AlertTriangle, Hammer
+  Workflow, Clock, AlertTriangle, Hammer, PlusCircle
 } from "lucide-react";
 import { useFirestore, useCollection, useFirebaseApp } from '@/firebase';
-import { collection, query, where, getDocs, orderBy, doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
@@ -39,18 +39,14 @@ function NewFieldVisitForm() {
   const db = useFirestore();
   const firebaseApp = useFirebaseApp();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
-
-  const cloneId = searchParams.get('cloneId');
 
   const [loading, setLoading] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [visitDate, setVisitDate] = useState(new Date().toISOString().split('T')[0]);
   
-  // بيانات المرحلة النشطة
   const [activeStage, setActiveStage] = useState<StageInstance | null>(null);
   const [loadingStage, setLoadingStage] = useState(false);
 
@@ -61,7 +57,6 @@ function NewFieldVisitForm() {
     { boqItemId: '', quantity: '', notes: '', photoUrls: [], isUploading: false }
   ]);
 
-  // جلب المشاريع المتاحة للمهندس
   const transQuery = useMemo(() => 
     (companyId && db) ? query(collection(db, paths.transactions(companyId)), where('status', '!=', 'completed')) : null, [db, companyId]);
   const { data: allTransactions } = useCollection<Transaction>(transQuery);
@@ -75,16 +70,15 @@ function NewFieldVisitForm() {
   }, [allTransactions, isAdmin, globalUser]);
 
   const contractedClients = useMemo(() => {
-    const clients = new Map();
+    const clientsMap = new Map();
     fieldProjects.forEach(p => {
-       clients.set(p.clientId, p.clientName);
+       clientsMap.set(p.clientId, p.clientName);
     });
-    return Array.from(clients.entries()).map(([id, name]) => ({ id, name }));
+    return Array.from(clientsMap.entries()).map(([id, name]) => ({ id, name }));
   }, [fieldProjects]);
 
   const clientProjects = useMemo(() => selectedClientId ? fieldProjects.filter(p => p.clientId === selectedClientId) : [], [fieldProjects, selectedClientId]);
 
-  // محرك البحث عن المرحلة النشطة والبنود المرتبطة بها
   useEffect(() => {
     async function fetchProjectContext() {
       if (!selectedProjectId || !db || !companyId) {
@@ -113,7 +107,6 @@ function NewFieldVisitForm() {
   const itemsQuery = useMemo(() => companyId && db && activeBoq?.id ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
   const { data: allBoqItems } = useCollection<BOQItem>(itemsQuery);
 
-  // تصفية البنود لتظهر فقط بنود المرحلة النشطة
   const filteredBoqItems = useMemo(() => {
     if (!activeStage || !allBoqItems) return [];
     return allBoqItems.filter(i => (i.technicalStageIds?.includes(activeStage.technicalStageId) || i.technicalStageId === activeStage.technicalStageId));
@@ -124,9 +117,6 @@ function NewFieldVisitForm() {
 
   const groupsQuery = useMemo(() => companyId && db ? query(collection(db, paths.workGroups(companyId)), where('isActive', '==', true)) : null, [db, companyId]);
   const { data: workGroups } = useCollection<WorkGroup>(groupsQuery);
-
-  const equipQuery = useMemo(() => companyId && db ? query(collection(db, paths.equipment(companyId)), where('status', '==', 'available')) : null, [db, companyId]);
-  const { data: equipmentRegistry } = useCollection<Equipment>(equipQuery);
 
   const handlePhotoUpload = async (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -190,7 +180,7 @@ function NewFieldVisitForm() {
     
     const validRows = gridRows.filter(r => r.boqItemId && Number(r.quantity) > 0);
     if (validRows.length === 0) {
-      toast({ variant: "destructive", title: "بيانات ناقصة", description: "يرجى اختيار بند عمل واحد على الأقل وإدخال كمية." });
+      toast({ variant: "destructive", title: "بيانات ناقصة", description: isRtl ? "يرجى اختيار بند عمل واحد على الأقل وإدخال كمية." : "Select at least one item and quantity." });
       return;
     }
 
@@ -201,7 +191,6 @@ function NewFieldVisitForm() {
       const project = allTransactions?.find(t => t.id === selectedProjectId);
       const officialName = globalUser?.fullName || user.displayName || 'Engineer';
 
-      // 1. تسجيل كل بند كحركة إنجاز مستقلة (Live Execution)
       for (const row of validRows) {
          await execService.recordBOQItemExecution(
            activeBoq.id,
@@ -213,12 +202,11 @@ function NewFieldVisitForm() {
            row.notes || '',
            activeStage.id!,
            false,
-           '', // لا يوجد موعد مرتبط في التقرير المباشر
+           '', 
            { laborDetails: laborDetails.filter(l => l.trade), equipmentUsed: equipmentUsed.filter(e => e.equipmentId) }
          );
       }
 
-      // 2. حفظ وثيقة التقرير الميداني للأرشفة
       await setDoc(visitRef, {
         id: visitRef.id,
         companyId,
@@ -263,8 +251,10 @@ function NewFieldVisitForm() {
           </div>
         </div>
         <div className="flex gap-2">
-           <Button variant="outline" onClick={() => router.back()} className="rounded-xl h-11 px-6 font-bold">{t('common.cancel')}</Button>
-           <Button onClick={handleSave} disabled={loading || !activeStage} className="h-11 px-10 rounded-xl bg-primary text-white font-black shadow-lg shadow-primary/20 gap-2 border-b-4 border-orange-700">
+           <Button variant="outline" onClick={() => router.back()} className="rounded-xl h-11 px-6 font-bold bg-white border-2">
+             {t('common.cancel')}
+           </Button>
+           <Button onClick={handleSave} disabled={loading || !activeStage} className="h-11 px-10 rounded-xl bg-primary text-white font-black shadow-lg shadow-primary/20 gap-2 border-b-4 border-orange-700 hover:scale-[1.02] active:scale-[0.98] transition-all">
               {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
               {isRtl ? 'اعتماد وحفظ التقرير' : 'Commit Report'}
            </Button>
@@ -272,11 +262,10 @@ function NewFieldVisitForm() {
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-         
          <div className="lg:col-span-4 space-y-6">
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                <CardHeader className="bg-slate-50/50 p-6 border-b text-start">
-                  <CardTitle className="text-xs font-black uppercase text-slate-400 flex items-center gap-2">
+                  <CardTitle className="text-xs font-black uppercase text-slate-400 flex items-center gap-2 tracking-widest">
                      <Target className="h-4 w-4 text-primary" /> {t('construction.context')}
                   </CardTitle>
                </CardHeader>
@@ -310,7 +299,7 @@ function NewFieldVisitForm() {
                   ) : selectedProjectId && (
                     <div className="p-6 bg-rose-50 rounded-3xl border-2 border-dashed border-rose-200 text-center space-y-3">
                        <ShieldAlert className="h-8 w-8 text-rose-500 mx-auto" />
-                       <p className="text-xs font-black text-rose-700">{isRtl ? 'لا توجد مرحلة نشطة لهذا المشروع حالياً. يرجى تفعيل المرحلة من رادار المشروع أولاً.' : 'No active stage found. Please start a stage from project radar first.'}</p>
+                       <p className="text-xs font-black text-rose-700">{isRtl ? 'لا توجد مرحلة نشطة لهذا المشروع حالياً.' : 'No active stage found.'}</p>
                     </div>
                   )}
 
@@ -323,7 +312,7 @@ function NewFieldVisitForm() {
 
             <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/5">
                <CardHeader className="bg-slate-50/50 p-6 border-b text-start">
-                  <CardTitle className="text-xs font-black uppercase text-slate-400 flex items-center gap-2">
+                  <CardTitle className="text-xs font-black uppercase text-slate-400 flex items-center gap-2 tracking-widest">
                      <Users className="h-4 w-4 text-primary" /> {isRtl ? 'الموارد البشرية في الموقع' : 'Site Labor'}
                   </CardTitle>
                </CardHeader>
@@ -435,21 +424,21 @@ function NewFieldVisitForm() {
                </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-slate-900 text-white overflow-hidden relative">
+            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white border-t-8 border-primary overflow-hidden relative">
                <div className="absolute top-0 right-0 p-10 opacity-5"><Sparkles className="h-40 w-40 text-primary" /></div>
                <CardContent className="p-10 flex flex-col md:flex-row items-center justify-between gap-8 relative z-10 text-start">
                   <div className="space-y-2">
-                     <h3 className="text-2xl font-black font-headline text-primary">{isRtl ? 'الربط السيادي المباشر' : 'Sovereign Live Sync'}</h3>
-                     <p className="text-sm font-bold text-slate-400 leading-relaxed max-w-md">
+                     <h3 className="text-2xl font-black font-headline text-primary">{isRtl ? 'تزامن التنفيذ المباشر' : 'Live Execution Sync'}</h3>
+                     <p className="text-sm font-bold text-slate-400 leading-relaxed max-w-md italic">
                         {isRtl 
                           ? 'عند اعتماد هذا التقرير، سيقوم النظام تلقائياً بتحديث كميات المقايسة، توثيق الإنجاز في التايملاين، وفحص استحقاق الدفعات المالية المرتبطة بهذه المرحلة.'
                           : 'Upon commitment, the system will auto-update BOQ quantities, document the timeline, and trigger milestone payments associated with this stage.'}
                      </p>
                   </div>
-                  <div className="h-24 w-[1.5px] bg-white/10 hidden md:block" />
+                  <div className="h-24 w-[1.5px] bg-slate-100 hidden md:block" />
                   <div className="text-center md:text-end space-y-1">
-                     <p className="text-[10px] font-black text-primary uppercase tracking-widest">{isRtl ? 'إجمالي البنود الموثقة' : 'Total Items'}</p>
-                     <h2 className="text-5xl font-black">{gridRows.filter(r => r.boqItemId).length}</h2>
+                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'إجمالي البنود الموثقة' : 'Total Items'}</p>
+                     <h2 className="text-5xl font-black text-slate-900 font-mono">{gridRows.filter(r => r.boqItemId).length}</h2>
                   </div>
                </CardContent>
             </Card>

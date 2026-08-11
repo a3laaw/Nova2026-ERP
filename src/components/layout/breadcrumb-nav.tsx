@@ -15,15 +15,69 @@ export function BreadcrumbNav() {
 
   const segments = pathname.split('/').filter(Boolean);
 
+  // قاموس يربط مسار الرابط (URL) بمفتاح الترجمة الصحيح
+  const segmentMap: Record<string, string> = {
+    'construction': 'construction',
+    'bookings': 'fieldRadar',
+    'groups': 'workGroups',
+    'field-visits': 'fieldLogs',
+    'crm': 'crm',
+    'clients': 'clients',
+    'projects': 'projects',
+    'accounting': 'accounting',
+    'procurement': 'procurement',
+    'hr': 'hr',
+    'settings': 'settings',
+    'inventory': 'inventory.title',
+    'ai': 'ai.hub',
+    'reports': 'reports',
+    'roles': 'rolesPermissions',
+    'users': 'usersManagement',
+    'work-hours': 'workHours',
+    'company': 'companyIdentity',
+    'profile': 'profile',
+    'checklists': 'settings.checklists',
+    'coa': 'chartOfAccounts',
+    'journals': 'journalEntries',
+    'vouchers': 'vouchers',
+    'receipt': 'receiptVouchers',
+    'payment': 'paymentVouchers',
+    'suppliers': 'suppliers',
+    'contracts': 'contracts',
+    'orders': 'purchaseOrders',
+    'quotes': 'procurement.quotesAnalyzer',
+    'employees': 'staffRecords',
+    'payroll': 'payroll',
+    'leaves': 'leaveRequests',
+    'permissions': 'hr.permissions.title',
+    'gratuity': 'hr.gratuity.calculatorTitle',
+    'equipment': 'equipment',
+    'boqs': 'projects.boqExplorer',
+    'new': 'common.add',
+    'edit': 'common.edit',
+    'transactions': 'transactions',
+    'boq': 'boq.workProgress',
+    'quotations': 'common.quotation',
+    'meetings': 'meetings',
+    'appointments': 'appointments',
+  };
+
   const formatSegment = (segment: string) => {
     const sLower = segment.toLowerCase();
     
+    // إذا كان الكلمة طويلة جداً أو تحتوي على أرقام (مثل ID)، اطبع "تفاصيل"
     if (segment.length > 15 || /\d/.test(segment)) {
       return t('details');
     }
     
+    // البحث في القاموس المخصص للروابط
+    if (segmentMap[sLower]) {
+      return t(segmentMap[sLower]);
+    }
+
+    // محاولة البحث العادية في قاموس اللغة كحل أخير
     const translated = t(sLower);
-    return translated !== sLower ? translated : sLower.charAt(0).toUpperCase() + sLower.slice(1);
+    return translated !== sLower ? translated : segment;
   };
 
   if (segments.length <= 1 && segments[0] === 'dashboard') return null;
