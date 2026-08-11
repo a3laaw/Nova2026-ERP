@@ -27,11 +27,13 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from '@/lib/utils';
 import { Transaction } from '@/types/transaction';
 import { Contract } from '@/types/documents';
+import { useRouter } from 'next/navigation';
 
 export default function ReceiptVouchersPage() {
   const { globalUser, user } = useAuthContext();
   const { t, dir, isRtl, tSafe } = useLanguage();
   const db = useFirestore();
+  const router = useRouter();
   const companyId = globalUser?.companyId;
 
   const [isAdding, setIsAdding] = useState(false);
@@ -86,7 +88,6 @@ export default function ReceiptVouchersPage() {
 
   const [contracts, setContracts] = useState<Contract[]>([]);
 
-  // الفلترة الذكية لحسابات الإيداع بناءً على طريقة الدفع المحددة في قواعد العمل
   const cashAccounts = useMemo(() => {
     if (!accounts || !form.paymentMethod) return [];
     return accounts.filter(a => {
@@ -95,10 +96,9 @@ export default function ReceiptVouchersPage() {
     });
   }, [accounts, form.paymentMethod]);
   
-  // Income Accounts
   const incomeAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.type === 'revenue' || a.type === 'liability' || a.code.startsWith('1202'))), [accounts]);
 
-  // منطق احتساب العمولات تلقائياً
+  // Logic: Calculate commissions automatically
   useEffect(() => {
      if (form.paymentMethod && form.amount > 0 && paymentMethods) {
         const pm = paymentMethods.find((p: any) => p.code === form.paymentMethod);
@@ -114,7 +114,6 @@ export default function ReceiptVouchersPage() {
      }
   }, [form.paymentMethod, form.amount, paymentMethods]);
 
-  // Logic: When transaction changes, fetch approved contracts
   useEffect(() => {
     if (db && companyId && form.transactionId) {
       const q = query(
@@ -136,7 +135,6 @@ export default function ReceiptVouchersPage() {
     }
   }, [db, companyId, form.transactionId]);
 
-  // Logic: When contract and amount change, suggest description
   useEffect(() => {
     if (db && companyId && form.contractId && form.amount > 0) {
       const service = new PaymentMilestoneService(db, companyId);
@@ -166,18 +164,10 @@ export default function ReceiptVouchersPage() {
     setLoading(true);
     try {
       const service = new AccountingService(db, companyId);
-      await service.createVoucher({ ...form, type: 'receipt' }, user.uid);
-      toast({ title: t('common.saved') });
+      const voucherId = await service.createVoucher({ ...form, type: 'receipt' }, user.uid);
+      toast({ title: t('common.saved'), description: "تم إنشاء السند وحفظ القيد كمسودة." });
       setIsAdding(false);
-      setForm({ 
-        date: new Date().toISOString().split('T')[0], 
-        amount: 0, feeAmount: 0, netAmount: 0,
-        personName: '', paymentMethod: '', 
-        accountId: '', cashAccountId: '', projectId: '', 
-        transactionId: '', contractId: '',
-        costCenterId: '', profitCenterId: '', notes: '',
-        appliedMilestoneName: ''
-      });
+      router.push(`/dashboard/accounting/vouchers/receipt/${voucherId}`);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
@@ -447,7 +437,7 @@ export default function ReceiptVouchersPage() {
                     ) : sortedVouchers.length === 0 ? (
                       <TableRow><TableCell colSpan={6} className="text-center py-20 text-slate-300 font-bold italic">{t('common.noResults')}</TableCell></TableRow>
                     ) : sortedVouchers.map(v => (
-                      <TableRow key={v.id} className="hover:bg-slate-50 transition-colors border-b-slate-100 group">
+                      <TableRow key={v.id} className="hover:bg-slate-50 transition-colors border-b-slate-100 group" onClick={() => router.push(`/dashboard/accounting/vouchers/receipt/${v.id}`)}>
                          <TableCell className="py-4 ps-8 text-start font-black text-slate-800">
                             <div className="flex flex-col">
                                <span>{v.voucherNumber}</span>
@@ -463,7 +453,9 @@ export default function ReceiptVouchersPage() {
                             <Badge variant="outline" className="text-[8px] font-black uppercase px-3 border-2 h-6">{v.paymentMethod}</Badge>
                          </TableCell>
                          <TableCell className="pe-8 text-end">
-                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-slate-300 group-hover:text-primary transition-all"><FileText className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-slate-300 group-hover:text-primary transition-all">
+                               <ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} />
+                            </Button>
                          </TableCell>
                       </TableRow>
                     ))}

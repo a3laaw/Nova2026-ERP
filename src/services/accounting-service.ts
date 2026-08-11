@@ -116,7 +116,7 @@ export class AccountingService {
       ...data,
       id: ref.id,
       entryNumber,
-      status: 'posted',
+      status: data.status || 'posted',
       companyId: this.companyId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -140,14 +140,10 @@ export class AccountingService {
     const feeAmount = data.feeAmount || 0;
     const netAmount = (data.amount || 0) - feeAmount;
 
-    // محرك العمولات البنكية (Sovereign Bank Charges Engine)
     if (data.type === 'receipt') {
-        // 1. حساب النقدية/البنك (بالصافي)
         lines.push({ accountId: data.cashAccountId!, accountName: 'حساب البنك/النقدية (صافي)', debit: netAmount, credit: 0 });
         
-        // 2. حساب مصاريف العمولات (إذا وجد)
         if (feeAmount > 0) {
-            // البحث عن حساب "عمولات ومصاريف بنكية" - افتراض كود 50203 أو اسم مشابه
             const chargesAccQuery = query(collection(this.db, paths.accounts(this.companyId)), where('code', '==', '50203'), limit(1));
             const chargesSnap = await getDocs(chargesAccQuery);
             const chargesAccId = !chargesSnap.empty ? chargesSnap.docs[0].id : await this.ensureControlAccount('50203', 'عمولات ومصاريف بنكية', 'Bank Charges & Commissions', 'expense');
@@ -161,7 +157,6 @@ export class AccountingService {
             });
         }
 
-        // 3. حساب الدائن (بالإجمالي) - عميل أو إيراد
         if (data.distributions && data.distributions.length > 0) {
           data.distributions.forEach(d => {
             lines.push({ 
@@ -186,7 +181,6 @@ export class AccountingService {
           });
         }
     } else {
-        // سند صرف (لا يطبق عليه عمولة بنكية مستلمة بل عمولة مضافة، MVP يركز على سند القبض حالياً)
         if (data.distributions && data.distributions.length > 0) {
           data.distributions.forEach(d => {
             lines.push({ 
@@ -231,7 +225,7 @@ export class AccountingService {
       entryNumber,
       date: data.date,
       description: `${data.type === 'receipt' ? 'سند قبض' : 'سند صرف'} رقم ${voucherNumber}: ${data.notes}`,
-      status: 'posted',
+      status: 'draft', // القيد المولد آلياً يبدأ دائماً كـ "مسودة" بانتظار المراجعة والترحيل
       lines,
       sourceType: data.type,
       sourceId: voucherRef.id,
