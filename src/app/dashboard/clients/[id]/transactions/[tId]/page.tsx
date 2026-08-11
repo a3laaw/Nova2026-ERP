@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect, Suspense } from 'react';
@@ -352,7 +353,7 @@ function TransactionDetailsContent() {
                   <Textarea value={revisionForm.content} onChange={e => setRevisionForm({...revisionForm, content: e.target.value})} placeholder="..." className="min-h-[150px] rounded-2xl border-2 p-6 font-bold bg-slate-50" />
                </div>
                <Button onClick={handleSaveRevision} disabled={!revisionForm.content.trim() || !!loadingAction} className="w-full h-16 rounded-[2rem] bg-orange-600 text-white font-black text-xl shadow-xl shadow-orange-100 border-b-8 border-orange-800">
-                  {loadingAction === 'revision' ? <Loader2 className="h-6 w-6 animate-spin" /> : <Save className="h-6 w-6 me-2" />} {tSafe('common.save', 'حفظ التعديل', 'Save Revision')}
+                  {loadingAction === 'revision' ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6 me-2" />} {tSafe('common.save', 'حفظ التعديل', 'Save Revision')}
                </Button>
             </div>
          </DialogContent>
@@ -384,7 +385,45 @@ function TransactionDetailsContent() {
                     setRevertReason("");
                   } finally { setLoadingAction(null); }
                }} disabled={!revertReason.trim() || !!loadingAction} className="w-full h-16 rounded-[2rem] font-black bg-rose-600 text-white shadow-xl border-b-8 border-rose-800">
-                  {loadingAction === 'revert' ? <Loader2 className="h-6 w-6 animate-spin" /> : tSafe('inline.confirm_revert', 'تأكيد التراجع الآن', 'Confirm Revert')}
+                  {loadingAction === 'revert' ? <Loader2 className="animate-spin h-6 w-6" /> : tSafe('inline.confirm_revert', 'تأكيد التراجع الآن', 'Confirm Revert')}
+               </Button>
+            </div>
+         </DialogContent>
+      </Dialog>
+
+      <Dialog open={isBoqInitOpen} onOpenChange={setIsBoqInitOpen}>
+         <DialogContent className="rounded-xl max-w-md p-0 overflow-hidden border shadow-3xl bg-white" dir={dir}>
+            <div className="bg-slate-50 p-6 border-b text-start">
+               <DialogTitle className="text-base font-black flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" /> {tSafe('inline.activate.boq.template', 'تنشيط المقايسة المرجعية', 'Activate BOQ Template')}
+               </DialogTitle>
+            </div>
+            <div className="p-8 space-y-4 text-start">
+               <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.select.template', 'اختر القالب الهندسي', 'Select Template')}</Label>
+               <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                  <SelectTrigger className="h-12 rounded-xl border-2 font-black text-lg"><SelectValue placeholder="..." /></SelectTrigger>
+                  <SelectContent className="rounded-xl border-2 shadow-2xl">
+                     {(templates || []).map((t_item: any) => <SelectItem key={t_item.id} value={t_item.id!} className="font-bold py-4">{t_item.name}</SelectItem>)}
+                  </SelectContent>
+               </Select>
+               <Button onClick={async () => {
+                  if (!db || !companyId || !user || !selectedTemplateId) return;
+                  setLoadingAction('init_boq');
+                  try {
+                    const docService = new DocumentService(db, companyId, permissions);
+                    await docService.instantiateBoqFromTemplate(selectedTemplateId, { 
+                      transactionId, clientId, clientName: transaction?.clientName || '',
+                      activityTypeId: transaction?.activityTypeId || '',
+                      serviceId: transaction?.serviceId || '',
+                      subServiceId: transaction?.subServiceId || '',
+                      name: `مقايسة - ${transaction?.subServiceName}`
+                    }, user.uid, currentUserName);
+                    toast({ title: tSafe('common.saved', 'تم الحفظ', 'Saved') });
+                    setIsBoqInitOpen(false);
+                  } finally { setLoadingAction(null); }
+               }} disabled={!selectedTemplateId || !!loadingAction} className="w-full h-14 rounded-2xl font-black text-sm shadow-xl shadow-primary/20 border-b-4 border-orange-700 mt-4 transition-all">
+                  {loadingAction === 'init_boq' ? <Loader2 className="animate-spin h-5 w-5" /> : <CheckCircle2 className="h-5 w-5 me-2" />}
+                  {tSafe('inline.instantiate...start.study', 'تنشيط وبدء الدراسة', 'Instantiate & Start Study')}
                </Button>
             </div>
          </DialogContent>

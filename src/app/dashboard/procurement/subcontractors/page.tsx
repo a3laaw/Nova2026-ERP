@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -8,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   Users, Plus, Search, Loader2, ArrowRight,
   Filter, Phone, Mail, Star, Building2,
-  HardHat, ShieldCheck, Wallet, Receipt
+  HardHat, ShieldCheck, Wallet, Receipt, Save
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -92,11 +93,11 @@ export default function SubcontractorsPage() {
              </div>
              <div className="p-10 space-y-6 text-start">
                 <div className="space-y-2">
-                   <Label className="text-[10px] font-black uppercase text-slate-400">{t('common.name')}</Label>
+                   <Label className="text-xs font-black uppercase text-slate-400">{t('common.name')}</Label>
                    <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="h-12 rounded-xl border-2 font-black" />
                 </div>
                 <div className="space-y-2">
-                   <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'التخصص الفني' : 'Specialization'}</Label>
+                   <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'التخصص الفني' : 'Specialization'}</Label>
                    <Input value={form.trade} onChange={e => setForm({...form, trade: e.target.value})} className="h-12 rounded-xl border-2 font-bold" placeholder="نجارة، حدادة، أصباغ..." />
                 </div>
                 <div className="grid grid-cols-2 gap-6">
