@@ -93,7 +93,7 @@ export default function SubcontractorsPage() {
              </div>
              <div className="p-10 space-y-6 text-start">
                 <div className="space-y-2">
-                   <Label className="text-xs font-black uppercase text-slate-400">{t('common.name')}</Label>
+                   <Label className="text-xs font-black uppercase text-slate-400">اسم المقاول / الشركة</Label>
                    <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="h-12 rounded-xl border-2 font-black" />
                 </div>
                 <div className="space-y-2">
@@ -121,16 +121,6 @@ export default function SubcontractorsPage() {
         </Dialog>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-         <Card className="border-0 shadow-xl rounded-[2rem] p-8 flex items-center justify-between bg-white border-b-8 border-primary">
-            <div className="text-start">
-               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'إجمالي المقاولين' : 'Subcontractors'}</p>
-               <h3 className="text-4xl font-black text-slate-900">{subs?.length || 0}</h3>
-            </div>
-            <Users className="h-10 w-10 text-primary/20" />
-         </Card>
-      </div>
-
       <Card className="rounded-[3rem] border-0 shadow-2xl overflow-hidden bg-white ring-1 ring-black/5">
         <div className="p-8 flex flex-col md:flex-row items-center justify-between gap-6 bg-slate-50/50 border-b">
            <div className="relative w-full max-w-md">
@@ -142,9 +132,6 @@ export default function SubcontractorsPage() {
                 onChange={e => setSearchTerm(e.target.value)}
               />
            </div>
-           <Button variant="outline" className="h-12 px-8 rounded-xl border-2 font-black text-xs gap-2">
-              <Filter className="h-4 w-4 me-2" /> {t('common.filter')}
-           </Button>
         </div>
         <CardContent className="p-0 overflow-x-auto">
           <Table>
@@ -185,7 +172,6 @@ export default function SubcontractorsPage() {
                     <TableCell className="text-center">
                        <div className="flex flex-col items-center">
                           <span className="font-mono font-black text-emerald-600 text-lg">0 <span className="text-[10px] opacity-40">KWD</span></span>
-                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Pending Approval</p>
                        </div>
                     </TableCell>
                     <TableCell className="text-center">
@@ -198,7 +184,7 @@ export default function SubcontractorsPage() {
                        </Badge>
                     </TableCell>
                     <TableCell className="pe-12 text-end">
-                       <Button variant="ghost" size="icon" className="rounded-2xl h-12 w-12 text-slate-300 group-hover:text-primary group-hover:bg-primary/5 transition-all">
+                       <Button variant="ghost" size="icon" className="rounded-2xl h-12 w-12 text-slate-300 group-hover:text-primary transition-all">
                           <ArrowRight className={cn("h-6 w-6", isRtl && "rotate-180")} />
                        </Button>
                     </TableCell>
