@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 import { 
   Loader2, Check, FileSpreadsheet, Zap, Workflow, ArrowRight,
   Sparkles, FilePlus, Lock, Plus, Save, CheckCircle2, RotateCcw,
@@ -21,7 +22,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { Transaction, StageInstance } from '@/types/transaction';
 import { TransactionService } from '@/services/transaction-service';
-import { BOQ, Contract } from '@/types/documents';
+import { BOQ, Contract, BOQItem, BOQItemExecutionEntry } from '@/types/documents';
 import { BOQTemplate } from '@/types/templates';
 import { CommentSection } from '@/components/transactions/comment-section';
 import { DocumentService } from '@/services/document-service';
@@ -86,6 +87,9 @@ function TransactionDetailsContent() {
     const tid = transactionId?.trim();
     return (allBoqs || []).find(b => b.transactionId?.trim() === tid);
   }, [allBoqs, transactionId]);
+
+  const boqItemsQuery = useMemo(() => (companyId && db && activeBoq?.id) ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
+  const { data: boqItems } = useCollection<BOQItem>(boqItemsQuery);
 
   const allTemplatesQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqTemplates(companyId))) : null, [db, companyId]);
   const { data: allTemplates } = useCollection<BOQTemplate>(allTemplatesQuery);
@@ -234,6 +238,15 @@ function TransactionDetailsContent() {
     await updateDoc(stageRef, { currentCount: value, updatedAt: serverTimestamp() });
   };
 
+  const getStageConstructionProgress = (technicalStageId: string) => {
+     if (!boqItems) return { planned: 0, executed: 0, pct: 0 };
+     const stageItems = boqItems.filter(i => (i.technicalStageIds?.includes(technicalStageId) || i.technicalStageId === technicalStageId));
+     if (stageItems.length === 0) return { planned: 0, executed: 0, pct: 100 };
+     const planned = stageItems.reduce((acc, i) => acc + (i.plannedQuantity || 0), 0);
+     const executed = stageItems.reduce((acc, i) => acc + (i.executedQuantity || 0), 0);
+     return { planned, executed, pct: Math.min(100, Math.round((executed / planned) * 100)) };
+  };
+
   if (transLoading || stagesLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
 
   return (
@@ -333,6 +346,8 @@ function TransactionDetailsContent() {
                               </Card>
                            ) : stages.map((stage, idx) => {
                               const isOperationalFrontier = stage.status === 'in-progress' || (stage.status === 'pending' && (idx === 0 || stages[idx-1].status === 'completed'));
+                              const constProgress = !isDesignProject ? getStageConstructionProgress(stage.technicalStageId) : null;
+
                               return (
                                 <Card key={stage.id} className={cn("rounded-xl shadow-sm border bg-white transition-all border-s-8 overflow-hidden", stage.status === 'completed' ? 'border-s-emerald-500' : stage.status === 'in-progress' ? 'border-s-blue-500' : 'border-s-slate-100 opacity-80')}>
                                   <CardContent className="p-5 space-y-4 text-start">
@@ -350,6 +365,11 @@ function TransactionDetailsContent() {
                                                  {isDesignProject && stage.isNumeric && (
                                                    <span className="text-[9px] font-black text-blue-600 uppercase flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded">
                                                       <Target className="h-3 w-3" /> {stage.currentCount || 0} / {stage.numericTarget}
+                                                   </span>
+                                                 )}
+                                                 {!isDesignProject && constProgress && (
+                                                   <span className="text-[9px] font-black text-emerald-600 uppercase flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded">
+                                                      <LayoutGrid className="h-3 w-3" /> {constProgress.pct}% {tSafe('inline.completion', 'إنجاز', 'Completion')}
                                                    </span>
                                                  )}
                                               </div>
@@ -405,18 +425,24 @@ function TransactionDetailsContent() {
                                      )}
 
                                      {!isDesignProject && stage.status === 'in-progress' && (
-                                        <div className="pt-4 border-t border-slate-50 flex items-center justify-between animate-in slide-in-from-top-2">
-                                           <div className="flex items-center gap-3">
-                                              <div className="h-8 w-8 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600"><Calculator className="h-4 w-4" /></div>
-                                              <p className="text-[10px] font-bold text-slate-500">{tSafe('inline.linked_to_boq', 'مربوط بالكميات الميدانية (BOQ)', 'Linked to BOQ Quantities')}</p>
+                                        <div className="pt-4 border-t border-slate-50 space-y-3 animate-in slide-in-from-top-2">
+                                           <div className="flex items-center justify-between">
+                                              <div className="flex items-center gap-3">
+                                                 <div className="h-8 w-8 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600"><Calculator className="h-4 w-4" /></div>
+                                                 <div className="text-start">
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase">{tSafe('inline.linked_to_boq', 'مربوط بالكميات الميدانية (BOQ)', 'Linked to BOQ')}</p>
+                                                    <p className="text-[10px] font-bold text-slate-500">{constProgress?.executed} / {constProgress?.planned} {tSafe('inline.total_units', 'وحدة إجمالية', 'Total Units')}</p>
+                                                 </div>
+                                              </div>
+                                              <Button 
+                                                variant="link" 
+                                                onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)}
+                                                className="text-[9px] font-black text-primary p-0 h-auto"
+                                              >
+                                                 {tSafe('inline.view_quantities', 'عرض كميات المرحلة', 'View Quantities')} <ArrowRight className={cn("h-3 w-3 ms-1", isRtl && "rotate-180")} />
+                                              </Button>
                                            </div>
-                                           <Button 
-                                             variant="link" 
-                                             onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)}
-                                             className="text-[9px] font-black text-primary p-0 h-auto"
-                                           >
-                                              {tSafe('inline.view_quantities', 'عرض كميات المرحلة', 'View Quantities')} <ArrowRight className={cn("h-3 w-3 ms-1", isRtl && "rotate-180")} />
-                                           </Button>
+                                           <Progress value={constProgress?.pct} className="h-1.5" />
                                         </div>
                                      )}
                                   </CardContent>
@@ -436,7 +462,7 @@ function TransactionDetailsContent() {
              </Tabs>
           </div>
           <div className="lg:col-span-5 h-full min-h-[500px]">
-             <CommentSection transactionId={transactionId} path={paths.transactionComments(companyId!, transactionId)} stages={stages} />
+             <CommentSection transactionId={transactionId} path={paths.transactionComments(companyId!, transactionId)} stages={stages} boqItems={boqItems} />
           </div>
       </div>
 

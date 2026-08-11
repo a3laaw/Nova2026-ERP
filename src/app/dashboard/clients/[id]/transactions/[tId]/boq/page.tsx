@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -72,6 +73,9 @@ export default function TransactionBOQProgressPage() {
   const itemsQuery = useMemo(() => (companyId && db && activeBoq?.id) ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
   const { data: rawItems } = useCollection<BOQItem>(itemsQuery);
 
+  const executionsQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.executions(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
+  const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
+
   const items = useMemo(() => (rawItems || []).filter(i => (i.plannedQuantity || 0) > 0), [rawItems]);
 
   const allTemplatesQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqTemplates(companyId))) : null, [db, companyId]);
@@ -85,8 +89,17 @@ export default function TransactionBOQProgressPage() {
 
   const executionMetrics = useMemo(() => {
     const metrics: Record<string, { prev: number, current: number }> = {};
+    if (!allExecutions || !items) return metrics;
+
+    items.forEach(item => {
+      const itemExecs = allExecutions.filter(e => e.boqItemId === item.id);
+      metrics[item.id] = {
+        prev: itemExecs.filter(e => e.status === 'verified').reduce((sum, e) => sum + (e.quantity || 0), 0),
+        current: itemExecs.filter(e => e.status === 'executed').reduce((sum, e) => sum + (e.quantity || 0), 0)
+      };
+    });
     return metrics;
-  }, [stages]);
+  }, [allExecutions, items]);
 
   const boqTree = useMemo(() => transformToBOQTree((items || []) as BOQTemplateItem[]), [items]);
 
@@ -139,9 +152,10 @@ export default function TransactionBOQProgressPage() {
       </TableRow>
       {node.items.map((item, iIdx) => {
         const itemPrefix = prefix + "." + (iIdx + 1);
-        const metrics = executionMetrics[item.boqReferenceNodeId!] || { prev: 0, current: 0 };
+        const metrics = executionMetrics[item.id!] || { prev: 0, current: 0 };
         const planned = item.plannedQuantity || 1;
-        const totalPct = Math.round(((metrics.prev + metrics.current) / planned) * 100);
+        const totalExecuted = metrics.prev + metrics.current;
+        const totalPct = Math.min(100, Math.round((totalExecuted / planned) * 100));
 
         return (
           <TableRow key={item.id || `${item.boqReferenceNodeId}-${iIdx}`} className="hover:bg-primary/[0.02] border-b-slate-50 text-start">
@@ -154,9 +168,9 @@ export default function TransactionBOQProgressPage() {
             </TableCell>
             <TableCell className="text-center font-mono font-black text-blue-600 text-[11px]">{metrics.prev}</TableCell>
             <TableCell className="text-center font-mono font-black text-orange-600 text-[11px]">{metrics.current}</TableCell>
-            <TableCell className="text-center font-mono font-black text-slate-900 text-[11px]">{metrics.prev + metrics.current}</TableCell>
+            <TableCell className="text-center font-mono font-black text-slate-900 text-[11px]">{totalExecuted}</TableCell>
             <TableCell className="text-center font-mono font-bold text-slate-400 text-[11px]">{item.estimatedRate?.toLocaleString()}</TableCell>
-            <TableCell className="text-end font-mono font-black text-emerald-600 text-[11px]">{( (metrics.prev + metrics.current) * (item.estimatedRate || 0)).toLocaleString()}</TableCell>
+            <TableCell className="text-end font-mono font-black text-emerald-600 text-[11px]">{(totalExecuted * (item.estimatedRate || 0)).toLocaleString()}</TableCell>
             <TableCell className="pe-6 w-[120px] text-end">
               <div className="space-y-1">
                 <div className="flex justify-between text-[8px] font-black uppercase text-slate-400"><span>{totalPct}%</span></div>
@@ -259,3 +273,4 @@ export default function TransactionBOQProgressPage() {
     </div>
   );
 }
+
