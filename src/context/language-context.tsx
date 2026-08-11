@@ -82,7 +82,7 @@ const translations: Record<Language, Record<string, string>> = {
     'construction.crewLoaded': 'تم تحميل الطاقم بنجاح',
     'construction.visitCreated': 'تم تسجيل الزيارة بنجاح',
     'construction.reportsDesc': 'أرشيف تقارير الإنجاز الميداني الموثقة بالموارد.',
-
+    'construction': 'المقاولات',
     // --- مفاتيح المشاريع والمقايسات (التي كانت مفقودة) ---
     'boq.workProgress': 'كميات الإنجاز (BOQ)',
     'boq.study': 'دراسة الكميات',
@@ -1654,6 +1654,7 @@ const translations: Record<Language, Record<string, string>> = {
     'construction.crewLoaded': 'Crew Loaded Successfully',
     'construction.visitCreated': 'Visit recorded successfully',
     'construction.reportsDesc': 'Archive of field logs and resources.',
+    'construction': 'Construction',
     'boq.workProgress': 'BOQ Work Progress',
     'boq.study': 'BOQ Study',
     'boq.activateTemplate': 'Please activate a BOQ template for this project to start tracking site progress.',

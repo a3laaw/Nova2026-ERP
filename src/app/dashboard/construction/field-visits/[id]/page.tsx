@@ -142,7 +142,7 @@ export default function FieldVisitDetailsPage() {
                      <h2 className="text-4xl font-black font-headline text-slate-900">{visit.clientName}</h2>
                   </div>
                   <div className="flex gap-4 items-center">
-                     <Badge className="bg-slate-900 text-white border-0 font-black px-5 py-1 rounded-xl uppercase text-[9px] shadow-lg">#{visit.transactionNumber}</Badge>
+                     <Badge className="bg-slate-100 text-slate-900 border-0 font-black px-5 py-1 rounded-xl uppercase text-[9px] shadow-sm">#{visit.transactionNumber}</Badge>
                      <div className="flex items-center gap-2 text-slate-400 font-bold text-xs border-s-2 border-slate-100 ps-4">
                         <Workflow className="h-3.5 w-3.5 text-primary" /> {visit.activeStageName || '---'}
                      </div>
@@ -263,14 +263,14 @@ export default function FieldVisitDetailsPage() {
                </div>
             </div>
 
-            <div className="p-10 bg-slate-900 text-white rounded-[3rem] shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 border-t-8 border-primary">
+            <div className="p-10 bg-white border-2 border-slate-100 rounded-[3rem] shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 border-t-8 border-primary">
                <div className="flex items-center gap-6 text-start">
                   <Avatar className="h-16 w-16 rounded-2xl border-2 border-primary shadow-xl">
                      <AvatarFallback className="bg-primary/20 text-primary font-black text-xl">{visit.engineerName?.charAt(0)}</AvatarFallback>
                   </Avatar>
                   <div className="space-y-1">
                      <p className="text-[9px] font-black text-primary uppercase tracking-widest">{isRtl ? 'المهندس المسؤول الموثق' : 'Reporting Engineer'}</p>
-                     <h4 className="text-xl font-black">{visit.engineerName}</h4>
+                     <h4 className="text-xl font-black text-slate-900">{visit.engineerName}</h4>
                   </div>
                </div>
                <div className="flex gap-4">
@@ -278,7 +278,7 @@ export default function FieldVisitDetailsPage() {
                      <p className="text-[8px] font-black text-slate-500 uppercase">{isRtl ? 'تاريخ الحفظ' : 'System Timestamp'}</p>
                      <p className="text-xs font-mono font-bold text-slate-400">{visit.createdAt?.toDate().toLocaleString()}</p>
                   </div>
-                  <div className="h-10 w-[1px] bg-white/10" />
+                  <div className="h-10 w-[1px] bg-slate-100" />
                   <div className="flex items-center gap-2">
                      <ShieldCheck className="h-6 w-6 text-emerald-400" />
                      <span className="text-[10px] font-black text-emerald-400 uppercase tracking-tighter">DATA SECURED</span>

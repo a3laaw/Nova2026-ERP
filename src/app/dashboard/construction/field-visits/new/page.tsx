@@ -9,13 +9,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
 import { 
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
 } from "@/components/ui/select";
 import { 
   Save, Loader2, ArrowRight, Camera, Users, Target,
   Plus, CheckCircle2, Trash2, Truck, LayoutGrid, Sparkles,
-  Workflow, Clock, AlertTriangle, Hammer, PlusCircle
+  Workflow, Clock, AlertTriangle, Hammer, PlusCircle,
+  ShieldAlert, Landmark
 } from "lucide-react";
 import { useFirestore, useCollection, useFirebaseApp } from '@/firebase';
 import { collection, query, where, getDocs, orderBy, doc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -27,7 +29,6 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Employee, WorkGroup } from '@/types/hr';
 import { Transaction, StageInstance } from '@/types/transaction';
-import { Equipment } from '@/types/equipment';
 import { BOQ, BOQItem } from '@/types/documents';
 import { usePermissions } from '@/hooks/use-permissions';
 import { BOQExecutionService } from '@/services/boq-execution-service';
@@ -180,7 +181,7 @@ function NewFieldVisitForm() {
     
     const validRows = gridRows.filter(r => r.boqItemId && Number(r.quantity) > 0);
     if (validRows.length === 0) {
-      toast({ variant: "destructive", title: "بيانات ناقصة", description: isRtl ? "يرجى اختيار بند عمل واحد على الأقل وإدخال كمية." : "Select at least one item and quantity." });
+      toast({ variant: "destructive", title: tSafe('common.alert', 'بيانات ناقصة', 'Alert'), description: isRtl ? "يرجى اختيار بند عمل واحد على الأقل وإدخال كمية." : "Select at least one item and quantity." });
       return;
     }
 
@@ -305,7 +306,7 @@ function NewFieldVisitForm() {
 
                   <div className="space-y-2 pt-4 border-t">
                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.date')}</Label>
-                     <Input type="date" value={visitDate} onChange={e => setVisitDate(e.target.value)} className="h-12 rounded-xl border-2 font-bold" />
+                     <SmartDateInput value={visitDate} onChange={setVisitDate} />
                   </div>
                </CardContent>
             </Card>
