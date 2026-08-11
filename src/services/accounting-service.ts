@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -20,16 +19,42 @@ import {
   Account, 
   JournalEntry, 
   Voucher, 
-  JournalEntryLine 
+  JournalEntryLine,
+  AccountAnalyticalConfig
 } from '@/types/accounting';
 import { nextSequential } from '@/lib/counters';
 
 export class AccountingService {
   constructor(private db: Firestore, private companyId: string) {}
 
-  /**
-   * التأكد من وجود حساب أب، وإذا لم يوجد يتم إنشاؤه (لضمان سلامة الشجرة)
-   */
+  private getDefaultAnalyticalConfig(type: Account['type'], nature?: Account['expenseNature']): AccountAnalyticalConfig {
+    const config: AccountAnalyticalConfig = {
+      costCenter: 'not_allowed',
+      profitCenter: 'not_allowed',
+      project: 'not_allowed',
+      distributionAllowed: false
+    };
+
+    if (type === 'revenue') {
+      config.profitCenter = 'required';
+      config.costCenter = 'optional';
+      config.project = 'optional';
+      config.distributionAllowed = true;
+    } else if (type === 'expense') {
+      config.costCenter = 'required';
+      config.distributionAllowed = true;
+      if (nature === 'direct') {
+        config.profitCenter = 'required';
+        config.project = 'required';
+      } else {
+        config.profitCenter = 'not_allowed';
+        config.project = 'optional';
+      }
+    }
+
+    return config;
+  }
+
   async ensureControlAccount(code: string, nameAr: string, nameEn: string, type: any, parentId: string | null = null) {
     const q = query(collection(this.db, paths.accounts(this.companyId)), where('code', '==', code), limit(1));
     const snap = await getDocs(q);
@@ -52,11 +77,7 @@ export class AccountingService {
     return ref.id;
   }
 
-  /**
-   * الأتمتة السيادية: إنشاء حساب فرعي تلقائي (Sub-Ledger)
-   */
   async createAutomaticSubAccount(parentCode: string, referenceId: string, referenceName: string, type: any) {
-    // 1. فحص ما إذا كان الحساب موجوداً مسبقاً لهذا المرجع
     const q = query(
       collection(this.db, paths.accounts(this.companyId)), 
       where('referenceId', '==', referenceId),
@@ -65,12 +86,10 @@ export class AccountingService {
     const snap = await getDocs(q);
     if (!snap.empty) return snap.docs[0].id;
 
-    // 2. الحصول على الحساب الأب
     const parentQuery = query(collection(this.db, paths.accounts(this.companyId)), where('code', '==', parentCode), limit(1));
     const parentSnap = await getDocs(parentQuery);
-    const parent = parentSnap.empty ? null : parentSnap.docs[0].data();
+    const parent = parentSnap.empty ? null : parentSnap.docs[0].data() as Account;
 
-    // 3. توليد كود فرعي متسلسل (مثلاً: 12010001)
     const subCode = await nextSequential(this.db, this.companyId, `acc_${parentCode}`, parentCode, 4);
 
     const ref = doc(collection(this.db, paths.accounts(this.companyId)));
@@ -78,14 +97,15 @@ export class AccountingService {
       id: ref.id,
       code: subCode,
       nameAr: referenceName,
-      nameEn: referenceName, // يمكن ترجمته لاحقاً عبر AI
+      nameEn: referenceName,
       type,
       parentId: parentSnap.empty ? null : parentSnap.docs[0].id,
       isGroup: false,
       level: parent ? (parent.level + 1) : 1,
       isActive: true,
-      referenceId: referenceId, // الربط بالكيان التشغيلي (عميل، موظف، أصل)
+      referenceId: referenceId,
       companyId: this.companyId,
+      analyticalConfig: this.getDefaultAnalyticalConfig(type),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
@@ -94,16 +114,18 @@ export class AccountingService {
     return ref.id;
   }
 
-  /**
-   * إنشاء حساب جديد يدوي
-   */
   async createAccount(data: Partial<Account>, userId: string) {
     const ref = doc(collection(this.db, paths.accounts(this.companyId)));
+    
+    // تطبيق القيم الافتراضية للتحليل
+    const analyticalConfig = data.analyticalConfig || this.getDefaultAnalyticalConfig(data.type!, data.expenseNature);
+
     const accountData = {
       ...data,
       id: ref.id,
       companyId: this.companyId,
       isActive: true,
+      analyticalConfig,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       createdBy: userId

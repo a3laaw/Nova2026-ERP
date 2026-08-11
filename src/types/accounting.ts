@@ -2,6 +2,16 @@ import { BaseReference } from './reference';
 
 export type AccountType = 'asset' | 'liability' | 'equity' | 'revenue' | 'expense';
 
+// جديد - المرحلة 2
+export type AnalyticalRequirement = 'not_allowed' | 'optional' | 'required' | 'auto';
+
+export interface AccountAnalyticalConfig {
+  costCenter: AnalyticalRequirement;
+  profitCenter: AnalyticalRequirement;
+  project: AnalyticalRequirement;
+  distributionAllowed: boolean;
+}
+
 export interface Account extends BaseReference {
   id: string;
   code: string;
@@ -12,7 +22,11 @@ export interface Account extends BaseReference {
   isGroup: boolean;
   level: number;
   isActive: boolean;
-  balance?: number; // Calculated balance
+  balance?: number;
+  
+  // جديد - المرحلة 2
+  expenseNature?: 'direct' | 'administrative';
+  analyticalConfig?: AccountAnalyticalConfig;
 }
 
 export interface JournalEntryLine {
@@ -22,7 +36,7 @@ export interface JournalEntryLine {
   credit: number;
   projectId?: string;
   costCenterId?: string;
-  profitCenterId?: string;    // جديد — أضفه
+  profitCenterId?: string;
   memo?: string;
 }
 
@@ -50,9 +64,9 @@ export interface Voucher extends BaseReference {
   date: string;
   amount: number;
   paymentMethod: PaymentMethod;
-  personName: string; // Received from or Paid to
-  accountId: string; // The opposite account (Customer/Supplier/Expense)
-  cashAccountId: string; // The cash/bank account
+  personName: string;
+  accountId: string;
+  cashAccountId: string;
   journalEntryId?: string;
   notes?: string;
   projectId?: string;

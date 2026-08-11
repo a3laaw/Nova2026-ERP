@@ -8,14 +8,15 @@ import { Badge } from '@/components/ui/badge';
 import { 
   GitBranch, Plus, Loader2, Folder, 
   FileText, Search, ChevronRight, ChevronDown,
-  Sparkles, DatabaseZap, Save
+  Sparkles, DatabaseZap, Save, ShieldCheck,
+  Target, LayoutGrid
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
-import { Account } from '@/types/accounting';
+import { Account, AnalyticalRequirement } from '@/types/accounting';
 import { cn } from '@/lib/utils';
 import { SeedService } from '@/services/seed-service';
 import { AccountingService } from '@/services/accounting-service';
@@ -39,7 +40,7 @@ import {
 
 export default function ChartOfAccountsPage() {
   const { globalUser, user } = useAuthContext();
-  const { t, dir, isRtl } = useLanguage();
+  const { t, tSafe, dir, isRtl } = useLanguage();
   const db = useFirestore();
   const companyId = globalUser?.companyId;
 
@@ -50,7 +51,9 @@ export default function ChartOfAccountsPage() {
   const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState<Partial<Account>>({
-    nameAr: '', nameEn: '', code: '', type: 'asset', isGroup: false, parentId: null
+    nameAr: '', nameEn: '', code: '', type: 'asset', isGroup: false, parentId: null,
+    expenseNature: 'administrative',
+    analyticalConfig: { costCenter: 'not_allowed', profitCenter: 'not_allowed', project: 'not_allowed', distributionAllowed: false }
   });
 
   const accountsQuery = useMemo(() => 
@@ -85,7 +88,17 @@ export default function ChartOfAccountsPage() {
       type: parent?.type || 'asset',
       isGroup: false,
       parentId: parent?.id || null,
-      level: parent ? parent.level + 1 : 1
+      level: parent ? parent.level + 1 : 1,
+      expenseNature: 'administrative',
+      analyticalConfig: { costCenter: 'not_allowed', profitCenter: 'not_allowed', project: 'not_allowed', distributionAllowed: false }
+    });
+    setIsAdding(true);
+  };
+
+  const openEditDialog = (account: Account) => {
+    setForm({
+      ...account,
+      analyticalConfig: account.analyticalConfig || { costCenter: 'not_allowed', profitCenter: 'not_allowed', project: 'not_allowed', distributionAllowed: false }
     });
     setIsAdding(true);
   };
@@ -95,7 +108,12 @@ export default function ChartOfAccountsPage() {
     setSaving(true);
     try {
       const service = new AccountingService(db, companyId);
-      await service.createAccount(form, user.uid);
+      if (form.id) {
+        const ref = doc(db, paths.accounts(companyId), form.id);
+        await updateDoc(ref, { ...form, updatedAt: serverTimestamp() });
+      } else {
+        await service.createAccount(form, user.uid);
+      }
       toast({ title: t('common.saved') });
       setIsAdding(false);
     } catch (e: any) {
@@ -120,7 +138,7 @@ export default function ChartOfAccountsPage() {
                 account.isGroup ? "font-black text-slate-900" : "font-medium text-slate-600"
               )}
               style={{ paddingInlineStart: `${level * 24 + 12}px` }}
-              onClick={() => account.isGroup && toggleExpand(account.id)}
+              onClick={() => account.isGroup ? toggleExpand(account.id) : openEditDialog(account)}
             >
               {account.isGroup ? (
                 isExpanded ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className={cn("h-4 w-4 text-slate-400", isRtl && "rotate-180")} />
@@ -137,16 +155,28 @@ export default function ChartOfAccountsPage() {
                 {account.type}
               </Badge>
 
-              {account.isGroup && (
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8 rounded-lg text-primary opacity-0 group-hover:opacity-100"
-                  onClick={(e) => { e.stopPropagation(); openAddDialog(account); }}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              )}
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
+                {account.isGroup && (
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 rounded-lg text-primary"
+                    onClick={(e) => { e.stopPropagation(); openAddDialog(account); }}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                )}
+                {!account.isGroup && (
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 rounded-lg text-blue-600"
+                    onClick={(e) => { e.stopPropagation(); openEditDialog(account); }}
+                  >
+                    <Edit3 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
             
             {(isExpanded || searchTerm !== "") && renderTree(account.id, level + 1)}
@@ -155,6 +185,26 @@ export default function ChartOfAccountsPage() {
       });
   };
 
+  const RequirementSelector = ({ label, field, icon: Icon }: { label: string, field: keyof NonNullable<Account['analyticalConfig']>, icon: any }) => (
+    <div className="space-y-2">
+       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-1">
+         <Icon className="h-3 w-3" /> {label}
+       </Label>
+       <Select 
+         value={form.analyticalConfig?.[field as any] as string} 
+         onValueChange={v => setForm({ ...form, analyticalConfig: { ...form.analyticalConfig!, [field]: v as AnalyticalRequirement } })}
+       >
+          <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs bg-white"><SelectValue /></SelectTrigger>
+          <SelectContent className="rounded-xl border-0 shadow-2xl z-[201]">
+             <SelectItem value="not_allowed" className="text-xs font-bold">{tSafe('inline.not_allowed', 'غير مسموح', 'Not Allowed')}</SelectItem>
+             <SelectItem value="optional" className="text-xs font-bold">{tSafe('inline.optional', 'اختياري', 'Optional')}</SelectItem>
+             <SelectItem value="required" className="text-xs font-bold">{tSafe('inline.required', 'إلزامي', 'Required')}</SelectItem>
+             <SelectItem value="auto" className="text-xs font-bold">{tSafe('inline.auto', 'تلقائي', 'Auto')}</SelectItem>
+          </SelectContent>
+       </Select>
+    </div>
+  );
+
   return (
     <div className="space-y-6 animate-in fade-in" dir={dir}>
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -162,7 +212,7 @@ export default function ChartOfAccountsPage() {
           <h1 className="text-2xl font-black font-headline flex items-center gap-3 text-slate-900">
             <GitBranch className="h-7 w-7 text-primary" /> {t('chartOfAccounts')}
           </h1>
-          <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{t('accounting.coa.title')}</p>
+          <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{tSafe('accounting.coa.title', 'دليل الحسابات المعتمد للمنشأة', 'Chart of Accounts')}</p>
         </div>
         
         <div className="flex gap-3">
@@ -209,15 +259,15 @@ export default function ChartOfAccountsPage() {
       </div>
 
       <Dialog open={isAdding} onOpenChange={setIsAdding}>
-        <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl" dir={dir}>
-           <div className="bg-primary/5 p-10 text-slate-900 text-start border-b">
-              <DialogTitle className="text-3xl font-black font-headline flex items-center gap-4">
-                 <Plus className="h-8 w-8 text-primary" />
-                 {t('accounting.coa.addAccount')}
+        <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-2xl flex flex-col h-fit max-h-[95vh]" dir={dir}>
+           <div className="bg-primary/5 p-8 text-slate-900 text-start border-b shrink-0">
+              <DialogTitle className="text-2xl font-black font-headline flex items-center gap-4">
+                 {form.id ? <Edit3 className="h-8 w-8 text-primary" /> : <Plus className="h-8 w-8 text-primary" />}
+                 {form.id ? tSafe('inline.edit_account', 'تعديل الحساب', 'Edit Account') : t('accounting.coa.addAccount')}
               </DialogTitle>
            </div>
            
-           <div className="p-10 space-y-8 text-start bg-white">
+           <div className="p-8 space-y-8 text-start bg-white overflow-y-auto scrollbar-hide flex-1">
               <div className="grid grid-cols-2 gap-8">
                  <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.code')}</Label>
@@ -227,7 +277,7 @@ export default function ChartOfAccountsPage() {
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('category')}</Label>
                     <Select value={form.type} onValueChange={(v: any) => setForm({...form, type: v})}>
                        <SelectTrigger className="h-12 rounded-xl border-2 font-black text-base"><SelectValue /></SelectTrigger>
-                       <SelectContent className="rounded-xl border-0 shadow-2xl">
+                       <SelectContent className="rounded-xl border-0 shadow-2xl z-[200]">
                           <SelectItem value="asset" className="font-bold py-3 border-b last:border-0">{isRtl ? 'أصول (Asset)' : 'Assets'}</SelectItem>
                           <SelectItem value="liability" className="font-bold py-3 border-b last:border-0">{isRtl ? 'التزامات (Liability)' : 'Liabilities'}</SelectItem>
                           <SelectItem value="equity" className="font-bold py-3 border-b last:border-0">{isRtl ? 'حقوق ملكية (Equity)' : 'Equity'}</SelectItem>
@@ -249,7 +299,49 @@ export default function ChartOfAccountsPage() {
                  </div>
               </div>
 
-              <div className="p-8 rounded-[2rem] bg-slate-50 border-2 border-white shadow-inner flex items-center justify-between">
+              {form.type === 'expense' && (
+                <div className="p-6 rounded-2xl bg-slate-50 border-2 border-dashed border-primary/20 space-y-4 animate-in fade-in">
+                   <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4" /> {tSafe('inline.expense_nature', 'طبيعة المصروف', 'Expense Nature')}
+                   </Label>
+                   <Select value={form.expenseNature} onValueChange={(v: any) => setForm({...form, expenseNature: v})}>
+                      <SelectTrigger className="h-11 rounded-xl border-2 font-black bg-white"><SelectValue /></SelectTrigger>
+                      <SelectContent className="rounded-xl border-0 shadow-2xl z-[200]">
+                         <SelectItem value="direct" className="font-bold">{tSafe('inline.direct_cost', 'تكلفة مباشرة (مشروع)', 'Direct Project Cost')}</SelectItem>
+                         <SelectItem value="administrative" className="font-bold">{tSafe('inline.admin_cost', 'تكلفة إدارية (عامة)', 'Administrative Cost')}</SelectItem>
+                      </SelectContent>
+                   </Select>
+                </div>
+              )}
+
+              {/* قسم إعدادات التحليل - المرحلة 2 */}
+              {!form.isGroup && (
+                <div className="space-y-6 pt-6 border-t">
+                  <h4 className="font-black text-sm text-slate-800 flex items-center gap-2">
+                     <Settings2 className="h-5 w-5 text-primary" />
+                     {tSafe('inline.analytical_settings', 'إعدادات التحليل والأبعاد الميدانية', 'Analytical Settings')}
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                     <RequirementSelector label={tSafe('inline.cost_center', 'مركز التكلفة', 'Cost Center')} field="costCenter" icon={LayoutGrid} />
+                     <RequirementSelector label={tSafe('inline.profit_center', 'مركز الربحية', 'Profit Center')} field="profitCenter" icon={DatabaseZap} />
+                     <RequirementSelector label={tSafe('inline.project', 'المشروع', 'Project')} field="project" icon={Target} />
+                  </div>
+
+                  <div className="flex items-center justify-between p-6 bg-slate-50 rounded-[2rem] border-2 border-white shadow-inner">
+                     <div className="space-y-1">
+                        <Label className="font-black text-slate-800 text-sm">{tSafe('inline.distribution_allowed', 'السماح بالتوزيع المالي', 'Financial Distribution Allowed')}</Label>
+                        <p className="text-[10px] font-bold text-slate-400">{tSafe('inline.dist_hint', 'يسمح بتقسيم قيمة القيد على عدة مراكز تكلفة', 'Allows splitting line amount across multiple centers')}</p>
+                     </div>
+                     <Switch 
+                       checked={form.analyticalConfig?.distributionAllowed} 
+                       onCheckedChange={v => setForm({ ...form, analyticalConfig: { ...form.analyticalConfig!, distributionAllowed: v } })} 
+                     />
+                  </div>
+                </div>
+              )}
+
+              <div className="p-6 rounded-[2rem] bg-slate-50 border-2 border-white shadow-inner flex items-center justify-between">
                  <div className="space-y-1">
                     <Label className="font-black text-slate-800 text-sm">{t('accounting.coa.isGroup')}</Label>
                     <p className="text-[10px] font-bold text-slate-400">{t('accounting.coa.groupHint')}</p>
@@ -258,10 +350,10 @@ export default function ChartOfAccountsPage() {
               </div>
            </div>
 
-           <DialogFooter className="p-10 bg-slate-50 border-t">
-              <Button onClick={handleSaveAccount} disabled={saving || !form.nameAr || !form.code} className="w-full h-20 rounded-[2rem] bg-primary text-white font-black text-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all border-b-8 border-orange-700">
+           <DialogFooter className="p-8 bg-slate-50 border-t shrink-0">
+              <Button onClick={handleSaveAccount} disabled={saving || !form.nameAr || !form.code} className="w-full h-16 rounded-[2rem] bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all border-b-8 border-orange-700">
                  {saving ? <Loader2 className="animate-spin h-8 w-8" /> : <Save className="h-8 w-8" />}
-                 {t('accounting.coa.commitAccount')}
+                 {tSafe('inline.commit_account', 'اعتماد وحفظ الحساب', 'Save Account')}
               </Button>
            </DialogFooter>
         </DialogContent>
