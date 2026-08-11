@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -27,6 +26,7 @@ import { TransactionService } from './transaction-service';
 import { BOQReferenceNode } from '@/types/reference';
 import { ClientService } from './client-service';
 import { AccountingService } from './accounting-service';
+import { BillingService } from './billing-service';
 
 export class DocumentService {
   constructor(
@@ -52,17 +52,23 @@ export class DocumentService {
     await updateDoc(docRef, updates);
 
     const finalStatus = data.status || currentData.status;
+    
+    // إذا تم الاعتماد (أو التوقيع)، نفعل الدائرة المالية
     if (['approved', 'paid', 'active', 'signed'].includes(finalStatus)) {
        // 1. ترقية العميل إلى "متعاقد"
        const clientRef = doc(this.db, paths.clients(this.companyId), currentData.clientId);
        await updateDoc(clientRef, { status: 'contracted', updatedAt: serverTimestamp() });
 
-       // 2. الأتمتة المحاسبية: إنشاء حساب ذمة للعميل تلقائياً تحت مجموعة (1202 - ذمم العملاء)
+       // 2. الأتمتة المحاسبية: إنشاء حساب ذمة للعميل
        const accService = new AccountingService(this.db, this.companyId);
        await accService.ensureControlAccount('1202', 'ذمم العملاء', 'Accounts Receivable', 'asset');
        await accService.createAutomaticSubAccount('1202', currentData.clientId, currentData.clientName, 'asset');
 
-       // 3. تفعيل المسار الفني المرتبط (فقط للنشاط الاستشاري/التصميم - المقاولات تتطلب مقايسة أولاً)
+       // 3. أتمتة المطالبة المالية: إطلاق دفعة التوقيع (SIGNING) فوراً لضمان عدم نسيانها
+       const billing = new BillingService(this.db, this.companyId);
+       await billing.triggerMilestoneBilling(currentData.transactionId || '', 'SIGNING', 'at', userId, 'System System');
+
+       // 4. تفعيل المسار الفني المرتبط (فقط للنشاط الاستشاري/التصميم)
        if (currentData.transactionId) {
           const transSnap = await getDoc(doc(this.db, paths.transactions(this.companyId), currentData.transactionId));
           const transData = transSnap.data();

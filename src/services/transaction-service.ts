@@ -155,7 +155,7 @@ export class TransactionService {
 
     await batch.commit();
 
-    // أتمتة مالية: تفعيل "أثناء التنفيذ" إذا كان الشرط يعتمد على وجود مراجعات
+    // أتمتة مالية: تفعيل "أثناء التنفيذ" إذا كان الشرط يعتمد على وجود مراجعات (لمكتب التصميم والمقاولات)
     const billing = new BillingService(this.db, this.companyId);
     await billing.triggerMilestoneBilling(transactionId, stage.technicalStageId, 'during', userId, userName);
   }
@@ -237,9 +237,21 @@ export class TransactionService {
 
     await batch.commit();
 
-    // أتمتة مالية: تفعيل دفعة "بعد الانتهاء"
+    // أتمتة مالية للمالك: تفعيل دفعة "بعد الانتهاء"
     const billing = new BillingService(this.db, this.companyId);
     await billing.triggerMilestoneBilling(transactionId, stageData.technicalStageId, 'after', userId, userName);
+
+    // أتمتة مالية لمقاول الباطن: توليد مطالبة له فور إتمام المرحلة المنسوبة له
+    if (stageData.subcontractorId && stageData.subcontractorPrice) {
+       await billing.generateSubcontractorIPC(
+          transactionId, 
+          stageData.subcontractorId, 
+          stageData.subcontractorName!, 
+          stageData.subcontractorPrice, 
+          `مستحقات إتمام المرحلة: ${stageData.name}`,
+          userId
+       );
+    }
   }
 
   async initializeTechnicalPath(transactionId: string, activityId: string, serviceId: string, subServiceId: string, userId: string) {
@@ -267,6 +279,7 @@ export class TransactionService {
         currentCount: 0,
         isTimed: !!stage.isTimed,
         timeTargetDays: stage.timeTargetDays || 0,
+        allowedDepartmentIds: stage.allowedDepartmentIds || [],
         activityTypeId: activityId,
         serviceId: serviceId,
         subServiceId: subServiceId,
@@ -280,4 +293,3 @@ export class TransactionService {
     await batch.commit();
   }
 }
-

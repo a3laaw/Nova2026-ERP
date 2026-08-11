@@ -3,7 +3,6 @@
 import { 
   Firestore, 
   collection, 
-  doc, 
   getDocs, 
   getDoc,
   query, 
@@ -12,24 +11,27 @@ import {
   writeBatch,
   increment,
   limit,
-  setDoc,
-  addDoc
+  doc,
+  setDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
-import { BOQItem, Contract, InterimPaymentCertificate } from '@/types/documents';
+import { Contract } from '@/types/documents';
+import { ContractMilestone } from '@/types/templates';
+import { Voucher } from '@/types/accounting';
 import { SubIPC } from '@/types/procurement';
 import { nextSequential } from '@/lib/counters';
 import { MilestoneTiming } from '@/types/templates';
 
 /**
  * محرك الفوترة السيادي المطور (Sovereign Billing Engine V3).
- * يدعم مستخلصات المالك (Owner) ومستخلصات مقاولي الباطن (Sub-IPCs).
+ * يقوم بربط الأحداث الفنية (بدء، تعديل، إتمام) بالمطالبات المالية آلياً.
  */
 export class BillingService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * إطلاق مطالبة مالية للمالك بناءً على شرط دفع (Milestone Trigger)
+   * إطلاق مطالبة مالية بناءً على شرط دفع (Milestone Trigger)
+   * يتم استدعاؤها من المسار الفني (رادار التنفيذ)
    */
   async triggerMilestoneBilling(
     transactionId: string, 
@@ -38,6 +40,9 @@ export class BillingService {
     userId: string,
     userName: string
   ) {
+    if (!this.db || !this.companyId) return null;
+
+    // 1. البحث عن عقد معتمد لهذه المعاملة
     const contractsSnap = await getDocs(query(
       collection(this.db, paths.contracts(this.companyId)), 
       where('transactionId', '==', transactionId),
@@ -48,17 +53,34 @@ export class BillingService {
     if (contractsSnap.empty) return null;
     const contract = { id: contractsSnap.docs[0].id, ...contractsSnap.docs[0].data() } as Contract;
 
+    // 2. البحث عن الدفعات المطابقة للشرط (المرحلة + التوقيت)
     const targetMilestones = contract.milestones.filter(m => 
       m.technicalStageId === technicalStageId && m.timing === timing
     );
 
     if (targetMilestones.length === 0) return null;
 
+    // 3. حماية من التكرار: فحص إذا تم إطلاق هذه الدفعات مسبقاً في مستخلصات (Draft or Approved)
+    const existingIpcsSnap = await getDocs(query(
+      collection(this.db, paths.ipcs(this.companyId)),
+      where('transactionId', '==', transactionId),
+      where('contractId', '==', contract.id)
+    ));
+
+    const alreadyBilledMilestones = new Set(
+      existingIpcsSnap.docs.flatMap(d => d.data().milestonesTriggered || [])
+    );
+
+    // تصفية الدفعات التي لم تُطلب من قبل فقط
+    const newMilestones = targetMilestones.filter(m => !alreadyBilledMilestones.has(m.name));
+
+    if (newMilestones.length === 0) return null;
+
     const batch = writeBatch(this.db);
     const ipcRef = doc(collection(this.db, paths.ipcs(this.companyId)));
     const ipcNumber = await nextSequential(this.db, this.companyId, `ipc_owner_${transactionId}`, 'IPC-', 4);
 
-    const totalAmount = targetMilestones.reduce((acc, m) => {
+    const totalAmount = newMilestones.reduce((acc, m) => {
        const mAmt = m.amount || (contract.totalAmount * (m.percentage || 0)) / 100;
        return acc + mAmt;
     }, 0);
@@ -71,10 +93,10 @@ export class BillingService {
       clientId: contract.clientId,
       clientName: contract.clientName,
       status: 'draft',
-      name: `مستخلص (${timing}) - ${targetMilestones.map(m => m.name).join(' & ')}`,
+      name: `مطالبة مالية (${timing === 'at' ? 'بدء' : timing === 'during' ? 'أثناء' : 'إتمام'}) - ${newMilestones.map(m => m.name).join(' & ')}`,
       grossAmount: totalAmount,
       netPayable: totalAmount,
-      milestonesTriggered: targetMilestones.map(m => m.name),
+      milestonesTriggered: newMilestones.map(m => m.name),
       companyId: this.companyId,
       createdBy: userId,
       createdByName: userName,
@@ -87,7 +109,7 @@ export class BillingService {
   }
 
   /**
-   * توليد مسودة مستخلص لمقاول باطن بناءً على إنجاز مرحلة أو بنود مقايسة
+   * توليد مسودة مستخلص لمقاول باطن بناءً على إنجاز مرحلة
    */
   async generateSubcontractorIPC(
     transactionId: string,

@@ -12,7 +12,7 @@ import {
   Sparkles, FilePlus, Lock, Plus, Save, CheckCircle2, RotateCcw,
   MessageSquare, History, Hammer, X, AlertTriangle, Undo2,
   Hash, Target, Calculator, LayoutGrid, Folder, Pencil,
-  UserCheck, Briefcase, DollarSign
+  UserCheck, Briefcase, DollarSign, Receipt
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, serverTimestamp, addDoc, updateDoc, getDocs, limit } from 'firebase/firestore';
@@ -74,10 +74,6 @@ function TransactionDetailsContent() {
   const [revertingStage, setRevertingStage] = useState<StageInstance | null>(null);
   const [revertReason, setRevertReason] = useState("");
 
-  const [isSubconOpen, setIsSubconOpen] = useState(false);
-  const [activeStageForSub, setActiveStageForSub] = useState<StageInstance | null>(null);
-  const [subForm, setSubForm] = useState({ subcontractorId: '', subcontractorName: '', price: 0 });
-
   useEffect(() => {
     const tab = searchParams.get('tab');
     if (tab) setActiveTab(tab);
@@ -91,9 +87,6 @@ function TransactionDetailsContent() {
 
   const contractsQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.contracts(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
   const { data: contracts } = useCollection<Contract>(contractsQuery);
-
-  const subsQuery = useMemo(() => companyId && db ? query(collection(db, paths.subcontractors(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
-  const { data: subcontractors } = useCollection<Subcontractor>(subsQuery);
 
   const hasApprovedContract = useMemo(() => {
     return contracts?.some(c => ['approved', 'paid', 'active', 'signed'].includes(c.status || '') || c.isPaid);
@@ -166,21 +159,6 @@ function TransactionDetailsContent() {
     setProcessingId(stage.id);
     try { 
       await transactionService.completeStage(transactionId, stage.id, user.uid, currentUserName, globalUser?.departmentId); 
-      
-      // أتمتة مستخلص مقاول الباطن إذا كان معيناً للمرحلة
-      if (stage.subcontractorId && stage.subcontractorPrice) {
-         const billing = new BillingService(db!, companyId!);
-         await billing.generateSubcontractorIPC(
-           transactionId, 
-           stage.subcontractorId, 
-           stage.subcontractorName!, 
-           stage.subcontractorPrice, 
-           `إتمام المرحلة الفنية: ${stage.name}`,
-           user.uid
-         );
-         toast({ title: isRtl ? 'تم توليد مستخلص مقاول باطن' : 'Sub-IPC Generated' });
-      }
-      
       toast({ title: t('common.completed') }); 
     }
     catch (e: any) { toast({ variant: "destructive", title: t('common.error'), description: e.message }); }
@@ -197,20 +175,6 @@ function TransactionDetailsContent() {
     setLoadingAction('logging');
     try {
       await boqExecService.recordBOQItemExecution(activeBoq!.id, logForm.itemId, activeStageForLog.technicalStageId, Number(logForm.quantity), user!.uid, currentUserName, logForm.notes, activeStageForLog.id!);
-      
-      // أتمتة مالية لمقاول الباطن إذا كان مرتبطاً بالبند
-      if (item?.subcontractorId && item.estimatedRate) {
-         const billing = new BillingService(db!, companyId!);
-         await billing.generateSubcontractorIPC(
-            transactionId,
-            item.subcontractorId,
-            item.subcontractorName || 'Subcon',
-            Number(logForm.quantity) * (item.estimatedRate * 0.7), // افتراض تكلفة المقاول 70% من الفئة
-            `إنجاز ميداني لبند: ${item.referenceTitle} - كمية: ${logForm.quantity}`,
-            user!.uid
-         );
-      }
-      
       toast({ title: t('common.saved') });
       setIsLogOpen(false);
       setLogForm({ sectionId: '', itemId: '', quantity: '', notes: '' });
@@ -225,16 +189,6 @@ function TransactionDetailsContent() {
       toast({ title: t('common.saved') });
       setIsRevisionOpen(false);
     } finally { setLoadingAction(null); }
-  };
-
-  const handleSaveSubcon = async () => {
-     if (!transactionService || !activeStageForSub) return;
-     setLoadingAction('subcon');
-     try {
-        await transactionService.assignSubcontractor(transactionId, activeStageForSub.id!, subForm.subcontractorId, subForm.subcontractorName, subForm.price);
-        toast({ title: t('common.saved') });
-        setIsSubconOpen(false);
-     } finally { setLoadingAction(null); }
   };
 
   const getStageConstructionProgress = (techId: string) => {
@@ -312,16 +266,22 @@ function TransactionDetailsContent() {
                                               <h4 className={cn("font-black text-sm", isFiltered ? "text-primary" : "text-slate-900")}>{stage.name}</h4>
                                               <div className="flex items-center gap-3 mt-1">
                                                  <Badge className="bg-primary/5 text-primary text-[7px] font-black px-1.5 h-4 border-0">REV: {stage.revisionCount || 0}</Badge>
-                                                 {stage.subcontractorName && <Badge variant="outline" className="text-[7px] border-orange-200 text-orange-600 h-4 px-1.5"><UserCheck className="h-2 w-2 me-1" /> {stage.subcontractorName}</Badge>}
+                                                 {!isDesignProject && constProgress && (
+                                                   <span className="text-[9px] font-black text-emerald-600 uppercase flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded">
+                                                      <LayoutGrid className="h-3 w-3" /> {constProgress.pct}% {tSafe('inline.completion', 'إنجاز', 'Completion')}
+                                                   </span>
+                                                 )}
                                               </div>
                                            </div>
                                         </div>
                                         <div className="flex gap-2" onClick={e => e.stopPropagation()}>
                                            {stage.status === 'in-progress' && (
                                               <>
-                                                {!isDesignProject && <Button onClick={() => { setActiveStageForLog(stage); setIsLogOpen(true); }} size="sm" className="h-8 px-4 text-[10px] font-black"><Hammer className="h-3.5 w-3.5 me-1" /> {tSafe('inline.log_progress', 'تسجيل إنجاز', 'Log Progress')}</Button>}
-                                                <Button onClick={() => { setRevisionForm({ content: '', stageId: stage.id!, stageName: stage.name }); setIsRevisionOpen(true); }} variant="outline" size="sm" className="h-8 px-3 text-[10px] font-black"><RotateCcw className="h-3.5 w-3.5 me-1" /> {tSafe('inline.revision', 'تعديل', 'Revision')}</Button>
-                                                {isAdmin && <Button onClick={() => { setActiveStageForSub(stage); setIsSubconOpen(true); }} variant="ghost" size="icon" className="h-8 w-8 text-orange-400"><Briefcase className="h-4 w-4" /></Button>}
+                                                {!isDesignProject ? (
+                                                  <Button onClick={() => { setActiveStageForLog(stage); setIsLogOpen(true); }} size="sm" className="h-8 px-4 text-[10px] font-black"><Hammer className="h-3.5 w-3.5 me-1" /> {tSafe('inline.log_progress', 'تسجيل إنجاز', 'Log Progress')}</Button>
+                                                ) : (
+                                                  <Button onClick={() => { setRevisionForm({ content: '', stageId: stage.id!, stageName: stage.name }); setIsRevisionOpen(true); }} variant="outline" size="sm" className="h-8 px-4 text-[10px] font-black gap-2 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 shadow-sm"><RotateCcw className="h-3.5 w-3.5" /> {tSafe('inline.add_revision', 'تسجيل تعديل فني', 'Add Revision')}</Button>
+                                                )}
                                               </>
                                            )}
                                            {stage.status === 'pending' && (idx === 0 || stages[idx-1].status === 'completed') && <Button onClick={() => handleStartStage(stage.id!)} size="sm" className="h-8 px-6 text-[10px] font-black">{tSafe('inline.start_btn', 'مباشرة', 'Start')}</Button>}
@@ -329,12 +289,6 @@ function TransactionDetailsContent() {
                                            {stage.status === 'completed' && isAdmin && <Button onClick={() => setRevertingStage(stage)} variant="ghost" size="icon" className="h-8 w-8 text-rose-300 hover:text-rose-600"><Undo2 className="h-4 w-4" /></Button>}
                                         </div>
                                      </div>
-                                     {!isDesignProject && stage.status === 'in-progress' && constProgress && (
-                                        <div className="pt-4 border-t border-slate-50 space-y-2">
-                                           <div className="flex justify-between text-[8px] font-black uppercase text-slate-400"><span>{tSafe('inline.progress', 'الإنجاز', 'Progress')}</span><span>{constProgress.pct}%</span></div>
-                                           <Progress value={constProgress.pct} className="h-1.5" />
-                                        </div>
-                                     )}
                                   </CardContent>
                                 </Card>
                               );
@@ -404,35 +358,6 @@ function TransactionDetailsContent() {
          </DialogContent>
       </Dialog>
 
-      <Dialog open={isSubconOpen} onOpenChange={setIsSubconOpen}>
-         <DialogContent className="rounded-xl p-0 overflow-hidden bg-white max-w-lg text-start" dir={dir}>
-            <div className="bg-slate-900 p-8 text-white text-start">
-               <DialogTitle className="text-xl font-black flex items-center gap-3"><Briefcase className="h-6 w-6 text-primary" /> {tSafe('inline.assign_subcon', 'تعيين مقاول باطن للمرحلة', 'Assign Subcontractor')}</DialogTitle>
-            </div>
-            <div className="p-8 space-y-6 text-start">
-               <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase text-slate-400">اختيار المقاول</Label>
-                  <Select value={subForm.subcontractorId} onValueChange={v => {
-                    const s = subcontractors?.find(x => x.id === v);
-                    setSubForm({...subForm, subcontractorId: v, subcontractorName: s?.name || ''});
-                  }}>
-                    <SelectTrigger className="h-11 border-2 rounded-xl font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                    <SelectContent className="rounded-xl z-[160]">
-                       {subcontractors?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{s.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-               </div>
-               <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase text-slate-400">سعر التعاقد (KWD)</Label>
-                  <Input type="number" value={subForm.price} onChange={e => setSubForm({...subForm, price: Number(e.target.value)})} className="h-11 border-2 rounded-xl font-black text-emerald-600 text-lg" />
-               </div>
-               <Button onClick={handleSaveSubcon} disabled={!subForm.subcontractorId || !!loadingAction} className="w-full h-14 rounded-2xl bg-primary text-white font-black">
-                  {loadingAction === 'subcon' ? <Loader2 className="animate-spin h-4 w-4" /> : t('common.save')}
-               </Button>
-            </div>
-         </DialogContent>
-      </Dialog>
-
       <Dialog open={!!revertingStage} onOpenChange={(v) => !v && setRevertingStage(null)}>
          <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden bg-white max-w-lg text-start" dir={dir}>
             <div className="bg-rose-600 p-8 text-white text-start">
@@ -443,15 +368,21 @@ function TransactionDetailsContent() {
                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('inline.revert_reason', 'المبرر الفني للتراجع', 'Technical Reason')}</Label>
                   <Textarea value={revertReason} onChange={e => setRevertReason(e.target.value)} placeholder="..." className="min-h-[120px] rounded-2xl border-2 p-6 font-bold bg-slate-50" />
                </div>
-               <Button onClick={() => {
+               <Button onClick={async () => {
                   if (!db || !companyId || !revertingStage || !revertReason.trim()) return;
                   setLoadingAction('revert');
-                  updateDoc(doc(db, paths.transactionStages(companyId, transactionId), revertingStage.id!), { status: 'in-progress', completedAt: null, completedBy: null, updatedAt: serverTimestamp() }).then(() => {
-                     addDoc(collection(db, paths.transactionTimeline(companyId, transactionId)), { transactionId, stageId: revertingStage.id, type: 'stage_reopen', content: `[تراجع] ${revertReason}`, userId: user!.uid, userName: currentUserName, companyId, createdAt: serverTimestamp() });
-                     toast({ title: tSafe('inline.reverted', 'تم التراجع', 'Reverted') });
-                     setRevertingStage(null);
-                     setRevertReason("");
-                  }).finally(() => setLoadingAction(null));
+                  try {
+                    await updateDoc(doc(db, paths.transactionStages(companyId, transactionId), revertingStage.id!), { status: 'in-progress', completedAt: null, completedBy: null, updatedAt: serverTimestamp() });
+                    await addDoc(collection(db, paths.transactionTimeline(companyId, transactionId)), { transactionId, stageId: revertingStage.id, type: 'stage_reopen', content: `[تراجع] ${revertReason}`, userId: user!.uid, userName: currentUserName, companyId, createdAt: serverTimestamp() });
+                    
+                    // أرشفة تعليقات المرحلة لضمان نظافة السجل
+                    const commentService = new (await import('@/services/comment-service')).CommentService(db, companyId, permissions);
+                    await commentService.archiveStageComments(transactionId, revertingStage.id!);
+
+                    toast({ title: tSafe('inline.reverted', 'تم التراجع', 'Reverted') });
+                    setRevertingStage(null);
+                    setRevertReason("");
+                  } finally { setLoadingAction(null); }
                }} disabled={!revertReason.trim() || !!loadingAction} className="w-full h-16 rounded-[2rem] font-black bg-rose-600 text-white shadow-xl border-b-8 border-rose-800">
                   {loadingAction === 'revert' ? <Loader2 className="h-6 w-6 animate-spin" /> : tSafe('inline.confirm_revert', 'تأكيد التراجع الآن', 'Confirm Revert')}
                </Button>
