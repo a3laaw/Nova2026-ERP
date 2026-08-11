@@ -57,9 +57,9 @@ export default function GeneralListsPage() {
   const listQuery = useMemo(() => {
     if (!companyId || !db) return null;
     let path = '';
-    // FIXED: Removed 'this.' to resolve TypeError
-    if (paths[activeTab as keyof typeof paths] && typeof paths[activeTab as keyof typeof paths] === 'function') {
-      path = (paths[activeTab as keyof typeof paths] as Function)(companyId);
+    const pathFn = paths[activeTab as keyof typeof paths];
+    if (pathFn && typeof pathFn === 'function') {
+      path = pathFn(companyId);
     } else {
       path = `companies/${companyId}/customReferenceLists/${activeTab}/items`;
     }
@@ -106,7 +106,7 @@ export default function GeneralListsPage() {
     }
   };
 
-  const staticMenuItems: { id: ReferenceListType, label: string, icon: any }[] = [
+  const menuItems: { id: ReferenceListType, label: string, icon: any }[] = [
     { id: 'unitTypes', label: t('unitTypes'), icon: Scale },
     { id: 'paymentMethods', label: t('paymentMethods'), icon: CreditCard },
     { id: 'paymentConditionTypes', label: t('paymentConditionTypes'), icon: DollarSign },
@@ -116,24 +116,23 @@ export default function GeneralListsPage() {
   ];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-in fade-in duration-500">
-      
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-in fade-in duration-500 text-start" dir={dir}>
       <div className="lg:col-span-3 space-y-4 text-start">
          <div className="bg-white rounded-xl shadow-lg border border-slate-100 p-2 space-y-1">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-4 py-2">{t('referenceLists')}</p>
-            {staticMenuItems.map((item) => {
+            {menuItems.map((item) => {
               const isActive = activeTab === item.id;
               return (
                 <div 
                   key={item.id}
                   onClick={() => { setActiveTab(item.id); setSearchTerm(""); }}
                   className={cn(
-                    "p-3.5 rounded-xl cursor-pointer transition-all flex items-center gap-3 group",
+                    "p-3.5 rounded-xl cursor-pointer transition-all flex items-center gap-4 group",
                     isActive ? "bg-gradient-to-r from-[#e87c24] to-[#FFB000] text-white shadow-lg" : "hover:bg-slate-50"
                   )}
                 >
-                   <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center transition-all", isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-400 group-hover:text-primary")}><item.icon className="h-4 w-4" /></div>
-                   <span className="text-xs font-black">{item.label}</span>
+                   <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center transition-all", isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-400 group-hover:text-primary")}><item.icon className="h-5 w-5" /></div>
+                   <span className="text-sm font-black">{item.label}</span>
                 </div>
               );
             })}
@@ -147,11 +146,9 @@ export default function GeneralListsPage() {
                   <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                   <Input placeholder={t('common.search')} className="ps-12 h-11 bg-white border-slate-200 font-bold" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                </div>
-               <div className="flex items-center gap-2">
-                  {canCreate && (
-                    <Button onClick={() => setEditingItem({ name: '', nameEn: '', code: '', order: items.length + 1, isActive: true, isEditable: true, isSystem: false, feePercentage: 0, feeFixedAmount: 0 })} variant="default" className="h-11 px-6 shadow-lg flex items-center gap-2"><Plus className="h-5 w-5" /> {t('common.add')}</Button>
-                  )}
-               </div>
+               {canCreate && (
+                 <Button onClick={() => setEditingItem({ name: '', nameEn: '', code: '', order: items.length + 1, isActive: true, isEditable: true, isSystem: false, feePercentage: 0, feeFixedAmount: 0 })} variant="default" className="h-11 px-6 shadow-lg flex items-center gap-2"><Plus className="h-5 w-5" /> {t('common.add')}</Button>
+               )}
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
                <Table>

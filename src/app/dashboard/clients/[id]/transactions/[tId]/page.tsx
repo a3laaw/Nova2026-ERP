@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Loader2, Check, FileSpreadsheet, Zap, Workflow, ArrowRight,
   Sparkles, FilePlus, Lock, Plus, Save, CheckCircle2, RotateCcw,
-  MessageSquare, Pencil, History, Hammer
+  MessageSquare, Pencil, History, Hammer, X
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, serverTimestamp, addDoc } from 'firebase/firestore';
@@ -130,6 +130,29 @@ function TransactionDetailsContent() {
     finally { setProcessingId(null); }
   };
 
+  const handleCreateBOQ = async () => {
+    if (!db || !companyId || !user || !selectedTemplateId || !transaction) return;
+    setLoadingAction('creating_boq');
+    try {
+      const service = new DocumentService(db, companyId, permissions);
+      const template = templates?.find(t => t.id === selectedTemplateId);
+      await service.instantiateBoqFromTemplate(selectedTemplateId, { 
+        transactionId, 
+        clientId, 
+        clientName: transaction.clientName, 
+        activityTypeId: transaction.activityTypeId, 
+        serviceId: transaction.serviceId, 
+        subServiceId: transaction.subServiceId, 
+        name: template?.name || "" 
+      }, user.uid, currentUserName);
+      toast({ title: t('common.saved') });
+      setIsBoqInitOpen(false);
+    } catch (e: any) { 
+      toast({ variant: "destructive", title: t('common.error'), description: e.message }); 
+    }
+    finally { setLoadingAction(null); }
+  };
+
   const handleAddRevision = async () => {
     if (!db || !companyId || !user || !revisionNote.trim()) return;
     setLoadingAction('revision');
@@ -153,7 +176,7 @@ function TransactionDetailsContent() {
   if (transLoading || stagesLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
 
   return (
-    <div className="space-y-4 w-full px-4 md:px-6 animate-in fade-in" dir={dir}>
+    <div className="space-y-4 w-full px-4 md:px-6 animate-in fade-in text-start" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4 border-slate-100 text-start">
         <div className="text-start">
            <div className="flex items-center gap-3">
