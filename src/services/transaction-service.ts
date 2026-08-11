@@ -196,9 +196,9 @@ export class TransactionService {
   }
 
   async initializeTechnicalPath(transactionId: string, activityId: string, serviceId: string, subServiceId: string, userId: string) {
-    // حماية سيادية: منع التكرار
+    // حماية سيادية: منع التكرار (Idempotency)
     const instancesPath = paths.transactionStages(this.companyId, transactionId);
-    const existingSnap = await getDocs(collection(this.db, instancesPath));
+    const existingSnap = await getDocs(query(collection(this.db, instancesPath), limit(1)));
     if (!existingSnap.empty) return; 
 
     const stagesPath = paths.technicalStages(this.companyId, activityId, serviceId, subServiceId);

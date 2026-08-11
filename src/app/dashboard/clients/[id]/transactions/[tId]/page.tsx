@@ -26,6 +26,7 @@ import { BOQ, Contract, BOQItem } from '@/types/documents';
 import { BOQTemplate } from '@/types/templates';
 import { CommentSection } from '@/components/transactions/comment-section';
 import { DocumentService } from '@/services/document-service';
+import { BOQExecutionService } from '@/services/boq-execution-service';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { TransactionDocumentsView } from '@/components/transactions/transaction-documents-view';
@@ -100,16 +101,18 @@ function TransactionDetailsContent() {
      return allTemplates.filter(temp => temp.subServiceId?.trim() === subId && temp.isActive !== false);
   }, [allTemplates, transaction?.subServiceId]);
 
+  const isDesignProject = useMemo(() => {
+     return transaction?.activityTypeName?.includes('تصميم') || 
+            transaction?.activityTypeName?.includes('Architectural') || 
+            transaction?.activityTypeName?.includes('Design') ||
+            transaction?.activityTypeName?.includes('استشارات') ||
+            transaction?.activityTypeName?.includes('Consulting');
+  }, [transaction]);
+
   const isFinancialLockActive = useMemo(() => {
-     const hasApprovedBOQ = activeBoq?.status === 'approved';
-     const isConsulting = transaction?.activityTypeName?.includes('استشارات') || 
-                          transaction?.activityTypeName?.includes('Consulting') ||
-                          transaction?.activityTypeName?.includes('تصميم') ||
-                          transaction?.activityTypeName?.includes('Design');
-     
-     if (isConsulting) return !hasApprovedContract;
-     return !hasApprovedContract || !hasApprovedBOQ;
-  }, [hasApprovedContract, activeBoq, transaction]);
+     if (isDesignProject) return !hasApprovedContract;
+     return !hasApprovedContract || activeBoq?.status !== 'approved';
+  }, [hasApprovedContract, activeBoq, isDesignProject]);
 
   const stagesQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order', 'asc')) : null, [db, companyId, transactionId]);
   const { data: rawStages, loading: stagesLoading } = useCollection<StageInstance>(stagesQuery);
@@ -118,13 +121,7 @@ function TransactionDetailsContent() {
   const progressPercent = useMemo(() => stages.length ? Math.round((stages.filter(s => s.status === 'completed').length / stages.length) * 100) : 0, [stages]);
 
   const transactionService = useMemo(() => (db && companyId) ? new TransactionService(db, companyId, permissions) : null, [db, companyId, permissions]);
-
-  const isDesignProject = useMemo(() => {
-     return transaction?.activityTypeName?.includes('تصميم') || 
-            transaction?.activityTypeName?.includes('Architectural') || 
-            transaction?.activityTypeName?.includes('Design') ||
-            transaction?.activityTypeName?.includes('Consulting');
-  }, [transaction]);
+  const boqExecService = useMemo(() => (db && companyId) ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
   const handleStartStage = async (stageId: string) => {
     if (!transactionService || !user) return;
@@ -184,9 +181,9 @@ function TransactionDetailsContent() {
     if (!db || !companyId || !user || !selectedTemplateId || !transaction) return;
     setLoadingAction('creating_boq');
     try {
-      const service = new DocumentService(db, companyId, permissions);
+      const docService = new DocumentService(db, companyId, permissions);
       const template = templates?.find(t => t.id === selectedTemplateId);
-      await service.instantiateBoqFromTemplate(selectedTemplateId, { 
+      await docService.instantiateBoqFromTemplate(selectedTemplateId, { 
         transactionId, 
         clientId, 
         clientName: transaction.clientName, 
