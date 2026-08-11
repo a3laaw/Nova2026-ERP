@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -9,7 +10,7 @@ import {
   Plus, Loader2, Search, 
   Trash2, Edit3, Scale, CreditCard, 
   DollarSign, Clock, Package, LayoutGrid,
-  Save, Percent, Banknote
+  Save, Percent, Filter, Info
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -56,6 +57,7 @@ export default function GeneralListsPage() {
   const listQuery = useMemo(() => {
     if (!companyId || !db) return null;
     let path = '';
+    // FIXED: Removed 'this.' to resolve TypeError
     if (paths[activeTab as keyof typeof paths] && typeof paths[activeTab as keyof typeof paths] === 'function') {
       path = (paths[activeTab as keyof typeof paths] as Function)(companyId);
     } else {
@@ -199,7 +201,7 @@ export default function GeneralListsPage() {
       <Dialog open={!!editingItem} onOpenChange={open => !open && setEditingItem(null)}>
          <DialogContent className="rounded-xl p-0 overflow-hidden max-w-xl border-0 shadow-3xl bg-white" dir={dir}>
             <div className="bg-[#FFA000] p-8 text-white text-start">
-               <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3"><Edit3 className="h-8 w-8 text-white" /> {editingItem?.id ? t('edit') : t('common.add')}</DialogTitle>
+               <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3"><Edit3 className="h-8 w-8 text-white" /> {editingItem?.id ? t('common.edit') : t('common.add')}</DialogTitle>
             </div>
             <div className="p-10 space-y-6 text-start bg-white">
                <div className="grid grid-cols-2 gap-6">
@@ -227,7 +229,6 @@ export default function GeneralListsPage() {
                              className="h-11 border-2 bg-white font-black" 
                              placeholder="مثال: 2.5"
                            />
-                           <p className="text-[8px] font-bold text-slate-400 italic">{tSafe('inline.percentage.hint', 'اكتب 2.5 لتمثيل نسبة 2.5%', 'Type 2.5 for 2.5%')}</p>
                         </div>
                         <div className="space-y-2">
                            <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.fixed.amount', 'مبلغ ثابت (KWD)', 'Fixed Amount')}</Label>
@@ -238,7 +239,6 @@ export default function GeneralListsPage() {
                              onChange={e => setEditingItem({...editingItem!, feeFixedAmount: e.target.value === '' ? 0 : Number(e.target.value)})} 
                              className="h-11 border-2 bg-white font-black" 
                            />
-                           <p className="text-[8px] font-bold text-slate-400 italic">مثال: 0.100 لعمولة الـ 100 فلس</p>
                         </div>
                      </div>
                   </div>

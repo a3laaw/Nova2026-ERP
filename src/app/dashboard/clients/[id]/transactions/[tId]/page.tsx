@@ -1,20 +1,16 @@
+
 'use client';
 
 import { useMemo, useState, useEffect, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Loader2, 
-  Check,
-  FileSpreadsheet,
-  Zap, Workflow,
-  ArrowRight,
-  Sparkles, FilePlus,
-  Lock,
-  Plus, Save, CheckCircle2
+  Loader2, Check, FileSpreadsheet, Zap, Workflow, ArrowRight,
+  Sparkles, FilePlus, Lock, Plus, Save, CheckCircle2, RotateCcw,
+  MessageSquare, Pencil, History, Hammer
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, serverTimestamp, addDoc } from 'firebase/firestore';
@@ -32,19 +28,11 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { TransactionDocumentsView } from '@/components/transactions/transaction-documents-view';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 function TransactionDetailsContent() {
   const params = useParams();
@@ -55,7 +43,7 @@ function TransactionDetailsContent() {
   const transactionId = params?.tId as string;
   
   const { globalUser, user } = useAuthContext();
-  const { t, dir } = useLanguage();
+  const { t, tSafe, dir, isRtl } = useLanguage();
   const { permissions, isAdmin, check } = usePermissions();
   const db = useFirestore();
   const companyId = globalUser?.companyId;
@@ -63,9 +51,10 @@ function TransactionDetailsContent() {
   const [activeTab, setActiveTab] = useState('pipeline');
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
-  
   const [isBoqInitOpen, setIsBoqInitOpen] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [isRevisionOpen, setIsRevisionOpen] = useState(false);
+  const [revisionNote, setRevisionNote] = useState("");
 
   useEffect(() => {
     const tab = searchParams.get('tab');
@@ -107,10 +96,7 @@ function TransactionDetailsContent() {
                           transaction?.activityTypeName?.includes('تصميم') ||
                           transaction?.activityTypeName?.includes('Design');
      
-     if (isConsulting) {
-        return !hasApprovedContract;
-     }
-     
+     if (isConsulting) return !hasApprovedContract;
      return !hasApprovedContract || !hasApprovedBOQ;
   }, [contracts, activeBoq, transaction]);
 
@@ -127,11 +113,9 @@ function TransactionDetailsContent() {
     setProcessingId(stageId);
     try { 
       await transactionService.startStage(transactionId, stageId, user.uid, currentUserName, globalUser?.departmentId); 
-      toast({ title: t('common.active') }); 
+      toast({ title: tSafe('common.active', 'نشط', 'Active') }); 
     }
-    catch (e: any) { 
-      toast({ variant: "destructive", title: t('common.error'), description: e.message }); 
-    }
+    catch (e: any) { toast({ variant: "destructive", title: t('common.error'), description: e.message }); }
     finally { setProcessingId(null); }
   };
 
@@ -140,42 +124,37 @@ function TransactionDetailsContent() {
     setProcessingId(stage.id);
     try { 
       await transactionService.completeStage(transactionId, stage.id, user.uid, currentUserName, globalUser?.departmentId); 
-      toast({ title: t('common.completed') }); 
+      toast({ title: tSafe('common.completed', 'مكتمل', 'Completed') }); 
     }
-    catch (e: any) { 
-      toast({ variant: "destructive", title: t('common.error'), description: e.message }); 
-    }
+    catch (e: any) { toast({ variant: "destructive", title: t('common.error'), description: e.message }); }
     finally { setProcessingId(null); }
   };
 
-  const handleCreateBOQ = async () => {
-    if (!db || !companyId || !user || !selectedTemplateId || !transaction) return;
-    setLoadingAction('creating_boq');
+  const handleAddRevision = async () => {
+    if (!db || !companyId || !user || !revisionNote.trim()) return;
+    setLoadingAction('revision');
     try {
-      const service = new DocumentService(db, companyId, permissions);
-      const template = templates?.find(t => t.id === selectedTemplateId);
-      await service.instantiateBoqFromTemplate(selectedTemplateId, { 
-        transactionId, 
-        clientId, 
-        clientName: transaction.clientName, 
-        activityTypeId: transaction.activityTypeId, 
-        serviceId: transaction.serviceId, 
-        subServiceId: transaction.subServiceId, 
-        name: template?.name || "" 
-      }, user.uid, currentUserName);
-      toast({ title: t('common.saved') });
-      setIsBoqInitOpen(false);
-    } catch (e: any) { 
-      toast({ variant: "destructive", title: t('common.error'), description: e.message }); 
-    }
-    finally { setLoadingAction(null); }
+       const timelineRef = collection(db, paths.transactionTimeline(companyId, transactionId));
+       await addDoc(timelineRef, {
+          transactionId,
+          type: 'revision_logged',
+          content: revisionNote,
+          userId: user.uid,
+          userName: currentUserName,
+          companyId,
+          createdAt: serverTimestamp()
+       });
+       toast({ title: tSafe('inline.revision_added', 'تم تسجيل التعديل الفني', 'Revision recorded') });
+       setRevisionNote("");
+       setIsRevisionOpen(false);
+    } finally { setLoadingAction(null); }
   };
 
   if (transLoading || stagesLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
 
   return (
     <div className="space-y-4 w-full px-4 md:px-6 animate-in fade-in" dir={dir}>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4 border-slate-100">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4 border-slate-100 text-start">
         <div className="text-start">
            <div className="flex items-center gap-3">
               <Badge variant="outline" className="h-6 px-2 font-bold text-[10px] bg-slate-50 border-slate-200">{transaction?.transactionNumber}</Badge>
@@ -187,17 +166,18 @@ function TransactionDetailsContent() {
            </div>
         </div>
         <div className="flex gap-2">
-           <div className="flex gap-2">
-              {activeBoq ? (
-                <button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className={cn("h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border flex items-center shadow-sm", activeBoq.status !== 'approved' ? "border-amber-200 bg-amber-50 text-amber-600" : "border-slate-200 bg-white")}>
-                    <FileSpreadsheet className="h-3 w-3" /> {activeBoq.status === 'approved' ? t('projects.boqExplorer') : t('common.pending')}
-                </button>
-              ) : (
-                <Button onClick={() => setIsBoqInitOpen(true)} variant="outline" size="sm" className="h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border-slate-200 shadow-sm">
-                   <FilePlus className="h-3.5 w-3.5" /> {t('common.add')}
-                </Button>
-              )}
-           </div>
+           <Button onClick={() => setIsRevisionOpen(true)} variant="outline" size="sm" className="h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border-slate-200 bg-white">
+              <RotateCcw className="h-3.5 w-3.5 text-orange-500" /> {tSafe('inline.add_revision', 'تسجيل تعديل', 'Add Revision')}
+           </Button>
+           {activeBoq ? (
+             <button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className={cn("h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border flex items-center shadow-sm", activeBoq.status !== 'approved' ? "border-amber-200 bg-amber-50 text-amber-600" : "border-slate-200 bg-white")}>
+                 <FileSpreadsheet className="h-3 w-3" /> {activeBoq.status === 'approved' ? t('projects.boqExplorer') : t('common.pending')}
+             </button>
+           ) : (
+             <Button onClick={() => setIsBoqInitOpen(true)} variant="outline" size="sm" className="h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border-slate-200 shadow-sm">
+                <FilePlus className="h-3.5 w-3.5" /> {t('common.add')}
+             </Button>
+           )}
         </div>
       </div>
 
@@ -219,9 +199,7 @@ function TransactionDetailsContent() {
                    {isFinancialLockActive ? (
                       <Card className="border-2 border-dashed rounded-[1.5rem] bg-white p-12 text-center space-y-4">
                          <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto"><Lock className="h-8 w-8 text-slate-200" /></div>
-                         <div className="space-y-1">
-                            <h3 className="text-sm font-black text-slate-900">{t('projects.details.locked')}</h3>
-                         </div>
+                         <h3 className="text-sm font-black text-slate-900">{t('projects.details.locked')}</h3>
                          <div className="flex justify-center gap-3 pt-4">
                             <Button onClick={() => setActiveTab('documents')} variant="outline" size="sm" className="h-8 font-bold px-6 text-[10px] rounded-md shadow-sm border-2">
                                <Plus className="h-3.5 w-3.5 me-2" /> {t('contracts')}
@@ -261,10 +239,10 @@ function TransactionDetailsContent() {
                                            {isOperationalFrontier && (
                                               <>
                                                 {stage.status === 'pending' && <Button onClick={(e) => { e.stopPropagation(); handleStartStage(stage.id!); }} size="sm" className="h-7 px-3 rounded-md text-[10px] font-bold bg-primary shadow-sm hover:brightness-105">
-                                                  {processingId === stage.id ? <Loader2 className="h-3 w-3 animate-spin" /> : t('common.confirm')}
+                                                  {processingId === stage.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : tSafe('inline.start_btn', 'مباشرة العمل', 'Start')}
                                                 </Button>}
-                                                {stage.status === 'in-progress' && <Button onClick={(e) => { e.stopPropagation(); handleCompleteStage(stage); }} size="sm" className="h-7 px-3 rounded-md text-[10px] font-bold bg-emerald-600 shadow-sm hover:brightness-105">
-                                                  {processingId === stage.id ? <Loader2 className="animate-spin h-3 w-3" /> : t('common.completed')}
+                                                {stage.status === 'in-progress' && <Button onClick={(e) => { e.stopPropagation(); handleCompleteStage(stage); }} size="sm" className="h-7 px-3 rounded-md text-[10px] font-bold bg-emerald-600 text-white shadow-sm hover:brightness-105">
+                                                  {processingId === stage.id ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : tSafe('inline.complete_btn', 'إتمام العمل', 'Complete')}
                                                 </Button>}
                                               </>
                                            )}
@@ -290,21 +268,34 @@ function TransactionDetailsContent() {
           </div>
       </div>
 
+      <Dialog open={isRevisionOpen} onOpenChange={setIsRevisionOpen}>
+         <DialogContent className="rounded-xl max-w-lg p-0 overflow-hidden bg-white border-0 shadow-3xl" dir={dir}>
+            <div className="bg-orange-50 p-8 text-orange-900 text-start border-b">
+               <DialogTitle className="text-xl font-black flex items-center gap-3"><RotateCcw className="h-6 w-6 text-orange-500" /> {tSafe('inline.log_tech_revision', 'تسجيل تعديل فني للمسار', 'Log Path Revision')}</DialogTitle>
+            </div>
+            <div className="p-8 space-y-4 text-start">
+               <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.revision_description', 'وصف التعديل المطلوب أو المنفذ', 'Revision Description')}</Label>
+               <Textarea value={revisionNote} onChange={e => setRevisionNote(e.target.value)} placeholder="..." className="min-h-[120px] rounded-xl border-2" />
+               <Button onClick={handleAddRevision} disabled={!revisionNote.trim() || !!loadingAction} className="w-full h-14 rounded-xl font-black text-lg bg-orange-500 text-white shadow-xl shadow-orange-100">
+                  {loadingAction === 'revision' ? <Loader2 className="h-5 w-5 animate-spin" /> : tSafe('inline.save_revision', 'اعتماد وحفظ التعديل', 'Save Revision')}
+               </Button>
+            </div>
+         </DialogContent>
+      </Dialog>
+
       <Dialog open={isBoqInitOpen} onOpenChange={setIsBoqInitOpen}>
          <DialogContent className="rounded-xl max-w-md p-0 overflow-hidden border shadow-3xl bg-white" dir={dir}>
             <div className="bg-slate-50 p-6 border-b text-start"><DialogTitle className="text-base font-black flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> {t('common.confirm')}</DialogTitle></div>
             <div className="p-8 space-y-4 text-start">
                <Label className="text-[10px] font-black uppercase text-slate-400">{t('templates')}</Label>
                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                  <SelectTrigger className="h-12 rounded-xl border-2 font-black text-lg">
-                     <SelectValue placeholder="..." />
-                  </SelectTrigger>
+                  <SelectTrigger className="h-12 rounded-xl border-2 font-black text-lg"><SelectValue placeholder="..." /></SelectTrigger>
                   <SelectContent className="rounded-xl border-2 shadow-2xl">
                      {templates?.map(t_item => <SelectItem key={t_item.id} value={t_item.id!} className="font-bold py-4">{t_item.name}</SelectItem>)}
                   </SelectContent>
                </Select>
-               <Button onClick={handleCreateBOQ} disabled={!selectedTemplateId || !!loadingAction} className="w-full h-14 rounded-2xl font-black text-sm shadow-xl shadow-primary/20 border-b-4 border-orange-700 mt-4 transition-all active:scale-95">
-                  {loadingAction === 'creating_boq' ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4 me-2" />} {t('common.save')}
+               <Button onClick={handleCreateBOQ} disabled={!selectedTemplateId || !!loadingAction} className="w-full h-14 rounded-2xl font-black text-sm shadow-xl shadow-primary/20 border-b-4 border-orange-700 mt-4 transition-all">
+                  {loadingAction === 'creating_boq' ? <Loader2 className="h-4 w-4 animate-spin" /> : t('common.save')}
                </Button>
             </div>
          </DialogContent>
