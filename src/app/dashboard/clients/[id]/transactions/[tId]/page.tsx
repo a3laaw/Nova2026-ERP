@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect, Suspense } from 'react';
@@ -13,7 +14,7 @@ import {
   Hash, Target, Calculator
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { collection, query, orderBy, where, doc, serverTimestamp, addDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, where, doc, serverTimestamp, addDoc, updateDoc, getDoc } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -356,15 +357,16 @@ function TransactionDetailsContent() {
                                         </div>
                                         
                                         <div className="flex gap-2 items-center">
-                                           {/* زر التعديل الخاص بكل مرحلة */}
-                                           <Button 
-                                             onClick={() => setRevisionData({ isOpen: true, stageId: stage.id!, stageName: stage.name })} 
-                                             variant="ghost" 
-                                             size="sm" 
-                                             className="h-8 px-3 rounded-lg font-bold text-[9px] gap-1.5 text-orange-600 hover:bg-orange-50"
-                                           >
-                                              <RotateCcw className="h-3.5 w-3.5" /> {tSafe('inline.add_revision', 'تعديل', 'Revision')}
-                                           </Button>
+                                           {stage.status === 'in-progress' && (
+                                              <Button 
+                                                onClick={() => setRevisionData({ isOpen: true, stageId: stage.id!, stageName: stage.name })} 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                className="h-8 px-3 rounded-lg font-bold text-[9px] gap-1.5 text-orange-600 hover:bg-orange-50"
+                                              >
+                                                 <RotateCcw className="h-3.5 w-3.5" /> {tSafe('inline.add_revision', 'تعديل', 'Revision')}
+                                              </Button>
+                                           )}
 
                                            {isOperationalFrontier && (
                                               <>
@@ -384,7 +386,6 @@ function TransactionDetailsContent() {
                                         </div>
                                      </div>
 
-                                     {/* واجهة التحكم العددي للمشاريع الهندسية */}
                                      {isDesignProject && stage.isNumeric && stage.status === 'in-progress' && (
                                         <div className="pt-4 border-t border-slate-50 flex items-center justify-between gap-6 animate-in slide-in-from-top-2">
                                            <div className="space-y-1">
@@ -403,7 +404,6 @@ function TransactionDetailsContent() {
                                         </div>
                                      )}
 
-                                     {/* واجهة ربط المقايسة لمشاريع المقاولات */}
                                      {!isDesignProject && stage.status === 'in-progress' && (
                                         <div className="pt-4 border-t border-slate-50 flex items-center justify-between animate-in slide-in-from-top-2">
                                            <div className="flex items-center gap-3">
@@ -485,7 +485,7 @@ function TransactionDetailsContent() {
          <DialogContent className="rounded-xl max-w-md p-0 overflow-hidden border shadow-3xl bg-white" dir={dir}>
             <div className="bg-slate-50 p-6 border-b text-start"><DialogTitle className="text-base font-black flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> {t('common.confirm')}</DialogTitle></div>
             <div className="p-8 space-y-4 text-start">
-               <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('templates', 'القوالب', 'Templates')}</Label>
+               <Label className="text-[10px] font-black uppercase text-slate-400">{t('templates')}</Label>
                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
                   <SelectTrigger className="h-12 rounded-xl border-2 font-black text-lg"><SelectValue placeholder="..." /></SelectTrigger>
                   <SelectContent className="rounded-xl border-2 shadow-2xl">

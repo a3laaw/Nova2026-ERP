@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -25,7 +26,6 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions/engine';
 import { BOQExecutionService } from './boq-execution-service';
-import { CommentService } from './comment-section';
 import { ClientService } from './client-service';
 import { AccountingService } from './accounting-service';
 
@@ -50,7 +50,7 @@ export class TransactionService {
     description?: string;
   }, userId: string, userName: string) {
     
-    ensureActionPermission(this.permissions, 'projects:create');
+    ensureActionPermission(this.permissions, 'crm:create');
 
     const clientRef = doc(this.db, paths.clients(this.companyId), data.clientId);
     const clientSnap = await getDoc(clientRef);
@@ -216,6 +216,11 @@ export class TransactionService {
         name: stage.name || '',
         order: idx,
         status: 'pending',
+        isNumeric: !!stage.isNumeric,
+        numericTarget: stage.numericTarget || 0,
+        currentCount: 0,
+        isTimed: !!stage.isTimed,
+        timeTargetDays: stage.timeTargetDays || 0,
         activityTypeId: activityId,
         serviceId: serviceId,
         subServiceId: subServiceId,
