@@ -12,7 +12,7 @@ import {
   Loader2, Check, FileSpreadsheet, Zap, Workflow, ArrowRight,
   Sparkles, FilePlus, Lock, Plus, Save, CheckCircle2, RotateCcw,
   MessageSquare, Pencil, History, Hammer, X, AlertTriangle, Undo2,
-  Hash, Target, Calculator
+  Hash, Target, Calculator, LayoutGrid
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, serverTimestamp, addDoc, updateDoc, getDoc } from 'firebase/firestore';
@@ -22,7 +22,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { Transaction, StageInstance } from '@/types/transaction';
 import { TransactionService } from '@/services/transaction-service';
-import { BOQ, Contract, BOQItem, BOQItemExecutionEntry } from '@/types/documents';
+import { BOQ, Contract, BOQItem } from '@/types/documents';
 import { BOQTemplate } from '@/types/templates';
 import { CommentSection } from '@/components/transactions/comment-section';
 import { DocumentService } from '@/services/document-service';
@@ -283,7 +283,7 @@ function TransactionDetailsContent() {
                size="sm" 
                className="h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border-slate-200 shadow-sm"
              >
-                <FilePlus className="h-3.5 w-3.5" /> {tSafe('inline.create.boq', 'إنشاء مقايسة', 'Create BOQ')}
+                <FilePlus className="h-3.5 w-3.5 me-2" /> {tSafe('inline.create.boq', 'إنشاء مقايسة', 'Create BOQ')}
              </Button>
            )}
         </div>
