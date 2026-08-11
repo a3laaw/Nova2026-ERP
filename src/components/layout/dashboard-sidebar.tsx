@@ -11,7 +11,7 @@ import {
   Building2, Settings2, ChevronDown,
   Database, FileSpreadsheet, CalendarDays, Gavel,
   MapPinned, Hammer, MapPin, Landmark, Receipt,
-  GitBranch, BarChart3, Wallet
+  GitBranch, BarChart3, Wallet, Handshake
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
@@ -85,7 +85,9 @@ export function DashboardSidebar() {
         resource: 'procurement',
         subItems: [
           { title: t('suppliers'), url: "/dashboard/procurement/suppliers", icon: Truck },
+          { title: t('subcontractors'), url: "/dashboard/procurement/subcontractors", icon: HardHat },
           { title: t('contracts'), url: "/dashboard/procurement/contracts", icon: Gavel },
+          { title: t('subConClaims'), url: "/dashboard/procurement/sub-claims", icon: Handshake },
           { title: t('aiAnalysis'), url: "/dashboard/ai", icon: FileSearch },
         ]
       },
@@ -107,6 +109,7 @@ export function DashboardSidebar() {
         resource: 'accounting',
         subItems: [
           { title: t('chartOfAccounts'), url: "/dashboard/accounting/coa", icon: GitBranch },
+          { title: t('ownerClaims'), url: "/dashboard/accounting/claims", icon: Receipt },
           { title: t('receiptVouchers'), url: "/dashboard/accounting/vouchers/receipt", icon: Receipt },
           { title: t('paymentVouchers'), icon: Wallet, url: "/dashboard/accounting/vouchers/payment" },
           { title: t('journalEntries'), url: "/dashboard/accounting/journals", icon: FileText },
