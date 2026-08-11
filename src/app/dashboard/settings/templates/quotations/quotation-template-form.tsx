@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -239,13 +240,13 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
 
             <PrintWrapper className="mt-4 overflow-hidden">
                <div className="space-y-8 text-start">
-                  <div className="p-4 bg-[#1e1b4b] rounded-xl text-white flex items-center justify-between gap-4 shadow-xl print:hidden">
+                  <div className="p-4 bg-slate-50 border-2 border-slate-100 rounded-xl text-slate-900 flex items-center justify-between gap-4 shadow-sm print:hidden">
                       <div className="flex items-center gap-3 text-start">
                         <Calculator className="h-4 w-4 text-primary" />
                         <div>
                           <p className="text-[7px] font-black uppercase text-primary">{t('pricingMode')}</p>
                           <Select value={formData.pricingMode} onValueChange={(v: PricingMode) => setFormData({...formData, pricingMode: v})}>
-                             <SelectTrigger className="h-6 w-32 rounded-md bg-white/10 border-0 text-white font-black text-[9px] mt-0.5"><SelectValue /></SelectTrigger>
+                             <SelectTrigger className="h-6 w-32 rounded-md bg-white border-2 border-slate-100 text-slate-900 font-black text-[9px] mt-0.5"><SelectValue /></SelectTrigger>
                              <SelectContent className="rounded-xl">
                                 <SelectItem value="itemized" className="font-bold text-xs">{t('itemized')}</SelectItem>
                                 <SelectItem value="fixed" className="font-bold text-xs">{t('fixed')}</SelectItem>
@@ -262,7 +263,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                              type="number" 
                              value={formData.baseAmount === 0 ? "" : formData.baseAmount} 
                              onChange={e => setFormData({...formData, baseAmount: e.target.value === '' ? 0 : Number(e.target.value)})} 
-                             className="h-7 rounded-md bg-white text-slate-900 font-black text-xs text-center shadow-inner" 
+                             className="h-7 rounded-md bg-white text-slate-900 font-black text-xs text-center shadow-inner border-2 border-slate-100" 
                            />
                         </div>
                       )}
@@ -283,7 +284,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                         <div className="flex gap-2">
                            <Dialog open={isRegistryOpen} onOpenChange={setIsRegistryOpen}>
                               <DialogTrigger asChild>
-                                 <Button variant="outline" size="sm" className="rounded-lg font-black text-[9px] border-2 h-7 px-4 gap-2 bg-slate-900 text-white hover:bg-slate-800 transition-all shadow-sm">
+                                 <Button variant="outline" size="sm" className="rounded-lg font-black text-[9px] border-2 h-7 px-4 gap-2 bg-slate-100 text-slate-800 hover:bg-slate-200 transition-all shadow-sm">
                                     <GitBranch className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'القاموس الموحد' : 'Registry Link'}
                                  </Button>
                               </DialogTrigger>
@@ -301,9 +302,9 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                         </div>
                      </div>
 
-                     <div className="border-2 border-slate-900 rounded-xl overflow-hidden bg-white shadow-lg">
+                     <div className="border-2 border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
                         <table className="w-full text-[10px] text-start">
-                           <thead className="bg-slate-900 text-white">
+                           <thead className="bg-slate-50 border-b-2 text-slate-600">
                               <tr className="font-black uppercase tracking-widest text-[9px]">
                                  <th className="p-3 w-10 text-start">#</th>
                                  <th className="p-3 text-start">{isRtl ? 'مسمى البند / الدفعة' : 'Item Label'}</th>
@@ -329,7 +330,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                          <div className="space-y-1">
                                             <div className="flex items-center gap-1">
                                                {m.boqReferenceNodeId && <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[6px] h-3 px-1">{tSafe('inline.linked', 'مرتبط', 'LINKED')}</Badge>}
-                                               <Input value={m.label} onChange={e => updateItem(idx, 'label', e.target.value)} className="h-8 rounded-lg font-bold text-[10px] bg-slate-50/50" />
+                                               <Input value={m.label} onChange={e => updateItem(idx, 'label', e.target.value)} className="h-8 rounded-lg font-bold text-[10px] bg-white border-2" />
                                             </div>
                                             {m.technicalStageId && m.technicalStageId !== 'NONE' && (
                                               <p className="text-[7px] text-slate-400 italic">
@@ -394,10 +395,10 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                  );
                               })}
                            </tbody>
-                           <tfoot className="bg-slate-900 text-white">
+                           <tfoot className="bg-slate-50 border-t-2">
                               <tr>
                                  <td colSpan={formData.pricingMode === 'percentage' ? 5 : 4} className="p-5 text-start">
-                                    <h3 className="text-xs font-black font-headline uppercase tracking-tighter">{isRtl ? 'إجمالي قيمة العقد' : 'Total Contract Value'}</h3>
+                                    <h3 className="text-xs font-black font-headline uppercase tracking-tighter text-slate-800">{isRtl ? 'إجمالي قيمة العقد' : 'Total Contract Value'}</h3>
                                     {formData.pricingMode === 'percentage' && (
                                        <Badge className={cn("mt-1 border-0 text-[7px] font-black h-4 px-3 shadow-sm", stats.isValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>
                                           {stats.isValid ? `BALANCED: 100%` : `MISMATCH: ${stats.totalPercentage}%`}
@@ -407,7 +408,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                  <td colSpan={2} className="p-5 text-end pe-8">
                                     <div className="space-y-0.5">
                                        <h2 className="text-2xl font-black font-headline text-primary">{(currentDisplayAmount || 0).toLocaleString()}</h2>
-                                       <p className="text-[8px] font-black text-white/30 uppercase tracking-[0.3em]">{isRtl ? 'دينار كويتي' : 'Kuwaiti Dinars'}</p>
+                                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.3em]">{isRtl ? 'دينار كويتي' : 'Kuwaiti Dinars'}</p>
                                     </div>
                                  </td>
                               </tr>
@@ -417,7 +418,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                   </div>
 
                   <div className="space-y-4 pt-4 text-start">
-                     <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 border-b-2 border-slate-900 pb-1">
+                     <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 border-b-2 border-primary/20 pb-1">
                         <ShieldCheck className="h-3 w-3 text-primary" /> {isRtl ? 'الشروط المرجعية' : 'Default Terms'}
                      </h4>
                      <Textarea value={formData.defaultTerms || ''} onChange={e => setFormData({...formData, defaultTerms: e.target.value})} className="min-h-[150px] rounded-2xl border-2 p-5 text-xs font-bold leading-relaxed bg-slate-50/30 focus:bg-white transition-all shadow-inner" placeholder="..." />
@@ -437,7 +438,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                   <div className="space-y-2">
                      <Label className="text-[10px] font-black uppercase text-slate-500">{isRtl ? 'نوع النشاط' : 'Activity Type'}</Label>
                      <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
-                        <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs"><SelectValue placeholder="..." /></SelectTrigger>
+                        <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs bg-white"><SelectValue placeholder="..." /></SelectTrigger>
                         <SelectContent className="rounded-xl">
                            {activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold text-xs">{isRtl ? a.name : a.nameEn}</SelectItem>)}
                         </SelectContent>
@@ -446,7 +447,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                   <div className="space-y-2">
                      <Label className="text-[10px] font-black uppercase text-slate-500">{isRtl ? 'الخدمة الرئيسية' : 'Main Service'}</Label>
                      <Select disabled={!formData.activityTypeId} value={formData.serviceId} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
-                        <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs">
+                        <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs bg-white">
                            {servicesLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <SelectValue placeholder="..." />}
                         </SelectTrigger>
                         <SelectContent className="rounded-xl">
@@ -460,7 +461,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                         const sub = activeSubs.find(s => s.id === v);
                         setFormData({...formData, subServiceId: v, subServiceName: sub?.name || ''});
                      }}>
-                        <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs"><SelectValue placeholder="..." /></SelectTrigger>
+                        <SelectTrigger className="h-10 rounded-xl border-2 font-black bg-white text-start"><SelectValue placeholder="..." /></SelectTrigger>
                         <SelectContent className="rounded-xl">
                            {activeSubs.map(s => <SelectItem key={s.id} value={s.id!} className="font-black text-xs">{isRtl ? s.name : s.nameEn}</SelectItem>)}
                         </SelectContent>
@@ -468,15 +469,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                   </div>
                </CardContent>
             </Card>
-
-            <div className="p-8 rounded-[2.5rem] bg-amber-50 border-2 border-dashed border-amber-200 flex items-start gap-4 text-start">
-               <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-               <p className="text-[10px] text-amber-800 font-bold leading-relaxed">
-                  {isRtl 
-                    ? 'ربط بنود التسعير بالقاموس الموحد يضمن تماثل التوصيف الفني بين العرض والمقايسة الميدانية. عند استخدام القاموس، يتم توريث السعر المرجعي والارتباط الفني بالمرحلة تلقائياً.' 
-                    : 'Linking offer items to the Sovereign Registry ensures technical consistency between quotes and field BOQs. Prices and stage links are auto-inherited.'}
-               </p>
-            </div>
          </aside>
       </div>
     </div>

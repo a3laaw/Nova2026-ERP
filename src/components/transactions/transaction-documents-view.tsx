@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -59,7 +60,6 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [deletingContext, setDeletingContext] = useState<{ id: string, type: string } | null>(null);
 
-  // 1. جلب مستندات المالك
   const quotesQuery = useMemo(() => 
     companyId && db && transaction?.id ? query(collection(db, paths.quotations(companyId)), where('transactionId', '==', transaction.id)) : null, 
   [db, companyId, transaction?.id]);
@@ -75,7 +75,6 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
   [db, companyId, transaction?.id]);
   const { data: ownerIpcs } = useCollection<any>(ownerIpcsQuery);
 
-  // 2. جلب مستندات مقاولي الباطن
   const subIpcsQuery = useMemo(() => 
     companyId && db && transaction?.id ? query(collection(db, paths.subIpcs(companyId)), where('transactionId', '==', transaction.id)) : null, 
   [db, companyId, transaction?.id]);
@@ -112,7 +111,7 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
   const DocList = ({ title, data, type, icon: Icon, colorClass, bgClass, showAdd = false }: any) => (
     <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
        <CardHeader className="bg-slate-50/50 border-b p-8 flex flex-row items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 text-start">
              <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center shadow-sm border", bgClass, colorClass)}>
                 <Icon className="h-6 w-6" />
              </div>
@@ -172,11 +171,11 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
     <div className="space-y-10 animate-in fade-in duration-500">
       <Tabs value={activeSubTab} onValueChange={(v: any) => setActiveSubTab(v)} className="w-full">
          <div className="flex justify-center mb-8">
-            <TabsList className="bg-slate-200/50 p-1.5 rounded-[1.5rem] h-16 gap-2 border-2 border-white shadow-xl">
+            <TabsList className="bg-white p-1.5 rounded-[1.5rem] h-16 gap-2 border-2 border-slate-100 shadow-xl">
                <TabsTrigger value="owner" className="rounded-2xl font-black text-xs px-10 h-full data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-xl gap-2 transition-all">
                   <UserCircle className="h-4 w-4" /> {isRtl ? 'مستخلصات المالك' : 'Owner Billing'}
                </TabsTrigger>
-               <TabsTrigger value="subcon" className="rounded-2xl font-black text-xs px-10 h-full data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-xl gap-2 transition-all">
+               <TabsTrigger value="subcon" className="rounded-2xl font-black text-xs px-10 h-full data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 data-[state=active]:shadow-xl gap-2 transition-all">
                   <Handshake className="h-4 w-4" /> {isRtl ? 'مستخلصات مقاولي الباطن' : 'Sub-Con Billing'}
                </TabsTrigger>
             </TabsList>
@@ -191,54 +190,19 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
          </TabsContent>
 
          <TabsContent value="subcon" className="space-y-8 animate-in slide-in-from-bottom-4">
-            <div className="p-10 bg-slate-900 rounded-[3rem] text-white flex flex-col md:flex-row justify-between items-center gap-8 shadow-2xl relative overflow-hidden">
+            <div className="p-10 bg-white border-2 border-primary/10 rounded-[3rem] text-slate-900 flex flex-col md:flex-row justify-between items-center gap-8 shadow-2xl relative overflow-hidden">
                <div className="absolute top-0 right-0 p-10 opacity-5"><Handshake className="h-40 w-40 text-primary" /></div>
                <div className="text-start relative z-10 space-y-2">
                   <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">{isRtl ? 'إجمالي مستحقات مقاولي الباطن' : 'Total Subcontractor Payables'}</p>
-                  <h3 className="text-5xl font-black font-headline text-emerald-400">0 <span className="text-sm font-bold opacity-40">KWD</span></h3>
+                  <h3 className="text-5xl font-black font-headline text-slate-900">0 <span className="text-sm font-bold opacity-40">KWD</span></h3>
                </div>
-               <div className="bg-white/5 p-6 rounded-3xl border border-white/10 relative z-10 text-start">
-                  <p className="text-[11px] font-bold text-slate-300 max-w-xs leading-relaxed italic">{isRtl ? 'يتم توليد مسودات المستخلصات لمقاولي الباطن آلياً عند تسجيل إنجاز ميداني في البنود المسندة إليهم.' : 'Sub-IPC drafts are auto-generated when field progress is logged for assigned items.'}</p>
+               <div className="bg-slate-50 p-6 rounded-3xl border border-primary/10 relative z-10 text-start">
+                  <p className="text-[11px] font-bold text-slate-500 max-w-xs leading-relaxed italic">{isRtl ? 'يتم توليد مسودات المستخلصات لمقاولي الباطن آلياً عند تسجيل إنجاز ميداني في البنود المسندة إليهم.' : 'Sub-IPC drafts are auto-generated when field progress is logged for assigned items.'}</p>
                </div>
             </div>
             <DocList title={isRtl ? 'مستخلصات مقاولي الباطن' : 'Sub-Con Progress Payments'} data={subIpcs} type="subipc" icon={Receipt} colorClass="text-amber-600" bgClass="bg-amber-50" />
          </TabsContent>
       </Tabs>
-
-      <Dialog open={!!docTypeToCreate} onOpenChange={(v) => !v && setDocTypeToCreate(null)}>
-         <DialogContent className="rounded-xl p-0 overflow-hidden max-w-lg border-0 shadow-3xl bg-white" dir={dir}>
-            <div className="bg-slate-900 p-10 text-white text-start border-b">
-               <DialogTitle className="text-2xl font-black font-headline flex items-center gap-4">
-                  <Sparkles className="h-8 w-8 text-primary" />
-                  {docTypeToCreate === 'quotation' ? tSafe('inline.issue.quote', 'إصدار عرض سعر', 'Issue Quote') : tSafe('inline.issue.contract', 'إصدار عقد جديد', 'Issue Contract')}
-               </DialogTitle>
-            </div>
-            <div className="p-10 space-y-8 text-start bg-white">
-               <div className="space-y-3">
-                  <Label className="font-black text-xs uppercase text-slate-400 tracking-widest">{tSafe('inline.choose.template', 'اختر القالب المرجعي', 'Choose Template')}</Label>
-                  <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                     <SelectTrigger className="h-14 rounded-2xl border-2 font-black text-lg"><SelectValue placeholder="..." /></SelectTrigger>
-                     <SelectContent className="rounded-xl border-2 shadow-2xl z-[200]">
-                        {templates?.map(t => (
-                          <SelectItem key={t.id} value={t.id!} className="font-bold py-4">
-                            <div className="flex flex-col text-start">
-                               <span>{t.name}</span>
-                               {t.subServiceId === transaction.subServiceId && (
-                                  <Badge className="bg-emerald-50 text-emerald-600 border-0 text-[7px] font-black h-4 w-fit mt-1">{tSafe('inline.direct.matching.key', 'مطابقة مباشرة', 'DIRECT MATCH')}</Badge>
-                               )}
-                            </div>
-                          </SelectItem>
-                        ))}
-                     </SelectContent>
-                  </Select>
-               </div>
-               <Button onClick={handleCreate} disabled={loading || !selectedTemplateId} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-105 transition-all">
-                  {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
-                  {tSafe('inline.create.draft', 'تجهيز المسودة الآن', 'Create Draft')}
-               </Button>
-            </div>
-         </DialogContent>
-      </Dialog>
     </div>
   );
 }

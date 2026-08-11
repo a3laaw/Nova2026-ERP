@@ -106,7 +106,6 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
 
   const { data: rawTemplates } = useCollection<any>(templatesQuery);
 
-  // الربط السيادي المطور: فرز القوالب لتقديم تلك المطابقة للمسار الفني للمشروع أولاً
   const templates = useMemo(() => {
     if (!rawTemplates) return [];
     return [...rawTemplates].sort((a, b) => {
@@ -201,9 +200,9 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
     <>
       <Dialog open={isOpen} onOpenChange={(v) => { if(!v) onClose(); }}>
         <DialogContent className="max-w-4xl rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
-          <div className="bg-slate-50 p-8 text-slate-900 text-start border-b flex justify-between items-center shrink-0">
+          <div className="bg-slate-50/80 p-8 text-slate-900 text-start border-b flex justify-between items-center shrink-0">
              <div className="flex items-center gap-4">
-                <div className="h-14 w-14 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg ring-4 ring-primary/5">
+                <div className="h-14 w-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary shadow-sm border border-primary/10">
                    {type === 'quotation' ? <FileText className="h-7 w-7" /> : <Gavel className="h-7 w-7" />}
                 </div>
                 <div>
@@ -219,7 +218,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
           <div className="p-10 grid grid-cols-1 lg:grid-cols-2 gap-12 max-h-[65vh] overflow-y-auto scrollbar-hide text-start bg-white">
              
              <div className="space-y-6">
-                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest border-b-2 border-slate-50 pb-3 flex items-center gap-2">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest border-b pb-3 flex items-center gap-2">
                    <Plus className="h-4 w-4 text-primary" /> {t('common.add')}
                 </h3>
                 
@@ -259,7 +258,7 @@ export function TransactionDocumentsDialog({ isOpen, onClose, type, transaction,
              </div>
 
              <div className="space-y-6">
-                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest border-b-2 border-slate-50 pb-3 flex items-center gap-2">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest border-b pb-3 flex items-center gap-2">
                    <History className="h-4 w-4 text-primary" /> {t('common.records')}
                 </h3>
 

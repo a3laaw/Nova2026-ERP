@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -65,7 +66,7 @@ export default function GlobalAnalyticsPage() {
       
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div className="text-start space-y-1">
-           <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit">
+           <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit border border-primary/10 shadow-sm">
               <Sparkles className="h-3 w-3" /> {isRtl ? 'ذكاء Nova التحليلي' : 'Nova Analytics Intelligence'}
            </div>
            <h1 className="text-4xl font-black font-headline text-slate-900">{isRtl ? 'رادار الأداء التشغيلي والمالي' : 'Operational & Financial Radar'}</h1>
@@ -78,16 +79,16 @@ export default function GlobalAnalyticsPage() {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-         <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-slate-900 text-white p-8 overflow-hidden relative group">
+         <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white p-8 overflow-hidden relative group ring-1 ring-black/5 border-b-8 border-slate-900">
             <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform"><Calculator className="h-32 w-32" /></div>
-            <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-2">{isRtl ? 'إجمالي المحفظة المالية' : 'Total Portfolio Value'}</p>
-            <h3 className="text-4xl font-black font-headline text-emerald-400">{stats.totalBudget.toLocaleString()} <span className="text-xs">KWD</span></h3>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{isRtl ? 'إجمالي المحفظة المالية' : 'Total Portfolio Value'}</p>
+            <h3 className="text-4xl font-black font-headline text-slate-900">{stats.totalBudget.toLocaleString()} <span className="text-xs text-slate-400 font-bold">KWD</span></h3>
          </Card>
-         <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white p-8 border-b-8 border-b-blue-500">
+         <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white p-8 border-b-8 border-b-blue-500 ring-1 ring-black/5">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{isRtl ? 'المصروف الفعلي (المعتمد)' : 'Actual Approved Spend'}</p>
             <h3 className="text-3xl font-black text-blue-600">{stats.totalSpent.toLocaleString()} <span className="text-xs">KWD</span></h3>
          </Card>
-         <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white p-8 border-b-8 border-b-emerald-500">
+         <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white p-8 border-b-8 border-b-emerald-500 ring-1 ring-black/5">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{isRtl ? 'الوفر / المتبقي المالي' : 'Unspent Balance'}</p>
             <h3 className="text-3xl font-black text-emerald-600">{stats.savings.toLocaleString()} <span className="text-xs">KWD</span></h3>
          </Card>
@@ -153,7 +154,7 @@ export default function GlobalAnalyticsPage() {
       </div>
 
       <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
-         <CardHeader className="bg-slate-50 border-b p-8 text-start">
+         <CardHeader className="bg-slate-50/50 border-b p-8 text-start">
             <CardTitle className="text-xl font-black">{isRtl ? 'كشف الأداء المالي التفصيلي (Ledger)' : 'Detailed Performance Ledger'}</CardTitle>
          </CardHeader>
          <CardContent className="p-0 overflow-x-auto">
@@ -177,7 +178,7 @@ export default function GlobalAnalyticsPage() {
                            </div>
                         </td>
                         <td className="p-6 text-center">
-                           <Badge variant="outline" className="font-black text-[9px] uppercase px-3">{p.status}</Badge>
+                           <Badge variant="outline" className="font-black text-[9px] uppercase px-3 bg-white border-slate-100">{p.status}</Badge>
                         </td>
                         <td className="p-6 text-end font-mono font-bold text-slate-900">{p.totalBudget.toLocaleString()}</td>
                         <td className="p-6 text-end font-mono font-bold text-blue-600">{p.totalSpent.toLocaleString()}</td>

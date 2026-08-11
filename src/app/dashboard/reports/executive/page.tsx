@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -81,20 +82,20 @@ export default function ExecutiveReportPage() {
            <div className="space-y-10">
               
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                 <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white border-b-8 border-emerald-500 p-8 overflow-hidden relative group">
-                    <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:scale-110 transition-transform text-emerald-600"><Calculator className="h-24 w-24" /></div>
+                 <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white border-b-8 border-emerald-500 p-8 overflow-hidden relative group ring-1 ring-black/5">
+                    <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform text-emerald-600"><Calculator className="h-24 w-24" /></div>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{t('reports.stats.portfolio')}</p>
                     <h3 className="text-3xl font-black font-headline text-slate-900">{data.finance.totalBudget.toLocaleString()} <span className="text-xs text-slate-400">KWD</span></h3>
                  </Card>
-                 <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white p-8 border-b-8 border-primary">
+                 <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white p-8 border-b-8 border-primary ring-1 ring-black/5">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('reports.stats.activeProjects')}</p>
                     <h3 className="text-3xl font-black text-slate-900">{data.projects.active}</h3>
                  </Card>
-                 <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white p-8 border-b-8 border-secondary">
+                 <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white p-8 border-b-8 border-secondary ring-1 ring-black/5">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('reports.stats.staff')}</p>
                     <h3 className="text-3xl font-black text-slate-900">{data.hr.totalStaff}</h3>
                  </Card>
-                 <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white p-8 border-b-8 border-accent">
+                 <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white p-8 border-b-8 border-accent ring-1 ring-black/5">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('reports.stats.attendance')}</p>
                     <h3 className="text-3xl font-black text-slate-900">94%</h3>
                  </Card>
@@ -128,7 +129,7 @@ export default function ExecutiveReportPage() {
                  </Card>
 
                  <Card className="border-0 shadow-xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
-                    <CardHeader className="bg-slate-50 border-b p-8 text-start">
+                    <CardHeader className="bg-slate-50/50 border-b p-8 text-start">
                        <CardTitle className="text-lg font-black flex items-center gap-2">
                           <LayoutGrid className="h-5 w-5 text-primary" />
                           {t('reports.charts.portfolioByActivity')}

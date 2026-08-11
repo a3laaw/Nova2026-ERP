@@ -67,7 +67,6 @@ export default function TransactionBOQProgressPage() {
   const subsQuery = useMemo(() => companyId && db ? query(collection(db, paths.subcontractors(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
   const { data: subcontractors } = useCollection<Subcontractor>(subsQuery);
 
-  // جلب كافة المستخلصات المعتمدة لهذا المشروع لحساب الكميات "السابقة"
   const ipcsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.ipcs(companyId)), where('transactionId', '==', transactionId), where('status', '==', 'approved')) : null,
   [db, companyId, transactionId]);
@@ -89,7 +88,6 @@ export default function TransactionBOQProgressPage() {
   const allTemplatesQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqTemplates(companyId))) : null, [db, companyId]);
   const { data: allTemplates } = useCollection<BOQTemplate>(allTemplatesQuery);
 
-  // الربط السيادي المطور: فلترة القوالب لضمان مطابقة المسار الفني بدقة (Preventing mismatched BOQs)
   const templates = useMemo(() => {
      if (!allTemplates || !transaction?.subServiceId) return [];
      return allTemplates.filter(temp => (temp.subServiceId?.trim() === transaction.subServiceId.trim()) && temp.isActive !== false);
@@ -133,7 +131,7 @@ export default function TransactionBOQProgressPage() {
 
   const renderBOQTreeRows = (node: BOQTreeNode, prefix: string): React.ReactNode => (
     <React.Fragment key={node.id}>
-      <TableRow className="bg-slate-50 hover:bg-slate-100 border-b-2 border-white">
+      <TableRow className="bg-slate-50/50 hover:bg-slate-100/50 border-b-2 border-white">
         <TableCell className="font-mono text-[11px] font-black text-slate-400 ps-6 text-start">{prefix}</TableCell>
         <TableCell colSpan={10} className="font-black text-slate-900 text-sm py-4 text-start" style={{ paddingInlineStart: `${node.depth * 20 + 16}px` }}>
           <div className="flex items-center gap-2"><Folder className="h-4 w-4 text-primary" />{node.title}</div>
@@ -271,19 +269,19 @@ export default function TransactionBOQProgressPage() {
 
       <div className="flex-1 bg-white rounded-lg shadow-sm border border-slate-100 overflow-hidden flex flex-col min-h-[600px]">
          <Table>
-           <TableHeader className="bg-slate-900 sticky top-0 z-20 border-0">
-             <TableRow className="hover:bg-slate-900 border-0">
-               <TableHead className="ps-6 text-white/40 font-mono text-[10px] text-start uppercase tracking-widest w-[80px]">#</TableHead>
-               <TableHead className="text-white/40 font-mono text-[10px] text-start uppercase tracking-widest w-[100px]">{t('common.code')}</TableHead>
-               <TableHead className="text-white font-black text-[10px] text-start uppercase tracking-widest">{tSafe('inline.work.item', 'بند العمل', 'Work Item')}</TableHead>
+           <TableHeader className="bg-slate-50/80 sticky top-0 z-20 border-b">
+             <TableRow className="hover:bg-slate-50/80 border-0">
+               <TableHead className="ps-6 text-slate-500 font-mono text-[10px] text-start uppercase tracking-widest w-[80px]">#</TableHead>
+               <TableHead className="text-slate-500 font-mono text-[10px] text-start uppercase tracking-widest w-[100px]">{t('common.code')}</TableHead>
+               <TableHead className="text-slate-900 font-black text-[10px] text-start uppercase tracking-widest">{tSafe('inline.work.item', 'بند العمل', 'Work Item')}</TableHead>
                <TableHead className="text-center text-primary font-black text-[10px] uppercase tracking-widest">{isRtl ? 'مقاول باطن' : 'Sub-Con'}</TableHead>
-               <TableHead className="text-center text-white/40 font-black text-[10px] uppercase tracking-widest w-[60px]">{t('common.unit')}</TableHead>
-               <TableHead className="text-center text-white font-black text-[10px] uppercase tracking-widest w-[80px]">{tSafe('inline.planned', 'المخطط', 'Planned')}</TableHead>
-               <TableHead className="text-center text-blue-400 font-black text-[10px] uppercase tracking-widest w-[80px]">{tSafe('inline.prev', 'السابق', 'Prev')}</TableHead>
-               <TableHead className="text-center text-orange-400 font-black text-[10px] uppercase tracking-widest w-[80px]">{tSafe('inline.curr', 'الحالي', 'Curr')}</TableHead>
-               <TableHead className="text-center text-white font-black text-[10px] uppercase tracking-widest w-[80px]">{tSafe('common.all', 'إجمالي', 'Total')}</TableHead>
-               <TableHead className="text-end text-white font-black text-[10px] uppercase tracking-widest w-[120px]">{tSafe('inline.subtotal', 'صافي المبلغ', 'Amount')}</TableHead>
-               <TableHead className="pe-6 text-white/40 font-black text-[10px] text-end uppercase tracking-widest w-[100px]">{tSafe('inline.progress', 'الإنجاز', 'Status')}</TableHead>
+               <TableHead className="text-center text-slate-500 font-black text-[10px] uppercase tracking-widest w-[60px]">{t('common.unit')}</TableHead>
+               <TableHead className="text-center text-slate-900 font-black text-[10px] uppercase tracking-widest w-[80px]">{tSafe('inline.planned', 'المخطط', 'Planned')}</TableHead>
+               <TableHead className="text-center text-blue-600 font-black text-[10px] uppercase tracking-widest w-[80px]">{tSafe('inline.prev', 'السابق', 'Prev')}</TableHead>
+               <TableHead className="text-center text-orange-600 font-black text-[10px] uppercase tracking-widest w-[80px]">{tSafe('inline.curr', 'الحالي', 'Curr')}</TableHead>
+               <TableHead className="text-center text-slate-900 font-black text-[10px] uppercase tracking-widest w-[80px]">{tSafe('common.all', 'إجمالي', 'Total')}</TableHead>
+               <TableHead className="text-end text-emerald-600 font-black text-[10px] uppercase tracking-widest w-[120px]">{tSafe('inline.subtotal', 'صافي المبلغ', 'Amount')}</TableHead>
+               <TableHead className="pe-6 text-slate-500 font-black text-[10px] text-end uppercase tracking-widest w-[100px]">{tSafe('inline.progress', 'الإنجاز', 'Status')}</TableHead>
              </TableRow>
            </TableHeader>
            <TableBody>{boqTree.length === 0 ? <TableRow><TableCell colSpan={11} className="py-40 text-center opacity-30"><Calculator className="h-10 w-10 mx-auto text-slate-200" /><p className="text-sm font-black mt-4">{tSafe('inline.empty', 'فارغ', 'Empty')}</p></TableCell></TableRow> : boqTree.map((node, idx) => renderBOQTreeRows(node, (idx + 1).toString() + ".0"))}</TableBody>

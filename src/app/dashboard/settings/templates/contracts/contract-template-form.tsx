@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -226,13 +227,13 @@ export function ContractTemplateForm({ template, onClose }: Props) {
 
             <PrintWrapper className="mt-4 overflow-hidden">
                <div className="space-y-8 text-start">
-                  <div className="p-4 bg-[#1e1b4b] rounded-xl text-white flex items-center justify-between gap-4 shadow-xl print:hidden">
+                  <div className="p-4 bg-slate-50 border-2 border-primary/20 rounded-xl text-slate-900 flex items-center justify-between gap-4 shadow-sm print:hidden">
                       <div className="flex items-center gap-3 text-start">
                         <Calculator className="h-4 w-4 text-primary" />
                         <div>
                           <p className="text-[7px] font-black uppercase text-primary">{t('pricingMode')}</p>
                           <Select value={formData.pricingMode} onValueChange={(v: PricingMode) => setFormData({...formData, pricingMode: v})}>
-                             <SelectTrigger className="h-6 w-32 rounded-md bg-white/10 border-0 text-white font-black text-[9px] mt-0.5"><SelectValue /></SelectTrigger>
+                             <SelectTrigger className="h-6 w-32 rounded-md bg-white border-2 border-slate-100 text-slate-900 font-black text-[9px] mt-0.5"><SelectValue /></SelectTrigger>
                              <SelectContent className="rounded-xl">
                                 <SelectItem value="itemized" className="font-bold text-xs">{t('itemized')}</SelectItem>
                                 <SelectItem value="fixed" className="font-bold text-xs">{t('fixed')}</SelectItem>
@@ -271,10 +272,10 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                         </Button>
                      </div>
 
-                     <div className="border-2 border-slate-900 rounded-xl overflow-hidden bg-white shadow-lg">
+                     <div className="border-2 border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
                         <table className="w-full text-[10px] text-start">
-                           <thead className="bg-slate-900 text-white">
-                              <tr className="font-black uppercase tracking-widest text-[9px]">
+                           <thead className="bg-slate-50 border-b-2">
+                              <tr className="font-black uppercase tracking-widest text-[9px] text-slate-600">
                                  <th className="p-3 w-10 text-start">#</th>
                                  <th className="p-3 text-start">{isRtl ? 'مسمى الدفعة' : 'Milestone Name'}</th>
                                  {formData.pricingMode === 'percentage' && <th className="p-3 text-center w-16">%</th>}
@@ -297,7 +298,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                       <td className="p-3 font-black text-slate-300 text-start">{idx + 1}</td>
                                       <td className="p-2">
                                          <div className="space-y-1">
-                                            <Input value={m.name} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-8 rounded-lg font-bold text-[10px] bg-slate-50/50" />
+                                            <Input value={m.name} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-8 rounded-lg font-bold text-[10px] bg-white border-2" />
                                             {m.technicalStageId && m.technicalStageId !== 'NONE' && (
                                               <p className="text-[7px] font-black text-primary/60 italic flex items-center gap-1 mt-1">
                                                 <Clock className="h-2 w-2" />
@@ -338,7 +339,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                       </td>
                                       <td className="p-2 text-end pe-6 w-32">
                                          {formData.pricingMode === 'itemized' ? (
-                                            <Input type="number" step="0.001" value={m.amount === 0 ? "" : m.amount} onChange={e => updateMilestone(idx, 'amount', e.target.value === '' ? 0 : Number(e.target.value))} className="h-8 w-24 ms-auto text-end font-black text-emerald-600 text-[10px]" />
+                                            <Input type="number" step="0.001" value={m.amount === 0 ? "" : m.amount} onChange={e => updateMilestone(idx, 'amount', e.target.value === '' ? 0 : Number(e.target.value))} className="h-8 w-24 ms-auto text-end font-black text-emerald-600 text-[10px] border-2" />
                                          ) : (
                                             <span className="font-mono font-black text-emerald-600">{(lineAmount || 0).toLocaleString()} <span className="text-[8px] opacity-40">KWD</span></span>
                                          )}
@@ -350,10 +351,10 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                  );
                               })}
                            </tbody>
-                           <tfoot className="bg-slate-900 text-white">
+                           <tfoot className="bg-slate-50 border-t-2">
                               <tr>
                                  <td colSpan={formData.pricingMode === 'percentage' ? 5 : 4} className="p-5 text-start">
-                                    <h3 className="text-xs font-black font-headline uppercase tracking-tighter">{isRtl ? 'إجمالي قيمة العقد' : 'Total Contract Value'}</h3>
+                                    <h3 className="text-xs font-black font-headline uppercase tracking-tighter text-slate-800">{isRtl ? 'إجمالي قيمة العقد' : 'Total Contract Value'}</h3>
                                     {formData.pricingMode === 'percentage' && (
                                        <Badge className={cn("mt-1 border-0 text-[7px] font-black h-4 px-3 shadow-sm", stats.isValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>
                                           {stats.isValid ? `BALANCED: 100%` : `MISMATCH: ${stats.totalPercentage}%`}
@@ -363,7 +364,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                  <td colSpan={2} className="p-5 text-end pe-8">
                                     <div className="space-y-0.5">
                                        <h2 className="text-2xl font-black font-headline text-primary">{(currentDisplayAmount || 0).toLocaleString()}</h2>
-                                       <p className="text-[8px] font-black text-white/30 uppercase tracking-[0.3em]">{isRtl ? 'دينار كويتي' : 'Kuwaiti Dinars'}</p>
+                                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.3em]">{isRtl ? 'دينار كويتي' : 'Kuwaiti Dinars'}</p>
                                     </div>
                                  </td>
                               </tr>
@@ -373,7 +374,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                   </div>
 
                   <div className="space-y-4 pt-4 text-start">
-                     <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 border-b-2 border-slate-900 pb-2">
+                     <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 border-b-2 border-primary/20 pb-2">
                         <Gavel className="h-4 w-4 text-primary" /> {isRtl ? 'البنود القانونية' : 'Legal Text'}
                      </h4>
                      <Textarea value={formData.legalText || ''} onChange={e => setFormData({...formData, legalText: e.target.value})} className="min-h-[250px] rounded-2xl border-2 p-5 text-xs font-bold leading-relaxed bg-slate-50/30 focus:bg-white transition-all shadow-inner" placeholder="..." />
@@ -393,7 +394,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                   <div className="space-y-2">
                      <Label className="text-[10px] font-black uppercase text-slate-500">{isRtl ? 'نوع النشاط' : 'Activity Type'}</Label>
                      <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
-                        <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs"><SelectValue placeholder="..." /></SelectTrigger>
+                        <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs bg-white"><SelectValue placeholder="..." /></SelectTrigger>
                         <SelectContent className="rounded-xl">
                            {activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold text-xs">{isRtl ? a.name : a.nameEn}</SelectItem>)}
                         </SelectContent>
@@ -402,7 +403,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                   <div className="space-y-2">
                      <Label className="text-[10px] font-black uppercase text-slate-500">{isRtl ? 'الخدمة الرئيسية' : 'Main Service'}</Label>
                      <Select disabled={!formData.activityTypeId} value={formData.serviceId} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
-                        <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs">
+                        <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs bg-white">
                            {servicesLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <SelectValue placeholder="..." />}
                         </SelectTrigger>
                         <SelectContent className="rounded-xl">
@@ -416,7 +417,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                         const sub = activeSubs.find(s => s.id === v);
                         setFormData({...formData, subServiceId: v, subServiceName: sub?.name || ''});
                      }}>
-                        <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs"><SelectValue placeholder="..." /></SelectTrigger>
+                        <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs bg-white"><SelectValue placeholder="..." /></SelectTrigger>
                         <SelectContent className="rounded-xl">
                            {activeSubs.map(s => <SelectItem key={s.id} value={s.id!} className="font-black text-xs">{isRtl ? s.name : s.nameEn}</SelectItem>)}
                         </SelectContent>
@@ -424,24 +425,6 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                   </div>
                </CardContent>
             </Card>
-
-            <div className="p-8 rounded-[2.5rem] bg-slate-900 text-white space-y-4 shadow-2xl relative overflow-hidden ring-1 ring-white/10">
-               <div className="absolute top-0 right-0 p-4 opacity-10"><ShieldCheck className="h-12 w-12 text-primary" /></div>
-               <h5 className="font-black text-xs uppercase tracking-widest text-primary">{isRtl ? 'حالة القالب' : 'Template Status'}</h5>
-               <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
-                  <Label className="text-[10px] font-bold text-slate-300 uppercase">{t('common.isActive')}</Label>
-                  <Switch checked={formData.isActive !== false} onCheckedChange={v => setFormData({...formData, isActive: v})} />
-               </div>
-            </div>
-
-            <div className="p-6 bg-amber-50 rounded-[2rem] border-2 border-dashed border-amber-200 flex items-start gap-4 text-start">
-               <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-               <p className="text-[10px] text-amber-800 font-bold leading-relaxed">
-                  {isRtl 
-                    ? 'سيتم استخدام هذا القالب كأساس عند فتح معاملة جديدة لهذا المسار الفني. تأكد من ربط الدفعات بمراحلها الفنية الصحيحة لتمكين محرك المطالبة الآلي.' 
-                    : 'This template will be the baseline for new transactions in this path. Link milestones to stages to enable automated billing triggers.'}
-               </p>
-            </div>
          </aside>
       </div>
     </div>

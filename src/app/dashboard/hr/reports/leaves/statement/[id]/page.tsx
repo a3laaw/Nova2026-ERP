@@ -119,16 +119,16 @@ export default function LeaveStatementPage() {
 
       <PrintWrapper title={t('hr.reports.leaves.statementTitle')}>
          <div className="space-y-10">
-            <div className="p-10 rounded-[2.5rem] bg-slate-900 text-white flex flex-col md:flex-row justify-between items-center gap-8 shadow-2xl relative overflow-hidden">
+            <div className="p-10 rounded-[2.5rem] bg-white border-2 border-primary/10 flex flex-col md:flex-row justify-between items-center gap-8 shadow-xl relative overflow-hidden">
                <div className="absolute top-0 right-0 p-8 opacity-5">
-                  <Landmark className="h-32 w-32" />
+                  <Landmark className="h-32 w-32 text-primary" />
                </div>
                <div className="text-start flex items-center gap-6 relative z-10">
-                  <div className="h-20 w-20 rounded-2xl bg-white/10 flex items-center justify-center text-primary font-black text-2xl border border-white/10">
+                  <div className="h-20 w-20 rounded-2xl bg-primary/5 flex items-center justify-center text-primary font-black text-2xl border border-primary/10">
                      {employee.employeeNumber}
                   </div>
                   <div>
-                     <h2 className="text-3xl font-black">{employee.fullName}</h2>
+                     <h2 className="text-3xl font-black text-slate-900">{employee.fullName}</h2>
                      <p className="text-slate-400 font-bold mt-1 uppercase tracking-widest text-xs">{employee.jobTitle} | {employee.departmentName}</p>
                   </div>
                </div>
@@ -163,7 +163,7 @@ export default function LeaveStatementPage() {
                               </Badge>
                            </td>
                            <td className="p-6 text-center">
-                              <span className="font-black text-slate-900 bg-slate-100 px-4 py-1.5 rounded-full font-mono text-lg shadow-inner">
+                              <span className="font-black text-slate-900 bg-slate-100 px-4 py-1.5 rounded-full font-mono text-lg shadow-inner border border-white">
                                  {row.balance}
                               </span>
                            </td>

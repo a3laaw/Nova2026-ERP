@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -69,7 +70,6 @@ export default function UsersManagementPage() {
   const { data: roles } = useCollection<Role>(rolesQuery);
   const { data: employees } = useCollection<Employee>(empsQuery);
 
-  // تصفية الموظفين: فقط من لديهم مهنة مرتبطة بدور أمني
   const systemEligibleEmployees = useMemo(() => {
     return (employees || []).filter(emp => !!emp.roleId);
   }, [employees]);
@@ -184,7 +184,7 @@ export default function UsersManagementPage() {
 
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-2">
+            <Button className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-2 border-b-4 border-orange-700">
                <UserPlus className="h-6 w-6" />
                {isRtl ? 'إنشاء حساب موظف' : 'Create User'}
             </Button>
@@ -216,12 +216,6 @@ export default function UsersManagementPage() {
                               </div>
                            </SelectItem>
                          ))}
-                         {systemEligibleEmployees.length === 0 && (
-                            <div className="p-10 text-center space-y-2">
-                               <UserX className="h-8 w-8 mx-auto text-slate-200" />
-                               <p className="text-[10px] font-bold text-slate-400 uppercase">لا يوجد موظفين مؤهلين لحسابات النظام. يرجى ربط دور وظيفي بالمهنة في الهيكل التنظيمي أولاً.</p>
-                            </div>
-                         )}
                       </SelectContent>
                    </Select>
                 </div>
@@ -314,9 +308,6 @@ export default function UsersManagementPage() {
                               {showPassMap[u.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                            </button>
                         </div>
-                        <button type="button" className="h-8 w-8" onClick={() => { navigator.clipboard.writeText(u.initialPassword || ''); toast({title: "Copied"}); }}>
-                           <Copy className="h-3.5 w-3.5 text-slate-400" />
-                        </button>
                      </div>
                   </TableCell>
                   <TableCell className="text-center">
@@ -327,7 +318,7 @@ export default function UsersManagementPage() {
                   </TableCell>
                   <TableCell className="pe-8 text-end">
                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="icon" className="rounded-xl h-10 w-10 text-primary border-primary/20 hover:bg-primary hover:text-white" onClick={() => setEditingUser(u)}>
+                        <Button variant="outline" size="icon" className="rounded-xl h-10 w-10 text-primary border-primary/10 hover:bg-primary hover:text-white" onClick={() => setEditingUser(u)}>
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button 
@@ -381,25 +372,6 @@ export default function UsersManagementPage() {
                            ))}
                         </SelectContent>
                      </Select>
-                  </div>
-               </div>
-
-               <div className="space-y-4 pt-4 border-t text-start">
-                  <div className="flex items-center gap-2 text-primary font-black text-xs uppercase tracking-widest">
-                     <Lock className="h-4 w-4" /> {isRtl ? 'إعادة تعيين كلمة المرور' : 'Reset Password'}
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-bold text-slate-400">{isRtl ? 'كلمة مرور جديدة (سيتم إرسال رابط للبريد)' : 'New Password (Will send link to email)'}</Label>
-                    <div className="relative">
-                      <Input 
-                        type="text" 
-                        value={editForm.newPassword} 
-                        onChange={e => setEditForm({...editForm, newPassword: e.target.value})}
-                        className="h-12 rounded-xl border-2 font-mono text-primary bg-slate-50"
-                        placeholder={isRtl ? "اكتب أي شيء لإرسال الرابط" : "Type anything to trigger link"}
-                      />
-                      <RefreshCcw className="absolute end-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-200" />
-                    </div>
                   </div>
                </div>
 

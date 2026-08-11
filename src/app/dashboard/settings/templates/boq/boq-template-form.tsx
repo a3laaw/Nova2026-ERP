@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -259,7 +260,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   const renderBOQTreeRows = (node: BOQTreeNode, prefix: string): React.ReactNode => {
     return (
       <React.Fragment key={node.id}>
-        <TableRow className="bg-slate-100 hover:bg-slate-200 border-b-2 border-white group/row">
+        <TableRow className="bg-slate-50 hover:bg-slate-100/50 border-b-2 border-white group/row">
           <TableCell className="font-mono text-[11px] font-black text-slate-400 ps-6 w-[80px] text-start">{prefix}</TableCell>
           <TableCell className="w-[100px] font-mono text-[10px] font-bold text-slate-400 text-start">---</TableCell>
           <TableCell className="font-black text-slate-900 text-sm py-4 text-start" style={{ paddingInlineStart: `${node.depth * 20 + 16}px` }}>
@@ -371,7 +372,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   return (
     <div className="flex flex-col h-full bg-[#fdfaf3]" dir={dir}>
       <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-white/80 backdrop-blur-md px-6 shadow-sm">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 text-start">
           <button onClick={onClose} className="h-10 w-10 border-2 rounded-xl flex items-center justify-center hover:bg-slate-50 transition-colors text-slate-400">
              <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
           </button>
@@ -416,7 +417,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
 
               <div className={cn(
                 "p-6 rounded-[2.5rem] transition-all space-y-4 relative overflow-hidden shadow-2xl ring-1 ring-black/5",
-                isMathValid ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-900 border-2"
+                isMathValid ? "bg-emerald-600 text-white" : "bg-slate-50 text-slate-900 border-2"
               )}>
                  <div className="absolute top-0 right-0 p-6 opacity-10"><Calculator className="h-24 w-24" /></div>
                  <div className="relative z-10 space-y-2 text-start">
@@ -552,8 +553,8 @@ export function BOQTemplateForm({ template, onClose }: Props) {
               <Table>
                 <TableHeader className="bg-slate-50 sticky top-0 z-20 border-b">
                   <TableRow className="hover:bg-slate-50 border-0">
-  <TableHead className="ps-6 w-[80px] text-slate-400 font-mono text-[10px] text-start">#</TableHead>
-  <TableHead className="w-[100px] text-slate-400 font-mono text-[10px] text-start">{t('common.code')}</TableHead>
+                    <TableHead className="ps-6 w-[80px] text-slate-400 font-mono text-[10px] text-start">#</TableHead>
+                    <TableHead className="w-[100px] text-slate-400 font-mono text-[10px] text-start">{t('common.code')}</TableHead>
                     <TableHead className="text-slate-900 font-black text-xs text-start">{isRtl ? 'وصف بند العمل' : 'Work Item Description'}</TableHead>
                     <TableHead className="text-slate-900 font-black text-xs text-start">{isRtl ? 'المواصفة الفنية' : 'Technical Specification'}</TableHead>
                     <TableHead className="text-slate-900 font-black text-xs text-start">{isRtl ? 'الارتباط المالي' : 'Financial Trigger'}</TableHead>
