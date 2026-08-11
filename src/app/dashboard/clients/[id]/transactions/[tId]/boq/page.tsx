@@ -289,15 +289,17 @@ export default function TransactionBOQProgressPage() {
          <Table>
            <TableHeader className="bg-slate-50 sticky top-0 z-20 border-0">
              <TableRow className="hover:bg-slate-50 border-0">
-               <TableHead className="ps-6 text-slate-500 font-bold text-[10px] text-start">{t('common.order')}</TableHead>
-               <TableHead className="text-slate-500 font-bold text-[10px] text-start">{t('common.code')}</TableHead>
-               <TableHead className="text-slate-900 font-black text-[10px] text-start uppercase">{t('common.add')}</TableHead>
-               <TableHead className="text-center text-slate-500 font-bold text-[10px]">{t('common.unit')}</TableHead>
-               <TableHead className="text-center text-slate-900 font-black text-[10px] uppercase">{t('common.quantity')}</TableHead>
-               <TableHead colSpan={3} className="text-center text-slate-900 font-black text-[10px] uppercase">{t('common.total')}</TableHead>
-               <TableHead className="text-center text-slate-500 font-bold text-[10px]">{t('projects.boqExplorer.rate')}</TableHead>
-               <TableHead className="text-end text-slate-900 font-black text-[10px] uppercase">{t('common.total')}</TableHead>
-               <TableHead className="pe-6 text-slate-500 font-bold text-[10px] text-end">{t('common.status')}</TableHead>
+               <TableHead className="ps-6 text-slate-500 font-black text-[10px] text-start uppercase tracking-widest">{t('common.order')}</TableHead>
+               <TableHead className="text-slate-500 font-black text-[10px] text-start uppercase tracking-widest">{tSafe('inline.ref.code', 'الكود المرجعي', 'Reference Code')}</TableHead>
+               <TableHead className="text-slate-900 font-black text-[10px] text-start uppercase tracking-widest">{tSafe('inline.work.item', 'بند العمل', 'Work Item')}</TableHead>
+               <TableHead className="text-center text-slate-500 font-black text-[10px] uppercase tracking-widest">{t('common.unit')}</TableHead>
+               <TableHead className="text-center text-slate-900 font-black text-[10px] uppercase tracking-widest">{tSafe('inline.planned', 'المخطط', 'Planned')}</TableHead>
+               <TableHead className="text-center text-blue-600 font-black text-[10px] uppercase tracking-widest">{tSafe('inline.prev', 'سابق', 'Prev')}</TableHead>
+               <TableHead className="text-center text-orange-600 font-black text-[10px] uppercase tracking-widest">{tSafe('inline.curr', 'حالي', 'Curr')}</TableHead>
+               <TableHead className="text-center text-slate-900 font-black text-[10px] uppercase tracking-widest">{tSafe('common.all', 'إجمالي', 'Total')}</TableHead>
+               <TableHead className="text-center text-slate-500 font-black text-[10px] uppercase tracking-widest">{t('projects.boqExplorer.rate')}</TableHead>
+               <TableHead className="text-end text-slate-900 font-black text-[10px] uppercase tracking-widest">{tSafe('inline.subtotal', 'الإجمالي', 'Amount')}</TableHead>
+               <TableHead className="pe-6 text-slate-500 font-black text-[10px] text-end uppercase tracking-widest">{tSafe('inline.progress', 'الإنجاز', 'Status')}</TableHead>
              </TableRow>
            </TableHeader>
            <TableBody>{boqTree.length === 0 ? <TableRow><TableCell colSpan={11} className="py-40 text-center opacity-30"><Calculator className="h-10 w-10 mx-auto text-slate-200" /><p className="text-sm font-black mt-4">{tSafe('inline.empty', 'فارغ', 'Empty')}</p></TableCell></TableRow> : boqTree.map((node, idx) => renderBOQTreeRows(node, (idx + 1).toString() + ".0"))}</TableBody>
