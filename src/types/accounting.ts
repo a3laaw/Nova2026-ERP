@@ -1,4 +1,3 @@
-
 import { BaseReference } from './reference';
 
 export type AccountType = 'asset' | 'liability' | 'equity' | 'revenue' | 'expense';
@@ -23,6 +22,7 @@ export interface JournalEntryLine {
   credit: number;
   projectId?: string;
   costCenterId?: string;
+  profitCenterId?: string;    // جديد — أضفه
   memo?: string;
 }
 
