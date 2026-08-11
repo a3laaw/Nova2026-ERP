@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -25,8 +24,6 @@ import { TechnicalStage } from '@/types/reference';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions/engine';
-import { BOQExecutionService } from './boq-execution-service';
-import { ClientService } from './client-service';
 import { AccountingService } from './accounting-service';
 
 export class TransactionService {
@@ -95,7 +92,6 @@ export class TransactionService {
       updatedAt: serverTimestamp()
     });
 
-    // الأتمتة المحاسبية: إنشاء حساب تكاليف المشروع تحت مجموعة (1205 - أعمال تحت التنفيذ WIP)
     const accService = new AccountingService(this.db, this.companyId);
     await accService.ensureControlAccount('1205', 'أعمال تحت التنفيذ (WIP)', 'Work In Progress', 'asset');
     await accService.createAutomaticSubAccount('1205', transactionId, `مشروع: ${data.subServiceName} (${transactionNumber})`, 'asset');
@@ -119,6 +115,31 @@ export class TransactionService {
     ensureActionPermission(this.permissions, 'projects:delete');
     const transRef = doc(this.db, paths.transactions(this.companyId), transactionId);
     return deleteDoc(transRef);
+  }
+
+  async addStageRevision(transactionId: string, stageId: string, content: string, userId: string, userName: string) {
+    const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
+    
+    const batch = writeBatch(this.db);
+    batch.update(stageRef, {
+      revisionCount: increment(1),
+      updatedAt: serverTimestamp(),
+      updatedBy: userId
+    });
+
+    const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
+    batch.set(timelineRef, {
+      transactionId,
+      stageId,
+      type: 'revision_logged',
+      content: `[تعديل فني] ${content}`,
+      userId,
+      userName,
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
+    });
+
+    await batch.commit();
   }
 
   private verifyDeptAccess(stage: StageInstance, userDeptId?: string, isAssignedEngineer: boolean = false) {
@@ -196,7 +217,6 @@ export class TransactionService {
   }
 
   async initializeTechnicalPath(transactionId: string, activityId: string, serviceId: string, subServiceId: string, userId: string) {
-    // حماية سيادية: منع التكرار (Idempotency)
     const instancesPath = paths.transactionStages(this.companyId, transactionId);
     const existingSnap = await getDocs(query(collection(this.db, instancesPath), limit(1)));
     if (!existingSnap.empty) return; 
@@ -225,6 +245,7 @@ export class TransactionService {
         serviceId: serviceId,
         subServiceId: subServiceId,
         companyId: this.companyId,
+        revisionCount: 0,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
