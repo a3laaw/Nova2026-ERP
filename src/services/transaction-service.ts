@@ -25,7 +25,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions/engine';
 import { BOQExecutionService } from './boq-execution-service';
-import { CommentService } from './comment-service';
+import { CommentService } from './comment-section';
 import { ClientService } from './client-service';
 import { AccountingService } from './accounting-service';
 
@@ -113,6 +113,12 @@ export class TransactionService {
 
     await batch.commit();
     return transactionId;
+  }
+
+  async deleteTransaction(transactionId: string) {
+    ensureActionPermission(this.permissions, 'projects:delete');
+    const transRef = doc(this.db, paths.transactions(this.companyId), transactionId);
+    return deleteDoc(transRef);
   }
 
   private verifyDeptAccess(stage: StageInstance, userDeptId?: string, isAssignedEngineer: boolean = false) {

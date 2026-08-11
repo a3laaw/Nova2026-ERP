@@ -9,7 +9,7 @@ import {
   Edit3, Phone, 
   History, Loader2, PlayCircle, 
   Compass, Map as MapIcon, Layers,
-  ArrowRight, Receipt
+  ArrowRight, Receipt, Trash2, AlertTriangle
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where } from 'firebase/firestore';
@@ -19,8 +19,20 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { Client, ClientHistory } from '@/types/client';
 import { Transaction } from '@/types/transaction';
+import { TransactionService } from '@/services/transaction-service';
 import { cn } from '@/lib/utils';
 import dynamic from 'next/dynamic';
+import { toast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const StaticMapView = dynamic(() => import('@/components/clients/static-map-view'), { 
   ssr: false,
@@ -34,12 +46,15 @@ const StaticMapView = dynamic(() => import('@/components/clients/static-map-view
 export default function ClientDetailsPage() {
   const clientId = useParams().id as string;
   const { globalUser } = useAuthContext();
-  const { lang, dir, t } = useLanguage();
-  const { check } = usePermissions();
+  const { lang, dir, t, tSafe } = useLanguage();
+  const { check, isAdmin, permissions } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
+
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const canEditClient = check('crm', 'edit').can;
   const canOpenTransaction = check('projects', 'create').can;
@@ -58,8 +73,23 @@ export default function ClientDetailsPage() {
     return match ? [parseFloat(match[1]), parseFloat(match[2])] as [number, number] : null;
   }, [client?.locationUrl]);
 
+  const handleDeleteTransaction = async () => {
+    if (!db || !companyId || !deletingId) return;
+    setIsDeleting(true);
+    try {
+      const service = new TransactionService(db, companyId, permissions);
+      await service.deleteTransaction(deletingId);
+      toast({ title: t('common.deleted') });
+      setDeletingId(null);
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('common.error'), description: e.message });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (cLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
-  if (!client) return <div className="p-20 text-center font-bold">404 - Not Found</div>;
+  if (!client) return <div className="p-20 text-center font-black">404 - Not Found</div>;
 
   return (
     <div className="space-y-4 w-full px-4 md:px-6 animate-in fade-in" dir={dir}>
@@ -123,8 +153,18 @@ export default function ClientDetailsPage() {
                              onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/clients/${clientId}/transactions/${t_row.id}?tab=documents`); }}
                           >
                              <Receipt className="h-3.5 w-3.5" />
-                             {t('clients.finance')}
+                             {tSafe('inline.finance', 'المالية', 'Finance')}
                           </Button>
+                          {isAdmin && (
+                            <Button 
+                               variant="ghost" 
+                               size="icon" 
+                               className="h-8 w-8 rounded-md text-slate-300 hover:text-rose-600 hover:bg-rose-50"
+                               onClick={(e) => { e.stopPropagation(); setDeletingId(t_row.id); }}
+                            >
+                               <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                           <Button 
                              variant="ghost" 
                              size="icon" 
@@ -185,6 +225,32 @@ export default function ClientDetailsPage() {
            </CardContent>
         </Card>
       </div>
+
+      <AlertDialog open={!!deletingId} onOpenChange={(v) => !v && setDeletingId(null)}>
+         <AlertDialogContent className="rounded-xl p-10 border-0 shadow-3xl bg-white" dir={dir}>
+            <AlertDialogHeader>
+               <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
+                  <Trash2 className="h-10 w-10" />
+               </div>
+               <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">
+                 {tSafe('inline.confirm.delete.transaction', 'تأكيد حذف المعاملة', 'Confirm Delete Transaction')}
+               </AlertDialogTitle>
+               <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
+                  {tSafe('inline.delete.transaction.desc', 'هل أنت متأكد؟ سيتم حذف المعاملة الفنية نهائياً من سجل العميل. لا يمكن التراجع عن هذا الإجراء.', 'Are you sure? This technical transaction will be permanently removed from the client record. This action cannot be undone.')}
+               </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
+               <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white">{t('common.cancel')}</AlertDialogCancel>
+               <AlertDialogAction 
+                 onClick={handleDeleteTransaction} 
+                 disabled={isDeleting}
+                 className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200"
+               >
+                  {isDeleting ? <Loader2 className="animate-spin h-5 w-5" /> : t('common.delete')}
+               </AlertDialogAction>
+            </AlertDialogFooter>
+         </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
