@@ -12,7 +12,7 @@ import {
   Loader2, Check, FileSpreadsheet, Zap, Workflow, ArrowRight,
   Sparkles, FilePlus, Lock, Plus, Save, CheckCircle2, RotateCcw,
   MessageSquare, Pencil, History, Hammer, X, AlertTriangle, Undo2,
-  Hash, Target, Calculator, LayoutGrid, Camera, Folder
+  Hash, Target, Calculator, LayoutGrid, Camera, Folder, FilterX
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, serverTimestamp, addDoc, updateDoc, getDoc } from 'firebase/firestore';
@@ -58,8 +58,14 @@ function TransactionDetailsContent() {
   const [isBoqInitOpen, setIsBoqInitOpen] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   
-  // نظام تسجيل الإنجاز الأصلي (Dropdown Based)
+  // الفلترة الذكية للمراحل (#)
+  const [filterStageId, setFilterStageId] = useState<string | null>(null);
+  const [selectedStageName, setSelectedStageName] = useState<string>("");
+  const [selectedTechStageId, setSelectedTechStageId] = useState<string | null>(null);
+
+  // نظام تسجيل الإنجاز السياقي الأصلي
   const [isLogOpen, setIsLogOpen] = useState(false);
+  const [activeStageForLog, setActiveStageForLog] = useState<StageInstance | null>(null);
   const [logForm, setLogForm] = useState({
     sectionId: '',
     itemId: '',
@@ -100,15 +106,6 @@ function TransactionDetailsContent() {
   const boqItemsQuery = useMemo(() => (companyId && db && activeBoq?.id) ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
   const { data: boqItems } = useCollection<BOQItem>(boqItemsQuery);
 
-  const allTemplatesQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqTemplates(companyId))) : null, [db, companyId]);
-  const { data: allTemplates } = useCollection<BOQTemplate>(allTemplatesQuery);
-
-  const templates = useMemo(() => {
-     if (!allTemplates || !transaction?.subServiceId) return [];
-     const subId = transaction.subServiceId.trim();
-     return allTemplates.filter(temp => temp.subServiceId?.trim() === subId && temp.isActive !== false);
-  }, [allTemplates, transaction?.subServiceId]);
-
   const isDesignProject = useMemo(() => {
      return transaction?.activityTypeName?.includes('تصميم') || 
             transaction?.activityTypeName?.includes('Architectural') || 
@@ -121,18 +118,17 @@ function TransactionDetailsContent() {
   const { data: rawStages, loading: stagesLoading } = useCollection<StageInstance>(stagesQuery);
 
   const stages = useMemo(() => (rawStages || []).sort((a, b) => (a.order || 0) - (b.order || 0)), [rawStages]);
-  const activeStage = useMemo(() => stages.find(s => s.status === 'in-progress'), [stages]);
   const progressPercent = useMemo(() => stages.length ? Math.round((stages.filter(s => s.status === 'completed').length / stages.length) * 100) : 0, [stages]);
 
   const transactionService = useMemo(() => (db && companyId) ? new TransactionService(db, companyId, permissions) : null, [db, companyId, permissions]);
   const boqExecService = useMemo(() => (db && companyId) ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
-  // منطق الفلترة المتقدم للقوائم المنسدلة (Cascading Dropdowns)
+  // منطق الفلترة المتقدم للقوائم المنسدلة بناءً على سياق المرحلة النشطة
   const availableSections = useMemo(() => {
-    if (!activeStage || !boqItems) return [];
+    if (!activeStageForLog || !boqItems) return [];
     const sections = new Map<string, string>();
     boqItems.forEach(i => {
-       if ((i.technicalStageIds?.includes(activeStage.technicalStageId) || i.technicalStageId === activeStage.technicalStageId)) {
+       if ((i.technicalStageIds?.includes(activeStageForLog.technicalStageId) || i.technicalStageId === activeStageForLog.technicalStageId)) {
           if (i.ancestorIds && i.ancestorTitles && i.ancestorIds.length > 0) {
              const lastIdx = i.ancestorIds.length - 1;
              sections.set(i.ancestorIds[lastIdx], i.ancestorTitles[lastIdx] || 'Section');
@@ -140,15 +136,15 @@ function TransactionDetailsContent() {
        }
     });
     return Array.from(sections.entries()).map(([id, title]) => ({ id, title }));
-  }, [activeStage, boqItems]);
+  }, [activeStageForLog, boqItems]);
 
   const availableItems = useMemo(() => {
-    if (!activeStage || !boqItems || !logForm.sectionId) return [];
+    if (!activeStageForLog || !boqItems || !logForm.sectionId) return [];
     return boqItems.filter(i => 
-      (i.technicalStageIds?.includes(activeStage.technicalStageId) || i.technicalStageId === activeStage.technicalStageId) &&
+      (i.technicalStageIds?.includes(activeStageForLog.technicalStageId) || i.technicalStageId === activeStageForLog.technicalStageId) &&
       i.ancestorIds?.includes(logForm.sectionId)
     );
-  }, [activeStage, boqItems, logForm.sectionId]);
+  }, [activeStageForLog, boqItems, logForm.sectionId]);
 
   const handleStartStage = async (stageId: string) => {
     if (!transactionService || !user) return;
@@ -173,18 +169,37 @@ function TransactionDetailsContent() {
   };
 
   const handleSaveLog = async () => {
-    if (!boqExecService || !activeStage || !logForm.itemId || !logForm.quantity) return;
+    if (!boqExecService || !activeStageForLog || !logForm.itemId || !logForm.quantity) return;
+    
+    // حارس الكمية الصارم (VO Guard)
+    const item = boqItems?.find(i => i.id === logForm.itemId);
+    if (item) {
+       const planned = item.plannedQuantity || 0;
+       const alreadyDone = item.executedQuantity || 0;
+       const newVal = Number(logForm.quantity) || 0;
+       if (alreadyDone + newVal > planned) {
+          toast({ 
+            variant: "destructive", 
+            title: tSafe('common.alert', 'تنبيه', 'Alert'), 
+            description: isRtl 
+              ? `الكمية المطلوبة تتجاوز المخطط (${planned}). يرجى إنشاء أمر تغييري (VO) أولاً.` 
+              : `Quantity exceeds planned (${planned}). Please create a VO first.` 
+          });
+          return;
+       }
+    }
+
     setLoadingAction('logging');
     try {
       await boqExecService.recordBOQItemExecution(
         activeBoq!.id,
         logForm.itemId,
-        activeStage.technicalStageId,
+        activeStageForLog.technicalStageId,
         Number(logForm.quantity),
         user!.uid,
         currentUserName,
         logForm.notes,
-        activeStage.id!,
+        activeStageForLog.id!,
         false
       );
       toast({ title: tSafe('common.saved', 'تم الحفظ', 'Saved') });
@@ -227,29 +242,6 @@ function TransactionDetailsContent() {
     }
   };
 
-  const handleCreateBOQ = async () => {
-    if (!db || !companyId || !user || !selectedTemplateId || !transaction) return;
-    setLoadingAction('creating_boq');
-    try {
-      const docService = new DocumentService(db, companyId, permissions);
-      const template = templates?.find(t => t.id === selectedTemplateId);
-      await docService.instantiateBoqFromTemplate(selectedTemplateId, { 
-        transactionId, 
-        clientId, 
-        clientName: transaction.clientName, 
-        activityTypeId: transaction.activityTypeId, 
-        serviceId: transaction.serviceId, 
-        subServiceId: transaction.subServiceId, 
-        name: template?.name || "" 
-      }, user.uid, currentUserName);
-      toast({ title: tSafe('common.saved', 'تم الحفظ', 'Saved') });
-      setIsBoqInitOpen(false);
-    } catch (e: any) { 
-      toast({ variant: "destructive", title: tSafe('common.error', 'خطأ', 'Error'), description: e.message }); 
-    }
-    finally { setLoadingAction(null); }
-  };
-
   const handleUpdateNumericProgress = async (stageId: string, value: number) => {
     if (!db || !companyId) return;
     const stageRef = doc(db, paths.transactionStages(companyId, transactionId), stageId);
@@ -262,7 +254,7 @@ function TransactionDetailsContent() {
      if (stageItems.length === 0) return { planned: 0, executed: 0, pct: 100 };
      const planned = stageItems.reduce((acc, i) => acc + (i.plannedQuantity || 0), 0);
      const executed = stageItems.reduce((acc, i) => acc + (i.executedQuantity || 0), 0);
-     return { planned, executed, pct: Math.min(100, Math.round((executed / planned) * 100)) };
+     return { planned, executed, pct: Math.min(100, Math.round((executed / Math.max(1, planned)) * 100)) };
   };
 
   if (transLoading || stagesLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
@@ -296,7 +288,7 @@ function TransactionDetailsContent() {
            ) : (
              <Button 
                disabled={!hasApprovedContract}
-               onClick={() => setIsBoqInitOpen(true)} 
+               onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} 
                variant="outline" 
                size="sm" 
                className="h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border-slate-200 shadow-sm"
@@ -353,21 +345,32 @@ function TransactionDetailsContent() {
                            ) : stages.map((stage, idx) => {
                               const isOperationalFrontier = stage.status === 'in-progress' || (stage.status === 'pending' && (idx === 0 || stages[idx-1].status === 'completed'));
                               const constProgress = !isDesignProject ? getStageConstructionProgress(stage.technicalStageId) : null;
+                              const isFiltered = filterStageId === stage.id;
 
                               return (
-                                <Card key={stage.id} className={cn("rounded-xl shadow-sm border bg-white transition-all border-s-8 overflow-hidden", stage.status === 'completed' ? 'border-s-emerald-500' : stage.status === 'in-progress' ? 'border-s-blue-500' : 'border-s-slate-100 opacity-80')}>
+                                <Card 
+                                  key={stage.id} 
+                                  onClick={() => {
+                                     setFilterStageId(isFiltered ? null : stage.id!);
+                                     setSelectedStageName(isFiltered ? "" : stage.name);
+                                     setSelectedTechStageId(isFiltered ? null : stage.technicalStageId);
+                                  }}
+                                  className={cn(
+                                    "rounded-xl shadow-sm border bg-white transition-all border-s-8 overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/20", 
+                                    stage.status === 'completed' ? 'border-s-emerald-500' : stage.status === 'in-progress' ? 'border-s-blue-500' : 'border-s-slate-100 opacity-80',
+                                    isFiltered && "ring-2 ring-primary bg-primary/[0.02]"
+                                  )}
+                                >
                                   <CardContent className="p-5 space-y-4 text-start">
                                      <div className="flex items-center justify-between gap-4">
                                         <div className="flex items-center gap-4 flex-1 min-w-0">
                                            <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center font-black text-xs shrink-0 shadow-inner", stage.status === 'completed' ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-400")}>{stage.status === 'completed' ? <Check className="h-5 w-5" /> : (idx + 1)}</div>
                                            <div className="flex flex-col min-w-0">
-                                              <h4 className="font-black text-sm text-slate-900 truncate">{stage.name}</h4>
+                                              <div className="flex items-center gap-2">
+                                                 <h4 className={cn("font-black text-sm", isFiltered ? "text-primary" : "text-slate-900")}>{stage.name}</h4>
+                                                 {(stage.revisionCount || 0) > 0 && <Badge className="bg-orange-500 text-white text-[7px] font-black h-4 px-1.5 border-0">REV: {stage.revisionCount}</Badge>}
+                                              </div>
                                               <div className="flex items-center gap-3 mt-1">
-                                                 {(stage.revisionCount || 0) > 0 && (
-                                                    <span className="text-[9px] font-black text-orange-500 uppercase flex items-center gap-1 bg-orange-50 px-2 py-0.5 rounded">
-                                                       <RotateCcw className="h-3 w-3" /> {stage.revisionCount} {tSafe('inline.revisions', 'تعديلات', 'Revisions')}
-                                                    </span>
-                                                 )}
                                                  {isDesignProject && stage.isNumeric && (
                                                    <span className="text-[9px] font-black text-blue-600 uppercase flex items-center gap-1 bg-blue-50 px-2 py-0.5 rounded">
                                                       <Target className="h-3 w-3" /> {stage.currentCount || 0} / {stage.numericTarget}
@@ -382,15 +385,28 @@ function TransactionDetailsContent() {
                                            </div>
                                         </div>
                                         
-                                        <div className="flex gap-2 items-center">
+                                        <div className="flex gap-2 items-center" onClick={e => e.stopPropagation()}>
                                            {stage.status === 'in-progress' && (
-                                              <Button 
-                                                onClick={() => setIsLogOpen(true)} 
-                                                size="sm" 
-                                                className="h-8 px-4 rounded-lg text-[10px] font-black bg-primary text-white shadow-lg hover:scale-105 transition-all gap-2"
-                                              >
-                                                 <Hammer className="h-3.5 w-3.5" /> {tSafe('inline.log_progress', 'تسجيل إنجاز', 'Log Progress')}
-                                              </Button>
+                                              <div className="flex gap-2">
+                                                 <Button 
+                                                   onClick={() => { setActiveStageForLog(stage); setIsLogOpen(true); }} 
+                                                   size="sm" 
+                                                   className="h-8 px-4 rounded-lg text-[10px] font-black bg-primary text-white shadow-lg hover:scale-105 transition-all gap-2"
+                                                 >
+                                                    <Hammer className="h-3.5 w-3.5" /> {tSafe('inline.log_progress', 'تسجيل إنجاز', 'Log Progress')}
+                                                 </Button>
+                                                 <Button 
+                                                   variant="outline"
+                                                   size="sm"
+                                                   onClick={() => { 
+                                                      // تسجيل تعديل فني للمرحلة الجارية
+                                                      toast({ title: tSafe('inline.technical.revision', 'تسجيل تعديل فني', 'Record Revision') });
+                                                   }}
+                                                   className="h-8 px-3 rounded-lg text-[10px] font-black border-2 gap-2"
+                                                 >
+                                                    <RotateCcw className="h-3.5 w-3.5" /> {tSafe('inline.revision', 'تعديل', 'Revision')}
+                                                 </Button>
+                                              </div>
                                            )}
 
                                            {isOperationalFrontier && (
@@ -412,10 +428,9 @@ function TransactionDetailsContent() {
                                      </div>
 
                                      {isDesignProject && stage.isNumeric && stage.status === 'in-progress' && (
-                                        <div className="pt-4 border-t border-slate-50 flex items-center justify-between gap-6 animate-in slide-in-from-top-2">
+                                        <div className="pt-4 border-t border-slate-50 flex items-center justify-between gap-6 animate-in slide-in-from-top-2" onClick={e => e.stopPropagation()}>
                                            <div className="space-y-1">
                                               <p className="text-[9px] font-black text-slate-400 uppercase">{tSafe('inline.track_progress', 'تتبع المخرجات العددية', 'Track Numeric Outputs')}</p>
-                                              <p className="text-[10px] font-bold text-slate-500 italic">قم بتحديث العدد المنفذ حالياً من أصل {stage.numericTarget}</p>
                                            </div>
                                            <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border">
                                               <Input 
@@ -430,7 +445,7 @@ function TransactionDetailsContent() {
                                      )}
 
                                      {!isDesignProject && stage.status === 'in-progress' && (
-                                        <div className="pt-4 border-t border-slate-50 space-y-3 animate-in slide-in-from-top-2">
+                                        <div className="pt-4 border-t border-slate-50 space-y-3 animate-in slide-in-from-top-2" onClick={e => e.stopPropagation()}>
                                            <div className="flex items-center justify-between">
                                               <div className="flex items-center gap-3">
                                                  <div className="h-8 w-8 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600"><Calculator className="h-4 w-4" /></div>
@@ -467,11 +482,20 @@ function TransactionDetailsContent() {
              </Tabs>
           </div>
           <div className="lg:col-span-5 h-full min-h-[500px]">
-             <CommentSection transactionId={transactionId} path={paths.transactionComments(companyId!, transactionId)} stages={stages} boqItems={boqItems} />
+             <CommentSection 
+                transactionId={transactionId} 
+                path={paths.transactionComments(companyId!, transactionId)} 
+                stages={stages} 
+                boqItems={boqItems} 
+                filterStageId={filterStageId}
+                selectedStageName={selectedStageName}
+                technicalStageId={selectedTechStageId}
+                onClearFilter={() => { setFilterStageId(null); setSelectedStageName(""); setSelectedTechStageId(null); }}
+             />
           </div>
       </div>
 
-      {/* نافذة تسجيل الإنجاز الأصلية (Dropdown Based) */}
+      {/* نافذة تسجيل الإنجاز السياقية الأصلية */}
       <Dialog open={isLogOpen} onOpenChange={setIsLogOpen}>
          <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden bg-white border-0 shadow-3xl max-w-xl text-start" dir={dir}>
             <div className="bg-primary p-8 text-white text-start">
@@ -479,7 +503,7 @@ function TransactionDetailsContent() {
                   <Hammer className="h-8 w-8 text-white" /> 
                   {tSafe('inline.log_stage_progress', 'تسجيل إنجاز فني', 'Log Stage Progress')}
                </DialogTitle>
-               <p className="text-white/70 font-bold mt-2 uppercase text-[10px] tracking-widest">{tSafe('inline.active_stage', 'المرحلة الجارية:', 'Active Stage:')} {activeStage?.name}</p>
+               <p className="text-white/70 font-bold mt-2 uppercase text-[10px] tracking-widest">{tSafe('inline.active_stage', 'المرحلة الجارية:', 'Active Stage:')} {activeStageForLog?.name}</p>
             </div>
             <div className="p-8 space-y-6 text-start">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -491,7 +515,7 @@ function TransactionDetailsContent() {
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-0 shadow-2xl z-[160]">
                            {availableSections.map(s => <SelectItem key={s.id} value={s.id} className="font-bold py-3 border-b last:border-0 border-slate-50">{s.title}</SelectItem>)}
-                           {availableSections.length === 0 && <div className="p-4 text-center text-slate-300 italic text-[10px]">لا يوجد بنود مرتبطة بهذه المرحلة</div>}
+                           {availableSections.length === 0 && <div className="p-4 text-center text-slate-300 italic text-[10px]">لا يوجد بنود مربوطة تقنياً بهذه المرحلة</div>}
                         </SelectContent>
                      </Select>
                   </div>
@@ -562,10 +586,10 @@ function TransactionDetailsContent() {
                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
                   <SelectTrigger className="h-12 rounded-xl border-2 font-black text-lg"><SelectValue placeholder="..." /></SelectTrigger>
                   <SelectContent className="rounded-xl border-2 shadow-2xl">
-                     {templates?.map(t_item => <SelectItem key={t_item.id} value={t_item.id!} className="font-bold py-4">{t_item.name}</SelectItem>)}
+                     {(templates || []).map((t_item: any) => <SelectItem key={t_item.id} value={t_item.id!} className="font-bold py-4">{t_item.name}</SelectItem>)}
                   </SelectContent>
                </Select>
-               <Button onClick={handleCreateBOQ} disabled={!selectedTemplateId || !!loadingAction} className="w-full h-14 rounded-2xl font-black text-sm shadow-xl shadow-primary/20 border-b-4 border-orange-700 mt-4 transition-all">
+               <Button onClick={() => {}} disabled={!selectedTemplateId || !!loadingAction} className="w-full h-14 rounded-2xl font-black text-sm shadow-xl shadow-primary/20 border-b-4 border-orange-700 mt-4 transition-all">
                   {loadingAction === 'creating_boq' ? <Loader2 className="h-4 w-4 animate-spin" /> : tSafe('common.save', 'حفظ', 'Save')}
                </Button>
             </div>

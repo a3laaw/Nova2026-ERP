@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -51,13 +52,12 @@ interface Props {
   onlyComments?: boolean; 
 }
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 15;
 
 export function CommentSection({ 
   transactionId, 
   path, 
   title, 
-  externalLogs = [], 
   boqItems = [],
   stages = [],
   filterStageId = null,
@@ -156,9 +156,14 @@ export function CommentSection({
                 </div>
              </div>
              {onClearFilter && filterStageId && (
-                <Button onClick={onClearFilter} variant="ghost" size="sm" className="h-8 rounded-lg text-[9px] font-black gap-2 bg-slate-900 text-white hover:bg-slate-800 px-3 shadow-lg">
-                  <X className="h-3 w-3" /> {t('inline.view.all')}
-                </Button>
+                <div className="flex items-center gap-2 animate-in zoom-in-95">
+                   <Badge className="bg-primary text-white border-0 font-black text-[9px] h-7 px-4 rounded-lg flex items-center gap-2 shadow-lg">
+                      <Hash className="h-3 w-3" /> {selectedStageName}
+                   </Badge>
+                   <Button onClick={onClearFilter} variant="ghost" size="icon" className="h-7 w-7 rounded-lg bg-slate-900 text-white hover:bg-slate-800 shadow-md">
+                      <X className="h-3.5 w-3.5" />
+                   </Button>
+                </div>
              )}
           </div>
 
