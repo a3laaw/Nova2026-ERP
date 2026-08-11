@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -9,7 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   Loader2, ArrowRight, HardHat, Target, Users, 
   Truck, CheckCircle2, ShieldCheck, Printer,
-  LayoutGrid, Save, MessageSquare, ShieldAlert
+  LayoutGrid, Save, MessageSquare, ShieldAlert,
+  Workflow, History, Landmark, Clock, Camera
 } from "lucide-react";
 import { useFirestore, useDoc } from '@/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -22,6 +24,7 @@ import { toast } from '@/hooks/use-toast';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
 import { paths } from '@/firebase/multi-tenant';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function FieldVisitDetailsPage() {
   const visitId = useParams().id as string;
@@ -88,103 +91,127 @@ export default function FieldVisitDetailsPage() {
     }
   };
 
-  if (loading) return <div className="h-[40vh] flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
-  if (!visit) return <div className="p-20 text-center font-bold">{tSafe('inline.not.found', '404 - غير موجود', '404 - Not Found')}</div>;
+  if (loading) return <div className="h-[40vh] flex items-center justify-center bg-[#fdfaf3]"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
+  if (!visit) return <div className="p-20 text-center font-black">{tSafe('inline.not.found', '404 - غير موجود', '404 - Not Found')}</div>;
 
   return (
-    <div className="space-y-4 w-full animate-in fade-in duration-500" dir={dir}>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4 print:hidden">
-        <div className="flex items-center gap-3">
-           <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-9 w-9 rounded-md border border-slate-200 text-slate-400">
-             <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
+    <div className="space-y-6 w-full max-w-6xl mx-auto pb-20 animate-in fade-in duration-500 bg-[#fdfaf3]" dir={dir}>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-4 print:hidden px-4 pt-4 text-start">
+        <div className="flex items-center gap-4">
+           <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-10 w-10 rounded-xl border-2 bg-white text-slate-400">
+             <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
            </Button>
            <div className="text-start">
-              <h1 className="text-xl md:text-2xl font-bold text-slate-900">{t('construction.fieldLog')}</h1>
+              <h1 className="text-2xl font-black font-headline text-slate-900">{t('construction.fieldLog')}</h1>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{visit.clientName} | {tSafe('inline.project', 'مشروع', 'Project')}: {visit.transactionNumber}</p>
            </div>
         </div>
         
         <div className="flex gap-2">
            {!visit.isVerified && isAdmin && !isReviewing && (
-             <Button onClick={handleVerify} disabled={verifying} size="sm" className="h-9 px-4 font-bold bg-emerald-600 text-white">
-                {verifying ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+             <Button onClick={handleVerify} disabled={verifying} size="sm" className="h-11 px-6 rounded-xl font-black bg-emerald-600 text-white shadow-lg shadow-emerald-100 border-b-4 border-emerald-800">
+                {verifying ? <Loader2 className="animate-spin h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
                 {t('construction.verify')}
              </Button>
            )}
            {!isReviewing ? (
-             <Button onClick={() => setIsReviewing(true)} variant="outline" size="sm" className="h-9 px-4 font-bold border-slate-200">
-               <MessageSquare className="h-3.5 w-3.5 me-2" /> {t('common.response')}
+             <Button onClick={() => setIsReviewing(true)} variant="outline" size="sm" className="h-11 px-6 rounded-xl font-black border-2 bg-white gap-2">
+               <MessageSquare className="h-4 w-4 text-primary" /> {t('common.response')}
              </Button>
            ) : (
              <div className="flex gap-2">
-               <Button onClick={() => setIsReviewing(false)} variant="outline" size="sm" className="h-9 font-bold border-slate-200">{t('common.cancel')}</Button>
-               <Button onClick={handleSaveResponse} disabled={saving} size="sm" className="h-9 px-4 font-bold">
-                 {saving ? <Loader2 className="animate-spin h-3.5 w-3.5" /> : <Save className="h-3.5 w-3.5" />} {t('common.save')}
+               <Button onClick={() => setIsReviewing(false)} variant="ghost" size="sm" className="h-11 px-6 font-bold">{t('common.cancel')}</Button>
+               <Button onClick={handleSaveResponse} disabled={saving} size="sm" className="h-11 px-6 rounded-xl font-black bg-primary text-white border-b-4 border-orange-700">
+                 {saving ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />} {t('common.save')}
                </Button>
              </div>
            )}
-           <Button variant="outline" size="sm" onClick={() => window.print()} className="h-9 px-4 font-bold border-slate-200">
-              <Printer className="h-3.5 w-3.5" />
+           <Button variant="outline" size="sm" onClick={() => window.print()} className="h-11 w-11 rounded-xl border-2 bg-white">
+              <Printer className="h-4 w-4 text-slate-400" />
            </Button>
         </div>
       </div>
 
       <PrintWrapper title={t('construction.fieldProgressStatement')}>
-         <div className="space-y-8 text-start">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b pb-6">
-               <div className="space-y-1">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase">{t('projects.clientName')}</p>
-                  <p className="text-lg font-bold text-slate-900">{visit.clientName}</p>
+         <div className="space-y-10 text-start">
+            <div className="p-10 rounded-[3rem] bg-white border-2 border-primary/10 flex flex-col md:flex-row justify-between items-center gap-8 relative overflow-hidden shadow-xl ring-1 ring-black/5">
+               <div className="absolute top-0 right-0 p-10 opacity-5"><Landmark className="h-48 w-48 text-primary" /></div>
+               <div className="space-y-4 relative z-10 text-start">
+                  <div className="space-y-1">
+                     <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">{t('projects.clientName')}</p>
+                     <h2 className="text-4xl font-black font-headline text-slate-900">{visit.clientName}</h2>
+                  </div>
+                  <div className="flex gap-4 items-center">
+                     <Badge className="bg-slate-900 text-white border-0 font-black px-5 py-1 rounded-xl uppercase text-[9px] shadow-lg">#{visit.transactionNumber}</Badge>
+                     <div className="flex items-center gap-2 text-slate-400 font-bold text-xs border-s-2 border-slate-100 ps-4">
+                        <Workflow className="h-3.5 w-3.5 text-primary" /> {visit.activeStageName || '---'}
+                     </div>
+                  </div>
                </div>
-               <div className="md:text-end space-y-1">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase">{t('common.date')}</p>
-                  <p className="text-lg font-bold text-slate-900">{visit.visitDate}</p>
+               <div className="text-center md:text-end relative z-10 space-y-2">
+                  <div className="bg-slate-50 p-6 rounded-3xl border-2 border-white shadow-inner">
+                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('common.date')}</p>
+                     <p className="text-2xl font-black text-slate-900 font-mono">{visit.visitDate}</p>
+                  </div>
                </div>
             </div>
 
-            <div className="space-y-4">
-               <h3 className="font-bold text-base flex items-center gap-2 text-slate-800">
-                  <LayoutGrid className="h-4 w-4 text-primary" /> {t('construction.technicalProgress')}
+            <div className="space-y-6">
+               <h3 className="font-black text-lg flex items-center gap-3 text-slate-800 border-s-4 border-primary ps-4">
+                  <LayoutGrid className="h-6 w-6 text-primary" /> {t('construction.technicalProgress')}
                </h3>
-               <Card className="rounded-lg border shadow-sm bg-white overflow-hidden">
+               <div className="border-2 border-slate-100 rounded-[2.5rem] bg-white overflow-hidden shadow-2xl ring-1 ring-black/[0.02]">
                   <Table>
-                     <TableHeader className="bg-slate-50">
-                        <TableRow className="border-0">
-                           <TableHead className="ps-4 text-[10px] font-bold uppercase w-[50px]">#</TableHead>
-                           <TableHead className="text-[10px] font-bold uppercase">{tSafe('inline.work.item', 'بند العمل', 'Work Item')}</TableHead>
-                           <TableHead className="text-center text-[10px] font-bold uppercase w-[80px]">{t('common.quantity')}</TableHead>
-                           <TableHead className="text-[10px] font-bold uppercase">{t('common.response')}</TableHead>
+                     <TableHeader className="bg-slate-50/80 border-b-2">
+                        <TableRow className="hover:bg-slate-50 border-0">
+                           <TableHead className="py-6 ps-10 text-primary font-black uppercase text-[10px] tracking-widest w-[60px]">#</TableHead>
+                           <TableHead className="text-primary font-black uppercase text-[10px] tracking-widest">{tSafe('inline.work.item', 'بند العمل', 'Work Item')}</TableHead>
+                           <TableHead className="text-center text-primary font-black uppercase text-[10px] tracking-widest w-[120px]">{t('common.quantity')}</TableHead>
+                           <TableHead className="pe-10 text-primary font-black uppercase text-[10px] tracking-widest">{t('common.response')}</TableHead>
                         </TableRow>
                      </TableHeader>
                      <TableBody>
                         {editItems.map((item: any, i: number) => (
-                           <TableRow key={i} className="border-b-slate-100 hover:bg-slate-50">
-                              <td className="ps-4 py-3 text-slate-300 font-bold">{i + 1}</td>
-                              <td className="py-3">
-                                 <p className="font-bold text-xs text-slate-800">{item.itemName}</p>
-                                 <p className="text-[9px] text-slate-400 italic">"{item.notes}"</p>
+                           <TableRow key={i} className="border-b-slate-50 hover:bg-primary/[0.01] transition-all">
+                              <td className="py-6 ps-10 font-black text-slate-300">{i + 1}</td>
+                              <td className="py-6 text-start">
+                                 <p className="font-black text-sm text-slate-900">{item.itemName}</p>
+                                 <p className="text-[11px] font-bold text-slate-400 leading-relaxed mt-1 italic">"{item.notes}"</p>
+                                 {item.photoUrls?.length > 0 && (
+                                   <div className="flex gap-2 mt-4">
+                                      {item.photoUrls.map((url: string, pIdx: number) => (
+                                        <div key={pIdx} className="h-12 w-12 rounded-xl border-2 border-white shadow-md overflow-hidden bg-slate-50 flex items-center justify-center">
+                                           <img src={url} alt="Visit" className="w-full h-full object-cover" />
+                                        </div>
+                                      ))}
+                                   </div>
+                                 )}
                               </td>
-                              <td className="py-3 text-center font-bold text-sm text-primary">{item.quantity}</td>
-                              <td className="py-3">
+                              <td className="py-6 text-center">
+                                 <span className="text-2xl font-black text-primary font-mono">{item.quantity}</span>
+                                 <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest">{item.unit}</p>
+                              </td>
+                              <td className="py-6 pe-10">
                                  {isReviewing ? (
                                     <div className="flex gap-2">
                                        <Select value={item.executionStatus || 'pending'} onValueChange={v => handleUpdateResponse(i, 'executionStatus', v)}>
-                                          <SelectTrigger className="h-8 text-[10px] font-bold rounded-md"><SelectValue /></SelectTrigger>
-                                          <SelectContent>
-                                             <SelectItem value="pending">{tSafe('inline.pending.review', 'بانتظار المراجعة', 'Pending Review')}</SelectItem>
-                                             <SelectItem value="completed" className="text-emerald-600">{tSafe('inline.full.progress', 'إنجاز كامل', 'Full Progress')}</SelectItem>
-                                             <SelectItem value="partial" className="text-amber-600">{tSafe('inline.partial', 'جزئي', 'Partial')}</SelectItem>
-                                             <SelectItem value="not_completed" className="text-rose-600">{tSafe('inline.rejected', 'مرفوض', 'Rejected')}</SelectItem>
+                                          <SelectTrigger className="h-10 text-[10px] font-black rounded-xl border-2 bg-white"><SelectValue /></SelectTrigger>
+                                          <SelectContent className="rounded-xl border-0 shadow-2xl z-[150]">
+                                             <SelectItem value="pending" className="font-bold py-3">{tSafe('inline.pending.review', 'بانتظار المراجعة', 'Pending Review')}</SelectItem>
+                                             <SelectItem value="completed" className="font-black text-emerald-600 py-3">{tSafe('inline.full.progress', 'إنجاز كامل', 'Full Progress')}</SelectItem>
+                                             <SelectItem value="partial" className="font-black text-amber-600 py-3">{tSafe('inline.partial', 'جزئي', 'Partial')}</SelectItem>
+                                             <SelectItem value="not_completed" className="font-black text-rose-600 py-3">{tSafe('inline.rejected', 'مرفوض', 'Rejected')}</SelectItem>
                                           </SelectContent>
                                        </Select>
                                     </div>
                                  ) : (
                                     <Badge className={cn(
-                                       "text-[8px] font-bold border-0 uppercase h-5 rounded-md",
+                                       "font-black px-6 py-1.5 rounded-xl border-0 shadow-sm uppercase text-[9px] gap-2",
                                        item.executionStatus === 'completed' ? "bg-emerald-500 text-white" :
                                        item.executionStatus === 'partial' ? "bg-amber-500 text-white" :
                                        "bg-slate-100 text-slate-400"
                                     )}>
+                                       {item.executionStatus === 'completed' && <CheckCircle2 className="h-3 w-3" />}
                                        {item.executionStatus ? tSafe(`inline.${item.executionStatus}`, item.executionStatus, item.executionStatus) : tSafe('inline.pending', 'بانتظار', 'Pending')}
                                     </Badge>
                                  )}
@@ -193,32 +220,68 @@ export default function FieldVisitDetailsPage() {
                         ))}
                      </TableBody>
                   </Table>
-               </Card>
+               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-               <div className="space-y-3">
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><Users className="h-3.5 w-3.5 text-primary" /> {t('common.labor')}</h4>
-                  <div className="space-y-1.5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 pt-6 border-t-4 border-primary/10">
+               <div className="space-y-6 text-start">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                     <Users className="h-4 w-4 text-primary" /> {isRtl ? 'الموارد البشرية والمشرفين' : 'Human Resources & Supervisors'}
+                  </h4>
+                  <div className="grid grid-cols-1 gap-3">
                      {visit.laborDetails?.map((l: any, i: number) => (
-                        <div key={i} className="flex justify-between items-center text-xs p-2.5 bg-slate-50 rounded-lg border border-slate-100">
-                           <span className="font-bold text-slate-700">{l.trade}</span>
-                           <span className="font-bold text-slate-400">{l.count} {tSafe('inline.staff', 'موظف', 'Staff')}</span>
+                        <div key={i} className="flex justify-between items-center p-5 bg-slate-50 border-2 border-white rounded-[1.5rem] shadow-sm">
+                           <div className="flex items-center gap-4">
+                              <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center text-primary shadow-sm border"><HardHat className="h-5 w-5" /></div>
+                              <span className="font-black text-slate-800 text-sm">{l.trade}</span>
+                           </div>
+                           <Badge variant="outline" className="bg-white text-slate-900 border-2 font-black h-7 px-4 rounded-lg">{l.count} STAFF</Badge>
                         </div>
                      ))}
-                     {!visit.laborDetails?.length && <p className="text-[10px] text-slate-300 italic">{tSafe('inline.no.labor.logs', 'لا توجد سجلات عمالة.', 'No labor logs.')}</p>}
+                     {!visit.laborDetails?.length && <p className="text-xs font-bold text-slate-300 italic p-10 text-center border-2 border-dashed rounded-3xl">لا توجد سجلات عمالة موثقة.</p>}
                   </div>
                </div>
-               <div className="space-y-3">
-                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2"><Truck className="h-3.5 w-3.5 text-primary" /> {t('common.equipment')}</h4>
-                  <div className="space-y-1.5">
+               
+               <div className="space-y-6 text-start">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                     <Truck className="h-4 w-4 text-primary" /> {isRtl ? 'المعدات والآليات الثقيلة' : 'Heavy Equipment & Fleet'}
+                  </h4>
+                  <div className="grid grid-cols-1 gap-3">
                      {visit.equipmentUsed?.map((e: any, i: number) => (
-                        <div key={i} className="flex justify-between items-center text-xs p-2.5 bg-slate-50 rounded-lg border border-slate-100">
-                           <span className="font-bold text-slate-700">{e.name}</span>
-                           <span className="font-bold text-primary">{e.hoursUsed} {tSafe('inline.hrs', 'ساعة', 'hrs')}</span>
+                        <div key={i} className="flex justify-between items-center p-5 bg-blue-50/30 border-2 border-white rounded-[1.5rem] shadow-sm">
+                           <div className="flex items-center gap-4">
+                              <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center text-blue-600 shadow-sm border"><Truck className="h-5 w-5" /></div>
+                              <span className="font-black text-slate-800 text-sm">{e.name}</span>
+                           </div>
+                           <div className="text-end">
+                              <span className="font-black text-blue-600 text-sm">{e.hoursUsed} HRS</span>
+                           </div>
                         </div>
                      ))}
-                     {!visit.equipmentUsed?.length && <p className="text-[10px] text-slate-300 italic">{tSafe('inline.no.equipment.logs', 'لا توجد سجلات معدات.', 'No equipment logs.')}</p>}
+                     {!visit.equipmentUsed?.length && <p className="text-xs font-bold text-slate-300 italic p-10 text-center border-2 border-dashed rounded-3xl">لا توجد سجلات معدات موثقة.</p>}
+                  </div>
+               </div>
+            </div>
+
+            <div className="p-10 bg-slate-900 text-white rounded-[3rem] shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 border-t-8 border-primary">
+               <div className="flex items-center gap-6 text-start">
+                  <Avatar className="h-16 w-16 rounded-2xl border-2 border-primary shadow-xl">
+                     <AvatarFallback className="bg-primary/20 text-primary font-black text-xl">{visit.engineerName?.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div className="space-y-1">
+                     <p className="text-[9px] font-black text-primary uppercase tracking-widest">{isRtl ? 'المهندس المسؤول الموثق' : 'Reporting Engineer'}</p>
+                     <h4 className="text-xl font-black">{visit.engineerName}</h4>
+                  </div>
+               </div>
+               <div className="flex gap-4">
+                  <div className="text-center md:text-end">
+                     <p className="text-[8px] font-black text-slate-500 uppercase">{isRtl ? 'تاريخ الحفظ' : 'System Timestamp'}</p>
+                     <p className="text-xs font-mono font-bold text-slate-400">{visit.createdAt?.toDate().toLocaleString()}</p>
+                  </div>
+                  <div className="h-10 w-[1px] bg-white/10" />
+                  <div className="flex items-center gap-2">
+                     <ShieldCheck className="h-6 w-6 text-emerald-400" />
+                     <span className="text-[10px] font-black text-emerald-400 uppercase tracking-tighter">DATA SECURED</span>
                   </div>
                </div>
             </div>
