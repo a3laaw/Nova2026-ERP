@@ -54,7 +54,6 @@ function TransactionDetailsContent() {
   const [isBoqInitOpen, setIsBoqInitOpen] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   
-  // States for Revisions and Reverts
   const [isRevisionOpen, setIsRevisionOpen] = useState(false);
   const [revisionNote, setRevisionNote] = useState("");
   const [revertingStage, setRevertingStage] = useState<StageInstance | null>(null);
@@ -204,7 +203,6 @@ function TransactionDetailsContent() {
           createdAt: serverTimestamp()
        });
 
-       // Increment revision count on the first in-progress stage if possible
        const activeStage = stages.find(s => s.status === 'in-progress');
        if (activeStage) {
           const stageRef = doc(db, paths.transactionStages(companyId, transactionId), activeStage.id!);
@@ -347,7 +345,6 @@ function TransactionDetailsContent() {
           </div>
       </div>
 
-      {/* Revision Dialog */}
       <Dialog open={isRevisionOpen} onOpenChange={setIsRevisionOpen}>
          <DialogContent className="rounded-xl max-w-lg p-0 overflow-hidden bg-white border-0 shadow-3xl" dir={dir}>
             <div className="bg-orange-50 p-8 text-orange-900 text-start border-b">
@@ -363,7 +360,6 @@ function TransactionDetailsContent() {
          </DialogContent>
       </Dialog>
 
-      {/* Revert Dialog */}
       <Dialog open={!!revertingStage} onOpenChange={(v) => !v && setRevertingStage(null)}>
          <DialogContent className="rounded-xl max-w-md p-0 overflow-hidden bg-white border-0 shadow-3xl" dir={dir}>
             <div className="bg-rose-50 p-8 text-rose-900 text-start border-b">

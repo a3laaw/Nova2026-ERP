@@ -101,6 +101,8 @@ export default function GeneralListsPage() {
       await service.delete(activeTab, deletingId);
       toast({ title: t('common.deleted') });
       setDeletingId(null);
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
       setLoadingAction(null);
     }
