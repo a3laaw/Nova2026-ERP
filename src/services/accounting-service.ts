@@ -137,66 +137,81 @@ export class AccountingService {
     const entryNumber = await nextSequential(this.db, this.companyId, 'journal_entry', 'JV-', 5);
 
     const lines: JournalEntryLine[] = [];
-    
-    if (data.distributions && data.distributions.length > 0) {
-      // التحقق من توازن التوزيع
-      const distSum = data.distributions.reduce((acc, d) => acc + d.amount, 0);
-      if (Math.abs(distSum - (data.amount || 0)) > 0.001) {
-        throw new Error('فشل التوزيع: مجموع الحصص الموزعة لا يساوي إجمالي مبلغ السند.');
-      }
+    const feeAmount = data.feeAmount || 0;
+    const netAmount = (data.amount || 0) - feeAmount;
 
-      if (data.type === 'receipt') {
-        lines.push({ accountId: data.cashAccountId!, accountName: 'حساب النقدية', debit: data.amount!, credit: 0 });
-        data.distributions.forEach(d => {
+    // محرك العمولات البنكية (Sovereign Bank Charges Engine)
+    if (data.type === 'receipt') {
+        // 1. حساب النقدية/البنك (بالصافي)
+        lines.push({ accountId: data.cashAccountId!, accountName: 'حساب البنك/النقدية (صافي)', debit: netAmount, credit: 0 });
+        
+        // 2. حساب مصاريف العمولات (إذا وجد)
+        if (feeAmount > 0) {
+            // البحث عن حساب "عمولات ومصاريف بنكية" - افتراض كود 50203 أو اسم مشابه
+            const chargesAccQuery = query(collection(this.db, paths.accounts(this.companyId)), where('code', '==', '50203'), limit(1));
+            const chargesSnap = await getDocs(chargesAccQuery);
+            const chargesAccId = !chargesSnap.empty ? chargesSnap.docs[0].id : await this.ensureControlAccount('50203', 'عمولات ومصاريف بنكية', 'Bank Charges & Commissions', 'expense');
+            
+            lines.push({ 
+              accountId: chargesAccId, 
+              accountName: 'عمولات بنكية مخصومة آلياً', 
+              debit: feeAmount, 
+              credit: 0,
+              memo: `عمولة معاملة رقم ${voucherNumber}`
+            });
+        }
+
+        // 3. حساب الدائن (بالإجمالي) - عميل أو إيراد
+        if (data.distributions && data.distributions.length > 0) {
+          data.distributions.forEach(d => {
+            lines.push({ 
+              accountId: data.accountId!, 
+              accountName: 'حساب الطرف الآخر (موزع)', 
+              debit: 0, 
+              credit: d.amount, 
+              projectId: d.projectId,
+              costCenterId: d.costCenterId,
+              profitCenterId: d.profitCenterId
+            });
+          });
+        } else {
           lines.push({ 
             accountId: data.accountId!, 
-            accountName: 'حساب الطرف الآخر (موزع)', 
+            accountName: 'حساب الطرف الآخر', 
             debit: 0, 
-            credit: d.amount, 
-            projectId: d.projectId,
-            costCenterId: d.costCenterId,
-            profitCenterId: d.profitCenterId
+            credit: data.amount!, 
+            projectId: data.projectId,
+            costCenterId: data.costCenterId,
+            profitCenterId: data.profitCenterId
           });
-        });
-      } else {
-        data.distributions.forEach(d => {
+        }
+    } else {
+        // سند صرف (لا يطبق عليه عمولة بنكية مستلمة بل عمولة مضافة، MVP يركز على سند القبض حالياً)
+        if (data.distributions && data.distributions.length > 0) {
+          data.distributions.forEach(d => {
+            lines.push({ 
+              accountId: data.accountId!, 
+              accountName: 'حساب الطرف الآخر (موزع)', 
+              debit: d.amount, 
+              credit: 0, 
+              projectId: d.projectId,
+              costCenterId: d.costCenterId,
+              profitCenterId: d.profitCenterId
+            });
+          });
+          lines.push({ accountId: data.cashAccountId!, accountName: 'حساب النقدية', debit: 0, credit: data.amount! });
+        } else {
           lines.push({ 
             accountId: data.accountId!, 
-            accountName: 'حساب الطرف الآخر (موزع)', 
-            debit: d.amount, 
+            accountName: 'حساب الطرف الآخر', 
+            debit: data.amount!, 
             credit: 0, 
-            projectId: d.projectId,
-            costCenterId: d.costCenterId,
-            profitCenterId: d.profitCenterId
+            projectId: data.projectId,
+            costCenterId: data.costCenterId,
+            profitCenterId: data.profitCenterId
           });
-        });
-        lines.push({ accountId: data.cashAccountId!, accountName: 'حساب النقدية', debit: 0, credit: data.amount! });
-      }
-    } else {
-      // توزيع افتراضي لسطر واحد
-      if (data.type === 'receipt') {
-        lines.push({ accountId: data.cashAccountId!, accountName: 'حساب النقدية', debit: data.amount!, credit: 0 });
-        lines.push({ 
-          accountId: data.accountId!, 
-          accountName: 'حساب الطرف الآخر', 
-          debit: 0, 
-          credit: data.amount!, 
-          projectId: data.projectId,
-          costCenterId: data.costCenterId,
-          profitCenterId: data.profitCenterId
-        });
-      } else {
-        lines.push({ 
-          accountId: data.accountId!, 
-          accountName: 'حساب الطرف الآخر', 
-          debit: data.amount!, 
-          credit: 0, 
-          projectId: data.projectId,
-          costCenterId: data.costCenterId,
-          profitCenterId: data.profitCenterId
-        });
-        lines.push({ accountId: data.cashAccountId!, accountName: 'حساب النقدية', debit: 0, credit: data.amount! });
-      }
+          lines.push({ accountId: data.cashAccountId!, accountName: 'حساب النقدية', debit: 0, credit: data.amount! });
+        }
     }
 
     const voucherData = {
@@ -204,6 +219,8 @@ export class AccountingService {
       id: voucherRef.id,
       voucherNumber,
       journalEntryId: journalRef.id,
+      feeAmount,
+      netAmount,
       companyId: this.companyId,
       createdAt: serverTimestamp(),
       createdBy: userId
@@ -243,7 +260,7 @@ export class AccountingService {
       nameEn,
       type,
       parentId,
-      isGroup: true,
+      isGroup: parentId === null,
       level: parentId ? 2 : 1,
       isActive: true,
       companyId: this.companyId,

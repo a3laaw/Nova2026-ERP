@@ -9,7 +9,7 @@ import {
   Plus, Loader2, Search, 
   Trash2, Edit3, Scale, CreditCard, 
   DollarSign, Clock, Package, LayoutGrid,
-  Save
+  Save, Percent, Banknote
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -147,7 +147,7 @@ export default function GeneralListsPage() {
                </div>
                <div className="flex items-center gap-2">
                   {canCreate && (
-                    <Button onClick={() => setEditingItem({ name: '', nameEn: '', code: '', order: items.length + 1, isActive: true, isEditable: true, isSystem: false })} variant="default" className="h-11 px-6 shadow-lg flex items-center gap-2"><Plus className="h-5 w-5" /> {t('common.add')}</Button>
+                    <Button onClick={() => setEditingItem({ name: '', nameEn: '', code: '', order: items.length + 1, isActive: true, isEditable: true, isSystem: false, feePercentage: 0, feeFixedAmount: 0 })} variant="default" className="h-11 px-6 shadow-lg flex items-center gap-2"><Plus className="h-5 w-5" /> {t('common.add')}</Button>
                   )}
                </div>
             </CardHeader>
@@ -157,6 +157,7 @@ export default function GeneralListsPage() {
                      <TableRow>
                         <TableHead className="py-6 ps-8 text-start">{t('common.name')}</TableHead>
                         <TableHead className="text-start">{t('common.code')}</TableHead>
+                        {activeTab === 'paymentMethods' && <TableHead className="text-center">{isRtl ? 'العمولة' : 'Commissions'}</TableHead>}
                         <TableHead className="text-center">{t('order')}</TableHead>
                         <TableHead className="text-start">{t('common.status')}</TableHead>
                         <TableHead className="pe-8 text-end">{isRtl ? 'إجراءات' : 'Actions'}</TableHead>
@@ -164,12 +165,20 @@ export default function GeneralListsPage() {
                   </TableHeader>
                   <TableBody>
                      {loading ? (
-                       <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
+                       <TableRow><TableCell colSpan={6} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
                      ) : (
                        filtered.map((item) => (
                          <TableRow key={item.id} className="hover:bg-primary/5 transition-colors border-b-slate-100 group">
                             <TableCell className="py-6 ps-8 text-start font-black text-slate-800">{isRtl ? item.name : (item.nameEn || item.name)}</TableCell>
                             <TableCell className="text-start"><code className="text-[10px] bg-slate-100 px-2 py-0.5 rounded font-mono text-primary font-black uppercase">{item.code}</code></TableCell>
+                            {activeTab === 'paymentMethods' && (
+                               <TableCell className="text-center">
+                                  <div className="flex flex-col items-center gap-1">
+                                     <Badge className="bg-blue-50 text-blue-600 border-0 text-[8px] font-black">{item.feePercentage ? (item.feePercentage * 100).toFixed(2) + '%' : '-'}</Badge>
+                                     <Badge className="bg-amber-50 text-amber-600 border-0 text-[8px] font-black">{item.feeFixedAmount ? item.feeFixedAmount.toFixed(3) + ' KWD' : '-'}</Badge>
+                                  </div>
+                               </TableCell>
+                            )}
                             <TableCell className="text-center font-bold text-slate-400">#{item.order}</TableCell>
                             <TableCell className="text-start"><Badge className={cn("text-[8px] font-black uppercase border-0", item.isActive ? "bg-emerald-50 text-emerald-600" : "bg-slate-300 text-white")}>{item.isActive ? 'Active' : 'Inactive'}</Badge></TableCell>
                             <TableCell className="pe-8 text-end">
@@ -198,6 +207,39 @@ export default function GeneralListsPage() {
                   <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('order')}</Label><Input type="number" value={editingItem?.order || 0} onChange={e => setEditingItem({...editingItem, order: Number(e.target.value)})} className="h-11 border-2" /></div>
                </div>
                <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('common.name')}</Label><Input value={editingItem?.name || ''} onChange={e => setEditingItem({...editingItem, name: e.target.value})} className="h-11 border-2" /></div>
+               
+               {activeTab === 'paymentMethods' && (
+                  <div className="p-6 rounded-2xl bg-blue-50 border-2 border-dashed border-blue-200 space-y-6">
+                     <div className="flex items-center gap-2 text-blue-600 font-black text-xs uppercase tracking-widest">
+                        <Percent className="h-4 w-4" /> {isRtl ? 'إعدادات عمولات البنوك' : 'Bank Commission Rules'}
+                     </div>
+                     <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                           <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'النسبة المئوية (%)' : 'Percentage (%)'}</Label>
+                           <Input 
+                             type="number" 
+                             step="0.001" 
+                             value={editingItem?.feePercentage || 0} 
+                             onChange={e => setEditingItem({...editingItem, feePercentage: Number(e.target.value)})} 
+                             className="h-11 border-2 bg-white font-black" 
+                           />
+                           <p className="text-[8px] font-bold text-slate-400 italic">مثال: 0.005 لنسبة 0.5%</p>
+                        </div>
+                        <div className="space-y-2">
+                           <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'مبلغ ثابت (KWD)' : 'Fixed Amount'}</Label>
+                           <Input 
+                             type="number" 
+                             step="0.001" 
+                             value={editingItem?.feeFixedAmount || 0} 
+                             onChange={e => setEditingItem({...editingItem, feeFixedAmount: Number(e.target.value)})} 
+                             className="h-11 border-2 bg-white font-black" 
+                           />
+                           <p className="text-[8px] font-bold text-slate-400 italic">مثال: 0.100 لعمولة الـ 100 فلس</p>
+                        </div>
+                     </div>
+                  </div>
+               )}
+
                <div className="flex items-center justify-between p-6 bg-slate-50 rounded-xl border-2"><Label className="font-black text-slate-700">{t('common.isActive')}</Label><Switch checked={editingItem?.isActive !== false} onCheckedChange={v => setEditingItem({...editingItem, isActive: v})} /></div>
             </div>
             <DialogFooter className="p-8 bg-slate-50 border-t"><Button onClick={handleSave} disabled={loadingAction === 'save'} className="w-full h-12 rounded-xl">{loadingAction === 'save' ? <Loader2 className="animate-spin" /> : <Save className="h-5 w-5 me-2" />}{t('common.save')}</Button></DialogFooter>

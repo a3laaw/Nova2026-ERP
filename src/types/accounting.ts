@@ -67,8 +67,10 @@ export interface Voucher extends BaseReference {
   voucherNumber: string;
   type: VoucherType;
   date: string;
-  amount: number;
-  paymentMethod: string; // كود طريقة الدفع من القوائم المرجعية
+  amount: number;         // المبلغ الإجمالي (المستلم من العميل)
+  feeAmount?: number;     // مبلغ العمولة البنكية (المخصوم)
+  netAmount?: number;     // المبلغ الصافي (الداخل للبنك)
+  paymentMethod: string;  // كود طريقة الدفع من القوائم المرجعية
   personName: string;
   accountId: string;
   cashAccountId: string;

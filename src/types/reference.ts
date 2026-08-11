@@ -20,6 +20,10 @@ export interface BaseReferenceList extends BaseReference {
   order: number;
   createdBy?: string;
   updatedBy?: string;
+  
+  // حقول عمولات البنوك المضافة
+  feePercentage?: number;   // نسبة العمولة (مثلاً 0.005 للـ كي نت)
+  feeFixedAmount?: number;  // مبلغ ثابت (مثلاً 0.100 د.ك)
 }
 
 export interface UnitType extends BaseReferenceList {

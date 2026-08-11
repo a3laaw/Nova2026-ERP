@@ -8,7 +8,7 @@ import {
   ArrowRight, Landmark, Wallet,
   User, Calendar, FileText, Briefcase,
   CheckCircle2, Sparkles, LayoutGrid, DatabaseZap, Gavel, Info,
-  History as HistoryIcon
+  History as HistoryIcon, Percent, Calculator
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs } from 'firebase/firestore';
@@ -42,6 +42,8 @@ export default function ReceiptVouchersPage() {
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
     amount: 0,
+    feeAmount: 0,
+    netAmount: 0,
     personName: '',
     paymentMethod: '',
     accountId: '',
@@ -89,13 +91,28 @@ export default function ReceiptVouchersPage() {
     if (!accounts || !form.paymentMethod) return [];
     return accounts.filter(a => {
       if (a.isGroup) return false;
-      // الفلترة بناءً على الإعدادات اليدوية في دليل الحسابات
       return a.allowedPaymentMethods?.includes(form.paymentMethod);
     });
   }, [accounts, form.paymentMethod]);
   
   // Income Accounts
   const incomeAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.type === 'revenue' || a.type === 'liability' || a.code.startsWith('1202'))), [accounts]);
+
+  // منطق احتساب العمولات تلقائياً
+  useEffect(() => {
+     if (form.paymentMethod && form.amount > 0 && paymentMethods) {
+        const pm = paymentMethods.find((p: any) => p.code === form.paymentMethod);
+        if (pm) {
+           const feePerc = pm.feePercentage || 0;
+           const feeFixed = pm.feeFixedAmount || 0;
+           const calculatedFee = (form.amount * feePerc) + feeFixed;
+           const net = form.amount - calculatedFee;
+           setForm(prev => ({ ...prev, feeAmount: Math.round(calculatedFee * 1000) / 1000, netAmount: Math.round(net * 1000) / 1000 }));
+        }
+     } else {
+        setForm(prev => ({ ...prev, feeAmount: 0, netAmount: prev.amount }));
+     }
+  }, [form.paymentMethod, form.amount, paymentMethods]);
 
   // Logic: When transaction changes, fetch approved contracts
   useEffect(() => {
@@ -154,7 +171,8 @@ export default function ReceiptVouchersPage() {
       setIsAdding(false);
       setForm({ 
         date: new Date().toISOString().split('T')[0], 
-        amount: 0, personName: '', paymentMethod: '', 
+        amount: 0, feeAmount: 0, netAmount: 0,
+        personName: '', paymentMethod: '', 
         accountId: '', cashAccountId: '', projectId: '', 
         transactionId: '', contractId: '',
         costCenterId: '', profitCenterId: '', notes: '',
@@ -175,7 +193,7 @@ export default function ReceiptVouchersPage() {
     <div className="space-y-4 animate-in fade-in" dir={dir}>
       <header className="flex justify-between items-center text-start">
         <div className="text-start">
-          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2 text-slate-900">
             <Receipt className="h-6 w-6 text-emerald-600" /> {tSafe('accounting.vouchers.receiptTitle', 'سندات القبض الذكية', 'Smart Receipt Vouchers')}
           </h1>
           <p className="text-muted-foreground text-xs font-medium">{tSafe('inline.receipt.desc', 'إدارة التحصيل المالي وربطه بالعقود والدفعات آلياً', 'Manage revenue collection and link to contracts automatically')}</p>
@@ -260,7 +278,7 @@ export default function ReceiptVouchersPage() {
                    </div>
                  )}
 
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t">
+                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pt-4 border-t">
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400">{t('common.amount')}</Label>
                        <div className="relative">
@@ -275,9 +293,18 @@ export default function ReceiptVouchersPage() {
                           <SelectTrigger className="h-14 rounded-xl border-2 font-bold bg-white">
                              <SelectValue />
                           </SelectTrigger>
-                          <SelectContent className="rounded-xl">
+                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
                              {paymentMethods?.map((pm: any) => (
-                               <SelectItem key={pm.code} value={pm.code} className="font-bold py-2">{isRtl ? pm.name : (pm.nameEn || pm.name)}</SelectItem>
+                               <SelectItem key={pm.code} value={pm.code} className="font-bold py-3 border-b last:border-0 border-slate-50 text-xs">
+                                  <div className="flex justify-between items-center gap-4 w-full">
+                                     <span>{isRtl ? pm.name : (pm.nameEn || pm.name)}</span>
+                                     {(pm.feePercentage > 0 || pm.feeFixedAmount > 0) && (
+                                       <Badge variant="outline" className="text-[7px] font-black bg-rose-50 text-rose-500 border-rose-100 h-4 uppercase">
+                                          - Commission
+                                       </Badge>
+                                     )}
+                                  </div>
+                               </SelectItem>
                              ))}
                           </SelectContent>
                        </Select>
@@ -285,11 +312,11 @@ export default function ReceiptVouchersPage() {
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.deposit.to', 'إيداع في حساب', 'Deposit To')}</Label>
                        <Select disabled={!form.paymentMethod} value={form.cashAccountId} onValueChange={v => setForm({...form, cashAccountId: v})}>
-                          <SelectTrigger className="h-14 rounded-xl border-2 font-black text-blue-600 bg-white">
+                          <SelectTrigger className="h-14 rounded-xl border-2 font-black text-blue-600 bg-white shadow-sm">
                              <SelectValue placeholder="..." />
                           </SelectTrigger>
-                          <SelectContent className="rounded-xl">
-                             {cashAccounts?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{a.code} - {isRtl ? a.nameAr : a.nameEn}</SelectItem>)}
+                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
+                             {cashAccounts?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">{a.code} - {isRtl ? a.nameAr : a.nameEn}</SelectItem>)}
                              {cashAccounts.length === 0 && form.paymentMethod && (
                                <div className="p-4 text-center text-rose-500 text-[10px] font-bold">
                                   لا يوجد حساب مفعل لطريقة الدفع هذه في دليل الحسابات.
@@ -298,15 +325,36 @@ export default function ReceiptVouchersPage() {
                           </SelectContent>
                        </Select>
                     </div>
+                    <div className="space-y-2">
+                       <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.net.deposit', 'صافي الإيداع', 'Net Deposit')}</Label>
+                       <div className="h-14 rounded-xl border-2 border-dashed flex items-center justify-center bg-slate-50 shadow-inner">
+                          <p className="font-black text-xl text-slate-900">{form.netAmount.toLocaleString()} <span className="text-[8px] text-slate-400 uppercase">KWD</span></p>
+                       </div>
+                    </div>
                  </div>
+
+                 {form.feeAmount > 0 && (
+                    <div className="p-4 bg-rose-50 border-2 border-rose-100 rounded-2xl flex items-center justify-between animate-in slide-in-from-top-2">
+                       <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-rose-600 shadow-sm border border-rose-100">
+                             <Percent className="h-5 w-5" />
+                          </div>
+                          <div className="text-start">
+                             <p className="text-[10px] font-black text-rose-800 uppercase tracking-widest">{tSafe('inline.bank.commissions', 'العمولات البنكية المخصومة', 'Bank Commissions')}</p>
+                             <p className="text-xs font-bold text-rose-600/70">{tSafe('inline.auto.deduction.desc', 'تم احتساب العمولة تلقائياً بناءً على سياسة وسيط الدفع.', 'Commission auto-calculated based on payment gateway policy.')}</p>
+                          </div>
+                       </div>
+                       <h4 className="text-xl font-black text-rose-600">-{form.feeAmount.toLocaleString()} <span className="text-[8px] opacity-60">KWD</span></h4>
+                    </div>
+                 )}
 
                  <div className="space-y-4 pt-6 border-t">
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{tSafe('inline.against.income', 'مقابل حساب (إيراد)', 'Against Account (Income)')}</Label>
                        <Select value={form.accountId} onValueChange={v => setForm({...form, accountId: v})}>
                           <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
-                          <SelectContent className="rounded-xl">
-                             {incomeAccounts?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{a.code} - {isRtl ? a.nameAr : a.nameEn}</SelectItem>)}
+                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
+                             {incomeAccounts?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">{a.code} - {isRtl ? a.nameAr : a.nameEn}</SelectItem>)}
                           </SelectContent>
                        </Select>
                     </div>
@@ -366,6 +414,16 @@ export default function ReceiptVouchersPage() {
                       </div>
                    </div>
                  )}
+              </Card>
+
+              <Card className="rounded-[2rem] border-2 border-dashed border-primary/20 bg-white p-8 space-y-4 shadow-xl">
+                 <div className="flex items-center gap-2 text-primary">
+                    <Calculator className="h-5 w-5" />
+                    <h5 className="font-black text-xs uppercase tracking-widest">{tSafe('inline.commission.audit', 'رقابة العمولات', 'Commission Audit')}</h5>
+                 </div>
+                 <p className="text-[10px] font-bold text-slate-500 leading-relaxed">
+                    {tSafe('inline.comm.audit.desc', 'يتم فصل العمولة آلياً في القيد المحاسبي لضمان مطابقة كشف الحساب البنكي مع الدفاتر دون فروقات يدوية.', 'Commission is auto-separated in journal entries to ensure bank statements match books without manual discrepancies.')}
+                 </p>
               </Card>
            </aside>
         </div>
