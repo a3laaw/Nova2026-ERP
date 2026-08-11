@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -96,10 +95,10 @@ export class TransactionService {
       updatedAt: serverTimestamp()
     });
 
-    // الأتمتة المحاسبية: إنشاء حساب تكاليف المشروع/مركز تكلفة (Trigger 4)
+    // الأتمتة المحاسبية: إنشاء حساب تكاليف المشروع تحت مجموعة (1205 - أعمال تحت التنفيذ WIP)
     const accService = new AccountingService(this.db, this.companyId);
-    await accService.ensureControlAccount('1203', 'أعمال تحت التنفيذ (WIP)', 'Work In Progress', 'asset');
-    await accService.createAutomaticSubAccount('1203', transactionId, `مشروع: ${data.subServiceName} (${transactionNumber})`, 'asset');
+    await accService.ensureControlAccount('1205', 'أعمال تحت التنفيذ (WIP)', 'Work In Progress', 'asset');
+    await accService.createAutomaticSubAccount('1205', transactionId, `مشروع: ${data.subServiceName} (${transactionNumber})`, 'asset');
 
     const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
     batch.set(timelineRef, {
@@ -116,7 +115,6 @@ export class TransactionService {
     return transactionId;
   }
 
-  // بقية الدوال بدون تغييرات جوهرية...
   private verifyDeptAccess(stage: StageInstance, userDeptId?: string, isAssignedEngineer: boolean = false) {
     if (this.permissions.includes('*') || isAssignedEngineer) return;
     if (stage.allowedDepartmentIds && stage.allowedDepartmentIds.length > 0) {

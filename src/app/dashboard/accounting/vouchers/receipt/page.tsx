@@ -90,9 +90,11 @@ export default function ReceiptVouchersPage() {
 
   const [contracts, setContracts] = useState<Contract[]>([]);
 
-  // Filtering accounts
-  const cashAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.code.startsWith('101') || a.code.startsWith('102') || a.type === 'asset')), [accounts]);
-  const incomeAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.type === 'revenue' || a.type === 'liability')), [accounts]);
+  // Filtering accounts - FIXED: Restrict cashAccountId to liquid assets only
+  const cashAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.code.startsWith('101') || a.code.startsWith('102') || a.code.startsWith('1201'))), [accounts]);
+  
+  // Filtering accounts - FIXED: Include Revenue, Liabilities, and specifically Customer Receivables (1202)
+  const incomeAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.type === 'revenue' || a.type === 'liability' || a.code.startsWith('1202'))), [accounts]);
 
   // Logic: When transaction changes, fetch approved contracts
   useEffect(() => {
@@ -278,7 +280,9 @@ export default function ReceiptVouchersPage() {
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.deposit.to', 'إيداع في حساب', 'Deposit To')}</Label>
                        <Select value={form.cashAccountId} onValueChange={v => setForm({...form, cashAccountId: v})}>
-                          <SelectTrigger className="h-14 rounded-xl border-2 font-black text-blue-600 bg-white"><SelectValue placeholder="..." /></SelectTrigger>
+                          <SelectTrigger className="h-14 rounded-xl border-2 font-black text-blue-600 bg-white">
+                             <SelectValue placeholder="..." />
+                          </SelectTrigger>
                           <SelectContent className="rounded-xl">
                              {cashAccounts?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{a.code} - {isRtl ? a.nameAr : a.nameEn}</SelectItem>)}
                           </SelectContent>
@@ -343,7 +347,7 @@ export default function ReceiptVouchersPage() {
                               <span className="text-slate-400 font-bold truncate max-w-[140px]">{m.milestone.name}</span>
                               <Badge className={cn(
                                 "text-[8px] font-black h-4 px-1.5 border-0",
-                                m.remaining === 0 ? "bg-emerald-500 text-white" : "bg-white/10 text-slate-300"
+                                m.remaining === 0 ? "bg-emerald-50 text-white" : "bg-white/10 text-slate-300"
                               )}>
                                 {m.remaining === 0 ? 'PAID' : `${m.paidToDate}/${m.milestoneAmount}`}
                               </Badge>

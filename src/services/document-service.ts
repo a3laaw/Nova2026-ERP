@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -57,10 +56,10 @@ export class DocumentService {
        const clientRef = doc(this.db, paths.clients(this.companyId), currentData.clientId);
        await updateDoc(clientRef, { status: 'contracted', updatedAt: serverTimestamp() });
 
-       // 2. الأتمتة المحاسبية: إنشاء حساب ذمة للعميل تلقائياً
+       // 2. الأتمتة المحاسبية: إنشاء حساب ذمة للعميل تلقائياً تحت مجموعة (1202 - ذمم العملاء)
        const accService = new AccountingService(this.db, this.companyId);
-       await accService.ensureControlAccount('1201', 'ذمم العملاء', 'Accounts Receivable', 'asset');
-       await accService.createAutomaticSubAccount('1201', currentData.clientId, currentData.clientName, 'asset');
+       await accService.ensureControlAccount('1202', 'ذمم العملاء', 'Accounts Receivable', 'asset');
+       await accService.createAutomaticSubAccount('1202', currentData.clientId, currentData.clientName, 'asset');
 
        // 3. تفعيل المسار الفني المرتبط
        if (currentData.transactionId) {
