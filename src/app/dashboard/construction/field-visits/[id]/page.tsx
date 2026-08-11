@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -95,7 +94,7 @@ export default function FieldVisitDetailsPage() {
   if (!visit) return <div className="p-20 text-center font-black">{tSafe('inline.not.found', '404 - غير موجود', '404 - Not Found')}</div>;
 
   return (
-    <div className="space-y-6 w-full max-w-6xl mx-auto pb-20 animate-in fade-in duration-500 bg-[#fdfaf3]" dir={dir}>
+    <div className="space-y-6 w-full max-w-6xl mx-auto pb-20 animate-in fade-in duration-500 bg-[#fdfaf3] text-start" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-4 print:hidden px-4 pt-4 text-start">
         <div className="flex items-center gap-4">
            <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-10 w-10 rounded-xl border-2 bg-white text-slate-400">
@@ -103,7 +102,7 @@ export default function FieldVisitDetailsPage() {
            </Button>
            <div className="text-start">
               <h1 className="text-2xl font-black font-headline text-slate-900">{t('construction.fieldLog')}</h1>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{visit.clientName} | {tSafe('inline.project', 'مشروع', 'Project')}: {visit.transactionNumber}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{visit.clientName} | Project: {visit.transactionNumber}</p>
            </div>
         </div>
         

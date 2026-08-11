@@ -33,6 +33,9 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { BOQExecutionService } from '@/services/boq-execution-service';
 import { SmartDateInput } from '@/components/ui/smart-date-input';
 
+/**
+ * نموذج تسجيل تقرير ميداني جديد بنظام "المرحلة النشطة"
+ */
 function NewFieldVisitForm() {
   const { globalUser, user } = useAuthContext();
   const { lang, dir, t, tSafe } = useLanguage();
@@ -58,6 +61,7 @@ function NewFieldVisitForm() {
     { boqItemId: '', quantity: '', notes: '', photoUrls: [], isUploading: false }
   ]);
 
+  // استعلام المشاريع النشطة
   const transQuery = useMemo(() => 
     (companyId && db) ? query(collection(db, paths.transactions(companyId)), where('status', '!=', 'completed')) : null, [db, companyId]);
   const { data: allTransactions } = useCollection<Transaction>(transQuery);
@@ -80,6 +84,7 @@ function NewFieldVisitForm() {
 
   const clientProjects = useMemo(() => selectedClientId ? fieldProjects.filter(p => p.clientId === selectedClientId) : [], [fieldProjects, selectedClientId]);
 
+  // الحل الذكي: جلب كافة المراحل وفلترة "قيد التنفيذ" في الذاكرة لتجنب خطأ الـ Index
   useEffect(() => {
     async function fetchProjectContext() {
       if (!selectedProjectId || !db || !companyId) {
@@ -88,12 +93,13 @@ function NewFieldVisitForm() {
       }
       setLoadingStage(true);
       try {
-        const stagesSnap = await getDocs(query(collection(db, paths.transactionStages(companyId, selectedProjectId)), where('status', '==', 'in-progress'), orderBy('order')));
-        if (!stagesSnap.empty) {
-           setActiveStage({ id: stagesSnap.docs[0].id, ...stagesSnap.docs[0].data() } as StageInstance);
-        } else {
-           setActiveStage(null);
-        }
+        const stagesPath = paths.transactionStages(companyId, selectedProjectId);
+        const stagesSnap = await getDocs(query(collection(db, stagesPath), orderBy('order', 'asc')));
+        const allStages = stagesSnap.docs.map(d => ({ id: d.id, ...d.data() } as StageInstance));
+        
+        // البحث عن أول مرحلة قيد التنفيذ
+        const current = allStages.find(s => s.status === 'in-progress');
+        setActiveStage(current || null);
       } finally {
         setLoadingStage(false);
       }
@@ -240,7 +246,7 @@ function NewFieldVisitForm() {
   };
 
   return (
-    <div className="space-y-6 w-full max-w-6xl mx-auto pb-20 animate-in fade-in duration-500 text-start" dir={dir}>
+    <div className="space-y-6 w-full max-w-6xl mx-auto pb-20 animate-in fade-in duration-500 text-start bg-[#fdfaf3]" dir={dir}>
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-6 text-start">
         <div className="flex items-center gap-4 text-start">
           <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/5">
