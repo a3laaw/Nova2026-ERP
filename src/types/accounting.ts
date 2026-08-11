@@ -2,7 +2,6 @@ import { BaseReference } from './reference';
 
 export type AccountType = 'asset' | 'liability' | 'equity' | 'revenue' | 'expense';
 
-// جديد - المرحلة 2
 export type AnalyticalRequirement = 'not_allowed' | 'optional' | 'required' | 'auto';
 
 export interface AccountAnalyticalConfig {
@@ -24,7 +23,6 @@ export interface Account extends BaseReference {
   isActive: boolean;
   balance?: number;
   
-  // جديد - المرحلة 2
   expenseNature?: 'direct' | 'administrative';
   analyticalConfig?: AccountAnalyticalConfig;
 }
@@ -57,6 +55,13 @@ export interface JournalEntry extends BaseReference {
 export type VoucherType = 'receipt' | 'payment';
 export type PaymentMethod = 'cash' | 'bank' | 'transfer';
 
+export interface VoucherDistribution {
+  projectId?: string;
+  costCenterId?: string;
+  profitCenterId?: string;
+  amount: number;
+}
+
 export interface Voucher extends BaseReference {
   id: string;
   voucherNumber: string;
@@ -72,5 +77,6 @@ export interface Voucher extends BaseReference {
   projectId?: string;
   costCenterId?: string;
   profitCenterId?: string;
+  distributions?: VoucherDistribution[]; // جديد - المرحلة 5
   createdBy: string;
 }

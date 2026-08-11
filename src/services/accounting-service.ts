@@ -20,7 +20,8 @@ import {
   JournalEntry, 
   Voucher, 
   JournalEntryLine,
-  AccountAnalyticalConfig
+  AccountAnalyticalConfig,
+  VoucherDistribution
 } from '@/types/accounting';
 import { CostCenter, ProfitCenter } from '@/types/cost-profit-centers';
 import { nextSequential } from '@/lib/counters';
@@ -87,9 +88,7 @@ export class AccountingService {
       throw new Error('القيد غير متوازن: يجب أن يتساوى المدين مع الدائن.');
     }
 
-    // --- المرحلة 3: محرك التحقق التحليلي ---
     if (data.lines) {
-      // 1. جلب البيانات المرجعية للتحقق
       const accountsSnap = await getDocs(collection(this.db, paths.accounts(this.companyId)));
       const costCentersSnap = await getDocs(collection(this.db, paths.costCenters(this.companyId)));
       const profitCentersSnap = await getDocs(collection(this.db, paths.profitCenters(this.companyId)));
@@ -98,7 +97,6 @@ export class AccountingService {
       const allCostCenters = costCentersSnap.docs.map(d => ({ id: d.id, ...d.data() } as CostCenter));
       const allProfitCenters = profitCentersSnap.docs.map(d => ({ id: d.id, ...d.data() } as ProfitCenter));
 
-      // 2. فحص كل سطر
       for (let i = 0; i < data.lines.length; i++) {
         const line = data.lines[i];
         const account = allAccounts.find(a => a.id === line.accountId);
@@ -110,7 +108,6 @@ export class AccountingService {
         }
       }
     }
-    // ----------------------------------------
 
     const ref = doc(collection(this.db, paths.journalEntries(this.companyId)));
     const entryNumber = await nextSequential(this.db, this.companyId, 'journal_entry', 'JV-', 5);
@@ -140,28 +137,66 @@ export class AccountingService {
     const entryNumber = await nextSequential(this.db, this.companyId, 'journal_entry', 'JV-', 5);
 
     const lines: JournalEntryLine[] = [];
-    if (data.type === 'receipt') {
-      lines.push({ accountId: data.cashAccountId!, accountName: 'حساب النقدية', debit: data.amount!, credit: 0 });
-      lines.push({ 
-        accountId: data.accountId!, 
-        accountName: 'حساب الطرف الآخر', 
-        debit: 0, 
-        credit: data.amount!, 
-        projectId: data.projectId,
-        costCenterId: data.costCenterId,
-        profitCenterId: data.profitCenterId
-      });
+    
+    if (data.distributions && data.distributions.length > 0) {
+      // التحقق من توازن التوزيع
+      const distSum = data.distributions.reduce((acc, d) => acc + d.amount, 0);
+      if (Math.abs(distSum - (data.amount || 0)) > 0.001) {
+        throw new Error('فشل التوزيع: مجموع الحصص الموزعة لا يساوي إجمالي مبلغ السند.');
+      }
+
+      if (data.type === 'receipt') {
+        lines.push({ accountId: data.cashAccountId!, accountName: 'حساب النقدية', debit: data.amount!, credit: 0 });
+        data.distributions.forEach(d => {
+          lines.push({ 
+            accountId: data.accountId!, 
+            accountName: 'حساب الطرف الآخر (موزع)', 
+            debit: 0, 
+            credit: d.amount, 
+            projectId: d.projectId,
+            costCenterId: d.costCenterId,
+            profitCenterId: d.profitCenterId
+          });
+        });
+      } else {
+        data.distributions.forEach(d => {
+          lines.push({ 
+            accountId: data.accountId!, 
+            accountName: 'حساب الطرف الآخر (موزع)', 
+            debit: d.amount, 
+            credit: 0, 
+            projectId: d.projectId,
+            costCenterId: d.costCenterId,
+            profitCenterId: d.profitCenterId
+          });
+        });
+        lines.push({ accountId: data.cashAccountId!, accountName: 'حساب النقدية', debit: 0, credit: data.amount! });
+      }
     } else {
-      lines.push({ 
-        accountId: data.accountId!, 
-        accountName: 'حساب الطرف الآخر', 
-        debit: data.amount!, 
-        credit: 0, 
-        projectId: data.projectId,
-        costCenterId: data.costCenterId,
-        profitCenterId: data.profitCenterId
-      });
-      lines.push({ accountId: data.cashAccountId!, accountName: 'حساب النقدية', debit: 0, credit: data.amount! });
+      // توزيع افتراضي لسطر واحد
+      if (data.type === 'receipt') {
+        lines.push({ accountId: data.cashAccountId!, accountName: 'حساب النقدية', debit: data.amount!, credit: 0 });
+        lines.push({ 
+          accountId: data.accountId!, 
+          accountName: 'حساب الطرف الآخر', 
+          debit: 0, 
+          credit: data.amount!, 
+          projectId: data.projectId,
+          costCenterId: data.costCenterId,
+          profitCenterId: data.profitCenterId
+        });
+      } else {
+        lines.push({ 
+          accountId: data.accountId!, 
+          accountName: 'حساب الطرف الآخر', 
+          debit: data.amount!, 
+          credit: 0, 
+          projectId: data.projectId,
+          costCenterId: data.costCenterId,
+          profitCenterId: data.profitCenterId
+        });
+        lines.push({ accountId: data.cashAccountId!, accountName: 'حساب النقدية', debit: 0, credit: data.amount! });
+      }
     }
 
     const voucherData = {

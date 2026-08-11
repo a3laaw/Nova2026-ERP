@@ -9,17 +9,16 @@ import {
   Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend
 } from 'recharts';
 import { 
-  TrendingUp, TrendingDown, Target, 
-  Calculator, Loader2, ArrowUpRight, 
-  Sparkles, ShieldCheck, Activity,
-  Filter, Printer, LayoutGrid, FileText,
-  Landmark, Receipt, PieChart as PieChartIcon
+  Calculator, Loader2, Printer, LayoutGrid, DatabaseZap, Activity,
+  TrendingUp, Wallet, Receipt, Briefcase, FileText, Target
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, getDocs } from 'firebase/firestore';
+import { collection, query, getDocs } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
+import { JournalEntry, Account } from '@/types/accounting';
+import { CostCenter, ProfitCenter } from '@/types/cost-profit-centers';
 import { cn } from '@/lib/utils';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
 
@@ -30,132 +29,169 @@ export default function FinancialReportsPage() {
   const companyId = globalUser?.companyId;
 
   const [loading, setLoading] = useState(true);
-  const [profitabilityData, setProfitabilityData] = useState<any[]>([]);
+  const [reportData, setReportData] = useState<{
+    costCenters: any[],
+    profitCenters: any[],
+    projects: any[]
+  }>({ costCenters: [], profitCenters: [], projects: [] });
 
   useEffect(() => {
-    async function loadData() {
+    async function loadReport() {
       if (!db || !companyId) return;
       
-      // محاكاة حساب الربحية من مراكز التكلفة
-      // في النسخة الكاملة يتم جلبها من الـ AnalyticsService
-      const projectsSnap = await getDocs(query(collection(db, paths.transactions(companyId))));
-      const data = projectsSnap.docs.map(doc => {
-         const p = doc.data();
-         const revenue = Math.floor(Math.random() * 50000) + 10000;
-         const costs = Math.floor(revenue * 0.7);
-         return {
-            name: p.subServiceName,
-            revenue,
-            costs,
-            profit: revenue - costs,
-            margin: Math.round(((revenue - costs) / revenue) * 100)
-         };
-      });
-      setProfitabilityData(data);
-      setLoading(false);
-    }
-    loadData();
-  }, [db, companyId]);
+      try {
+        // 1. جلب كافة البيانات الأساسية
+        const [journalsSnap, accountsSnap, costSnap, profitSnap, projectsSnap] = await Promise.all([
+          getDocs(collection(db, paths.journalEntries(companyId))),
+          getDocs(collection(db, paths.accounts(companyId))),
+          getDocs(collection(db, paths.costCenters(companyId))),
+          getDocs(collection(db, paths.profitCenters(companyId))),
+          getDocs(collection(db, paths.transactions(companyId)))
+        ]);
 
-  const totals = useMemo(() => {
-    return {
-       revenue: profitabilityData.reduce((sum, p) => sum + p.revenue, 0),
-       costs: profitabilityData.reduce((sum, p) => sum + p.costs, 0),
-       profit: profitabilityData.reduce((sum, p) => sum + p.profit, 0)
-    };
-  }, [profitabilityData]);
+        const allLines = journalsSnap.docs.flatMap(d => (d.data() as JournalEntry).lines || []);
+        
+        // 2. معالجة تقرير مراكز التكلفة
+        const ccReport = costSnap.docs.map(d => {
+           const center = { id: d.id, ...d.data() } as CostCenter;
+           const spent = allLines
+             .filter(l => l.costCenterId === center.id)
+             .reduce((acc, l) => acc + (l.debit || 0) - (l.credit || 0), 0);
+           return { ...center, amount: spent };
+        }).filter(c => c.amount !== 0);
+
+        // 3. معالجة تقرير مراكز الربحية
+        const pcReport = profitSnap.docs.map(d => {
+           const center = { id: d.id, ...d.data() } as ProfitCenter;
+           const revenue = allLines
+             .filter(l => l.profitCenterId === center.id)
+             .reduce((acc, l) => acc + (l.credit || 0) - (l.debit || 0), 0);
+           return { ...center, amount: revenue };
+        }).filter(c => c.amount !== 0);
+
+        // 4. معالجة تقرير ربحية المشاريع
+        const projectReport = projectsSnap.docs.map(d => {
+           const proj = { id: d.id, ...(d.data() as any) };
+           const revenue = allLines
+             .filter(l => l.projectId === proj.id && l.profitCenterId)
+             .reduce((acc, l) => acc + (l.credit || 0) - (l.debit || 0), 0);
+           const costs = allLines
+             .filter(l => l.projectId === proj.id && l.costCenterId)
+             .reduce((acc, l) => acc + (l.debit || 0) - (l.credit || 0), 0);
+           return {
+              name: proj.subServiceName || '---',
+              revenue,
+              costs,
+              profit: revenue - costs,
+              margin: revenue > 0 ? Math.round(((revenue - costs) / revenue) * 100) : 0
+           };
+        }).filter(p => p.revenue > 0 || p.costs > 0);
+
+        setReportData({ costCenters: ccReport, profitCenters: pcReport, projects: projectReport });
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadReport();
+  }, [db, companyId]);
 
   if (loading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700 pb-20" dir={dir}>
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-slate-100 pb-6 text-start">
+    <div className="space-y-8 animate-in fade-in pb-20" dir={dir}>
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-6 text-start">
         <div className="text-start space-y-1">
            <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit">
-              <Calculator className="h-3 w-3" /> {isRtl ? 'التقارير المالية والربحية' : 'Financial & Profitability Reports'}
+              <TrendingUp className="h-3 w-3" /> {isRtl ? 'التحليل المالي السيادي' : 'Sovereign Financial Analysis'}
            </div>
-           <h1 className="text-3xl font-black font-headline text-slate-900">{isRtl ? 'رادار مراكز التكلفة والنتائج' : 'Cost Center Performance Radar'}</h1>
+           <h1 className="text-3xl font-black font-headline text-slate-900">{isRtl ? 'تقارير مراكز التكلفة والربحية' : 'Cost & Profit Analytics'}</h1>
         </div>
         <Button variant="outline" onClick={() => window.print()} className="rounded-xl border-2 h-12 px-6 font-black gap-2 bg-white shadow-sm">
            <Printer className="h-4 w-4" /> {t('common.print')}
         </Button>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-         <Card className="border-0 shadow-lg rounded-[2rem] p-8 bg-white border-b-8 border-blue-500">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي الإيرادات' : 'Total Revenue'}</p>
-            <h3 className="text-3xl font-black text-blue-600">{totals.revenue.toLocaleString()} <span className="text-xs">KWD</span></h3>
-         </Card>
-         <Card className="border-0 shadow-lg rounded-[2rem] p-8 bg-white border-b-8 border-rose-500">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي التكاليف' : 'Total Costs'}</p>
-            <h3 className="text-3xl font-black text-rose-600">{totals.costs.toLocaleString()} <span className="text-xs">KWD</span></h3>
-         </Card>
-         <Card className="border-0 shadow-lg rounded-[2rem] p-8 bg-white border-b-8 border-emerald-500">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'صافي الربح التشغيلي' : 'Net Operating Profit'}</p>
-            <h3 className="text-3xl font-black text-emerald-600">{totals.profit.toLocaleString()} <span className="text-xs">KWD</span></h3>
-         </Card>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-         <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-            <CardHeader className="bg-slate-50/50 border-b p-8 text-start">
-               <CardTitle className="text-lg font-black flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-primary" />
-                  {isRtl ? 'تحليل ربحية مراكز التكلفة' : 'Cost Center Profitability'}
-               </CardTitle>
-            </CardHeader>
-            <CardContent className="p-10">
-               <div className="h-[350px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={profitabilityData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 900 }} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 900 }} />
-                      <Tooltip 
-                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 50px rgba(0,0,0,0.1)', fontSize: '12px' }}
-                      />
-                      <Bar dataKey="revenue" fill="#2563eb" radius={[6, 6, 0, 0]} barSize={25} />
-                      <Bar dataKey="profit" fill="#10b981" radius={[6, 6, 0, 0]} barSize={25} />
-                    </BarChart>
-                  </ResponsiveContainer>
+         {/* 1. تقرير ربحية المشاريع */}
+         <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+            <CardHeader className="bg-slate-900 p-8 text-white flex flex-row items-center justify-between">
+               <div>
+                  <CardTitle className="text-xl font-black font-headline flex items-center gap-3">
+                     <Target className="h-6 w-6 text-primary" /> {isRtl ? 'ربحية المشاريع' : 'Project Profitability'}
+                  </CardTitle>
                </div>
-            </CardContent>
-         </Card>
-
-         <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-            <CardHeader className="bg-slate-50/50 border-b p-8 text-start">
-               <CardTitle className="text-lg font-black flex items-center gap-2">
-                  <LayoutGrid className="h-5 w-5 text-primary" />
-                  {isRtl ? 'تفاصيل مراكز التكلفة' : 'Cost Center Details'}
-               </CardTitle>
+               <Badge className="bg-primary text-white border-0 font-black">ROI ACTIVE</Badge>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
                <table className="w-full text-start">
-                  <thead className="bg-muted/30">
+                  <thead className="bg-slate-50 border-b">
                      <tr className="font-black text-slate-500 uppercase text-[10px] tracking-widest">
-                        <th className="p-6 ps-10">{isRtl ? 'مركز التكلفة (المشروع)' : 'Cost Center'}</th>
-                        <th className="p-6 text-end">{isRtl ? 'الإيراد' : 'Revenue'}</th>
-                        <th className="p-6 text-end">{isRtl ? 'المصروف' : 'Expense'}</th>
-                        <th className="p-6 text-end pe-10">{isRtl ? 'هامش الربح' : 'Margin'}</th>
+                        <th className="p-6 ps-8">{isRtl ? 'المشروع' : 'Project'}</th>
+                        <th className="p-6 text-end">{isRtl ? 'إيرادات' : 'Revenue'}</th>
+                        <th className="p-6 text-end">{isRtl ? 'مصروفات' : 'Costs'}</th>
+                        <th className="p-6 text-end pe-8">{isRtl ? 'الربح' : 'Net'}</th>
                      </tr>
                   </thead>
-                  <tbody className="divide-y">
-                     {profitabilityData.map((p, i) => (
+                  <tbody className="divide-y divide-slate-100">
+                     {reportData.projects.map((p, i) => (
                         <tr key={i} className="hover:bg-slate-50 transition-colors">
-                           <td className="p-6 ps-10 font-black text-slate-800 text-sm">{p.name}</td>
-                           <td className="p-6 text-end font-mono font-bold text-blue-600">{p.revenue.toLocaleString()}</td>
-                           <td className="p-6 text-end font-mono font-bold text-rose-500">{p.costs.toLocaleString()}</td>
-                           <td className="p-6 text-end pe-10">
-                              <Badge className={cn("font-black px-3", p.margin > 20 ? "bg-emerald-500" : "bg-orange-500")}>
-                                 {p.margin}%
-                              </Badge>
+                           <td className="p-6 ps-8">
+                              <p className="font-black text-slate-800 text-sm">{p.name}</p>
+                              <Badge variant="outline" className="text-[8px] font-black mt-1">{p.margin}% MARGIN</Badge>
                            </td>
+                           <td className="p-6 text-end font-mono font-bold text-emerald-600">{p.revenue.toLocaleString()}</td>
+                           <td className="p-6 text-end font-mono font-bold text-rose-500">{p.costs.toLocaleString()}</td>
+                           <td className="p-6 text-end pe-8 font-mono font-black text-slate-900">{p.profit.toLocaleString()}</td>
                         </tr>
                      ))}
                   </tbody>
                </table>
             </CardContent>
          </Card>
+
+         <div className="space-y-8">
+            {/* 2. تقرير مراكز التكلفة */}
+            <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/5">
+               <CardHeader className="bg-rose-50/50 p-6 border-b text-start">
+                  <CardTitle className="text-sm font-black flex items-center gap-2 text-rose-900">
+                     <LayoutGrid className="h-4 w-4" /> {isRtl ? 'توزيع المصاريف حسب مركز التكلفة' : 'Costs by Center'}
+                  </CardTitle>
+               </CardHeader>
+               <CardContent className="p-0">
+                  <table className="w-full text-start text-xs">
+                     <tbody className="divide-y">
+                        {reportData.costCenters.map((cc, i) => (
+                           <tr key={i} className="hover:bg-slate-50">
+                              <td className="p-4 ps-8 font-bold text-slate-700">{cc.name}</td>
+                              <td className="p-4 text-end pe-8 font-mono font-black text-rose-600">{cc.amount.toLocaleString()} <span className="text-[8px] opacity-40">KWD</span></td>
+                           </tr>
+                        ))}
+                     </tbody>
+                  </table>
+               </CardContent>
+            </Card>
+
+            {/* 3. تقرير مراكز الربحية */}
+            <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/5">
+               <CardHeader className="bg-emerald-50/50 p-6 border-b text-start">
+                  <CardTitle className="text-sm font-black flex items-center gap-2 text-emerald-900">
+                     <DatabaseZap className="h-4 w-4" /> {isRtl ? 'تحليل الإيرادات حسب مركز الربحية' : 'Revenue by Profit Center'}
+                  </CardTitle>
+               </CardHeader>
+               <CardContent className="p-0">
+                  <table className="w-full text-start text-xs">
+                     <tbody className="divide-y">
+                        {reportData.profitCenters.map((pc, i) => (
+                           <tr key={i} className="hover:bg-slate-50">
+                              <td className="p-4 ps-8 font-bold text-slate-700">{pc.name}</td>
+                              <td className="p-4 text-end pe-8 font-mono font-black text-emerald-600">{pc.amount.toLocaleString()} <span className="text-[8px] opacity-40">KWD</span></td>
+                           </tr>
+                        ))}
+                     </tbody>
+                  </table>
+               </CardContent>
+            </Card>
+         </div>
       </div>
     </div>
   );
