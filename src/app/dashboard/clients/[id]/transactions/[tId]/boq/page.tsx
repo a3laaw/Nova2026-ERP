@@ -15,7 +15,8 @@ import {
   CheckCircle2, Sparkles, FileSearch, 
   LayoutGrid, X, Clock, FilePlus,
   History, TrendingUp, DollarSign,
-  HardHat, UserCheck, Link as LinkIcon
+  HardHat, UserCheck, Link as LinkIcon,
+  ShieldCheck
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
@@ -272,4 +273,3 @@ export default function TransactionBOQProgressPage() {
     </div>
   );
 }
-
