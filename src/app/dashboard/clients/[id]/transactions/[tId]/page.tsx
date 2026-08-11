@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useMemo, useState, useEffect, Suspense } from 'react';
+import { useMemo, useState, useEffect, Suspense, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import {
   Hash, Target, Calculator, LayoutGrid, Camera, Folder, FilterX
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { collection, query, orderBy, where, doc, serverTimestamp, addDoc, updateDoc, getDoc } from 'firebase/firestore';
+import { collection, query, orderBy, where, doc, serverTimestamp, addDoc, updateDoc, getDocs, limit } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -63,7 +63,7 @@ function TransactionDetailsContent() {
   const [selectedStageName, setSelectedStageName] = useState<string>("");
   const [selectedTechStageId, setSelectedTechStageId] = useState<string | null>(null);
 
-  // نظام تسجيل الإنجاز السياقي الأصلي
+  // نظام تسجيل الإنجاز السياقي
   const [isLogOpen, setIsLogOpen] = useState(false);
   const [activeStageForLog, setActiveStageForLog] = useState<StageInstance | null>(null);
   const [logForm, setLogForm] = useState({
@@ -106,6 +106,15 @@ function TransactionDetailsContent() {
   const boqItemsQuery = useMemo(() => (companyId && db && activeBoq?.id) ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
   const { data: boqItems } = useCollection<BOQItem>(boqItemsQuery);
 
+  const allTemplatesQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqTemplates(companyId))) : null, [db, companyId]);
+  const { data: allTemplates } = useCollection<BOQTemplate>(allTemplatesQuery);
+
+  // إصلاح: تعريف templates لإنهاء الـ ReferenceError
+  const templates = useMemo(() => {
+    if (!allTemplates || !transaction) return [];
+    return allTemplates.filter(t => t.subServiceId === transaction.subServiceId);
+  }, [allTemplates, transaction]);
+
   const isDesignProject = useMemo(() => {
      return transaction?.activityTypeName?.includes('تصميم') || 
             transaction?.activityTypeName?.includes('Architectural') || 
@@ -123,7 +132,6 @@ function TransactionDetailsContent() {
   const transactionService = useMemo(() => (db && companyId) ? new TransactionService(db, companyId, permissions) : null, [db, companyId, permissions]);
   const boqExecService = useMemo(() => (db && companyId) ? new BOQExecutionService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
-  // منطق الفلترة المتقدم للقوائم المنسدلة بناءً على سياق المرحلة النشطة
   const availableSections = useMemo(() => {
     if (!activeStageForLog || !boqItems) return [];
     const sections = new Map<string, string>();
@@ -171,7 +179,6 @@ function TransactionDetailsContent() {
   const handleSaveLog = async () => {
     if (!boqExecService || !activeStageForLog || !logForm.itemId || !logForm.quantity) return;
     
-    // حارس الكمية الصارم (VO Guard)
     const item = boqItems?.find(i => i.id === logForm.itemId);
     if (item) {
        const planned = item.plannedQuantity || 0;
@@ -257,6 +264,30 @@ function TransactionDetailsContent() {
      return { planned, executed, pct: Math.min(100, Math.round((executed / Math.max(1, planned)) * 100)) };
   };
 
+  // إصلاح: تعريف handleCreateBOQ
+  const handleCreateBOQ = async () => {
+    if (!db || !companyId || !user || !selectedTemplateId || !transaction) return;
+    setLoadingAction('creating_boq');
+    try {
+      const docService = new DocumentService(db, companyId, permissions);
+      const template = templates?.find(t => t.id === selectedTemplateId);
+      await docService.instantiateBoqFromTemplate(selectedTemplateId, { 
+        transactionId, 
+        clientId, 
+        clientName: transaction.clientName, 
+        activityTypeId: transaction.activityTypeId, 
+        serviceId: transaction.serviceId, 
+        subServiceId: transaction.subServiceId, 
+        name: template?.name || "" 
+      }, user.uid, currentUserName);
+      toast({ title: t('common.saved') });
+      setIsBoqInitOpen(false);
+    } catch (e: any) { 
+      toast({ variant: "destructive", title: tSafe('common.error', 'خطأ', 'Error'), description: e.message }); 
+    }
+    finally { setLoadingAction(null); }
+  };
+
   if (transLoading || stagesLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
 
   return (
@@ -288,7 +319,7 @@ function TransactionDetailsContent() {
            ) : (
              <Button 
                disabled={!hasApprovedContract}
-               onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} 
+               onClick={() => setIsBoqInitOpen(true)} 
                variant="outline" 
                size="sm" 
                className="h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border-slate-200 shadow-sm"
@@ -399,7 +430,6 @@ function TransactionDetailsContent() {
                                                    variant="outline"
                                                    size="sm"
                                                    onClick={() => { 
-                                                      // تسجيل تعديل فني للمرحلة الجارية
                                                       toast({ title: tSafe('inline.technical.revision', 'تسجيل تعديل فني', 'Record Revision') });
                                                    }}
                                                    className="h-8 px-3 rounded-lg text-[10px] font-black border-2 gap-2"
@@ -495,7 +525,6 @@ function TransactionDetailsContent() {
           </div>
       </div>
 
-      {/* نافذة تسجيل الإنجاز السياقية الأصلية */}
       <Dialog open={isLogOpen} onOpenChange={setIsLogOpen}>
          <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden bg-white border-0 shadow-3xl max-w-xl text-start" dir={dir}>
             <div className="bg-primary p-8 text-white text-start">
@@ -589,7 +618,7 @@ function TransactionDetailsContent() {
                      {(templates || []).map((t_item: any) => <SelectItem key={t_item.id} value={t_item.id!} className="font-bold py-4">{t_item.name}</SelectItem>)}
                   </SelectContent>
                </Select>
-               <Button onClick={() => {}} disabled={!selectedTemplateId || !!loadingAction} className="w-full h-14 rounded-2xl font-black text-sm shadow-xl shadow-primary/20 border-b-4 border-orange-700 mt-4 transition-all">
+               <Button onClick={handleCreateBOQ} disabled={!selectedTemplateId || !!loadingAction} className="w-full h-14 rounded-2xl font-black text-sm shadow-xl shadow-primary/20 border-b-4 border-orange-700 mt-4 transition-all">
                   {loadingAction === 'creating_boq' ? <Loader2 className="h-4 w-4 animate-spin" /> : tSafe('common.save', 'حفظ', 'Save')}
                </Button>
             </div>
