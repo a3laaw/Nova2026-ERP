@@ -16,7 +16,7 @@ import {
   Save, Loader2, ArrowRight, Camera, Users, Target,
   Plus, CheckCircle2, Trash2, Truck, LayoutGrid, Sparkles,
   Workflow, Clock, AlertTriangle, Hammer, PlusCircle,
-  ShieldAlert, Landmark
+  ShieldAlert, Landmark, HardHat
 } from "lucide-react";
 import { useFirestore, useCollection, useFirebaseApp } from '@/firebase';
 import { collection, query, where, getDocs, orderBy, doc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -32,10 +32,8 @@ import { BOQ, BOQItem } from '@/types/documents';
 import { usePermissions } from '@/hooks/use-permissions';
 import { BOQExecutionService } from '@/services/boq-execution-service';
 import { SmartDateInput } from '@/components/ui/smart-date-input';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-/**
- * نموذج تسجيل تقرير ميداني جديد بنظام "المرحلة النشطة"
- */
 function NewFieldVisitForm() {
   const { globalUser, user } = useAuthContext();
   const { lang, dir, t, tSafe } = useLanguage();
@@ -61,7 +59,6 @@ function NewFieldVisitForm() {
     { boqItemId: '', quantity: '', notes: '', photoUrls: [], isUploading: false }
   ]);
 
-  // استعلام المشاريع النشطة
   const transQuery = useMemo(() => 
     (companyId && db) ? query(collection(db, paths.transactions(companyId)), where('status', '!=', 'completed')) : null, [db, companyId]);
   const { data: allTransactions } = useCollection<Transaction>(transQuery);
@@ -84,7 +81,6 @@ function NewFieldVisitForm() {
 
   const clientProjects = useMemo(() => selectedClientId ? fieldProjects.filter(p => p.clientId === selectedClientId) : [], [fieldProjects, selectedClientId]);
 
-  // الحل الذكي: جلب كافة المراحل وفلترة "قيد التنفيذ" في الذاكرة لتجنب خطأ الـ Index
   useEffect(() => {
     async function fetchProjectContext() {
       if (!selectedProjectId || !db || !companyId) {
@@ -96,8 +92,6 @@ function NewFieldVisitForm() {
         const stagesPath = paths.transactionStages(companyId, selectedProjectId);
         const stagesSnap = await getDocs(query(collection(db, stagesPath), orderBy('order', 'asc')));
         const allStages = stagesSnap.docs.map(d => ({ id: d.id, ...d.data() } as StageInstance));
-        
-        // البحث عن أول مرحلة قيد التنفيذ
         const current = allStages.find(s => s.status === 'in-progress');
         setActiveStage(current || null);
       } finally {
@@ -124,6 +118,9 @@ function NewFieldVisitForm() {
 
   const groupsQuery = useMemo(() => companyId && db ? query(collection(db, paths.workGroups(companyId)), where('isActive', '==', true)) : null, [db, companyId]);
   const { data: workGroups } = useCollection<WorkGroup>(groupsQuery);
+
+  const inventoryQuery = useMemo(() => companyId && db ? query(collection(db, paths.equipment(companyId)), where('status', '==', 'available')) : null, [db, companyId]);
+  const { data: equipmentItems } = useCollection<any>(inventoryQuery);
 
   const handlePhotoUpload = async (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -157,40 +154,24 @@ function NewFieldVisitForm() {
   const handleApplyGroup = (groupId: string) => {
      const group = workGroups?.find(g => g.id === groupId);
      if (!group) return;
-
      const groupLabor = (group.memberIds || []).map(mid => {
         const emp = employees?.find(e => e.id === mid);
-        return {
-           trade: emp?.fullName || 'Worker',
-           count: 1,
-           hours: 8,
-           hourlyCostRef: (emp?.basicSalary || 0) / 26 / 8
-        };
+        return { trade: emp?.fullName || 'Worker', count: 1, hours: 8, hourlyCostRef: (emp?.basicSalary || 0) / 26 / 8 };
      });
-
      const supervisor = employees?.find(e => e.id === group.supervisorId);
      if (supervisor) {
-        groupLabor.unshift({
-           trade: supervisor.fullName,
-           count: 1,
-           hours: 8,
-           hourlyCostRef: (supervisor.basicSalary || 0) / 26 / 8
-        });
+        groupLabor.unshift({ trade: supervisor.fullName, count: 1, hours: 8, hourlyCostRef: (supervisor.basicSalary || 0) / 26 / 8 });
      }
-
      setLaborDetails([...laborDetails.filter(l => l.trade), ...groupLabor]);
-     toast({ title: t('construction.crewLoaded') });
   };
 
   const handleSave = async () => {
     if (!db || !companyId || !user || !selectedProjectId || !activeBoq || !activeStage) return;
-    
     const validRows = gridRows.filter(r => r.boqItemId && Number(r.quantity) > 0);
     if (validRows.length === 0) {
       toast({ variant: "destructive", title: tSafe('common.alert', 'بيانات ناقصة', 'Alert'), description: isRtl ? "يرجى اختيار بند عمل واحد على الأقل وإدخال كمية." : "Select at least one item and quantity." });
       return;
     }
-
     setLoading(true);
     try {
       const execService = new BOQExecutionService(db, companyId, permissions);
@@ -200,49 +181,30 @@ function NewFieldVisitForm() {
 
       for (const row of validRows) {
          await execService.recordBOQItemExecution(
-           activeBoq.id,
-           row.boqItemId,
-           activeStage.technicalStageId,
-           Number(row.quantity),
-           user.uid,
-           officialName,
-           row.notes || '',
-           activeStage.id!,
-           false,
-           '', 
+           activeBoq.id, row.boqItemId, activeStage.technicalStageId, Number(row.quantity),
+           user.uid, officialName, row.notes || '', activeStage.id!, false, '', 
            { laborDetails: laborDetails.filter(l => l.trade), equipmentUsed: equipmentUsed.filter(e => e.equipmentId) }
          );
       }
 
       await setDoc(visitRef, {
-        id: visitRef.id,
-        companyId,
-        transactionId: selectedProjectId,
-        transactionNumber: project?.transactionNumber || '',
-        clientId: selectedClientId,
-        clientName: project?.clientName || '',
-        activeStageId: activeStage.id,
-        activeStageName: activeStage.name,
-        visitDate,
-        items: gridRows.map(r => {
+        id: visitRef.id, companyId, transactionId: selectedProjectId, transactionNumber: project?.transactionNumber || '',
+        clientId: selectedClientId, clientName: project?.clientName || '',
+        activeStageId: activeStage.id, activeStageName: activeStage.name,
+        visitDate, items: gridRows.map(r => {
            const boqItem = allBoqItems?.find(i => i.id === r.boqItemId);
            return { ...r, itemName: boqItem?.referenceTitle || '', executionStatus: 'executed' };
         }),
         laborDetails: laborDetails.filter(l => l.trade),
         equipmentUsed: equipmentUsed.filter(e => e.equipmentId),
-        engineerId: globalUser?.employeeId || user.uid,
-        engineerName: officialName,
-        status: 'submitted',
-        createdAt: serverTimestamp(),
+        engineerId: globalUser?.employeeId || user.uid, engineerName: officialName,
+        status: 'submitted', createdAt: serverTimestamp(),
       });
-
       toast({ title: t('construction.visitCreated') });
       router.push('/dashboard/construction/field-visits');
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   return (
@@ -258,48 +220,35 @@ function NewFieldVisitForm() {
           </div>
         </div>
         <div className="flex gap-2">
-           <Button variant="outline" onClick={() => router.back()} className="rounded-xl h-11 px-6 font-bold bg-white border-2">
-             {t('common.cancel')}
-           </Button>
-           <Button onClick={handleSave} disabled={loading || !activeStage} className="h-11 px-10 rounded-xl bg-primary text-white font-black shadow-lg shadow-primary/20 gap-2 border-b-4 border-orange-700 hover:scale-[1.02] active:scale-[0.98] transition-all">
-              {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
-              {isRtl ? 'اعتماد وحفظ التقرير' : 'Commit Report'}
+           <Button variant="outline" onClick={() => router.back()} className="rounded-xl h-11 px-6 font-bold bg-white border-2">{t('common.cancel')}</Button>
+           <Button onClick={handleSave} disabled={loading || !activeStage} className="h-11 px-10 rounded-xl bg-primary text-white font-black shadow-lg shadow-primary/20 gap-2 border-b-4 border-orange-700 hover:scale-[1.02] transition-all">
+              {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />} {isRtl ? 'اعتماد وحفظ التقرير' : 'Commit Report'}
            </Button>
         </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
          <div className="lg:col-span-4 space-y-6">
-            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-               <CardHeader className="bg-slate-50/50 p-6 border-b text-start">
-                  <CardTitle className="text-xs font-black uppercase text-slate-400 flex items-center gap-2 tracking-widest">
-                     <Target className="h-4 w-4 text-primary" /> {t('construction.context')}
-                  </CardTitle>
-               </CardHeader>
+            <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/5">
+               <CardHeader className="bg-slate-50/50 p-6 border-b text-start"><CardTitle className="text-xs font-black uppercase text-slate-400 flex items-center gap-2 tracking-widest"><Target className="h-4 w-4 text-primary" /> {t('construction.context')}</CardTitle></CardHeader>
                <CardContent className="p-8 space-y-6 text-start">
                   <div className="space-y-2">
                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.clients')}</Label>
                      <Select value={selectedClientId} onValueChange={v => { setSelectedClientId(v); setSelectedProjectId(''); }}>
-                        <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white shadow-sm"><SelectValue placeholder="..." /></SelectTrigger>
-                        <SelectContent className="rounded-xl border-0 shadow-2xl z-[150]">{contractedClients.map(c => <SelectItem key={c.id} value={c.id} className="font-bold py-3">{c.name}</SelectItem>)}</SelectContent>
+                        <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
+                        <SelectContent className="rounded-xl z-[150]">{contractedClients.map(c => <SelectItem key={c.id} value={c.id} className="font-bold py-3">{c.name}</SelectItem>)}</SelectContent>
                      </Select>
                   </div>
                   <div className="space-y-2">
                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.projects')}</Label>
                      <Select disabled={!selectedClientId} value={selectedProjectId} onValueChange={setSelectedProjectId}>
-                        <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white shadow-sm"><SelectValue placeholder="..." /></SelectTrigger>
-                        <SelectContent className="rounded-xl border-0 shadow-2xl z-[150]">{clientProjects.map(p => <SelectItem key={p.id} value={p.id} className="font-bold py-3">{p.subServiceName}</SelectItem>)}</SelectContent>
+                        <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
+                        <SelectContent className="rounded-xl z-[150]">{clientProjects.map(p => <SelectItem key={p.id} value={p.id} className="font-bold py-3">{p.subServiceName}</SelectItem>)}</SelectContent>
                      </Select>
                   </div>
-
-                  {loadingStage ? (
-                     <div className="py-4 flex items-center justify-center animate-pulse"><Loader2 className="h-5 w-5 animate-spin text-primary/30" /></div>
-                  ) : activeStage ? (
+                  {loadingStage ? (<div className="py-4 flex items-center justify-center animate-pulse"><Loader2 className="h-5 w-5 animate-spin text-primary/30" /></div>) : activeStage ? (
                     <div className="p-6 bg-primary/5 rounded-3xl border-2 border-dashed border-primary/20 space-y-3 animate-in zoom-in-95">
-                       <div className="flex items-center gap-2 text-primary">
-                          <Workflow className="h-5 w-5" />
-                          <h4 className="font-black text-sm uppercase">{isRtl ? 'المرحلة النشطة حالياً' : 'Active Stage'}</h4>
-                       </div>
+                       <div className="flex items-center gap-2 text-primary"><Workflow className="h-5 w-5" /><h4 className="font-black text-sm uppercase">{isRtl ? 'المرحلة النشطة حالياً' : 'Active Stage'}</h4></div>
                        <p className="text-xl font-black text-slate-900">{activeStage.name}</p>
                        <Badge className="bg-primary text-white border-0 font-black text-[9px] px-3 h-5">IN PROGRESS</Badge>
                     </div>
@@ -309,54 +258,52 @@ function NewFieldVisitForm() {
                        <p className="text-xs font-black text-rose-700">{isRtl ? 'لا توجد مرحلة نشطة لهذا المشروع حالياً.' : 'No active stage found.'}</p>
                     </div>
                   )}
-
-                  <div className="space-y-2 pt-4 border-t">
-                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.date')}</Label>
-                     <SmartDateInput value={visitDate} onChange={setVisitDate} />
-                  </div>
+                  <div className="space-y-2 pt-4 border-t"><Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.date')}</Label><SmartDateInput value={visitDate} onChange={setVisitDate} /></div>
                </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/5">
-               <CardHeader className="bg-slate-50/50 p-6 border-b text-start">
-                  <CardTitle className="text-xs font-black uppercase text-slate-400 flex items-center gap-2 tracking-widest">
-                     <Users className="h-4 w-4 text-primary" /> {isRtl ? 'الموارد البشرية في الموقع' : 'Site Labor'}
-                  </CardTitle>
-               </CardHeader>
-               <CardContent className="p-6 space-y-6 text-start">
-                  <div className="space-y-3 p-4 bg-primary/5 rounded-2xl border-2 border-white shadow-inner mb-4">
-                     <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{t('common.loadFromGroup')}</Label>
+            {/* Resources Section (Labor & Equipment) */}
+            <div className="space-y-6">
+               <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/5">
+                  <CardHeader className="bg-slate-50/50 p-6 border-b text-start"><CardTitle className="text-xs font-black uppercase text-slate-400 flex items-center gap-2 tracking-widest"><Users className="h-4 w-4 text-primary" /> {isRtl ? 'الموارد البشرية' : 'Human Resources'}</CardTitle></CardHeader>
+                  <CardContent className="p-6 space-y-4">
                      <Select onValueChange={handleApplyGroup}>
-                        <SelectTrigger className="h-10 rounded-xl border-2 bg-white font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                        <SelectContent className="rounded-xl">{workGroups?.map(g => <SelectItem key={g.id} value={g.id!} className="font-bold py-2">{g.name}</SelectItem>)}</SelectContent>
+                        <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs"><SelectValue placeholder={t('common.loadFromGroup')} /></SelectTrigger>
+                        <SelectContent className="rounded-xl z-[160]">{workGroups?.map(g => <SelectItem key={g.id} value={g.id!} className="font-bold text-xs">{g.name}</SelectItem>)}</SelectContent>
                      </Select>
-                  </div>
+                     <div className="space-y-2">
+                        {laborDetails.map((l, i) => (
+                           <div key={i} className="flex gap-2 items-center group">
+                              <Select value={l.trade} onValueChange={v => { const emp = employees?.find(x => x.fullName === v); const nl = [...laborDetails]; nl[i].trade = v; nl[i].hourlyCostRef = (emp?.basicSalary || 0) / 26 / 8; setLaborDetails(nl); }}>
+                                 <SelectTrigger className="h-10 border-2 font-bold text-xs"><SelectValue placeholder="..." /></SelectTrigger>
+                                 <SelectContent className="rounded-xl z-[161]">{employees?.map(e => <SelectItem key={e.id} value={e.fullName} className="text-xs font-bold">{e.fullName}</SelectItem>)}</SelectContent>
+                              </Select>
+                              <Input type="number" value={l.count} onChange={e => { const nl = [...laborDetails]; nl[i].count = Number(e.target.value); setLaborDetails(nl); }} className="h-10 w-16 text-center font-black rounded-xl border-2" />
+                              <Button variant="ghost" size="icon" onClick={() => setLaborDetails(laborDetails.filter((_, idx) => idx !== i))} className="h-9 w-9 text-rose-300 hover:text-rose-600"><Trash2 className="h-4 w-4" /></Button>
+                           </div>
+                        ))}
+                        <Button variant="outline" onClick={() => setLaborDetails([...laborDetails, { trade: '', count: 1, hours: 8, hourlyCostRef: 0 }])} className="w-full h-10 rounded-xl border-dashed border-2 font-black text-[10px] gap-2"><Plus className="h-3 w-3" /> {isRtl ? 'إضافة عامل' : 'Add Labor'}</Button>
+                     </div>
+                  </CardContent>
+               </Card>
 
-                  <div className="space-y-3">
-                    {laborDetails.map((l, i) => (
-                      <div key={i} className="flex gap-2 items-end group animate-in slide-in-from-right-2">
-                         <div className="flex-1">
-                            <Select value={l.trade} onValueChange={v => {
-                               const emp = employees?.find(x => x.fullName === v);
-                               const nl = [...laborDetails];
-                               nl[i].trade = v;
-                               nl[i].hourlyCostRef = (emp?.basicSalary || 0) / 26 / 8;
-                               setLaborDetails(nl);
-                            }}>
-                               <SelectTrigger className="h-10 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
-                               <SelectContent className="rounded-xl">
-                                  {employees?.map(e => <SelectItem key={e.id} value={e.fullName} className="font-bold">{e.fullName}</SelectItem>)}
-                               </SelectContent>
-                            </Select>
-                         </div>
-                         <Input type="number" value={l.count} onChange={e => { const nl = [...laborDetails]; nl[i].count = Number(e.target.value); setLaborDetails(nl); }} className="h-10 w-16 text-center font-black rounded-xl border-2" />
-                         <Button variant="ghost" size="icon" onClick={() => setLaborDetails(laborDetails.filter((_, idx) => idx !== i))} className="h-10 w-10 text-rose-300 hover:text-rose-600 transition-colors"><Trash2 className="h-4 w-4" /></Button>
-                      </div>
-                    ))}
-                    <Button variant="outline" onClick={() => setLaborDetails([...laborDetails, { trade: '', count: 1, hours: 8, hourlyCostRef: 0 }])} className="w-full h-10 rounded-xl border-dashed border-2 font-black text-[10px] gap-2"><Plus className="h-3 w-3" /> {isRtl ? 'إضافة عامل' : 'Add Labor'}</Button>
-                  </div>
-               </CardContent>
-            </Card>
+               <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/5">
+                  <CardHeader className="bg-slate-50/50 p-6 border-b text-start"><CardTitle className="text-xs font-black uppercase text-slate-400 flex items-center gap-2 tracking-widest"><Truck className="h-4 w-4 text-primary" /> {isRtl ? 'المعدات والآليات' : 'Equipment'}</CardTitle></CardHeader>
+                  <CardContent className="p-6 space-y-4">
+                     {equipmentUsed.map((e, i) => (
+                        <div key={i} className="flex gap-2 items-center group">
+                           <Select value={e.equipmentId} onValueChange={v => { const equip = equipmentItems?.find((x:any) => x.id === v); const ne = [...equipmentUsed]; ne[i].equipmentId = v; ne[i].name = equip?.name || ''; ne[i].hourlyRateRef = equip?.hourlyRentalRate || equip?.hourlyDepreciationRate || 0; setEquipmentUsed(ne); }}>
+                              <SelectTrigger className="h-10 border-2 font-bold text-xs"><SelectValue placeholder="..." /></SelectTrigger>
+                              <SelectContent className="rounded-xl z-[161]">{equipmentItems?.map((x:any) => <SelectItem key={x.id} value={x.id!} className="text-xs font-bold">{x.name}</SelectItem>)}</SelectContent>
+                           </Select>
+                           <Input type="number" value={e.hoursUsed} onChange={v => { const ne = [...equipmentUsed]; ne[i].hoursUsed = Number(v.target.value); setEquipmentUsed(ne); }} className="h-10 w-16 text-center font-black rounded-xl border-2" />
+                           <Button variant="ghost" size="icon" onClick={() => setEquipmentUsed(equipmentUsed.filter((_, idx) => idx !== i))} className="h-9 w-9 text-rose-300 hover:text-rose-600"><Trash2 className="h-4 w-4" /></Button>
+                        </div>
+                     ))}
+                     <Button variant="outline" onClick={() => setEquipmentUsed([...equipmentUsed, { equipmentId: '', name: '', hoursUsed: 4, hourlyRateRef: 0 }])} className="w-full h-10 rounded-xl border-dashed border-2 font-black text-[10px] gap-2"><Plus className="h-3 w-3" /> {isRtl ? 'إضافة معدة' : 'Add Equipment'}</Button>
+                  </CardContent>
+               </Card>
+            </div>
          </div>
 
          <div className="lg:col-span-8 space-y-6">
@@ -391,21 +338,14 @@ function NewFieldVisitForm() {
                                          <div className="p-4 text-center text-[10px] font-bold text-slate-400 italic">لا توجد بنود مربوطة بهذه المرحلة.</div>
                                        ) : filteredBoqItems.map(i => (
                                           <SelectItem key={i.id} value={i.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">
-                                             <div className="flex flex-col text-start">
-                                                <span>{i.referenceTitle}</span>
-                                                <span className="text-[8px] text-slate-400 font-mono uppercase">#{i.referenceCode} • المتبقي: {(i.plannedQuantity || 0) - (i.executedQuantity || 0)}</span>
-                                             </div>
+                                             <div className="flex flex-col text-start"><span>{i.referenceTitle}</span><span className="text-[8px] text-slate-400 font-mono uppercase">#{i.referenceCode} • المتبقي: {(i.plannedQuantity || 0) - (i.executedQuantity || 0)}</span></div>
                                           </SelectItem>
                                        ))}
                                     </SelectContent>
                                  </Select>
                                  <Input value={row.notes} onChange={e => updateRow(idx, 'notes', e.target.value)} className="h-9 text-[10px] mt-2 border-transparent hover:border-slate-100 bg-slate-50/50 font-medium" placeholder={isRtl ? "ملاحظات فنية عن التنفيذ..." : "Technical notes..."} />
                               </TableCell>
-                              <TableCell className="py-5">
-                                 <div className="flex flex-col items-center gap-1">
-                                    <Input type="number" step="0.01" value={row.quantity} onChange={e => updateRow(idx, 'quantity', e.target.value)} className="h-12 w-24 text-center font-black text-xl rounded-xl border-2 bg-white text-primary" />
-                                 </div>
-                              </TableCell>
+                              <TableCell className="py-5"><Input type="number" step="0.01" value={row.quantity} onChange={e => updateRow(idx, 'quantity', e.target.value)} className="h-12 w-24 text-center font-black text-xl rounded-xl border-2 bg-white text-primary" /></TableCell>
                               <TableCell className="py-5 text-center">
                                  <div className="flex items-center justify-center gap-2">
                                     <label className="h-12 w-12 rounded-xl bg-slate-50 border-2 border-slate-200 flex items-center justify-center cursor-pointer hover:bg-white hover:border-primary/40 transition-all shadow-inner group-hover:scale-110">
@@ -415,19 +355,11 @@ function NewFieldVisitForm() {
                                     {row.photoUrls?.length > 0 && <Badge className="bg-emerald-500 text-white font-black h-6 w-6 p-0 flex items-center justify-center rounded-lg shadow-lg">{row.photoUrls.length}</Badge>}
                                  </div>
                               </TableCell>
-                              <TableCell className="pe-8 text-end">
-                                 <Button variant="ghost" size="icon" onClick={() => setGridRows(gridRows.filter((_, i) => i !== idx))} className="h-10 w-10 text-rose-200 hover:text-rose-600 transition-colors"><Trash2 className="h-5 w-5" /></Button>
-                              </TableCell>
+                              <TableCell className="pe-8 text-end"><Button variant="ghost" size="icon" onClick={() => setGridRows(gridRows.filter((_, i) => i !== idx))} className="h-10 w-10 text-rose-200 hover:text-rose-600"><Trash2 className="h-5 w-5" /></Button></TableCell>
                            </TableRow>
                         ))}
                      </TableBody>
                   </Table>
-                  {gridRows.length === 0 && (
-                    <div className="py-32 text-center flex flex-col items-center gap-4 opacity-30">
-                       <Hammer className="h-16 w-16 text-slate-200" />
-                       <p className="font-black text-slate-400">{isRtl ? 'لا يوجد بنود مسجلة في التقرير' : 'No items logged'}</p>
-                    </div>
-                  )}
                </CardContent>
             </Card>
 
@@ -436,17 +368,10 @@ function NewFieldVisitForm() {
                <CardContent className="p-10 flex flex-col md:flex-row items-center justify-between gap-8 relative z-10 text-start">
                   <div className="space-y-2">
                      <h3 className="text-2xl font-black font-headline text-primary">{isRtl ? 'تزامن التنفيذ المباشر' : 'Live Execution Sync'}</h3>
-                     <p className="text-sm font-bold text-slate-400 leading-relaxed max-w-md italic">
-                        {isRtl 
-                          ? 'عند اعتماد هذا التقرير، سيقوم النظام تلقائياً بتحديث كميات المقايسة، توثيق الإنجاز في التايملاين، وفحص استحقاق الدفعات المالية المرتبطة بهذه المرحلة.'
-                          : 'Upon commitment, the system will auto-update BOQ quantities, document the timeline, and trigger milestone payments associated with this stage.'}
-                     </p>
+                     <p className="text-sm font-bold text-slate-400 leading-relaxed max-w-md italic">{isRtl ? 'عند اعتماد هذا التقرير، سيقوم النظام تلقائياً بتحديث كميات المقايسة، توثيق الإنجاز في التايملاين، وفحص استحقاق الدفعات المالية المرتبطة بهذه المرحلة.' : 'Upon commitment, the system will auto-update BOQ quantities, document the timeline, and trigger milestone payments associated with this stage.'}</p>
                   </div>
                   <div className="h-24 w-[1.5px] bg-slate-100 hidden md:block" />
-                  <div className="text-center md:text-end space-y-1">
-                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'إجمالي البنود الموثقة' : 'Total Items'}</p>
-                     <h2 className="text-5xl font-black text-slate-900 font-mono">{gridRows.filter(r => r.boqItemId).length}</h2>
-                  </div>
+                  <div className="text-center md:text-end space-y-1"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{isRtl ? 'إجمالي البنود الموثقة' : 'Total Items'}</p><h2 className="text-5xl font-black text-slate-900 font-mono">{gridRows.filter(r => r.boqItemId).length}</h2></div>
                </CardContent>
             </Card>
          </div>
