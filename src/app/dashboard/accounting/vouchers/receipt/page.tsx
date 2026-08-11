@@ -1,22 +1,23 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
   Receipt, Plus, Loader2, Save, 
   ArrowRight, Landmark, Wallet,
   User, Calendar, FileText, Briefcase,
-  CheckCircle2, Sparkles, LayoutGrid, DatabaseZap
+  CheckCircle2, Sparkles, LayoutGrid, DatabaseZap, Gavel, Info
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, where } from 'firebase/firestore';
+import { collection, query, orderBy, where, doc, getDocs } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { Voucher, Account } from '@/types/accounting';
 import { CostCenter, ProfitCenter } from '@/types/cost-profit-centers';
 import { AccountingService } from '@/services/accounting-service';
+import { PaymentMilestoneService, MilestonePaymentStatus } from '@/services/payment-milestone-service';
 import { toast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,6 +25,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { cn } from '@/lib/utils';
+import { Transaction } from '@/types/transaction';
+import { Contract } from '@/types/documents';
 
 export default function ReceiptVouchersPage() {
   const { globalUser, user } = useAuthContext();
@@ -33,6 +36,9 @@ export default function ReceiptVouchersPage() {
 
   const [isAdding, setIsAdding] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [milestonesLoading, setMilestonesLoading] = useState(false);
+  const [milestonesStatus, setMilestonesStatus] = useState<MilestonePaymentStatus[]>([]);
+
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
     amount: 0,
@@ -40,12 +46,16 @@ export default function ReceiptVouchersPage() {
     paymentMethod: 'cash' as any,
     accountId: '',
     cashAccountId: '',
-    projectId: '',
+    projectId: '', // Used for Transaction lookup
+    transactionId: '',
+    contractId: '',
     costCenterId: '',
     profitCenterId: '',
-    notes: ''
+    notes: '',
+    appliedMilestoneName: ''
   });
 
+  // Queries
   const vouchersQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.vouchers(companyId)), where('type', '==', 'receipt'), orderBy('createdAt', 'desc')) : null, 
   [db, companyId]);
@@ -54,9 +64,13 @@ export default function ReceiptVouchersPage() {
     companyId && db ? query(collection(db, paths.accounts(companyId))) : null, 
   [db, companyId]);
 
-  const projectsQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.transactions(companyId)), where('status', '!=', 'completed')) : null, 
+  const clientsQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.clients(companyId))) : null, 
   [db, companyId]);
+
+  const projectsQuery = useMemo(() => 
+    companyId && db && form.personName ? query(collection(db, paths.transactions(companyId)), where('status', '!=', 'completed')) : null, 
+  [db, companyId, form.personName]);
 
   const costCentersQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.costCenters(companyId))) : null, 
@@ -68,20 +82,60 @@ export default function ReceiptVouchersPage() {
 
   const { data: vouchers, loading: vouchersLoading } = useCollection<Voucher>(vouchersQuery);
   const { data: accounts } = useCollection<Account>(accountsQuery);
-  const { data: projects } = useCollection<any>(projectsQuery);
+  const { data: clients } = useCollection<any>(clientsQuery);
+  const { data: allTransactions } = useCollection<Transaction>(projectsQuery);
   const { data: costCenters } = useCollection<CostCenter>(costCentersQuery);
   const { data: profitCenters } = useCollection<ProfitCenter>(profitCentersQuery);
 
+  const [contracts, setContracts] = useState<Contract[]>([]);
+
+  // Filtering accounts
   const cashAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.code.startsWith('101') || a.code.startsWith('102') || a.type === 'asset')), [accounts]);
-  const incomeAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && a.type === 'revenue' || a.type === 'liability'), [accounts]);
+  const incomeAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.type === 'revenue' || a.type === 'liability')), [accounts]);
 
-  const filteredCC = useMemo(() => {
-    return costCenters?.filter(cc => cc.isAdministrative || (form.projectId && cc.projectId === form.projectId));
-  }, [costCenters, form.projectId]);
+  // Logic: When transaction changes, fetch approved contracts
+  useEffect(() => {
+    if (db && companyId && form.transactionId) {
+      const q = query(
+        collection(db, paths.contracts(companyId)), 
+        where('transactionId', '==', form.transactionId),
+        where('status', 'in', ['approved', 'active', 'paid', 'signed'])
+      );
+      getDocs(q).then(snap => {
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Contract));
+        setContracts(list);
+        if (list.length === 1) {
+          setForm(prev => ({ ...prev, contractId: list[0].id }));
+        } else {
+          setForm(prev => ({ ...prev, contractId: '' }));
+        }
+      });
+    } else {
+      setContracts([]);
+    }
+  }, [db, companyId, form.transactionId]);
 
-  const filteredPC = useMemo(() => {
-    return profitCenters?.filter(pc => form.projectId && pc.projectId === form.projectId);
-  }, [profitCenters, form.projectId]);
+  // Logic: When contract and amount change, suggest description
+  useEffect(() => {
+    if (db && companyId && form.contractId && form.amount > 0) {
+      const service = new PaymentMilestoneService(db, companyId);
+      setMilestonesLoading(true);
+      service.getMilestonesStatus(form.contractId).then(status => {
+        setMilestonesStatus(status);
+        const { description, breakdown } = service.generateReceiptDescription(status, form.amount);
+        
+        // Join applied milestones for storage
+        const appliedNames = breakdown.map(b => b.milestoneName).join(', ');
+
+        setForm(prev => ({ 
+          ...prev, 
+          notes: description,
+          appliedMilestoneName: appliedNames
+        }));
+        setMilestonesLoading(false);
+      });
+    }
+  }, [db, companyId, form.contractId, form.amount]);
 
   const handleSave = async () => {
     if (!db || !companyId || !user) return;
@@ -93,10 +147,18 @@ export default function ReceiptVouchersPage() {
     setLoading(true);
     try {
       const service = new AccountingService(db, companyId);
+      // Pass the new fields to the service
       await service.createVoucher({ ...form, type: 'receipt' }, user.uid);
       toast({ title: t('common.saved') });
       setIsAdding(false);
-      setForm({ date: new Date().toISOString().split('T')[0], amount: 0, personName: '', paymentMethod: 'cash', accountId: '', cashAccountId: '', projectId: '', costCenterId: '', profitCenterId: '', notes: '' });
+      setForm({ 
+        date: new Date().toISOString().split('T')[0], 
+        amount: 0, personName: '', paymentMethod: 'cash', 
+        accountId: '', cashAccountId: '', projectId: '', 
+        transactionId: '', contractId: '',
+        costCenterId: '', profitCenterId: '', notes: '',
+        appliedMilestoneName: ''
+      });
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
@@ -109,13 +171,13 @@ export default function ReceiptVouchersPage() {
       <header className="flex justify-between items-center">
         <div className="text-start">
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-            <Receipt className="h-6 w-6 text-emerald-600" /> {isRtl ? 'سندات القبض' : 'Receipt Vouchers'}
+            <Receipt className="h-6 w-6 text-emerald-600" /> {tSafe('accounting.vouchers.receiptTitle', 'سندات القبض الذكية', 'Smart Receipt Vouchers')}
           </h1>
-          <p className="text-muted-foreground text-xs font-medium">{isRtl ? 'إدارة التحصيل المالي وربطه بمراكز التكلفة' : 'Manage revenue collection and link to cost centers'}</p>
+          <p className="text-muted-foreground text-xs font-medium">{tSafe('inline.receipt.desc', 'إدارة التحصيل المالي وربطه بالعقود والدفعات آلياً', 'Manage revenue collection and link to contracts automatically')}</p>
         </div>
         <Button onClick={() => setIsAdding(!isAdding)} size="sm" className="h-9 px-6 font-bold gap-2 bg-emerald-600 hover:bg-emerald-700">
            {isAdding ? <ArrowRight className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-           {isAdding ? t('common.back') : (isRtl ? 'إصدار سند قبض' : 'Issue Receipt')}
+           {isAdding ? t('common.back') : tSafe('inline.issue.receipt', 'إصدار سند قبض', 'Issue Receipt')}
         </Button>
       </header>
 
@@ -124,36 +186,91 @@ export default function ReceiptVouchersPage() {
            <Card className="lg:col-span-8 rounded-xl border-0 shadow-2xl bg-white overflow-hidden">
               <CardHeader className="bg-emerald-50 p-6 border-b text-start">
                  <CardTitle className="text-emerald-900 font-black flex items-center gap-3">
-                    <Sparkles className="h-5 w-5" /> {isRtl ? 'إصدار سند قبض جديد' : 'Issue New Receipt'}
+                    <Sparkles className="h-5 w-5" /> {tSafe('inline.issue.smart.receipt', 'إصدار سند قبض ذكي (Odoo Style)', 'Issue Smart Receipt')}
                  </CardTitle>
               </CardHeader>
-              <CardContent className="p-8 space-y-6 text-start bg-white">
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <CardContent className="p-8 space-y-8 text-start bg-white">
+                 
+                 {/* Step 1: Client & Transaction */}
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400">{t('common.date')}</Label>
-                       <Input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="h-10 rounded-lg" />
+                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('inline.received.from', 'المقبوض من السيد (العميل)', 'Received From')}</Label>
+                       <Select value={form.personName} onValueChange={v => {
+                         const c = clients?.find(x => x.nameAr === v || x.id === v);
+                         setForm({ ...form, personName: v, transactionId: '', contractId: '', notes: '' });
+                       }}>
+                          <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white">
+                             <SelectValue placeholder="..." />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl border shadow-2xl z-[160]">
+                             {clients?.map(c => <SelectItem key={c.id} value={c.nameAr} className="font-bold py-3 border-b last:border-0">{c.nameAr}</SelectItem>)}
+                          </SelectContent>
+                       </Select>
                     </div>
-                    <div className="md:col-span-2 space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المقبوض من السيد' : 'Received From'}</Label>
-                       <div className="relative">
-                          <User className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
-                          <Input value={form.personName} onChange={e => setForm({...form, personName: e.target.value})} className="h-10 rounded-lg ps-10 font-bold" placeholder="..." />
-                       </div>
+
+                    <div className="space-y-2">
+                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('inline.related.transaction', 'المعاملة الفنية المرتبطة', 'Related Transaction')}</Label>
+                       <Select disabled={!form.personName} value={form.transactionId} onValueChange={v => setForm({ ...form, transactionId: v, contractId: '', notes: '' })}>
+                          <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white">
+                             <SelectValue placeholder="..." />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl border shadow-2xl z-[160]">
+                             {allTransactions?.filter(t => t.clientName === form.personName).map(t_row => (
+                               <SelectItem key={t_row.id} value={t_row.id} className="font-bold py-3">
+                                  <div className="flex flex-col text-start">
+                                     <span>{t_row.subServiceName}</span>
+                                     <span className="text-[8px] text-slate-400 uppercase">#{t_row.transactionNumber}</span>
+                                  </div>
+                               </SelectItem>
+                             ))}
+                             {!allTransactions?.some(t => t.clientName === form.personName) && <div className="p-4 text-center text-[10px] text-slate-400 italic">{tSafe('inline.no.active.transactions', 'لا يوجد معاملات جارية لهذا العميل', 'No active transactions')}</div>}
+                          </SelectContent>
+                       </Select>
                     </div>
                  </div>
 
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 {/* Step 2: Contract Selection */}
+                 {form.transactionId && (
+                   <div className="space-y-2 animate-in slide-in-from-top-2">
+                      <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5"><Gavel className="h-3 w-3" /> {tSafe('inline.linked.contract', 'العقد المعتمد (الارتباط المالي)', 'Linked Contract')}</Label>
+                      {contracts.length === 0 ? (
+                        <div className="p-4 bg-rose-50 border-2 border-rose-100 rounded-xl text-rose-600 font-bold text-xs">
+                           {tSafe('inline.no.approved.contract', 'تنبيه: لا يوجد عقد معتمد لهذه المعاملة لبدء التحصيل.', 'No approved contract found for this transaction.')}
+                        </div>
+                      ) : (
+                        <Select value={form.contractId} onValueChange={v => setForm({ ...form, contractId: v })}>
+                           <SelectTrigger className="h-12 rounded-xl border-2 font-black bg-white shadow-sm">
+                              <SelectValue placeholder="..." />
+                           </SelectTrigger>
+                           <SelectContent className="rounded-xl border shadow-2xl z-[160]">
+                              {contracts.map(c => (
+                                <SelectItem key={c.id} value={c.id} className="font-bold py-3">
+                                   <div className="flex justify-between items-center gap-10">
+                                      <span>{c.name}</span>
+                                      <Badge variant="outline" className="h-5 px-2 bg-emerald-50 text-emerald-600 border-emerald-100">{c.totalAmount.toLocaleString()} KWD</Badge>
+                                   </div>
+                                </SelectItem>
+                              ))}
+                           </SelectContent>
+                        </Select>
+                      )}
+                   </div>
+                 )}
+
+                 {/* Step 3: Amount & Payment Info */}
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t">
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400">{t('common.amount')}</Label>
                        <div className="relative">
                           <Input type="number" step="0.001" value={form.amount || ''} onChange={e => setForm({...form, amount: Number(e.target.value)})} className="h-14 rounded-xl border-2 border-emerald-100 bg-emerald-50/20 text-center font-black text-2xl text-emerald-600" />
-                          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-200">KWD</div>
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-emerald-200">KWD</div>
+                          {milestonesLoading && <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />}
                        </div>
                     </div>
                     <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'طريقة الدفع' : 'Payment Method'}</Label>
+                       <Label className="text-[10px] font-black uppercase text-slate-400">{t('paymentMethods')}</Label>
                        <Select value={form.paymentMethod} onValueChange={v => setForm({...form, paymentMethod: v})}>
-                          <SelectTrigger className="h-14 rounded-xl border-2 font-bold"><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="h-14 rounded-xl border-2 font-bold bg-white"><SelectValue /></SelectTrigger>
                           <SelectContent className="rounded-xl">
                              <SelectItem value="cash" className="font-bold">{isRtl ? 'نقدي' : 'Cash'}</SelectItem>
                              <SelectItem value="bank" className="font-bold">{isRtl ? 'شيك' : 'Check'}</SelectItem>
@@ -162,9 +279,9 @@ export default function ReceiptVouchersPage() {
                        </Select>
                     </div>
                     <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'إيداع في حساب' : 'Deposit To Account'}</Label>
+                       <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.deposit.to', 'إيداع في حساب', 'Deposit To')}</Label>
                        <Select value={form.cashAccountId} onValueChange={v => setForm({...form, cashAccountId: v})}>
-                          <SelectTrigger className="h-14 rounded-xl border-2 font-black text-blue-600"><SelectValue placeholder="..." /></SelectTrigger>
+                          <SelectTrigger className="h-14 rounded-xl border-2 font-black text-blue-600 bg-white"><SelectValue placeholder="..." /></SelectTrigger>
                           <SelectContent className="rounded-xl">
                              {cashAccounts?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{a.code} - {isRtl ? a.nameAr : a.nameEn}</SelectItem>)}
                           </SelectContent>
@@ -172,46 +289,10 @@ export default function ReceiptVouchersPage() {
                     </div>
                  </div>
 
-                 <div className="pt-6 border-t space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                       <div className="space-y-2">
-                          <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5">
-                             <Briefcase className="h-3.5 w-3.5" /> {isRtl ? 'المشروع المرتبط' : 'Related Project'}
-                          </Label>
-                          <Select value={form.projectId} onValueChange={v => setForm({...form, projectId: v, costCenterId: '', profitCenterId: ''})}>
-                             <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
-                             <SelectContent className="rounded-xl border-2 shadow-2xl">
-                                <SelectItem value="GENERAL" className="font-bold italic text-slate-400">{isRtl ? '--- بدون مشروع (عام) ---' : '--- No Project (General) ---'}</SelectItem>
-                                {projects?.map(p => <SelectItem key={p.id} value={p.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">{p.subServiceName}</SelectItem>)}
-                             </SelectContent>
-                          </Select>
-                       </div>
-                       <div className="space-y-2">
-                          <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5">
-                             <LayoutGrid className="h-3.5 w-3.5" /> {tSafe('inline.cost_center', 'مركز التكلفة', 'Cost Center')}
-                          </Label>
-                          <Select value={form.costCenterId} onValueChange={v => setForm({...form, costCenterId: v})}>
-                             <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
-                             <SelectContent className="rounded-xl border-2 shadow-2xl">
-                                {filteredCC?.map(cc => <SelectItem key={cc.id} value={cc.id!} className="font-bold">{cc.name}</SelectItem>)}
-                             </SelectContent>
-                          </Select>
-                       </div>
-                       <div className="space-y-2">
-                          <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5">
-                             <DatabaseZap className="h-3.5 w-3.5" /> {tSafe('inline.profit_center', 'مركز الربحية', 'Profit Center')}
-                          </Label>
-                          <Select value={form.profitCenterId} onValueChange={v => setForm({...form, profitCenterId: v})}>
-                             <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
-                             <SelectContent className="rounded-xl border-2 shadow-2xl">
-                                {filteredPC?.map(pc => <SelectItem key={pc.id} value={pc.id!} className="font-bold">{pc.name}</SelectItem>)}
-                             </SelectContent>
-                          </Select>
-                       </div>
-                    </div>
-
+                 {/* Step 4: Ledger & Description */}
+                 <div className="space-y-4 pt-6 border-t">
                     <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'مقابل حساب (إيراد)' : 'Against Account (Revenue)'}</Label>
+                       <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{tSafe('inline.against.income', 'مقابل حساب (إيراد)', 'Against Account (Income)')}</Label>
                        <Select value={form.accountId} onValueChange={v => setForm({...form, accountId: v})}>
                           <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
                           <SelectContent className="rounded-xl">
@@ -221,13 +302,24 @@ export default function ReceiptVouchersPage() {
                     </div>
 
                     <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400">{t('common.notes')}</Label>
-                       <textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} className="w-full min-h-[100px] rounded-xl border-2 p-4 text-xs font-medium bg-slate-50/30" placeholder="..." />
+                       <div className="flex justify-between items-center mb-1">
+                          <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.generated.notes', 'البيان (توليد آلي)', 'Statement (Auto)')}</Label>
+                          {form.contractId && form.amount > 0 && !milestonesLoading && (
+                             <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 text-[8px] font-black h-5 px-3 uppercase tracking-tighter">AI Linked to Milestones</Badge>
+                          )}
+                       </div>
+                       <textarea 
+                         value={form.notes} 
+                         onChange={e => setForm({...form, notes: e.target.value})} 
+                         className="w-full min-h-[100px] rounded-2xl border-2 p-5 text-sm font-bold leading-relaxed bg-slate-50/30 focus:bg-white transition-all shadow-inner" 
+                         placeholder="..." 
+                       />
+                       <p className="text-[9px] font-bold text-slate-400 italic">{tSafe('inline.receipt.notes.hint', '* سيتم تطبيق المبلغ على الدفعات المستحقة في العقد بترتيب الأسبقية (FIFO).', '* Amount will be applied to outstanding milestones in sequence.')}</p>
                     </div>
                  </div>
 
-                 <div className="flex justify-end gap-3 pt-6">
-                    <Button onClick={handleSave} disabled={loading} className="h-14 rounded-2xl px-12 bg-emerald-600 text-white font-black text-lg shadow-xl shadow-emerald-100 hover:scale-[1.02] transition-all gap-2">
+                 <div className="flex justify-end gap-3 pt-4">
+                    <Button onClick={handleSave} disabled={loading || !form.contractId} className="h-14 rounded-2xl px-12 bg-emerald-600 text-white font-black text-lg shadow-xl shadow-emerald-100 hover:scale-[1.02] transition-all gap-2 border-b-4 border-emerald-800">
                        {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
                        {isRtl ? 'تأكيد وإصدار السند' : 'Confirm & Issue'}
                     </Button>
@@ -236,50 +328,82 @@ export default function ReceiptVouchersPage() {
            </Card>
 
            <aside className="lg:col-span-4 space-y-6 text-start">
-              <Card className="rounded-2xl border shadow-sm p-6 bg-slate-900 text-white space-y-4 overflow-hidden relative">
-                 <div className="absolute top-0 right-0 p-6 opacity-10"><Landmark className="h-24 w-24" /></div>
-                 <h4 className="font-black text-xs uppercase tracking-widest text-primary">{isRtl ? 'أتمتة مالية' : 'Financial Automation'}</h4>
-                 <p className="text-[10px] font-bold text-slate-400 leading-relaxed">
-                    {isRtl 
-                      ? 'سيقوم النظام تلقائياً بإنشاء قيد محاسبي مزدوج يربط حساب النقدية بحساب الإيراد أو الذمة المختار مع تخصيص العملية لمركز تكلفة المشروع المختار.' 
-                      : 'System will auto-generate a journal entry linking cash to revenue/receivable, assigned to the selected project cost center.'}
-                 </p>
+              <Card className="rounded-[2rem] border shadow-sm p-8 bg-slate-900 text-white space-y-6 overflow-hidden relative">
+                 <div className="absolute top-0 right-0 p-6 opacity-10"><Landmark className="h-32 w-32 text-primary" /></div>
+                 <div className="relative z-10">
+                    <h4 className="font-black text-sm uppercase tracking-widest text-primary mb-2">{tSafe('inline.financial.trace', 'التتبع المالي السيادي', 'Financial Traceability')}</h4>
+                    <p className="text-xs font-bold text-slate-400 leading-relaxed">
+                       {tSafe('inline.trace.desc', 'عند حفظ هذا السند، سيقوم النظام بتوليد قيد مزدوج يربط النقدية بالإيراد، مع توثيق الأثر المالي في (رادار المشاريع) و (سجل تفاعل العميل) آلياً.', 'System will auto-generate a journal entry, updating project radar and client dossier simultaneously.')}
+                    </p>
+                 </div>
+                 
+                 {form.contractId && milestonesStatus.length > 0 && (
+                   <div className="relative z-10 pt-6 border-t border-white/10 space-y-4">
+                      <h5 className="text-[10px] font-black text-primary uppercase tracking-widest flex items-center gap-2">
+                        <History className="h-3.5 w-3.5" /> {tSafe('inline.contract.snapshot', 'حالة دفعات العقد الحالية', 'Contract Snapshot')}
+                      </h5>
+                      <div className="space-y-2">
+                         {milestonesStatus.map((m, i) => (
+                           <div key={i} className="flex justify-between items-center text-[10px]">
+                              <span className="text-slate-400 font-bold truncate max-w-[140px]">{m.milestone.name}</span>
+                              <Badge className={cn(
+                                "text-[8px] font-black h-4 px-1.5 border-0",
+                                m.remaining === 0 ? "bg-emerald-500 text-white" : "bg-white/10 text-slate-300"
+                              )}>
+                                {m.remaining === 0 ? 'PAID' : `${m.paidToDate}/${m.milestoneAmount}`}
+                              </Badge>
+                           </div>
+                         ))}
+                      </div>
+                   </div>
+                 )}
               </Card>
+
+              <div className="p-8 bg-blue-50 rounded-[2rem] border-2 border-dashed border-blue-100 flex items-start gap-4">
+                 <Info className="h-6 w-6 text-blue-600 shrink-0 mt-0.5" />
+                 <p className="text-[10px] font-bold text-blue-800 leading-relaxed">
+                    {tSafe('inline.automation.hint', 'سيتم إدراج معرفات العقد والمعاملة ضمن بيانات السند لضمان دقة التقارير التحليلية والربحية.', 'Contract and Transaction IDs will be embedded for precise profitability analysis.')}
+                 </p>
+              </div>
            </aside>
         </div>
       ) : (
-        <Card className="rounded-lg shadow-sm border overflow-hidden bg-white">
+        <Card className="rounded-xl shadow-sm border overflow-hidden bg-white">
            <CardContent className="p-0 overflow-x-auto">
               <Table>
                  <TableHeader className="bg-slate-50">
                     <TableRow>
-                       <TableHead className="py-3 ps-6 text-start">{isRtl ? 'رقم السند / التاريخ' : 'Voucher No. / Date'}</TableHead>
-                       <TableHead className="text-start">{isRtl ? 'من السيد' : 'Received From'}</TableHead>
-                       <TableHead className="text-end">{t('common.amount')}</TableHead>
-                       <TableHead className="text-center">{isRtl ? 'طريقة الدفع' : 'Payment Method'}</TableHead>
-                       <TableHead className="pe-6"></TableHead>
+                       <TableHead className="py-5 ps-8 text-start text-[10px] font-black uppercase tracking-widest">{isRtl ? 'رقم السند / التاريخ' : 'Voucher No. / Date'}</TableHead>
+                       <TableHead className="text-start text-[10px] font-black uppercase tracking-widest">{tSafe('inline.from.client', 'من العميل', 'From Client')}</TableHead>
+                       <TableHead className="text-start text-[10px] font-black uppercase tracking-widest">{tSafe('inline.milestone', 'الدفعة المسددة', 'Milestone')}</TableHead>
+                       <TableHead className="text-end text-[10px] font-black uppercase tracking-widest">{t('common.amount')}</TableHead>
+                       <TableHead className="text-center text-[10px] font-black uppercase tracking-widest">{tSafe('inline.payment', 'الدفع', 'Payment')}</TableHead>
+                       <TableHead className="pe-8"></TableHead>
                     </TableRow>
                  </TableHeader>
                  <TableBody>
                     {vouchersLoading ? (
-                      <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></TableCell></TableRow>
+                      <TableRow><TableCell colSpan={6} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></TableCell></TableRow>
                     ) : vouchers?.length === 0 ? (
-                      <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 font-bold italic">{t('common.noResults')}</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={6} className="text-center py-20 text-slate-300 font-bold italic">{t('common.noResults')}</TableCell></TableRow>
                     ) : vouchers?.map(v => (
-                      <TableRow key={v.id} className="hover:bg-slate-50/50 transition-colors border-b-slate-100">
-                         <TableCell className="py-3 ps-6 text-start font-black text-slate-800">
+                      <TableRow key={v.id} className="hover:bg-slate-50 transition-colors border-b-slate-100 group">
+                         <TableCell className="py-4 ps-8 text-start font-black text-slate-800">
                             <div className="flex flex-col">
                                <span>{v.voucherNumber}</span>
                                <span className="text-[9px] text-slate-400 font-mono">{v.date}</span>
                             </div>
                          </TableCell>
-                         <TableCell className="text-start font-bold text-slate-600">{v.personName}</TableCell>
+                         <TableCell className="text-start font-bold text-slate-600 text-xs">{v.personName}</TableCell>
+                         <TableCell className="text-start">
+                            <span className="text-[10px] font-black text-primary uppercase tracking-tighter truncate max-w-[150px] block">{v.appliedMilestoneName || '---'}</span>
+                         </TableCell>
                          <TableCell className="text-end font-mono font-black text-emerald-600">{v.amount.toLocaleString()} <span className="text-[8px] opacity-40">KWD</span></TableCell>
                          <TableCell className="text-center">
-                            <Badge variant="outline" className="text-[8px] font-black uppercase px-2">{v.paymentMethod}</Badge>
+                            <Badge variant="outline" className="text-[8px] font-black uppercase px-3 border-2 h-6">{v.paymentMethod}</Badge>
                          </TableCell>
-                         <TableCell className="pe-6 text-end">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-slate-300 hover:text-primary"><FileText className="h-4 w-4" /></Button>
+                         <TableCell className="pe-8 text-end">
+                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-slate-300 group-hover:text-primary transition-all"><FileText className="h-4 w-4" /></Button>
                          </TableCell>
                       </TableRow>
                     ))}

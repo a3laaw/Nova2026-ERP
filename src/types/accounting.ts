@@ -75,8 +75,11 @@ export interface Voucher extends BaseReference {
   journalEntryId?: string;
   notes?: string;
   projectId?: string;
+  transactionId?: string; 
+  contractId?: string;    
   costCenterId?: string;
   profitCenterId?: string;
-  distributions?: VoucherDistribution[]; // جديد - المرحلة 5
+  appliedMilestoneName?: string; 
+  distributions?: VoucherDistribution[]; 
   createdBy: string;
 }
