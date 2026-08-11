@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect, Suspense } from 'react';
@@ -72,6 +71,10 @@ function TransactionDetailsContent() {
 
   const contractsQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.contracts(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
   const { data: contracts } = useCollection<Contract>(contractsQuery);
+
+  const hasApprovedContract = useMemo(() => {
+    return contracts?.some(c => ['approved', 'paid', 'active', 'signed'].includes(c.status || '') || c.isPaid);
+  }, [contracts]);
   
   const boqQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqs(companyId))) : null, [db, companyId]);
   const { data: allBoqs } = useCollection<BOQ>(boqQuery);
@@ -91,7 +94,6 @@ function TransactionDetailsContent() {
   }, [allTemplates, transaction?.subServiceId]);
 
   const isFinancialLockActive = useMemo(() => {
-     const hasApprovedContract = contracts?.some(c => ['approved', 'paid', 'active', 'signed'].includes(c.status || '') || c.isPaid);
      const hasApprovedBOQ = activeBoq?.status === 'approved';
      
      const isConsulting = transaction?.activityTypeName?.includes('استشارات') || 
@@ -101,7 +103,7 @@ function TransactionDetailsContent() {
      
      if (isConsulting) return !hasApprovedContract;
      return !hasApprovedContract || !hasApprovedBOQ;
-  }, [contracts, activeBoq, transaction]);
+  }, [hasApprovedContract, activeBoq, transaction]);
 
   const stagesQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order', 'asc')) : null, [db, companyId, transactionId]);
   const { data: rawStages, loading: stagesLoading } = useCollection<StageInstance>(stagesQuery);
@@ -231,15 +233,26 @@ function TransactionDetailsContent() {
            </div>
         </div>
         <div className="flex gap-2">
-           <Button onClick={() => setIsRevisionOpen(true)} variant="outline" size="sm" className="h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border-slate-200 bg-white">
-              <RotateCcw className="h-3.5 w-3.5 text-orange-500" /> {tSafe('inline.add_revision', 'تسجيل تعديل', 'Add Revision')}
-           </Button>
            {activeBoq ? (
-             <button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className={cn("h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border flex items-center shadow-sm", activeBoq.status !== 'approved' ? "border-amber-200 bg-amber-50 text-amber-600" : "border-slate-200 bg-white")}>
+             <button 
+               disabled={!hasApprovedContract}
+               onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} 
+               className={cn(
+                 "h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border flex items-center shadow-sm", 
+                 !hasApprovedContract ? "opacity-50 cursor-not-allowed bg-slate-50" :
+                 activeBoq.status !== 'approved' ? "border-amber-200 bg-amber-50 text-amber-600" : "border-slate-200 bg-white"
+               )}
+             >
                  <FileSpreadsheet className="h-3 w-3" /> {activeBoq.status === 'approved' ? tSafe('inline.boq', 'المقايسة المعتمدة', 'BOQ') : t('common.pending')}
              </button>
            ) : (
-             <Button onClick={() => setIsBoqInitOpen(true)} variant="outline" size="sm" className="h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border-slate-200 shadow-sm">
+             <Button 
+               disabled={!hasApprovedContract}
+               onClick={() => setIsBoqInitOpen(true)} 
+               variant="outline" 
+               size="sm" 
+               className="h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border-slate-200 shadow-sm"
+             >
                 <FilePlus className="h-3.5 w-3.5" /> {tSafe('inline.create.boq', 'إنشاء مقايسة', 'Create BOQ')}
              </Button>
            )}
@@ -264,34 +277,47 @@ function TransactionDetailsContent() {
                    {isFinancialLockActive ? (
                       <Card className="border-2 border-dashed rounded-[1.5rem] bg-white p-12 text-center space-y-4">
                          <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto"><Lock className="h-8 w-8 text-slate-200" /></div>
-                         <h3 className="text-sm font-black text-slate-900">{tSafe('projects.details.locked', 'المسار الفني مقفل. يرجى اعتماد العقد والمقايسة أولاً.', 'Path locked. Approve contract and BOQ first.')}</h3>
+                         <h3 className="text-sm font-black text-slate-900">
+                           {!hasApprovedContract 
+                              ? tSafe('inline.no_contract_lock', 'المسار مقفل. يرجى اعتماد العقد للعميل أولاً.', 'Path locked. Approve contract first.')
+                              : tSafe('projects.details.locked', 'المسار الفني مقفل. يرجى اعتماد المقايسة أولاً.', 'Path locked. Approve BOQ first.')
+                           }
+                         </h3>
                          <div className="flex justify-center gap-3 pt-4">
-                            <Button onClick={() => setActiveTab('documents')} variant="outline" size="sm" className="h-8 font-bold px-6 text-[10px] rounded-md shadow-sm border-2">
-                               <Plus className="h-3.5 w-3.5 me-2" /> {tSafe('inline.contracts', 'إصدار العقد', 'Contracts')}
-                            </Button>
-                            {!transaction?.activityTypeName?.includes('استشارات') && !transaction?.activityTypeName?.includes('Consulting') && (
-                               <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} size="sm" className="h-8 font-bold px-6 text-[10px] rounded-md shadow-sm">
-                                  <FileSpreadsheet className="h-3.5 w-3.5 me-2" /> {tSafe('projects.boqExplorer', 'جدول الكميات والميزانية', 'BOQ Explorer')}
+                            {!hasApprovedContract && (
+                              <Button onClick={() => setActiveTab('documents')} variant="outline" size="sm" className="h-8 font-bold px-6 text-[10px] rounded-md shadow-sm border-2">
+                                <Plus className="h-3.5 w-3.5 me-2" /> {tSafe('inline.contracts', 'إصدار العقد', 'Contracts')}
+                              </Button>
+                            )}
+                            {hasApprovedContract && !activeBoq && !transaction?.activityTypeName?.includes('استشارات') && (
+                               <Button onClick={() => setIsBoqInitOpen(true)} size="sm" className="h-8 font-bold px-6 text-[10px] rounded-md shadow-sm">
+                                  <FilePlus className="h-3.5 w-3.5 me-2" /> {tSafe('inline.create.boq', 'إنشاء مقايسة', 'Create BOQ')}
                                </Button>
                             )}
                          </div>
                       </Card>
-                   ) : !stages.length ? (
-                      <Card className="py-20 text-center bg-white rounded-lg border-2 border-dashed space-y-4 shadow-none">
-                        <Workflow className="h-8 w-8 text-slate-100 mx-auto" />
-                        <h3 className="text-xs font-bold text-slate-900">{tSafe('inline.awaiting.launch', 'بانتظار إطلاق المسار', 'Awaiting Launch')}</h3>
-                        <Button onClick={() => transactionService?.initializeTechnicalPath(transactionId, transaction?.activityTypeId || '', transaction?.serviceId || '', transaction?.subServiceId || '', user!.uid)} disabled={loadingAction === 'init'} size="sm" className="h-8 font-bold px-6 text-[10px] rounded-md shadow-sm">
-                           <Zap className="h-3.5 w-3.5 me-2" /> {tSafe('inline.launch.path', 'تفعيل المسار', 'Launch Path')}
-                        </Button>
-                      </Card>
                    ) : (
-                     <div className="space-y-3 text-start animate-in slide-in-from-bottom-4">
+                     <div className="space-y-6 text-start animate-in slide-in-from-bottom-4">
                         <div className="flex justify-between items-end px-1">
                            <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><Workflow className="h-3.5 w-3.5 text-primary" /> {t('checklists')}</h3>
-                           <span className="text-sm font-black text-primary">{progressPercent}%</span>
+                           <div className="flex items-center gap-3">
+                              <Button onClick={() => setIsRevisionOpen(true)} variant="outline" size="sm" className="h-7 px-3 rounded-md font-bold text-[9px] gap-1.5 border-slate-200 bg-white">
+                                 <RotateCcw className="h-3 w-3 text-orange-500" /> {tSafe('inline.add_revision', 'تسجيل تعديل', 'Add Revision')}
+                              </Button>
+                              <span className="text-sm font-black text-primary">{progressPercent}%</span>
+                           </div>
                         </div>
+                        
                         <div className="space-y-1.5">
-                           {stages.map((stage, idx) => {
+                           {!stages.length ? (
+                              <Card className="py-20 text-center bg-white rounded-lg border-2 border-dashed space-y-4 shadow-none">
+                                <Workflow className="h-8 w-8 text-slate-100 mx-auto" />
+                                <h3 className="text-xs font-bold text-slate-900">{tSafe('inline.awaiting.launch', 'بانتظار إطلاق المسار', 'Awaiting Launch')}</h3>
+                                <Button onClick={() => transactionService?.initializeTechnicalPath(transactionId, transaction?.activityTypeId || '', transaction?.serviceId || '', transaction?.subServiceId || '', user!.uid)} disabled={loadingAction === 'init'} size="sm" className="h-8 font-bold px-6 text-[10px] rounded-md shadow-sm">
+                                   <Zap className="h-3.5 w-3.5 me-2" /> {tSafe('inline.launch.path', 'تفعيل المسار', 'Launch Path')}
+                                </Button>
+                              </Card>
+                           ) : stages.map((stage, idx) => {
                               const isOperationalFrontier = stage.status === 'in-progress' || (stage.status === 'pending' && (idx === 0 || stages[idx-1].status === 'completed'));
                               return (
                                 <Card key={stage.id} className={cn("rounded-md shadow-none border bg-white transition-all border-s-4", stage.status === 'completed' ? 'border-s-emerald-500' : stage.status === 'in-progress' ? 'border-s-blue-500' : 'border-s-slate-100 opacity-70')}>
@@ -361,7 +387,7 @@ function TransactionDetailsContent() {
       </Dialog>
 
       <Dialog open={!!revertingStage} onOpenChange={(v) => !v && setRevertingStage(null)}>
-         <DialogContent className="rounded-xl max-w-md p-0 overflow-hidden bg-white border-0 shadow-3xl" dir={dir}>
+         <DialogContent className="rounded-xl max-md p-0 overflow-hidden bg-white border-0 shadow-3xl" dir={dir}>
             <div className="bg-rose-50 p-8 text-rose-900 text-start border-b">
                <DialogTitle className="text-xl font-black flex items-center gap-3"><Undo2 className="h-6 w-6 text-rose-500" /> {tSafe('inline.revert_stage', 'تراجع عن اكتمال المرحلة', 'Revert Stage Completion')}</DialogTitle>
             </div>

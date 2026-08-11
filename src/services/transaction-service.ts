@@ -190,14 +190,20 @@ export class TransactionService {
   }
 
   async initializeTechnicalPath(transactionId: string, activityId: string, serviceId: string, subServiceId: string, userId: string) {
+    // حماية سيادية: منع التكرار
+    const instancesPath = paths.transactionStages(this.companyId, transactionId);
+    const existingSnap = await getDocs(collection(this.db, instancesPath));
+    if (!existingSnap.empty) return; 
+
     const stagesPath = paths.technicalStages(this.companyId, activityId, serviceId, subServiceId);
     const stagesSnap = await getDocs(query(collection(this.db, stagesPath), orderBy('order', 'asc')));
 
     const batch = writeBatch(this.db);
     stagesSnap.docs.forEach((d, idx) => {
       const stage = d.data() as TechnicalStage;
-      const instanceRef = doc(collection(this.db, paths.transactionStages(this.companyId, transactionId)));
+      const instanceRef = doc(collection(this.db, instancesPath));
       batch.set(instanceRef, {
+        id: instanceRef.id,
         transactionId,
         technicalStageId: d.id,
         code: stage.code || 'STAGE',
