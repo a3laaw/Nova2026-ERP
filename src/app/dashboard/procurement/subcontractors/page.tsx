@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   Users, Plus, Search, Loader2, ArrowRight,
   Filter, Phone, Mail, Star, Building2,
-  HardHat, ShieldCheck, Wallet, Receipt, Save
+  HardHat, ShieldCheck, Wallet, Receipt, Save, X
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -24,7 +24,7 @@ import { toast } from '@/hooks/use-toast';
 import { Subcontractor } from '@/types/procurement';
 
 export default function SubcontractorsPage() {
-  const { globalUser } = useAuthContext();
+  const { globalUser, user } = useAuthContext();
   const { t, lang, dir, isRtl } = useLanguage();
   const db = useFirestore();
   const companyId = globalUser?.companyId;
@@ -37,10 +37,10 @@ export default function SubcontractorsPage() {
     companyId && db ? query(collection(db, paths.subcontractors(companyId)), orderBy('name')) : null, 
   [db, companyId]);
 
-  const { data: subs, loading } = useCollection<Subcontractor>(subsQuery);
+  const { data: subs, loading: subsLoading } = useCollection<Subcontractor>(subsQuery);
 
   const handleAdd = async () => {
-    if (!db || !companyId || !form.name) return;
+    if (!db || !companyId || !form.name || !user) return;
     setIsAdding(true);
     try {
       await addDoc(collection(db, paths.subcontractors(companyId)), {
@@ -48,23 +48,24 @@ export default function SubcontractorsPage() {
         status: 'active',
         rating: 5,
         companyId,
+        createdBy: user.uid,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
       toast({ title: t('common.saved') });
-      setIsAdding(false);
       setForm({ name: '', trade: '', phone: '', email: '', civilId: '' });
-    } catch (e) {
-      toast({ variant: "destructive", title: t('common.error') });
-    } finally {
+      setIsAdding(false);
+    } catch (e: any) {
+      console.error(e);
+      toast({ variant: "destructive", title: t('common.error'), description: e.message });
       setIsAdding(false);
     }
   };
 
-  const filtered = subs?.filter(s => 
+  const filtered = (subs || []).filter(s => 
     s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     s.trade.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  );
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20 text-start" dir={dir}>
@@ -91,7 +92,7 @@ export default function SubcontractorsPage() {
                    {isRtl ? 'تسجيل مقاول جديد' : 'New Subcontractor'}
                 </DialogTitle>
              </div>
-             <div className="p-10 space-y-6 text-start">
+             <div className="p-10 space-y-6 text-start bg-white">
                 <div className="space-y-2">
                    <Label className="text-xs font-black uppercase text-slate-400">اسم المقاول / الشركة</Label>
                    <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="h-12 rounded-xl border-2 font-black" />
@@ -122,8 +123,8 @@ export default function SubcontractorsPage() {
       </header>
 
       <Card className="rounded-[3rem] border-0 shadow-2xl overflow-hidden bg-white ring-1 ring-black/5">
-        <div className="p-8 flex flex-col md:flex-row items-center justify-between gap-6 bg-slate-50/50 border-b">
-           <div className="relative w-full max-w-md">
+        <div className="p-8 flex flex-col md:flex-row items-center justify-between gap-6 bg-slate-50/50 border-b text-start">
+           <div className="relative w-full max-w-md text-start">
               <Search className="absolute start-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
               <Input 
                 placeholder={isRtl ? 'بحث باسم المقاول أو التخصص...' : 'Search by name or trade...'} 
@@ -138,14 +139,14 @@ export default function SubcontractorsPage() {
             <TableHeader className="bg-muted/10 border-b">
               <TableRow>
                 <TableHead className="py-8 ps-12 text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'المقاول / التخصص' : 'Subcontractor / Trade'}</TableHead>
-                <TableHead className="text-start text-xs font-black uppercase tracking-widest">{t('clients.table.contact')}</TableHead>
+                <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'الاتصال' : 'Contact'}</TableHead>
                 <TableHead className="text-center text-xs font-black uppercase tracking-widest">{isRtl ? 'المطالبات المالية' : 'Claims'}</TableHead>
                 <TableHead className="text-center text-xs font-black uppercase tracking-widest">{t('common.status')}</TableHead>
                 <TableHead className="pe-12 text-end"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
+              {subsLoading ? (
                 <TableRow><TableCell colSpan={5} className="text-center py-40"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/20" /></TableCell></TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow><TableCell colSpan={5} className="text-center py-40 italic text-slate-300 font-black text-xl">{t('common.noResults')}</TableCell></TableRow>
@@ -198,4 +199,3 @@ export default function SubcontractorsPage() {
     </div>
   );
 }
-

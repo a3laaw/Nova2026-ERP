@@ -67,6 +67,23 @@ export default function TransactionBOQProgressPage() {
   const subsQuery = useMemo(() => companyId && db ? query(collection(db, paths.subcontractors(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
   const { data: subcontractors } = useCollection<Subcontractor>(subsQuery);
 
+  // جلب كافة المستخلصات المعتمدة لهذا المشروع لحساب الكميات "السابقة"
+  const ipcsQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.ipcs(companyId)), where('transactionId', '==', transactionId), where('status', '==', 'approved')) : null,
+  [db, companyId, transactionId]);
+  const { data: approvedIpcs } = useCollection<any>(ipcsQuery);
+
+  const billedQuantitiesMap = useMemo(() => {
+    const map = new Map<string, number>();
+    (approvedIpcs || []).forEach(ipc => {
+      (ipc.lineItems || []).forEach((li: any) => {
+        const current = map.get(li.boqItemId) || 0;
+        map.set(li.boqItemId, current + (li.currentQty || 0));
+      });
+    });
+    return map;
+  }, [approvedIpcs]);
+
   const items = useMemo(() => (rawItems || []).filter(i => (i.plannedQuantity || 0) > 0 || (activeBoq?.status === 'draft')), [rawItems, activeBoq]);
 
   const allTemplatesQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqTemplates(companyId))) : null, [db, companyId]);
@@ -124,9 +141,14 @@ export default function TransactionBOQProgressPage() {
       {node.items.map((item, iIdx) => {
         const itemPrefix = prefix + "." + (iIdx + 1);
         const planned = item.plannedQuantity || 0;
-        const previous = item.billedQuantity || 0;
         const totalExecuted = item.executedQuantity || 0;
-        const current = Math.max(0, totalExecuted - previous);
+        
+        // حساب الكمية "السابقة" من المستخلصات المعتمدة
+        const previousBilled = billedQuantitiesMap.get(item.id!) || 0;
+        
+        // "الحالي" هو المنجز ميدانياً الذي لم يفوتر بعد
+        const currentToBill = Math.max(0, totalExecuted - previousBilled);
+        
         const totalPct = Math.min(100, Math.round((totalExecuted / Math.max(1, planned)) * 100));
         const isDraft = activeBoq?.status === 'draft';
 
@@ -154,8 +176,8 @@ export default function TransactionBOQProgressPage() {
                  <span className="font-black text-xs">{planned}</span>
                )}
             </TableCell>
-            <TableCell className="text-center font-mono font-black text-blue-600 text-[11px] bg-blue-50/20">{previous}</TableCell>
-            <TableCell className="text-center font-mono font-black text-orange-600 text-[11px] bg-orange-50/20">{current}</TableCell>
+            <TableCell className="text-center font-mono font-black text-blue-600 text-[11px] bg-blue-50/20">{previousBilled}</TableCell>
+            <TableCell className="text-center font-mono font-black text-orange-600 text-[11px] bg-orange-50/20">{currentToBill}</TableCell>
             <TableCell className="text-center font-mono font-black text-slate-900 text-[11px]">{totalExecuted}</TableCell>
             <TableCell className="text-end p-1 w-[100px]">
                {isDraft ? (

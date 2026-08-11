@@ -312,7 +312,7 @@ function TransactionDetailsContent() {
                <DialogTitle className="text-2xl font-black font-headline flex items-center gap-4"><Hammer className="h-8 w-8" /> {tSafe('inline.log_stage_progress', 'تسجيل إنجاز فني', 'Log Stage Progress')}</DialogTitle>
                <p className="text-white/70 font-bold mt-2 uppercase text-[10px] tracking-widest">{tSafe('inline.active_stage', 'المرحلة الجارية:', 'Active Stage:')} {activeStageForLog?.name}</p>
             </div>
-            <div className="p-8 space-y-6 text-start">
+            <div className="p-8 space-y-6 text-start bg-white">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                      <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.select_section', 'اختر القسم الرئيسي', 'Select Section')}</Label>
