@@ -76,7 +76,7 @@ export default function TransactionBOQProgressPage() {
   const executionsQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.executions(companyId)), where('transactionId', '==', transactionId)) : null, [db, companyId, transactionId]);
   const { data: allExecutions } = useCollection<BOQItemExecutionEntry>(executionsQuery);
 
-  const items = useMemo(() => (rawItems || []).filter(i => (i.plannedQuantity || 0) > 0), [rawItems]);
+  const items = useMemo(() => (rawItems || []).filter(i => (i.plannedQuantity || 0) > 0 || (activeBoq?.status === 'draft')), [rawItems, activeBoq]);
 
   const allTemplatesQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqTemplates(companyId))) : null, [db, companyId]);
   const { data: allTemplates } = useCollection<BOQTemplate>(allTemplatesQuery);
@@ -93,7 +93,7 @@ export default function TransactionBOQProgressPage() {
 
     items.forEach(item => {
       const itemExecs = allExecutions.filter(e => e.boqItemId === item.id);
-      metrics[item.id] = {
+      metrics[item.id!] = {
         prev: itemExecs.filter(e => e.status === 'verified').reduce((sum, e) => sum + (e.quantity || 0), 0),
         current: itemExecs.filter(e => e.status === 'executed').reduce((sum, e) => sum + (e.quantity || 0), 0)
       };
@@ -126,6 +126,16 @@ export default function TransactionBOQProgressPage() {
     finally { setLoadingAction(null); }
   };
 
+  const handleUpdateItem = async (itemId: string, qty: number, rate: number) => {
+    if (!db || !companyId || !activeBoq) return;
+    try {
+      const service = new DocumentService(db, companyId, permissions);
+      await service.updateBOQItem(activeBoq.id, itemId, qty, rate);
+    } catch (e) {
+      console.error("Failed to update BOQ item", e);
+    }
+  };
+
   const handleApproveBaseline = async () => {
     if (!db || !companyId || !user || !activeBoq) return;
     setLoadingAction('approving');
@@ -155,7 +165,8 @@ export default function TransactionBOQProgressPage() {
         const metrics = executionMetrics[item.id!] || { prev: 0, current: 0 };
         const planned = item.plannedQuantity || 1;
         const totalExecuted = metrics.prev + metrics.current;
-        const totalPct = Math.min(100, Math.round((totalExecuted / planned) * 100));
+        const totalPct = Math.min(100, Math.round((totalExecuted / Math.max(1, planned)) * 100));
+        const isDraft = activeBoq?.status === 'draft';
 
         return (
           <TableRow key={item.id || `${item.boqReferenceNodeId}-${iIdx}`} className="hover:bg-primary/[0.02] border-b-slate-50 text-start">
@@ -164,12 +175,33 @@ export default function TransactionBOQProgressPage() {
             <TableCell className="text-xs font-bold text-slate-700 text-start">{item.referenceTitle}</TableCell>
             <TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || '-'}</TableCell>
             <TableCell className="text-center">
-               <span className="font-black text-xs">{item.plannedQuantity}</span>
+               {isDraft ? (
+                 <Input 
+                   type="number" 
+                   defaultValue={item.plannedQuantity}
+                   onBlur={(e) => handleUpdateItem(item.id!, Number(e.target.value), item.estimatedRate || 0)}
+                   className="h-8 w-20 mx-auto text-center font-black text-xs border-primary/20"
+                 />
+               ) : (
+                 <span className="font-black text-xs">{item.plannedQuantity}</span>
+               )}
             </TableCell>
             <TableCell className="text-center font-mono font-black text-blue-600 text-[11px]">{metrics.prev}</TableCell>
             <TableCell className="text-center font-mono font-black text-orange-600 text-[11px]">{metrics.current}</TableCell>
             <TableCell className="text-center font-mono font-black text-slate-900 text-[11px]">{totalExecuted}</TableCell>
-            <TableCell className="text-center font-mono font-bold text-slate-400 text-[11px]">{item.estimatedRate?.toLocaleString()}</TableCell>
+            <TableCell className="text-center">
+               {isDraft ? (
+                 <Input 
+                   type="number" 
+                   step="0.001"
+                   defaultValue={item.estimatedRate}
+                   onBlur={(e) => handleUpdateItem(item.id!, item.plannedQuantity, Number(e.target.value))}
+                   className="h-8 w-24 mx-auto text-center font-black text-xs text-emerald-600 border-primary/20"
+                 />
+               ) : (
+                 <span className="font-mono font-bold text-slate-400 text-[11px]">{item.estimatedRate?.toLocaleString()}</span>
+               )}
+            </TableCell>
             <TableCell className="text-end font-mono font-black text-emerald-600 text-[11px]">{(totalExecuted * (item.estimatedRate || 0)).toLocaleString()}</TableCell>
             <TableCell className="pe-6 w-[120px] text-end">
               <div className="space-y-1">
@@ -239,7 +271,10 @@ export default function TransactionBOQProgressPage() {
         <div className="flex items-center gap-2">
            {activeBoq.status === 'draft' ? (
               <div className="flex gap-2">
-                 <Button onClick={handleApproveBaseline} disabled={!!loadingAction} className="h-9 px-6 rounded-lg bg-emerald-600 text-white font-bold text-xs gap-2">{t('common.confirm')}</Button>
+                 <Button onClick={handleApproveBaseline} disabled={!!loadingAction} className="h-9 px-6 rounded-lg bg-emerald-600 text-white font-bold text-xs gap-2">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    {tSafe('inline.confirm.baseline', 'تأكيد الميزانية المرجعية', 'Confirm Baseline')}
+                 </Button>
               </div>
            ) : (
              <div className="flex gap-2">
@@ -273,4 +308,3 @@ export default function TransactionBOQProgressPage() {
     </div>
   );
 }
-

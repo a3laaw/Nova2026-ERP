@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -375,7 +376,11 @@ export class DocumentService {
   async updateBOQItem(boqId: string, itemId: string, qty: number, rate: number) {
     ensureActionPermission(this.permissions, 'projects:edit');
     const itemRef = doc(this.db, paths.boqItems(this.companyId, boqId), itemId);
-    await updateDoc(itemRef, { plannedQuantity: qty, estimatedRate: rate, updatedAt: serverTimestamp() });
+    await updateDoc(itemRef, { 
+      plannedQuantity: Number(qty) || 0, 
+      estimatedRate: Number(rate) || 0, 
+      updatedAt: serverTimestamp() 
+    });
   }
 
   async approveBOQ(boqId: string, totalAmount: number, transactionId: string, userId: string, userName: string) {
