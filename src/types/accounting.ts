@@ -25,7 +25,7 @@ export interface Account extends BaseReference {
   
   expenseNature?: 'direct' | 'administrative';
   analyticalConfig?: AccountAnalyticalConfig;
-  allowedPaymentMethods?: ('cash' | 'bank' | 'transfer')[]; // طرق الدفع المسموحة لهذا الحساب
+  allowedPaymentMethods?: string[]; // مصفوفة من أكواد طرق الدفع المسموحة من المرجع (Payment Methods Reference Codes)
 }
 
 export interface JournalEntryLine {
@@ -54,7 +54,6 @@ export interface JournalEntry extends BaseReference {
 }
 
 export type VoucherType = 'receipt' | 'payment';
-export type PaymentMethod = 'cash' | 'bank' | 'transfer';
 
 export interface VoucherDistribution {
   projectId?: string;
@@ -69,7 +68,7 @@ export interface Voucher extends BaseReference {
   type: VoucherType;
   date: string;
   amount: number;
-  paymentMethod: PaymentMethod;
+  paymentMethod: string; // كود طريقة الدفع من القوائم المرجعية
   personName: string;
   accountId: string;
   cashAccountId: string;

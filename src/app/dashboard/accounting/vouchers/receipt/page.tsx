@@ -8,7 +8,7 @@ import {
   ArrowRight, Landmark, Wallet,
   User, Calendar, FileText, Briefcase,
   CheckCircle2, Sparkles, LayoutGrid, DatabaseZap, Gavel, Info,
-  History
+  History as HistoryIcon
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs } from 'firebase/firestore';
@@ -43,7 +43,7 @@ export default function ReceiptVouchersPage() {
     date: new Date().toISOString().split('T')[0],
     amount: 0,
     personName: '',
-    paymentMethod: 'cash' as any,
+    paymentMethod: '',
     accountId: '',
     cashAccountId: '',
     projectId: '', 
@@ -72,26 +72,25 @@ export default function ReceiptVouchersPage() {
     companyId && db && form.personName ? query(collection(db, paths.transactions(companyId)), where('status', '!=', 'completed')) : null, 
   [db, companyId, form.personName]);
 
+  const pmQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.paymentMethods(companyId)), orderBy('order')) : null, 
+  [db, companyId]);
+
   const { data: vouchers, loading: vouchersLoading } = useCollection<Voucher>(vouchersQuery);
   const { data: accounts } = useCollection<Account>(accountsQuery);
   const { data: clients } = useCollection<any>(clientsQuery);
   const { data: allTransactions } = useCollection<Transaction>(projectsQuery);
+  const { data: paymentMethods } = useCollection<any>(pmQuery);
 
   const [contracts, setContracts] = useState<Contract[]>([]);
 
-  // الفلترة الذكية لحسابات الإيداع بناءً على طريقة الدفع وبناءً على الإعدادات اليدوية في دليل الحسابات
+  // الفلترة الذكية لحسابات الإيداع بناءً على طريقة الدفع المحددة في قواعد العمل
   const cashAccounts = useMemo(() => {
-    if (!accounts) return [];
+    if (!accounts || !form.paymentMethod) return [];
     return accounts.filter(a => {
       if (a.isGroup) return false;
-      // 1. الفلترة بناءً على الإعدادات اليدوية (The User Control)
-      if (a.allowedPaymentMethods && a.allowedPaymentMethods.length > 0) {
-        return a.allowedPaymentMethods.includes(form.paymentMethod);
-      }
-      // 2. الفلترة التلقائية للأكواد القياسية (Fallback)
-      if (form.paymentMethod === 'cash') return a.code.startsWith('101') || a.code.startsWith('1201');
-      if (form.paymentMethod === 'bank' || form.paymentMethod === 'transfer') return a.code.startsWith('102') || a.code.startsWith('1201');
-      return a.type === 'asset' && !a.code.startsWith('1202') && !a.code.startsWith('1205');
+      // الفلترة بناءً على الإعدادات اليدوية في دليل الحسابات
+      return a.allowedPaymentMethods?.includes(form.paymentMethod);
     });
   }, [accounts, form.paymentMethod]);
   
@@ -142,7 +141,7 @@ export default function ReceiptVouchersPage() {
 
   const handleSave = async () => {
     if (!db || !companyId || !user) return;
-    if (!form.accountId || !form.cashAccountId || form.amount <= 0) {
+    if (!form.accountId || !form.cashAccountId || form.amount <= 0 || !form.paymentMethod) {
       toast({ variant: "destructive", title: t('common.error') });
       return;
     }
@@ -155,7 +154,7 @@ export default function ReceiptVouchersPage() {
       setIsAdding(false);
       setForm({ 
         date: new Date().toISOString().split('T')[0], 
-        amount: 0, personName: '', paymentMethod: 'cash', 
+        amount: 0, personName: '', paymentMethod: '', 
         accountId: '', cashAccountId: '', projectId: '', 
         transactionId: '', contractId: '',
         costCenterId: '', profitCenterId: '', notes: '',
@@ -174,7 +173,7 @@ export default function ReceiptVouchersPage() {
 
   return (
     <div className="space-y-4 animate-in fade-in" dir={dir}>
-      <header className="flex justify-between items-center">
+      <header className="flex justify-between items-center text-start">
         <div className="text-start">
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
             <Receipt className="h-6 w-6 text-emerald-600" /> {tSafe('accounting.vouchers.receiptTitle', 'سندات القبض الذكية', 'Smart Receipt Vouchers')}
@@ -194,7 +193,7 @@ export default function ReceiptVouchersPage() {
            <Card className="lg:col-span-8 rounded-xl border-0 shadow-2xl bg-white overflow-hidden">
               <CardHeader className="bg-emerald-50 p-6 border-b text-start">
                  <CardTitle className="text-emerald-900 font-black flex items-center gap-3">
-                    <Sparkles className="h-5 w-5" /> {tSafe('inline.issue.smart.receipt', 'إصدار سند قبض ذكي (Odoo Style)', 'Issue Smart Receipt')}
+                    <Sparkles className="h-5 w-5" /> {tSafe('inline.issue.smart.receipt', 'إصدار سند قبض ذكي', 'Issue Smart Receipt')}
                  </CardTitle>
               </CardHeader>
               <CardContent className="p-8 space-y-8 text-start bg-white">
@@ -221,7 +220,7 @@ export default function ReceiptVouchersPage() {
                              <SelectValue placeholder="..." />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl border shadow-2xl z-[160]">
-                             {allTransactions?.filter(t => t.clientName === form.personName).map(t_row => (
+                             {allTransactions?.filter(t_item => t_item.clientName === form.personName).map(t_row => (
                                <SelectItem key={t_row.id} value={t_row.id} className="font-bold py-3">
                                   <div className="flex flex-col text-start">
                                      <span>{t_row.subServiceName}</span>
@@ -277,20 +276,25 @@ export default function ReceiptVouchersPage() {
                              <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl">
-                             <SelectItem value="cash" className="font-bold">{isRtl ? 'نقدي' : 'Cash'}</SelectItem>
-                             <SelectItem value="bank" className="font-bold">{isRtl ? 'شيك' : 'Check'}</SelectItem>
-                             <SelectItem value="transfer" className="font-bold">{isRtl ? 'تحويل بنكي / KNET' : 'Bank Transfer'}</SelectItem>
+                             {paymentMethods?.map((pm: any) => (
+                               <SelectItem key={pm.code} value={pm.code} className="font-bold py-2">{isRtl ? pm.name : (pm.nameEn || pm.name)}</SelectItem>
+                             ))}
                           </SelectContent>
                        </Select>
                     </div>
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.deposit.to', 'إيداع في حساب', 'Deposit To')}</Label>
-                       <Select value={form.cashAccountId} onValueChange={v => setForm({...form, cashAccountId: v})}>
+                       <Select disabled={!form.paymentMethod} value={form.cashAccountId} onValueChange={v => setForm({...form, cashAccountId: v})}>
                           <SelectTrigger className="h-14 rounded-xl border-2 font-black text-blue-600 bg-white">
                              <SelectValue placeholder="..." />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl">
                              {cashAccounts?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{a.code} - {isRtl ? a.nameAr : a.nameEn}</SelectItem>)}
+                             {cashAccounts.length === 0 && form.paymentMethod && (
+                               <div className="p-4 text-center text-rose-500 text-[10px] font-bold">
+                                  لا يوجد حساب مفعل لطريقة الدفع هذه في دليل الحسابات.
+                               </div>
+                             )}
                           </SelectContent>
                        </Select>
                     </div>
@@ -345,7 +349,7 @@ export default function ReceiptVouchersPage() {
                  {form.contractId && milestonesStatus.length > 0 && (
                    <div className="relative z-10 pt-6 border-t border-white/10 space-y-4">
                       <h5 className="text-[10px] font-black text-primary uppercase tracking-widest flex items-center gap-2">
-                        <History className="h-3.5 w-3.5" /> {tSafe('inline.contract.snapshot', 'حالة دفعات العقد الحالية', 'Contract Snapshot')}
+                        <HistoryIcon className="h-3.5 w-3.5" /> {tSafe('inline.contract.snapshot', 'حالة دفعات العقد الحالية', 'Contract Snapshot')}
                       </h5>
                       <div className="space-y-2">
                          {milestonesStatus.map((m, i) => (

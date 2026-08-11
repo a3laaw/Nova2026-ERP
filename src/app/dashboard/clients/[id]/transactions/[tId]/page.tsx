@@ -98,22 +98,19 @@ function TransactionDetailsContent() {
      return allTemplates.filter(temp => temp.subServiceId?.trim() === subId && temp.isActive !== false);
   }, [allTemplates, transaction?.subServiceId]);
 
-  // منطق قفل المسار الفني الجديد (Sovereign Guard)
   const isFinancialLockActive = useMemo(() => {
      const hasApprovedContract = contracts?.some(c => ['approved', 'paid', 'active', 'signed'].includes(c.status || '') || c.isPaid);
      const hasApprovedBOQ = activeBoq?.status === 'approved';
      
-     // فحص نوع النشاط (الاستشارات الهندسية لا تتطلب مقايسة لفتح المسار)
      const isConsulting = transaction?.activityTypeName?.includes('استشارات') || 
                           transaction?.activityTypeName?.includes('Consulting') ||
                           transaction?.activityTypeName?.includes('تصميم') ||
                           transaction?.activityTypeName?.includes('Design');
      
      if (isConsulting) {
-        return !hasApprovedContract; // القفل يعتمد فقط على العقد
+        return !hasApprovedContract;
      }
      
-     // نشاط المقاولات يتطلب العقد والمقايسة معاً
      return !hasApprovedContract || !hasApprovedBOQ;
   }, [contracts, activeBoq, transaction]);
 
@@ -192,9 +189,9 @@ function TransactionDetailsContent() {
         <div className="flex gap-2">
            <div className="flex gap-2">
               {activeBoq ? (
-                <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} variant="outline" size="sm" className={cn("h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border-slate-200 shadow-sm", activeBoq.status !== 'approved' && "border-amber-200 bg-amber-50 text-amber-600")}>
+                <button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} className={cn("h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border flex items-center shadow-sm", activeBoq.status !== 'approved' ? "border-amber-200 bg-amber-50 text-amber-600" : "border-slate-200 bg-white")}>
                     <FileSpreadsheet className="h-3 w-3" /> {activeBoq.status === 'approved' ? t('projects.boqExplorer') : t('common.pending')}
-                </Button>
+                </button>
               ) : (
                 <Button onClick={() => setIsBoqInitOpen(true)} variant="outline" size="sm" className="h-8 px-3 rounded-md font-bold text-[10px] gap-1.5 border-slate-200 shadow-sm">
                    <FilePlus className="h-3.5 w-3.5" /> {t('common.add')}
@@ -303,7 +300,7 @@ function TransactionDetailsContent() {
                      <SelectValue placeholder="..." />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-2 shadow-2xl">
-                     {templates?.map(t => <SelectItem key={t.id} value={t.id!} className="font-bold py-4">{t.name}</SelectItem>)}
+                     {templates?.map(t_item => <SelectItem key={t_item.id} value={t_item.id!} className="font-bold py-4">{t_item.name}</SelectItem>)}
                   </SelectContent>
                </Select>
                <Button onClick={handleCreateBOQ} disabled={!selectedTemplateId || !!loadingAction} className="w-full h-14 rounded-2xl font-black text-sm shadow-xl shadow-primary/20 border-b-4 border-orange-700 mt-4 transition-all active:scale-95">

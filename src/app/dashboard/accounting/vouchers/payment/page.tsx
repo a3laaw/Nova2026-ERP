@@ -38,7 +38,7 @@ export default function PaymentVouchersPage() {
     date: new Date().toISOString().split('T')[0],
     amount: 0,
     personName: '',
-    paymentMethod: 'cash' as any,
+    paymentMethod: '',
     accountId: '',
     cashAccountId: '',
     projectId: '',
@@ -68,18 +68,27 @@ export default function PaymentVouchersPage() {
     companyId && db ? query(collection(db, paths.profitCenters(companyId))) : null, 
   [db, companyId]);
 
+  const pmQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.paymentMethods(companyId)), orderBy('order')) : null, 
+  [db, companyId]);
+
   const { data: vouchers, loading: vouchersLoading } = useCollection<Voucher>(vouchersQuery);
   const { data: accounts } = useCollection<Account>(accountsQuery);
   const { data: projects } = useCollection<any>(projectsQuery);
   const { data: costCenters } = useCollection<CostCenter>(costCentersQuery);
   const { data: profitCenters } = useCollection<ProfitCenter>(profitCentersQuery);
+  const { data: paymentMethods } = useCollection<any>(pmQuery);
 
-  const cashAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.code.startsWith('101') || a.code.startsWith('102'))), [accounts]);
+  const cashAccounts = useMemo(() => {
+    if (!accounts || !form.paymentMethod) return [];
+    return accounts.filter(a => !a.isGroup && a.allowedPaymentMethods?.includes(form.paymentMethod));
+  }, [accounts, form.paymentMethod]);
+
   const expenseAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.type === 'expense' || a.type === 'liability')), [accounts]);
 
   const handleSave = async () => {
     if (!db || !companyId || !user) return;
-    if (!form.accountId || !form.cashAccountId || form.amount <= 0) {
+    if (!form.accountId || !form.cashAccountId || form.amount <= 0 || !form.paymentMethod) {
       toast({ variant: "destructive", title: t('common.error') });
       return;
     }
@@ -92,7 +101,7 @@ export default function PaymentVouchersPage() {
       setIsAdding(false);
       setForm({ 
         date: new Date().toISOString().split('T')[0], 
-        amount: 0, personName: '', paymentMethod: 'cash', 
+        amount: 0, personName: '', paymentMethod: '', 
         accountId: '', cashAccountId: '', projectId: '', costCenterId: '', profitCenterId: '', notes: '',
         distributions: []
       });
@@ -112,7 +121,7 @@ export default function PaymentVouchersPage() {
 
   return (
     <div className="space-y-4 animate-in fade-in" dir={dir}>
-      <header className="flex justify-between items-center">
+      <header className="flex justify-between items-center text-start">
         <div className="text-start">
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
             <Wallet className="h-6 w-6 text-rose-600" /> {t('accounting.vouchers.paymentTitle')}
@@ -158,21 +167,26 @@ export default function PaymentVouchersPage() {
                     </div>
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400">{t('paymentMethods')}</Label>
-                       <Select value={form.paymentMethod} onValueChange={v => setForm({...form, paymentMethod: v})}>
+                       <Select value={form.paymentMethod} onValueChange={v => setForm({...form, paymentMethod: v, cashAccountId: ''})}>
                           <SelectTrigger className="h-14 rounded-xl border-2 font-bold"><SelectValue /></SelectTrigger>
                           <SelectContent className="rounded-xl">
-                             <SelectItem value="cash" className="font-bold">{isRtl ? 'نقدي' : 'Cash'}</SelectItem>
-                             <SelectItem value="bank" className="font-bold">{isRtl ? 'شيك' : 'Check'}</SelectItem>
-                             <SelectItem value="transfer" className="font-bold">{isRtl ? 'تحويل بنكي / KNET' : 'Bank Transfer'}</SelectItem>
+                             {paymentMethods?.map((pm: any) => (
+                               <SelectItem key={pm.code} value={pm.code} className="font-bold py-2">{isRtl ? pm.name : (pm.nameEn || pm.name)}</SelectItem>
+                             ))}
                           </SelectContent>
                        </Select>
                     </div>
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400">{t('accounting.vouchers.payFrom')}</Label>
-                       <Select value={form.cashAccountId} onValueChange={v => setForm({...form, cashAccountId: v})}>
+                       <Select disabled={!form.paymentMethod} value={form.cashAccountId} onValueChange={v => setForm({...form, cashAccountId: v})}>
                           <SelectTrigger className="h-14 rounded-xl border-2 font-black text-rose-600"><SelectValue placeholder="..." /></SelectTrigger>
                           <SelectContent className="rounded-xl">
                              {cashAccounts?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.nameAr : a.nameEn}</SelectItem>)}
+                             {cashAccounts.length === 0 && form.paymentMethod && (
+                               <div className="p-4 text-center text-rose-500 text-[10px] font-bold">
+                                  لا يوجد حساب مفعل لطريقة الدفع هذه في دليل الحسابات.
+                               </div>
+                             )}
                           </SelectContent>
                        </Select>
                     </div>
@@ -203,7 +217,7 @@ export default function PaymentVouchersPage() {
                        {form.distributions.length > 0 ? (
                          <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl flex items-center justify-between">
                             <span className="text-[10px] font-black text-primary uppercase">{isRtl ? `موزع على ${form.distributions.length} مشاريع` : `Distributed across ${form.distributions.length} projects`}</span>
-                            <Badge className="bg-emerald-500 text-white border-0">{isDistBalanced ? 'BALANCED' : 'MISMATCH'}</Badge>
+                            <Badge className="bg-emerald-50 text-white border-0">{isDistBalanced ? 'BALANCED' : 'MISMATCH'}</Badge>
                          </div>
                        ) : (
                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

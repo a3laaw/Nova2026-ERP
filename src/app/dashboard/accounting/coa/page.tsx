@@ -63,7 +63,12 @@ export default function ChartOfAccountsPage() {
     companyId && db ? query(collection(db, paths.accounts(companyId)), orderBy('code')) : null, 
   [db, companyId]);
 
+  const pmQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.paymentMethods(companyId)), orderBy('order')) : null, 
+  [db, companyId]);
+
   const { data: accounts, loading } = useCollection<Account>(accountsQuery);
+  const { data: paymentMethods } = useCollection<any>(pmQuery);
 
   const toggleExpand = (id: string) => {
     setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
@@ -153,7 +158,7 @@ export default function ChartOfAccountsPage() {
               
               {account.isGroup ? <Folder className="h-4 w-4 text-amber-500" /> : <FileText className="h-4 w-4 text-blue-400" />}
               
-              <span className="text-[10px] font-mono bg-slate-100 px-2 py-0.5 rounded font-black text-primary">{account.code}</span>
+              <span className="text-[10px] font-black font-mono text-primary bg-slate-100 px-2 py-0.5 rounded uppercase">{account.code}</span>
               <span className="text-xs truncate">{isRtl ? account.nameAr : account.nameEn}</span>
               
               <Badge variant="outline" className="ms-auto text-[8px] uppercase font-black border-2 h-5">
@@ -212,7 +217,7 @@ export default function ChartOfAccountsPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in" dir={dir}>
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-start">
         <div className="text-start">
           <h1 className="text-2xl font-black font-headline flex items-center gap-3 text-slate-900">
             <GitBranch className="h-7 w-7 text-primary" /> {t('chartOfAccounts')}
@@ -276,7 +281,7 @@ export default function ChartOfAccountsPage() {
               <div className="grid grid-cols-2 gap-8">
                  <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.code')}</Label>
-                    <Input value={form.code} onChange={e => setForm({...form, code: e.target.value})} className="h-12 rounded-xl border-2 font-mono font-black text-xl text-primary" />
+                    <Input value={form.code} onChange={e => setForm({...form, code: e.target.value.toUpperCase()})} className="h-12 rounded-xl border-2 font-mono font-black text-xl text-primary" />
                  </div>
                  <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('category')}</Label>
@@ -304,27 +309,27 @@ export default function ChartOfAccountsPage() {
                  </div>
               </div>
 
-              {form.type === 'asset' && !form.isGroup && (
+              {(form.type === 'asset' || form.type === 'liability') && !form.isGroup && (
                 <div className="p-6 rounded-2xl bg-blue-50 border-2 border-dashed border-blue-200 space-y-4 animate-in fade-in">
                    <Label className="text-[10px] font-black uppercase text-blue-600 tracking-widest flex items-center gap-2">
                       <ShieldCheck className="h-4 w-4" /> {tSafe('inline.payment_links', 'ربط الدفع والتحصيل', 'Payment Links')}
                    </Label>
                    <p className="text-[10px] font-bold text-blue-400 mb-2">{tSafe('inline.payment_methods_hint', 'حدد طرق الدفع التي يظهر فيها هذا الحساب عند إصدار سند قبض/صرف.', 'Specify payment methods where this account appears in vouchers.')}</p>
                    <div className="flex flex-wrap gap-4">
-                      {['cash', 'bank', 'transfer'].map(method => (
-                        <div key={method} className="flex items-center space-x-2 space-x-reverse">
+                      {paymentMethods?.map((pm: any) => (
+                        <div key={pm.code} className="flex items-center space-x-2 space-x-reverse">
                            <Checkbox 
-                             id={`method-${method}`} 
-                             checked={form.allowedPaymentMethods?.includes(method as any)}
+                             id={`method-${pm.code}`} 
+                             checked={form.allowedPaymentMethods?.includes(pm.code)}
                              onCheckedChange={(checked) => {
                                const current = form.allowedPaymentMethods || [];
                                const updated = checked 
-                                ? [...current, method as any] 
-                                : current.filter(m => m !== method);
+                                ? [...current, pm.code] 
+                                : current.filter(m => m !== pm.code);
                                setForm({...form, allowedPaymentMethods: updated});
                              }}
                            />
-                           <Label htmlFor={`method-${method}`} className="font-bold text-xs cursor-pointer">{tSafe(`inline.${method}`, method, method)}</Label>
+                           <Label htmlFor={`method-${pm.code}`} className="font-bold text-xs cursor-pointer">{isRtl ? pm.name : (pm.nameEn || pm.name)}</Label>
                         </div>
                       ))}
                    </div>
@@ -346,7 +351,6 @@ export default function ChartOfAccountsPage() {
                 </div>
               )}
 
-              {/* قسم إعدادات التحليل - المرحلة 2 */}
               {!form.isGroup && (
                 <div className="space-y-6 pt-6 border-t">
                   <h4 className="font-black text-sm text-slate-800 flex items-center gap-2">
