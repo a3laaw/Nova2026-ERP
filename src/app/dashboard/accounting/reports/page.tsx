@@ -191,7 +191,7 @@ export default function FinancialReportsPage() {
                      </tbody>
                   </table>
                </CardContent>
-            </Card>
+            </div>
 
             <div className="space-y-6 text-start">
                <h3 className="font-black text-lg border-s-4 border-emerald-500 ps-3 flex items-center gap-2">

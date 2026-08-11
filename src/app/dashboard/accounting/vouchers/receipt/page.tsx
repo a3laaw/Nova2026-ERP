@@ -73,25 +73,15 @@ export default function ReceiptVouchersPage() {
     companyId && db && form.personName ? query(collection(db, paths.transactions(companyId)), where('status', '!=', 'completed')) : null, 
   [db, companyId, form.personName]);
 
-  const costCentersQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.costCenters(companyId))) : null, 
-  [db, companyId]);
-
-  const profitCentersQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.profitCenters(companyId))) : null, 
-  [db, companyId]);
-
   const { data: vouchers, loading: vouchersLoading } = useCollection<Voucher>(vouchersQuery);
   const { data: accounts } = useCollection<Account>(accountsQuery);
   const { data: clients } = useCollection<any>(clientsQuery);
   const { data: allTransactions } = useCollection<Transaction>(projectsQuery);
-  const { data: costCenters } = useCollection<CostCenter>(costCentersQuery);
-  const { data: profitCenters } = useCollection<ProfitCenter>(profitCentersQuery);
 
   const [contracts, setContracts] = useState<Contract[]>([]);
 
-  // Filtering accounts - Restricted to liquid assets
-  const cashAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.code.startsWith('101') || a.code.startsWith('102') || a.code.startsWith('1201'))), [accounts]);
+  // Filtering accounts - Restricted to liquid assets (Cash/Banks) - Exclude 1202 (Receivables)
+  const cashAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.code.startsWith('101') || a.code.startsWith('102') || a.code === '1201')), [accounts]);
   
   // Filtering accounts - Revenue, Liabilities, and Receivables
   const incomeAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.type === 'revenue' || a.type === 'liability' || a.code.startsWith('1202'))), [accounts]);

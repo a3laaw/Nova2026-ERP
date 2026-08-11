@@ -57,6 +57,7 @@ export class DocumentService {
        await updateDoc(clientRef, { status: 'contracted', updatedAt: serverTimestamp() });
 
        // 2. الأتمتة المحاسبية: إنشاء حساب ذمة للعميل تلقائياً تحت مجموعة (1202 - ذمم العملاء)
+       // تم التصحيح لضمان عدم إنشاء الحساب تحت البنوك (1201)
        const accService = new AccountingService(this.db, this.companyId);
        await accService.ensureControlAccount('1202', 'ذمم العملاء', 'Accounts Receivable', 'asset');
        await accService.createAutomaticSubAccount('1202', currentData.clientId, currentData.clientName, 'asset');
