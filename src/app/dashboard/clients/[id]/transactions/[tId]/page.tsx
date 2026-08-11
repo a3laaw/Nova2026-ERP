@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect, Suspense } from 'react';
@@ -99,11 +98,24 @@ function TransactionDetailsContent() {
      return allTemplates.filter(temp => temp.subServiceId?.trim() === subId && temp.isActive !== false);
   }, [allTemplates, transaction?.subServiceId]);
 
+  // منطق قفل المسار الفني الجديد (Sovereign Guard)
   const isFinancialLockActive = useMemo(() => {
      const hasApprovedContract = contracts?.some(c => ['approved', 'paid', 'active', 'signed'].includes(c.status || '') || c.isPaid);
      const hasApprovedBOQ = activeBoq?.status === 'approved';
+     
+     // فحص نوع النشاط (الاستشارات الهندسية لا تتطلب مقايسة لفتح المسار)
+     const isConsulting = transaction?.activityTypeName?.includes('استشارات') || 
+                          transaction?.activityTypeName?.includes('Consulting') ||
+                          transaction?.activityTypeName?.includes('تصميم') ||
+                          transaction?.activityTypeName?.includes('Design');
+     
+     if (isConsulting) {
+        return !hasApprovedContract; // القفل يعتمد فقط على العقد
+     }
+     
+     // نشاط المقاولات يتطلب العقد والمقايسة معاً
      return !hasApprovedContract || !hasApprovedBOQ;
-  }, [contracts, activeBoq]);
+  }, [contracts, activeBoq, transaction]);
 
   const stagesQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order', 'asc')) : null, [db, companyId, transactionId]);
   const { data: rawStages, loading: stagesLoading } = useCollection<StageInstance>(stagesQuery);
@@ -217,9 +229,11 @@ function TransactionDetailsContent() {
                             <Button onClick={() => setActiveTab('documents')} variant="outline" size="sm" className="h-8 font-bold px-6 text-[10px] rounded-md shadow-sm border-2">
                                <Plus className="h-3.5 w-3.5 me-2" /> {t('contracts')}
                             </Button>
-                            <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} size="sm" className="h-8 font-bold px-6 text-[10px] rounded-md shadow-sm">
-                               <FileSpreadsheet className="h-3.5 w-3.5 me-2" /> {t('projects.boqExplorer')}
-                            </Button>
+                            {!transaction?.activityTypeName?.includes('استشارات') && !transaction?.activityTypeName?.includes('Consulting') && (
+                               <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} size="sm" className="h-8 font-bold px-6 text-[10px] rounded-md shadow-sm">
+                                  <FileSpreadsheet className="h-3.5 w-3.5 me-2" /> {t('projects.boqExplorer')}
+                               </Button>
+                            )}
                          </div>
                       </Card>
                    ) : !stages.length ? (

@@ -41,7 +41,6 @@ export default function FinancialReportsPage() {
       if (!db || !companyId) return;
       
       try {
-        // 1. جلب كافة البيانات الأساسية
         const [journalsSnap, accountsSnap, costSnap, profitSnap, projectsSnap] = await Promise.all([
           getDocs(collection(db, paths.journalEntries(companyId))),
           getDocs(collection(db, paths.accounts(companyId))),
@@ -52,7 +51,6 @@ export default function FinancialReportsPage() {
 
         const allLines = journalsSnap.docs.flatMap(d => (d.data() as JournalEntry).lines || []);
         
-        // 2. معالجة تقرير مراكز التكلفة
         const ccReport = costSnap.docs.map(d => {
            const center = { id: d.id, ...d.data() } as CostCenter;
            const spent = allLines
@@ -61,7 +59,6 @@ export default function FinancialReportsPage() {
            return { ...center, amount: spent };
         }).filter(c => c.amount !== 0);
 
-        // 3. معالجة تقرير مراكز الربحية
         const pcReport = profitSnap.docs.map(d => {
            const center = { id: d.id, ...d.data() } as ProfitCenter;
            const revenue = allLines
@@ -70,7 +67,6 @@ export default function FinancialReportsPage() {
            return { ...center, amount: revenue };
         }).filter(c => c.amount !== 0);
 
-        // 4. معالجة تقرير ربحية المشاريع
         const projectReport = projectsSnap.docs.map(d => {
            const proj = { id: d.id, ...(d.data() as any) };
            const revenue = allLines
@@ -113,7 +109,6 @@ export default function FinancialReportsPage() {
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-         {/* 1. تقرير ربحية المشاريع */}
          <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
             <CardHeader className="bg-slate-900 p-8 text-white flex flex-row items-center justify-between">
                <div>
@@ -151,7 +146,6 @@ export default function FinancialReportsPage() {
          </Card>
 
          <div className="space-y-8">
-            {/* 2. تقرير مراكز التكلفة */}
             <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/5">
                <CardHeader className="bg-rose-50/50 p-6 border-b text-start">
                   <CardTitle className="text-sm font-black flex items-center gap-2 text-rose-900">
@@ -172,7 +166,6 @@ export default function FinancialReportsPage() {
                </CardContent>
             </Card>
 
-            {/* 3. تقرير مراكز الربحية */}
             <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/5">
                <CardHeader className="bg-emerald-50/50 p-6 border-b text-start">
                   <CardTitle className="text-sm font-black flex items-center gap-2 text-emerald-900">
@@ -191,8 +184,7 @@ export default function FinancialReportsPage() {
                      </tbody>
                   </table>
                </CardContent>
-            </div>
-
+            </Card>
             <div className="space-y-6 text-start">
                <h3 className="font-black text-lg border-s-4 border-emerald-500 ps-3 flex items-center gap-2">
                   <History className="h-5 w-5 text-emerald-500" /> {isRtl ? 'السجل التاريخي للتحليل' : 'Historical Analytics Log'}

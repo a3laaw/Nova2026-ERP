@@ -57,21 +57,29 @@ export class DocumentService {
        await updateDoc(clientRef, { status: 'contracted', updatedAt: serverTimestamp() });
 
        // 2. الأتمتة المحاسبية: إنشاء حساب ذمة للعميل تلقائياً تحت مجموعة (1202 - ذمم العملاء)
-       // تم التصحيح لضمان عدم إنشاء الحساب تحت البنوك (1201)
        const accService = new AccountingService(this.db, this.companyId);
        await accService.ensureControlAccount('1202', 'ذمم العملاء', 'Accounts Receivable', 'asset');
        await accService.createAutomaticSubAccount('1202', currentData.clientId, currentData.clientName, 'asset');
 
-       // 3. تفعيل المسار الفني المرتبط
+       // 3. تفعيل المسار الفني المرتبط (فقط للنشاط الاستشاري/التصميم - المقاولات تتطلب مقايسة أولاً)
        if (currentData.transactionId) {
-          const transService = new TransactionService(this.db, this.companyId, this.permissions);
-          await transService.initializeTechnicalPath(
-            currentData.transactionId,
-            currentData.activityTypeId || '',
-            currentData.serviceId || '',
-            currentData.subServiceId || '',
-            userId
-          );
+          const transSnap = await getDoc(doc(this.db, paths.transactions(this.companyId), currentData.transactionId));
+          const transData = transSnap.data();
+          const isConsulting = transData?.activityTypeName?.includes('استشارات') || 
+                               transData?.activityTypeName?.includes('Consulting') ||
+                               transData?.activityTypeName?.includes('تصميم') ||
+                               transData?.activityTypeName?.includes('Design');
+
+          if (isConsulting) {
+            const transService = new TransactionService(this.db, this.companyId, this.permissions);
+            await transService.initializeTechnicalPath(
+              currentData.transactionId,
+              currentData.activityTypeId || '',
+              currentData.serviceId || '',
+              currentData.subServiceId || '',
+              userId
+            );
+          }
        }
     }
   }

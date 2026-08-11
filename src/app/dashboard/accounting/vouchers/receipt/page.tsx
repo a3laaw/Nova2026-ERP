@@ -16,7 +16,6 @@ import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { Voucher, Account } from '@/types/accounting';
-import { CostCenter, ProfitCenter } from '@/types/cost-profit-centers';
 import { AccountingService } from '@/services/accounting-service';
 import { PaymentMilestoneService, MilestonePaymentStatus } from '@/services/payment-milestone-service';
 import { toast } from '@/hooks/use-toast';
@@ -58,7 +57,7 @@ export default function ReceiptVouchersPage() {
 
   // Queries
   const vouchersQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.vouchers(companyId)), where('type', '==', 'receipt'), orderBy('createdAt', 'desc')) : null, 
+    companyId && db ? query(collection(db, paths.vouchers(companyId)), where('type', '==', 'receipt')) : null, 
   [db, companyId]);
 
   const accountsQuery = useMemo(() => 
@@ -66,7 +65,7 @@ export default function ReceiptVouchersPage() {
   [db, companyId]);
 
   const clientsQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.clients(companyId))) : null, 
+    companyId && db ? query(collection(db, paths.clients(companyId)), orderBy('nameAr')) : null, 
   [db, companyId]);
 
   const projectsQuery = useMemo(() => 
@@ -80,10 +79,10 @@ export default function ReceiptVouchersPage() {
 
   const [contracts, setContracts] = useState<Contract[]>([]);
 
-  // Filtering accounts - Restricted to liquid assets (Cash/Banks) - Exclude 1202 (Receivables)
+  // Filtering accounts - Restricted to Cash & Banks only
   const cashAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.code.startsWith('101') || a.code.startsWith('102') || a.code === '1201')), [accounts]);
   
-  // Filtering accounts - Revenue, Liabilities, and Receivables
+  // Income Accounts
   const incomeAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.type === 'revenue' || a.type === 'liability' || a.code.startsWith('1202'))), [accounts]);
 
   // Logic: When transaction changes, fetch approved contracts
@@ -116,8 +115,6 @@ export default function ReceiptVouchersPage() {
       service.getMilestonesStatus(form.contractId).then(status => {
         setMilestonesStatus(status);
         const { description, breakdown } = service.generateReceiptDescription(status, form.amount);
-        
-        // Join applied milestones for storage
         const appliedNames = breakdown.map(b => b.milestoneName).join(', ');
 
         setForm(prev => ({ 
@@ -157,6 +154,10 @@ export default function ReceiptVouchersPage() {
       setLoading(false);
     }
   };
+
+  const sortedVouchers = useMemo(() => {
+    return [...(vouchers || [])].sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+  }, [vouchers]);
 
   return (
     <div className="space-y-4 animate-in fade-in" dir={dir}>
@@ -349,13 +350,6 @@ export default function ReceiptVouchersPage() {
                    </div>
                  )}
               </Card>
-
-              <div className="p-8 bg-blue-50 rounded-[2rem] border-2 border-dashed border-blue-100 flex items-start gap-4">
-                 <Info className="h-6 w-6 text-blue-600 shrink-0 mt-0.5" />
-                 <p className="text-[10px] font-bold text-blue-800 leading-relaxed">
-                    {tSafe('inline.automation.hint', 'سيتم إدراج معرفات العقد والمعاملة ضمن بيانات السند لضمان دقة التقارير التحليلية والربحية.', 'Contract and Transaction IDs will be embedded for precise profitability analysis.')}
-                 </p>
-              </div>
            </aside>
         </div>
       ) : (
@@ -375,9 +369,9 @@ export default function ReceiptVouchersPage() {
                  <TableBody>
                     {vouchersLoading ? (
                       <TableRow><TableCell colSpan={6} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></TableCell></TableRow>
-                    ) : vouchers?.length === 0 ? (
+                    ) : sortedVouchers.length === 0 ? (
                       <TableRow><TableCell colSpan={6} className="text-center py-20 text-slate-300 font-bold italic">{t('common.noResults')}</TableCell></TableRow>
-                    ) : vouchers?.map(v => (
+                    ) : sortedVouchers.map(v => (
                       <TableRow key={v.id} className="hover:bg-slate-50 transition-colors border-b-slate-100 group">
                          <TableCell className="py-4 ps-8 text-start font-black text-slate-800">
                             <div className="flex flex-col">
