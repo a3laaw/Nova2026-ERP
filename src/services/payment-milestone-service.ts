@@ -30,7 +30,6 @@ export class PaymentMilestoneService {
 
   /**
    * جلب حالة سداد دفعات العقد بالتفصيل
-   * تم تعديل الاستعلام ليعمل بدون الحاجة لفهرس (Index) خارجي
    */
   async getMilestonesStatus(contractId: string): Promise<MilestonePaymentStatus[]> {
     const contractRef = doc(this.db, paths.contracts(this.companyId), contractId);
@@ -41,7 +40,6 @@ export class PaymentMilestoneService {
     const milestones = contract.milestones || [];
     const totalAmount = contract.totalAmount || 0;
 
-    // 1. جلب كافة سندات القبض المرتبطة بهذا العقد داخل نطاق المنشأة
     const vouchersQuery = query(
       collection(this.db, paths.vouchers(this.companyId)),
       where('contractId', '==', contractId),
@@ -50,20 +48,14 @@ export class PaymentMilestoneService {
     
     const vouchersSnap = await getDocs(vouchersQuery);
     
-    // 2. فرز البيانات برمجياً (In-memory) لتجنب الحاجة لفهرس مركب في Firestore
     const allVouchers = vouchersSnap.docs
       .map(d => d.data() as Voucher)
       .sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
 
-    // 3. حساب إجمالي ما تم تحصيله
     let poolOfPaidMoney = allVouchers.reduce((acc, v) => acc + (v.amount || 0), 0);
 
-    // 4. توزيع الرصيد على الدفعات بنظام FIFO
     return milestones.map((m) => {
-      // حساب قيمة الدفعة (دعم النمطين: مبلغ ثابت أو نسبة)
       const mAmount = m.amount || (totalAmount * (m.percentage || 0)) / 100;
-      
-      // كم من "مجمع المال" يخص هذه الدفعة؟
       const paidToThis = Math.min(poolOfPaidMoney, mAmount);
       poolOfPaidMoney = Math.max(0, poolOfPaidMoney - paidToThis);
 
@@ -77,7 +69,7 @@ export class PaymentMilestoneService {
   }
 
   /**
-   * توليد بيان سند القبض المقترح بناءً على المبلغ الجديد وتوزيع FIFO
+   * توليد بيان سند القبض المطور (Sovereign Narrative Engine)
    */
   generateReceiptDescription(
     milestonesStatus: MilestonePaymentStatus[],
@@ -87,60 +79,58 @@ export class PaymentMilestoneService {
     breakdown: { milestoneName: string; appliedAmount: number; fullyPaid: boolean }[];
   } {
     let remainingNewMoney = newAmount;
-    const breakdown: { milestoneName: string; appliedAmount: number; fullyPaid: boolean }[] = [];
+    const breakdown: { milestoneName: string; appliedAmount: number; fullyPaid: boolean; remainingAfter: number }[] = [];
     
+    // حساب إجماليات العقد
+    const totalContractValue = milestonesStatus.reduce((acc, s) => acc + s.milestoneAmount, 0);
+    const totalPaidBefore = milestonesStatus.reduce((acc, s) => acc + s.paidToDate, 0);
+    const totalRemainingAfter = Math.max(0, totalContractValue - (totalPaidBefore + newAmount));
+
     for (const status of milestonesStatus) {
       if (remainingNewMoney <= 0) break;
       if (status.remaining <= 0) continue;
 
       const applied = Math.min(remainingNewMoney, status.remaining);
       const isFullyPaid = Math.abs(applied - status.remaining) < 0.001;
+      const mRemainingAfter = Math.max(0, status.remaining - applied);
 
       breakdown.push({
         milestoneName: status.milestone.name,
         appliedAmount: applied,
-        fullyPaid: isFullyPaid
+        fullyPaid: isFullyPaid,
+        remainingAfter: mRemainingAfter
       });
 
       remainingNewMoney -= applied;
     }
 
-    // بناء النص العربي للبيان المحاسبي
     let description = "";
     if (breakdown.length === 0) {
-       description = `تم استلام مبلغ إضافي بقيمة ${newAmount} د.ك فائض عن قيمة العقد.`;
-    } 
-    else if (breakdown.length === 1) {
-       const b = breakdown[0];
-       if (b.fullyPaid) {
-          description = `تم سداد ${b.milestoneName} بالكامل.`;
-       } else {
-          const mStatus = milestonesStatus.find(s => s.milestone.name === b.milestoneName);
-          const left = (mStatus?.remaining || 0) - b.appliedAmount;
-          description = `تم سداد جزء من ${b.milestoneName}، المتبقي منها ${left.toLocaleString()} د.ك.`;
-       }
+       description = `تم استلام مبلغ إضافي بقيمة ${newAmount.toLocaleString()} د.ك فائض عن قيمة العقد.`;
     } 
     else {
        const fulls = breakdown.filter(x => x.fullyPaid);
-       const last = breakdown[breakdown.length - 1];
+       const partial = breakdown.find(x => !x.fullyPaid);
        
-       if (fulls.length > 1) {
-          description = `تم سداد الدفعات (${fulls.map(f => f.milestoneName).join(' و ')}) بالكامل`;
-       } else if (fulls.length === 1) {
-          description = `تم سداد ${fulls[0].milestoneName} بالكامل`;
-       } else {
-          description = `تم سداد أجزاء من عدة دفعات`;
+       let parts = "";
+       if (fulls.length > 0) {
+          const names = fulls.map(f => f.milestoneName).join(' و ');
+          parts = fulls.length > 1 ? `تم سداد الدفعات (${names}) بالكامل` : `تم سداد ${names} بالكامل`;
+       }
+       
+       if (partial) {
+          const prefix = fulls.length > 0 ? "، و" : "تم سداد ";
+          parts += `${prefix}جزء من ${partial.milestoneName} بقيمة ${partial.appliedAmount.toLocaleString()} د.ك (المتبقي من هذه الدفعة ${partial.remainingAfter.toLocaleString()} د.ك)`;
        }
 
-       if (!last.fullyPaid) {
-          description += `، وجزء من ${last.milestoneName} بقيمة ${last.appliedAmount.toLocaleString()} د.ك.`;
-       }
+       description = parts + ".";
+       description += ` إجمالي المتبقي من العقد: ${totalRemainingAfter.toLocaleString()} د.ك.`;
     }
 
     if (remainingNewMoney > 0.01) {
        description += ` (يوجد مبلغ زائد قدره ${remainingNewMoney.toLocaleString()} د.ك يتطلب مراجعة)`;
     }
 
-    return { description, breakdown };
+    return { description, breakdown: breakdown as any };
   }
 }

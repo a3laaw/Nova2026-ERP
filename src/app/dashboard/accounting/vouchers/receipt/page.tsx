@@ -90,10 +90,10 @@ export default function ReceiptVouchersPage() {
 
   const [contracts, setContracts] = useState<Contract[]>([]);
 
-  // Filtering accounts - FIXED: Restrict cashAccountId to liquid assets only
+  // Filtering accounts - Restricted to liquid assets
   const cashAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.code.startsWith('101') || a.code.startsWith('102') || a.code.startsWith('1201'))), [accounts]);
   
-  // Filtering accounts - FIXED: Include Revenue, Liabilities, and specifically Customer Receivables (1202)
+  // Filtering accounts - Revenue, Liabilities, and Receivables
   const incomeAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.type === 'revenue' || a.type === 'liability' || a.code.startsWith('1202'))), [accounts]);
 
   // Logic: When transaction changes, fetch approved contracts
@@ -177,10 +177,12 @@ export default function ReceiptVouchersPage() {
           </h1>
           <p className="text-muted-foreground text-xs font-medium">{tSafe('inline.receipt.desc', 'إدارة التحصيل المالي وربطه بالعقود والدفعات آلياً', 'Manage revenue collection and link to contracts automatically')}</p>
         </div>
-        <Button onClick={() => setIsAdding(!isAdding)} size="sm" className="h-9 px-6 font-bold gap-2 bg-emerald-600 hover:bg-emerald-700">
-           {isAdding ? <ArrowRight className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-           {isAdding ? t('common.back') : tSafe('inline.issue.receipt', 'إصدار سند قبض', 'Issue Receipt')}
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setIsAdding(!isAdding)} size="sm" className="h-9 px-6 font-bold gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm">
+            {isAdding ? <ArrowRight className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+            {isAdding ? t('common.back') : tSafe('inline.issue.receipt', 'إصدار سند قبض', 'Issue Receipt')}
+          </Button>
+        </div>
       </header>
 
       {isAdding ? (
