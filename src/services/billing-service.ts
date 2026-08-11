@@ -11,83 +11,59 @@ import {
   serverTimestamp,
   writeBatch,
   increment,
-  limit
+  limit,
+  addDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQItem, Contract, InterimPaymentCertificate } from '@/types/documents';
 import { nextSequential } from '@/lib/counters';
+import { MilestoneTiming } from '@/types/templates';
 
 /**
- * محرك الفوترة والمستخلصات السيادي (Sovereign Billing Engine).
- * يطبق منهجية تجميد الكميات (Snapshot) وحساب الاحتجازات واسترداد الدفعة المقدمة.
+ * محرك الفوترة والمستخلصات السيادي المطور (Sovereign Billing Engine V2).
+ * يدعم التوليد التلقائي بناءً على مراحل المسار الفني وشروط الدفع.
  */
 export class BillingService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * توليد مستخلص جديد بناءً على "الكميات المعتمدة غير المفوترة"
+   * إطلاق مطالبة مالية بناءً على حدث في المسار الفني (تلقائي)
    */
-  async generateIPC(transactionId: string, userId: string, userName: string) {
-    // 1. جلب العقد النشط لجلب سياسات الاحتجاز والمقدم
+  async triggerMilestoneBilling(
+    transactionId: string, 
+    technicalStageId: string, 
+    timing: MilestoneTiming,
+    userId: string,
+    userName: string
+  ) {
+    // 1. جلب العقد المعتمد
     const contractsSnap = await getDocs(query(
       collection(this.db, paths.contracts(this.companyId)), 
       where('transactionId', '==', transactionId),
-      where('status', 'in', ['approved', 'active', 'paid']),
+      where('status', 'in', ['approved', 'active', 'signed', 'paid']),
       limit(1)
     ));
-    
-    if (contractsSnap.empty) throw new Error('NO_ACTIVE_CONTRACT');
+
+    if (contractsSnap.empty) return null;
     const contract = { id: contractsSnap.docs[0].id, ...contractsSnap.docs[0].data() } as Contract;
 
-    // 2. جلب المقايسة والبنود
-    const boqsSnap = await getDocs(query(collection(this.db, paths.boqs(this.companyId)), where('transactionId', '==', transactionId)));
-    if (boqsSnap.empty) throw new Error('NO_ACTIVE_BOQ');
-    const boqId = boqsSnap.docs[0].id;
-    
-    const itemsSnap = await getDocs(collection(this.db, paths.boqItems(this.companyId, boqId)));
-    const allItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as BOQItem));
-    
-    // 3. فلترة البنود القابلة للفوترة (المعتمد > المفوتر)
-    const billableItems = allItems.filter(i => (i.verifiedQuantity || 0) > (i.billedQuantity || 0));
-    if (billableItems.length === 0) throw new Error('NO_UNBILLED_QUANTITIES');
+    // 2. البحث عن الدفعات المرتبطة بهذه المرحلة وهذا التوقيت
+    const targetMilestones = contract.milestones.filter(m => 
+      m.technicalStageId === technicalStageId && m.timing === timing
+    );
+
+    if (targetMilestones.length === 0) return null;
 
     const batch = writeBatch(this.db);
-    const ipcRef = doc(collection(this.db, getTenantPath(this.companyId, 'ipcs')));
-    const ipcNumber = await nextSequential(this.db, this.companyId, `ipc_${contract.id}`, '', 0, 0);
+    const ipcRef = doc(collection(this.db, paths.ipcs(this.companyId)));
+    const ipcNumber = await nextSequential(this.db, this.companyId, `ipc_${contract.id}`, '', 0, 1);
 
-    let grossAmount = 0;
+    const totalAmount = targetMilestones.reduce((acc, m) => {
+       const mAmt = m.amount || (contract.totalAmount * (m.percentage || 0)) / 100;
+       return acc + mAmt;
+    }, 0);
 
-    // 4. بناء الـ Snapshot للبنود
-    const lineItems = billableItems.map(item => {
-      const currentQty = (item.verifiedQuantity || 0) - (item.billedQuantity || 0);
-      const amount = currentQty * (item.estimatedRate || 0);
-      grossAmount += amount;
-
-      return {
-        boqItemId: item.id,
-        description: item.referenceTitle,
-        contractQty: item.contractQty || item.plannedQuantity,
-        approvedVariationQty: item.approvedVariationQty || 0,
-        previousCumulativeQty: item.billedQuantity || 0,
-        currentQty: currentQty,
-        unitRate: item.estimatedRate || 0,
-        amount: amount
-      };
-    });
-
-    // 5. حساب الاحتجاز واسترداد المقدم
-    const retentionAmount = grossAmount * (contract.retentionRate || 0);
-    
-    let advanceRecovery = 0;
-    if (contract.advancePayment) {
-       const remainingAdvance = contract.advancePayment.amount - (contract.advancePayment.recoveredToDate || 0);
-       const targetRecovery = grossAmount * (contract.advancePayment.recoveryRate || 0);
-       advanceRecovery = Math.min(targetRecovery, remainingAdvance);
-    }
-
-    const netPayable = grossAmount - retentionAmount - advanceRecovery;
-
-    const ipcData: Partial<InterimPaymentCertificate> = {
+    const ipcData: any = {
       id: ipcRef.id,
       ipcNumber: Number(ipcNumber),
       transactionId,
@@ -95,65 +71,85 @@ export class BillingService {
       clientId: contract.clientId,
       clientName: contract.clientName,
       status: 'draft',
-      lineItems,
-      grossAmount,
-      retentionAmount,
-      advanceRecovery,
-      netPayable,
+      name: `مستخلص آلي - ${targetMilestones.map(m => m.name).join(' & ')}`,
+      grossAmount: totalAmount,
+      netPayable: totalAmount, // تبسيط للمسودة
+      milestonesTriggered: targetMilestones.map(m => m.name),
       companyId: this.companyId,
       createdBy: userId,
-      generatedAt: serverTimestamp() as any,
+      createdByName: userName,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
 
     batch.set(ipcRef, ipcData);
-    await batch.commit();
 
+    // توثيق في التايملاين
+    const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
+    batch.set(timelineRef, {
+      transactionId,
+      type: 'billing_triggered',
+      content: `[أتمتة مالية] تم توليد مستخلص آلي بقيمة ${totalAmount.toLocaleString()} KWD بناءً على شرط الدفع (${timing}) للمرحلة المذكورة.`,
+      userId,
+      userName,
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
+    });
+
+    await batch.commit();
     return ipcRef.id;
   }
 
   /**
-   * الاعتماد النهائي للمستخلص والترحيل المالي
+   * توليد مستخلص بناءً على الكميات الميدانية (للمقاولات)
    */
-  async approveIPC(ipcId: string, userId: string) {
-    const ipcRef = doc(this.db, getTenantPath(this.companyId, 'ipcs'), ipcId);
-    const ipcSnap = await getDoc(ipcRef);
-    if (!ipcSnap.exists() || ipcSnap.data().status === 'approved') return;
-    
-    const ipc = ipcSnap.data() as InterimPaymentCertificate;
-    const batch = writeBatch(this.db);
-
-    // 1. تحديث billedQuantity في بنود المقايسة (التجميد النهائي)
-    const boqsSnap = await getDocs(query(collection(this.db, paths.boqs(this.companyId)), where('transactionId', '==', ipc.transactionId)));
+  async generateQuantityIPC(transactionId: string, userId: string, userName: string) {
+    const boqsSnap = await getDocs(query(collection(this.db, paths.boqs(this.companyId)), where('transactionId', '==', transactionId)));
+    if (boqsSnap.empty) throw new Error('NO_ACTIVE_BOQ');
     const boqId = boqsSnap.docs[0].id;
+    
+    const itemsSnap = await getDocs(collection(this.db, paths.boqItems(this.companyId, boqId)));
+    const allItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as BOQItem));
+    
+    // الكميات الجاهزة للفوترة (المنفذ > المفوتر)
+    const billableItems = allItems.filter(i => (i.executedQuantity || 0) > (i.billedQuantity || 0));
+    if (billableItems.length === 0) throw new Error('NO_NEW_PROGRESS');
 
-    ipc.lineItems.forEach(line => {
-      const itemRef = doc(this.db, paths.boqItems(this.companyId, boqId), line.boqItemId);
-      batch.update(itemRef, {
-        billedQuantity: increment(line.currentQty)
-      });
+    const ipcRef = doc(collection(this.db, paths.ipcs(this.companyId)));
+    const ipcNumber = await nextSequential(this.db, this.companyId, `ipc_q_${transactionId}`, '', 0, 1);
+
+    let gross = 0;
+    const lines = billableItems.map(item => {
+      const current = (item.executedQuantity || 0) - (item.billedQuantity || 0);
+      const amt = current * (item.estimatedRate || 0);
+      gross += amt;
+      return {
+        boqItemId: item.id,
+        description: item.referenceTitle,
+        previousQty: item.billedQuantity || 0,
+        currentQty: current,
+        totalQty: item.executedQuantity,
+        rate: item.estimatedRate,
+        amount: amt
+      };
     });
 
-    // 2. تحديث رصيد استرداد الدفعة المقدمة في العقد
-    if (ipc.advanceRecovery > 0) {
-      const contractRef = doc(this.db, paths.contracts(this.companyId), ipc.contractId);
-      batch.update(contractRef, {
-        'advancePayment.recoveredToDate': increment(ipc.advanceRecovery)
-      });
-    }
+    const ipcData = {
+      id: ipcRef.id,
+      ipcNumber: Number(ipcNumber),
+      transactionId,
+      status: 'draft',
+      type: 'quantity_based',
+      lineItems: lines,
+      grossAmount: gross,
+      netPayable: gross,
+      companyId: this.companyId,
+      createdBy: userId,
+      createdByName: userName,
+      createdAt: serverTimestamp()
+    };
 
-    // 3. تحديث حالة المستخلص
-    batch.update(ipcRef, {
-      status: 'approved',
-      approvedAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-
-    await batch.commit();
+    await setDoc(ipcRef, ipcData);
+    return ipcRef.id;
   }
-}
-
-function getTenantPath(companyId: string, sub: string) {
-  return `companies/${companyId}/${sub}`;
 }

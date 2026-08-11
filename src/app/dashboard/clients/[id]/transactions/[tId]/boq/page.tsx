@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -8,23 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Label } from "@/components/ui/label";
 import { 
   FileSpreadsheet, ArrowRight, Loader2, 
   ChevronDown, ChevronRight,
   Printer, Folder, Calculator,
   PlusCircle, AlertCircle,
   CheckCircle2, Sparkles, FileSearch, 
-  LayoutGrid, X, Clock, FilePlus
+  LayoutGrid, X, Clock, FilePlus,
+  History, TrendingUp, DollarSign
 } from "lucide-react";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
 import { useFirestore, useCollection, useDoc } from '@/firebase';
 import { collection, query, where, doc, getDocs, orderBy } from 'firebase/firestore';
@@ -60,9 +52,6 @@ export default function TransactionBOQProgressPage() {
   const transRef = useMemo(() => (companyId && db && transactionId) ? doc(db, paths.transactions(companyId), transactionId) : null, [db, companyId, transactionId]);
   const { data: transaction } = useDoc<Transaction>(transRef);
 
-  const stagesQuery = useMemo(() => (companyId && db && transactionId) ? query(collection(db, paths.transactionStages(companyId, transactionId)), orderBy('order')) : null, [db, companyId, transactionId]);
-  const { data: stages } = useCollection<StageInstance>(stagesQuery);
-
   const boqQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqs(companyId))) : null, [db, companyId]);
   const { data: allBoqs, loading: boqLoading } = useCollection<BOQ>(boqQuery);
 
@@ -83,23 +72,8 @@ export default function TransactionBOQProgressPage() {
 
   const templates = useMemo(() => {
      if (!allTemplates || !transaction?.subServiceId) return [];
-     const subId = transaction.subServiceId.trim();
-     return allTemplates.filter(temp => (temp.subServiceId?.trim() === subId) && temp.isActive !== false);
+     return allTemplates.filter(temp => (temp.subServiceId?.trim() === transaction.subServiceId.trim()) && temp.isActive !== false);
   }, [allTemplates, transaction?.subServiceId]);
-
-  const executionMetrics = useMemo(() => {
-    const metrics: Record<string, { prev: number, current: number }> = {};
-    if (!allExecutions || !items) return metrics;
-
-    items.forEach(item => {
-      const itemExecs = allExecutions.filter(e => e.boqItemId === item.id);
-      metrics[item.id!] = {
-        prev: itemExecs.filter(e => e.status === 'verified').reduce((sum, e) => sum + (e.quantity || 0), 0),
-        current: itemExecs.filter(e => e.status === 'executed').reduce((sum, e) => sum + (e.quantity || 0), 0)
-      };
-    });
-    return metrics;
-  }, [allExecutions, items]);
 
   const boqTree = useMemo(() => transformToBOQTree((items || []) as BOQTemplateItem[]), [items]);
 
@@ -110,13 +84,9 @@ export default function TransactionBOQProgressPage() {
       const service = new DocumentService(db, companyId, permissions);
       const template = templates?.find(t => t.id === selectedTemplateId);
       await service.instantiateBoqFromTemplate(selectedTemplateId, { 
-        transactionId, 
-        clientId, 
-        clientName: transaction.clientName, 
-        activityTypeId: transaction.activityTypeId, 
-        serviceId: transaction.serviceId, 
-        subServiceId: transaction.subServiceId, 
-        name: template?.name || "" 
+        transactionId, clientId, clientName: transaction.clientName, 
+        activityTypeId: transaction.activityTypeId, serviceId: transaction.serviceId, 
+        subServiceId: transaction.subServiceId, name: template?.name || "" 
       }, user.uid, globalUser?.fullName || 'User');
       toast({ title: t('common.saved') });
       setIsBoqInitOpen(false);
@@ -131,9 +101,7 @@ export default function TransactionBOQProgressPage() {
     try {
       const service = new DocumentService(db, companyId, permissions);
       await service.updateBOQItem(activeBoq.id, itemId, qty, rate);
-    } catch (e) {
-      console.error("Failed to update BOQ item", e);
-    }
+    } catch (e) { console.error(e); }
   };
 
   const handleApproveBaseline = async () => {
@@ -144,11 +112,9 @@ export default function TransactionBOQProgressPage() {
       const currentTotal = items.reduce((acc, i) => acc + (i.plannedQuantity * (i.estimatedRate || 0)), 0);
       await service.approveBOQ(activeBoq.id, currentTotal, transactionId, user.uid, globalUser?.fullName || 'Admin');
       toast({ title: t('common.saved') });
-    } catch (e: any) {
-      toast({ variant: "destructive", title: t('common.error'), description: e.message });
-    } finally {
-      setLoadingAction(null);
-    }
+    } catch (e: any) { 
+      toast({ variant: "destructive", title: t('common.error'), description: e.message }); 
+    } finally { setLoadingAction(null); }
   };
 
   const renderBOQTreeRows = (node: BOQTreeNode, prefix: string): React.ReactNode => (
@@ -162,14 +128,19 @@ export default function TransactionBOQProgressPage() {
       </TableRow>
       {node.items.map((item, iIdx) => {
         const itemPrefix = prefix + "." + (iIdx + 1);
-        const metrics = executionMetrics[item.id!] || { prev: 0, current: 0 };
         const planned = item.plannedQuantity || 1;
-        const totalExecuted = metrics.prev + metrics.current;
+        
+        // حسبة المقايسة الحية:
+        // السابق: المفوتر مسبقاً (billedQuantity)
+        // الحالي: المنفذ ميدانياً حالياً وغير مفوتر (executedQuantity - billedQuantity)
+        const previous = item.billedQuantity || 0;
+        const current = Math.max(0, (item.executedQuantity || 0) - previous);
+        const totalExecuted = previous + current;
         const totalPct = Math.min(100, Math.round((totalExecuted / Math.max(1, planned)) * 100));
         const isDraft = activeBoq?.status === 'draft';
 
         return (
-          <TableRow key={item.id || `${item.boqReferenceNodeId}-${iIdx}`} className="hover:bg-primary/[0.02] border-b-slate-50 text-start">
+          <TableRow key={item.id} className="hover:bg-primary/[0.02] border-b-slate-50 text-start">
             <TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8 text-start">{itemPrefix}</TableCell>
             <TableCell className="font-mono text-[10px] font-black text-primary/60 text-start">{item.referenceCode}</TableCell>
             <TableCell className="text-xs font-bold text-slate-700 text-start">{item.referenceTitle}</TableCell>
@@ -177,30 +148,23 @@ export default function TransactionBOQProgressPage() {
             <TableCell className="text-center">
                {isDraft ? (
                  <Input 
-                   type="number" 
-                   defaultValue={item.plannedQuantity}
+                   type="number" defaultValue={item.plannedQuantity}
                    onBlur={(e) => handleUpdateItem(item.id!, Number(e.target.value), item.estimatedRate || 0)}
                    className="h-8 w-20 mx-auto text-center font-black text-xs border-primary/20"
                  />
-               ) : (
-                 <span className="font-black text-xs">{item.plannedQuantity}</span>
-               )}
+               ) : <span className="font-black text-xs">{item.plannedQuantity}</span>}
             </TableCell>
-            <TableCell className="text-center font-mono font-black text-blue-600 text-[11px]">{metrics.prev}</TableCell>
-            <TableCell className="text-center font-mono font-black text-orange-600 text-[11px]">{metrics.current}</TableCell>
+            <TableCell className="text-center font-mono font-black text-blue-600 text-[11px]">{previous}</TableCell>
+            <TableCell className="text-center font-mono font-black text-orange-600 text-[11px]">{current}</TableCell>
             <TableCell className="text-center font-mono font-black text-slate-900 text-[11px]">{totalExecuted}</TableCell>
             <TableCell className="text-center">
                {isDraft ? (
                  <Input 
-                   type="number" 
-                   step="0.001"
-                   defaultValue={item.estimatedRate}
+                   type="number" step="0.001" defaultValue={item.estimatedRate}
                    onBlur={(e) => handleUpdateItem(item.id!, item.plannedQuantity, Number(e.target.value))}
                    className="h-8 w-24 mx-auto text-center font-black text-xs text-emerald-600 border-primary/20"
                  />
-               ) : (
-                 <span className="font-mono font-bold text-slate-400 text-[11px]">{item.estimatedRate?.toLocaleString()}</span>
-               )}
+               ) : <span className="font-mono font-bold text-slate-400 text-[11px]">{item.estimatedRate?.toLocaleString()}</span>}
             </TableCell>
             <TableCell className="text-end font-mono font-black text-emerald-600 text-[11px]">{(totalExecuted * (item.estimatedRate || 0)).toLocaleString()}</TableCell>
             <TableCell className="pe-6 w-[120px] text-end">
@@ -221,19 +185,12 @@ export default function TransactionBOQProgressPage() {
   if (!activeBoq) return (
     <div className="flex flex-col h-full space-y-4 animate-in fade-in" dir={dir}>
       <div className="flex-1 flex flex-col items-center justify-center p-20 bg-white rounded-xl border-4 border-dashed border-slate-100 text-center space-y-6">
-          <div className="w-24 h-24 bg-primary/5 rounded-[2.5rem] flex items-center justify-center text-primary/30 shadow-inner">
-             <FileSpreadsheet className="h-12 w-12" />
-          </div>
+          <div className="w-24 h-24 bg-primary/5 rounded-[2.5rem] flex items-center justify-center text-primary/30 shadow-inner"><FileSpreadsheet className="h-12 w-12" /></div>
           <div className="space-y-2">
              <h2 className="text-xl font-black text-slate-400">{t('projects.boqExplorer')}</h2>
-             <p className="text-xs font-bold text-slate-300 max-w-sm mx-auto leading-relaxed text-start">
-                {t('boq.activateTemplate')}
-             </p>
+             <p className="text-xs font-bold text-slate-300 max-w-sm mx-auto leading-relaxed text-start">{t('boq.activateTemplate')}</p>
           </div>
-          <Button onClick={() => setIsBoqInitOpen(true)} className="h-14 rounded-2xl px-10 bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 gap-3">
-             <FilePlus className="h-5 w-5" />
-             {t('common.add')}
-          </Button>
+          <Button onClick={() => setIsBoqInitOpen(true)} className="h-14 rounded-2xl px-10 bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 gap-3"><FilePlus className="h-5 w-5" />{t('common.add')}</Button>
       </div>
 
       <Dialog open={isBoqInitOpen} onOpenChange={setIsBoqInitOpen}>
@@ -242,14 +199,12 @@ export default function TransactionBOQProgressPage() {
             <div className="p-8 space-y-4 text-start">
                <Label className="text-[10px] font-black uppercase text-slate-400">{t('templates')}</Label>
                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                  <SelectTrigger className="h-12 rounded-xl border-2 font-black text-lg">
-                     <SelectValue placeholder="..." />
-                  </SelectTrigger>
+                  <SelectTrigger className="h-12 rounded-xl border-2 font-black text-lg"><SelectValue placeholder="..." /></SelectTrigger>
                   <SelectContent className="rounded-xl border-2 shadow-2xl">
                      {templates?.map(t => <SelectItem key={t.id} value={t.id!} className="font-bold py-4">{t.name}</SelectItem>)}
                   </SelectContent>
                </Select>
-               <Button onClick={handleCreateBOQ} disabled={!selectedTemplateId || !!loadingAction} className="w-full h-14 rounded-2xl font-black text-sm shadow-xl shadow-primary/20 border-b-4 border-orange-700 mt-4 transition-all active:scale-95">
+               <Button onClick={handleCreateBOQ} disabled={!selectedTemplateId || !!loadingAction} className="w-full h-14 rounded-2xl font-black text-sm shadow-xl shadow-primary/20 border-b-4 border-orange-700 mt-4 transition-all">
                   {loadingAction === 'creating_boq' ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4 me-2" />} {t('common.save')}
                </Button>
             </div>
@@ -270,18 +225,11 @@ export default function TransactionBOQProgressPage() {
         </div>
         <div className="flex items-center gap-2">
            {activeBoq.status === 'draft' ? (
-              <div className="flex gap-2">
-                 <Button onClick={handleApproveBaseline} disabled={!!loadingAction} className="h-9 px-6 rounded-lg bg-emerald-600 text-white font-bold text-xs gap-2">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    {tSafe('inline.confirm.baseline', 'تأكيد الميزانية المرجعية', 'Confirm Baseline')}
-                 </Button>
-              </div>
+                 <Button onClick={handleApproveBaseline} disabled={!!loadingAction} className="h-9 px-6 rounded-lg bg-emerald-600 text-white font-bold text-xs gap-2"><CheckCircle2 className="h-3.5 w-3.5" />{tSafe('inline.confirm.baseline', 'تأكيد الميزانية المرجعية', 'Confirm Baseline')}</Button>
            ) : (
-             <div className="flex gap-2">
-                <Button onClick={() => setIsVOOpen(true)} className="h-9 px-6 rounded-lg bg-primary text-white font-bold text-xs gap-2 shadow-sm shadow-primary/10"><PlusCircle className="h-3.5 w-3.5" /> {t('projects.voManager.title')}</Button>
-             </div>
+                <Button onClick={() => setIsVOOpen(true)} className="h-9 px-6 rounded-lg bg-primary text-white font-bold text-xs gap-2 shadow-sm"><PlusCircle className="h-3.5 w-3.5" /> {t('projects.voManager.title')}</Button>
            )}
-           <Button variant="outline" className="h-9 px-4 rounded-lg font-bold text-xs border-slate-200"><Printer className="h-3.5 w-3.5" /></Button>
+           <Button variant="outline" className="h-9 px-4 rounded-lg font-bold text-xs border-slate-200" onClick={() => window.print()}><Printer className="h-3.5 w-3.5" /></Button>
         </div>
       </header>
 
@@ -294,8 +242,8 @@ export default function TransactionBOQProgressPage() {
                <TableHead className="text-slate-900 font-black text-[10px] text-start uppercase tracking-widest">{tSafe('inline.work.item', 'بند العمل', 'Work Item')}</TableHead>
                <TableHead className="text-center text-slate-500 font-black text-[10px] uppercase tracking-widest">{t('common.unit')}</TableHead>
                <TableHead className="text-center text-slate-900 font-black text-[10px] uppercase tracking-widest">{tSafe('inline.planned', 'المخطط', 'Planned')}</TableHead>
-               <TableHead className="text-center text-blue-600 font-black text-[10px] uppercase tracking-widest">{tSafe('inline.prev', 'سابق', 'Prev')}</TableHead>
-               <TableHead className="text-center text-orange-600 font-black text-[10px] uppercase tracking-widest">{tSafe('inline.curr', 'حالي', 'Curr')}</TableHead>
+               <TableHead className="text-center text-blue-600 font-black text-[10px] uppercase tracking-widest">{tSafe('inline.prev', 'السابق', 'Prev')}</TableHead>
+               <TableHead className="text-center text-orange-600 font-black text-[10px] uppercase tracking-widest">{tSafe('inline.curr', 'الحالي', 'Curr')}</TableHead>
                <TableHead className="text-center text-slate-900 font-black text-[10px] uppercase tracking-widest">{tSafe('common.all', 'إجمالي', 'Total')}</TableHead>
                <TableHead className="text-center text-slate-500 font-black text-[10px] uppercase tracking-widest">{t('projects.boqExplorer.rate')}</TableHead>
                <TableHead className="text-end text-slate-900 font-black text-[10px] uppercase tracking-widest">{tSafe('inline.subtotal', 'الإجمالي', 'Amount')}</TableHead>
@@ -310,3 +258,4 @@ export default function TransactionBOQProgressPage() {
     </div>
   );
 }
+

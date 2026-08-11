@@ -29,7 +29,7 @@ export interface TransactionTimelineEvent extends BaseReference {
   transactionId: string;
   stageId?: string; 
   technicalStageId?: string; 
-  type: 'system' | 'stage_start' | 'stage_complete' | 'stage_reopen' | 'comment' | 'numeric_update' | 'admin_override' | 'revision_logged';
+  type: 'system' | 'stage_start' | 'stage_complete' | 'stage_reopen' | 'comment' | 'numeric_update' | 'admin_override' | 'revision_logged' | 'billing_triggered';
   content: string;
   userId: string;
   userName: string;
@@ -43,7 +43,7 @@ export type CommentType = 'general' | 'note' | 'warning' | 'instruction';
 export interface TransactionComment extends BaseReference {
   id?: string;
   transactionId: string;
-  appointmentId?: string; // الربط المباشر بالزيارة الميدانية
+  appointmentId?: string; 
   stageInstanceId?: string | null; 
   stageName?: string; 
   content: string;
@@ -73,15 +73,15 @@ export interface StageInstance extends BaseReference {
   isRequired: boolean;
   isEditable: boolean;
   nextStageIds: string[];
-  allowedDepartmentIds?: string[]; // مضاف لفلترة العرض الميداني
+  allowedDepartmentIds?: string[];
   status: 'pending' | 'in-progress' | 'completed' | 'skipped';
   activityTypeId: string;
   serviceId: string;
   subServiceId: string;
   startedAt?: any;
-  startedByApptId?: string; // الموعد الذي بدأ فيه العمل
+  startedByApptId?: string; 
   completedAt?: any;
-  completedByApptId?: string; // الموعد الذي انتهى فيه العمل
+  completedByApptId?: string; 
   completedBy?: string;
   updatedBy?: string;
   isTemporary?: boolean;
@@ -90,4 +90,9 @@ export interface StageInstance extends BaseReference {
   originType?: 'temporary_vo' | 'manual_injection';
   isManuallyActivated?: boolean; 
   revisionCount?: number; 
+  
+  // بيانات مقاول الباطن (Subcontractor)
+  subcontractorId?: string;
+  subcontractorName?: string;
+  subcontractorPrice?: number;
 }

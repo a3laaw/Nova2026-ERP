@@ -25,6 +25,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions/engine';
 import { AccountingService } from './accounting-service';
+import { BillingService } from './billing-service';
 
 export class TransactionService {
   constructor(
@@ -117,9 +118,22 @@ export class TransactionService {
     return deleteDoc(transRef);
   }
 
+  async assignSubcontractor(transactionId: string, stageId: string, subId: string, subName: string, price: number) {
+    const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
+    await updateDoc(stageRef, {
+      subcontractorId: subId,
+      subcontractorName: subName,
+      subcontractorPrice: price,
+      updatedAt: serverTimestamp()
+    });
+  }
+
   async addStageRevision(transactionId: string, stageId: string, content: string, userId: string, userName: string) {
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
-    
+    const stageSnap = await getDoc(stageRef);
+    if (!stageSnap.exists()) return;
+    const stage = stageSnap.data() as StageInstance;
+
     const batch = writeBatch(this.db);
     batch.update(stageRef, {
       revisionCount: increment(1),
@@ -140,6 +154,10 @@ export class TransactionService {
     });
 
     await batch.commit();
+
+    // أتمتة مالية: تفعيل "أثناء التنفيذ" إذا كان الشرط يعتمد على وجود مراجعات
+    const billing = new BillingService(this.db, this.companyId);
+    await billing.triggerMilestoneBilling(transactionId, stage.technicalStageId, 'during', userId, userName);
   }
 
   private verifyDeptAccess(stage: StageInstance, userDeptId?: string, isAssignedEngineer: boolean = false) {
@@ -181,6 +199,10 @@ export class TransactionService {
       companyId: this.companyId,
       createdAt: serverTimestamp()
     });
+
+    // أتمتة مالية: تفعيل دفعة "عند البداية"
+    const billing = new BillingService(this.db, this.companyId);
+    await billing.triggerMilestoneBilling(transactionId, stageData.technicalStageId, 'at', userId, userName);
   }
 
   async completeStage(transactionId: string, stageId: string, userId: string, userName: string, userDeptId?: string, force: boolean = false, appointmentId?: string) {
@@ -214,6 +236,10 @@ export class TransactionService {
     });
 
     await batch.commit();
+
+    // أتمتة مالية: تفعيل دفعة "بعد الانتهاء"
+    const billing = new BillingService(this.db, this.companyId);
+    await billing.triggerMilestoneBilling(transactionId, stageData.technicalStageId, 'after', userId, userName);
   }
 
   async initializeTechnicalPath(transactionId: string, activityId: string, serviceId: string, subServiceId: string, userId: string) {
@@ -254,3 +280,4 @@ export class TransactionService {
     await batch.commit();
   }
 }
+
