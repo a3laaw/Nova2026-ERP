@@ -204,7 +204,7 @@ export default function GeneralListsPage() {
             <div className="p-10 space-y-6 text-start bg-white">
                <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('common.code')}</Label><Input value={editingItem?.code || ''} onChange={e => setEditingItem({...editingItem, code: e.target.value.toUpperCase().replace(/\s+/g, '_')})} className="h-11 border-2 font-mono font-black" /></div>
-                  <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('order')}</Label><Input type="number" value={editingItem?.order || ''} onChange={e => setEditingItem({...editingItem, order: e.target.value === '' ? 0 : Number(e.target.value)})} className="h-11 border-2" /></div>
+                  <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('order')}</Label><Input type="number" value={editingItem?.order === 0 ? '' : (editingItem?.order || '')} onChange={e => setEditingItem({...editingItem, order: e.target.value === '' ? 0 : Number(e.target.value)})} className="h-11 border-2" /></div>
                </div>
                <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('common.name')}</Label><Input value={editingItem?.name || ''} onChange={e => setEditingItem({...editingItem, name: e.target.value})} className="h-11 border-2" /></div>
                
@@ -215,23 +215,27 @@ export default function GeneralListsPage() {
                      </div>
                      <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-2">
-                           <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'النسبة المئوية (0.025 = 2.5%)' : 'Percentage (0.025 = 2.5%)'}</Label>
+                           <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'النسبة المئوية (%)' : 'Percentage (%)'}</Label>
                            <Input 
                              type="number" 
-                             step="0.0001" 
-                             value={editingItem?.feePercentage === 0 ? "" : editingItem?.feePercentage} 
-                             onChange={e => setEditingItem({...editingItem, feePercentage: e.target.value === '' ? 0 : Number(e.target.value)})} 
+                             step="0.01" 
+                             value={(editingItem?.feePercentage || 0) === 0 ? "" : (editingItem!.feePercentage! * 100)} 
+                             onChange={e => {
+                                const rawVal = e.target.value === '' ? 0 : Number(e.target.value);
+                                setEditingItem({...editingItem!, feePercentage: rawVal / 100});
+                             }} 
                              className="h-11 border-2 bg-white font-black" 
+                             placeholder="مثال: 2.5"
                            />
-                           <p className="text-[8px] font-bold text-slate-400 italic">مثال: 0.005 لنسبة 0.5%</p>
+                           <p className="text-[8px] font-bold text-slate-400 italic">{isRtl ? 'اكتب 2.5 لتمثيل نسبة 2.5%' : 'Type 2.5 for 2.5%'}</p>
                         </div>
                         <div className="space-y-2">
                            <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'مبلغ ثابت (KWD)' : 'Fixed Amount'}</Label>
                            <Input 
                              type="number" 
                              step="0.001" 
-                             value={editingItem?.feeFixedAmount === 0 ? "" : editingItem?.feeFixedAmount} 
-                             onChange={e => setEditingItem({...editingItem, feeFixedAmount: e.target.value === '' ? 0 : Number(e.target.value)})} 
+                             value={(editingItem?.feeFixedAmount || 0) === 0 ? "" : editingItem?.feeFixedAmount} 
+                             onChange={e => setEditingItem({...editingItem!, feeFixedAmount: e.target.value === '' ? 0 : Number(e.target.value)})} 
                              className="h-11 border-2 bg-white font-black" 
                            />
                            <p className="text-[8px] font-bold text-slate-400 italic">مثال: 0.100 لعمولة الـ 100 فلس</p>
@@ -240,7 +244,7 @@ export default function GeneralListsPage() {
                   </div>
                )}
 
-               <div className="flex items-center justify-between p-6 bg-slate-50 rounded-xl border-2"><Label className="font-black text-slate-700">{t('common.isActive')}</Label><Switch checked={editingItem?.isActive !== false} onCheckedChange={v => setEditingItem({...editingItem, isActive: v})} /></div>
+               <div className="flex items-center justify-between p-6 bg-slate-50 rounded-xl border-2"><Label className="font-black text-slate-700">{t('common.isActive')}</Label><Switch checked={editingItem?.isActive !== false} onCheckedChange={v => setEditingItem({...editingItem!, isActive: v})} /></div>
             </div>
             <DialogFooter className="p-8 bg-slate-50 border-t"><Button onClick={handleSave} disabled={loadingAction === 'save'} className="w-full h-12 rounded-xl">{loadingAction === 'save' ? <Loader2 className="animate-spin" /> : <Save className="h-5 w-5 me-2" />}{t('common.save')}</Button></DialogFooter>
          </DialogContent>

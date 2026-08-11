@@ -328,7 +328,7 @@ export default function ReceiptVouchersPage() {
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.net.deposit', 'صافي الإيداع', 'Net Deposit')}</Label>
                        <div className="h-14 rounded-xl border-2 border-dashed flex items-center justify-center bg-slate-50 shadow-inner">
-                          <p className="font-black text-xl text-slate-900">{form.netAmount.toLocaleString()} <span className="text-[8px] text-slate-400 uppercase">KWD</span></p>
+                          <p className="font-black text-xl text-slate-900">{(form.netAmount || 0).toLocaleString()} <span className="text-[8px] text-slate-400 uppercase">KWD</span></p>
                        </div>
                     </div>
                  </div>
@@ -458,7 +458,7 @@ export default function ReceiptVouchersPage() {
                          <TableCell className="text-start">
                             <span className="text-[10px] font-black text-primary uppercase tracking-tighter truncate max-w-[150px] block">{v.appliedMilestoneName || '---'}</span>
                          </TableCell>
-                         <TableCell className="text-end font-mono font-black text-emerald-600">{v.amount.toLocaleString()} <span className="text-[8px] opacity-40">KWD</span></TableCell>
+                         <TableCell className="text-end font-mono font-black text-emerald-600">{(v.amount || 0).toLocaleString()} <span className="text-[8px] opacity-40">KWD</span></TableCell>
                          <TableCell className="text-center">
                             <Badge variant="outline" className="text-[8px] font-black uppercase px-3 border-2 h-6">{v.paymentMethod}</Badge>
                          </TableCell>
