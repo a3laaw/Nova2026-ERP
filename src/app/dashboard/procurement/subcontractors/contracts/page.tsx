@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -10,7 +11,8 @@ import {
   Handshake, ShieldCheck, 
   Building2, ArrowUpRight, CheckCircle2, Clock,
   Landmark, Sparkles, ChevronDown, Check, X,
-  Workflow, Hash, Info
+  Workflow, Hash, Info, Target, FileText,
+  AlertTriangle
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFirestore, useCollection } from '@/firebase';
@@ -22,7 +24,6 @@ import { paths } from '@/firebase/multi-tenant';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DocumentService } from '@/services/document-service';
 import { toast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -36,17 +37,14 @@ export default function SubConContractsListPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
+  const [isAdding, setIsAdding] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isIssueOpen, setIsIssueOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   
-  // Search states for custom pickers
+  // States for search filters
   const [subSearch, setSubSearch] = useState("");
   const [transSearch, setTransSearch] = useState("");
   const [tempSearch, setTempSearch] = useState("");
-  
-  // Custom Pickers UI states (To fix Focus Trap)
-  const [activePicker, setActivePicker] = useState<'sub' | 'trans' | 'temp' | null>(null);
 
   const [formData, setFormData] = useState({
     subcontractorId: '',
@@ -58,6 +56,7 @@ export default function SubConContractsListPage() {
     templateName: ''
   });
 
+  // Queries
   const contractsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.subconContracts(companyId)), orderBy('createdAt', 'desc')) : null, 
   [db, companyId]);
@@ -100,7 +99,7 @@ export default function SubConContractsListPage() {
     );
   }, [templates, tempSearch]);
 
-  const filtered = (contracts || []).filter(c => 
+  const filteredContracts = (contracts || []).filter(c => 
     c.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
     c.subcontractorName?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -120,7 +119,7 @@ export default function SubConContractsListPage() {
       }, user.uid);
 
       toast({ title: tSafe('inline.provisioning.success', 'تم التأسيس بنجاح', 'Provisioning Success') });
-      setIsIssueOpen(false);
+      setIsAdding(false);
       router.push(`/dashboard/procurement/subcontractors/contracts/${docId}`);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
@@ -129,21 +128,196 @@ export default function SubConContractsListPage() {
     }
   };
 
+  if (isAdding) {
+    return (
+      <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500 text-start" dir={dir}>
+        <header className="flex justify-between items-center gap-4 border-b border-slate-100 pb-6">
+           <div className="flex items-center gap-4">
+              <Button variant="ghost" onClick={() => setIsAdding(false)} className="h-12 w-12 p-0 rounded-2xl bg-white shadow-sm border-2 text-slate-400 hover:text-primary transition-all">
+                <ArrowRight className={cn("h-6 w-6", !isRtl && "rotate-180")} />
+              </Button>
+              <div className="text-start space-y-1">
+                 <h1 className="text-3xl font-black font-headline text-slate-900">{tSafe('subcon.contracts.new', 'تأسيس اتفاقية باطن جديدة', 'New SubCon Award')}</h1>
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{tSafe('inline.sovereign.provisioning', 'نظام التأسيس السيادي الموحد', 'Sovereign Provisioning System')}</p>
+              </div>
+           </div>
+           <Button 
+             onClick={handleIssueContract} 
+             disabled={loading || !formData.subcontractorId || !formData.transactionId || !formData.templateId}
+             className="h-14 px-12 rounded-2xl bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-4 border-b-8 border-orange-700"
+           >
+              {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Sparkles className="h-6 w-6" />}
+              {tSafe('subcon.contracts.issueNow', 'إصدار الاتفاقية الآن', 'Issue Award Now')}
+           </Button>
+        </header>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+           {/* Section 1: Subcontractor Selection */}
+           <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden group hover:ring-primary/20 transition-all">
+              <CardHeader className="bg-primary/5 p-8 border-b text-start">
+                 <CardTitle className="text-base font-black flex items-center gap-3">
+                    <Handshake className="h-5 w-5 text-primary" />
+                    {tSafe('subcon.form.vendor', 'اختيار المقاول المنفذ', 'Choose Subcontractor')}
+                 </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                 <div className="p-6 bg-slate-50 border-b">
+                    <div className="relative">
+                       <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
+                       <Input 
+                         placeholder={tSafe('common.search', 'بحث باسم المقاول...', 'Search contractor...')}
+                         className="h-12 ps-12 rounded-xl border-2 font-bold focus:bg-white transition-all shadow-inner"
+                         value={subSearch}
+                         onChange={e => setSubSearch(e.target.value)}
+                       />
+                    </div>
+                 </div>
+                 <ScrollArea className="h-[400px]">
+                    <div className="p-3 space-y-1.5">
+                       {filteredSubs.map(s => (
+                         <div 
+                           key={s.id} 
+                           onClick={() => setFormData({...formData, subcontractorId: s.id, subcontractorName: s.name})}
+                           className={cn(
+                             "p-5 rounded-2xl cursor-pointer transition-all flex items-center justify-between border-2",
+                             formData.subcontractorId === s.id ? "bg-primary border-primary text-white shadow-xl shadow-primary/20" : "bg-white border-transparent hover:border-slate-100 hover:bg-slate-50"
+                           )}
+                         >
+                            <div className="text-start">
+                               <p className="font-black text-sm">{s.name}</p>
+                               <p className={cn("text-[9px] font-black uppercase tracking-tighter mt-1", formData.subcontractorId === s.id ? "text-white/70" : "text-slate-400")}>{s.trade}</p>
+                            </div>
+                            {formData.subcontractorId === s.id && <CheckCircle2 className="h-5 w-5 text-white" />}
+                         </div>
+                       ))}
+                    </div>
+                 </ScrollArea>
+              </CardContent>
+           </Card>
+
+           {/* Section 2: Project Selection */}
+           <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden group hover:ring-primary/20 transition-all">
+              <CardHeader className="bg-slate-50 p-8 border-b text-start">
+                 <CardTitle className="text-base font-black flex items-center gap-3">
+                    <Target className="h-5 w-5 text-primary" />
+                    {tSafe('subcon.form.project', 'المشروع المستهدف', 'Target Project')}
+                 </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                 <div className="p-6 bg-slate-50 border-b">
+                    <div className="relative">
+                       <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
+                       <Input 
+                         placeholder={tSafe('common.search', 'بحث باسم المشروع...', 'Search project...')}
+                         className="h-12 ps-12 rounded-xl border-2 font-bold focus:bg-white transition-all shadow-inner"
+                         value={transSearch}
+                         onChange={e => setTransSearch(e.target.value)}
+                       />
+                    </div>
+                 </div>
+                 <ScrollArea className="h-[400px]">
+                    <div className="p-3 space-y-1.5">
+                       {filteredTrans.map(t_item => (
+                         <div 
+                           key={t_item.id} 
+                           onClick={() => setFormData({...formData, transactionId: t_item.id, transactionNumber: t_item.transactionNumber, transactionName: t_item.subServiceName})}
+                           className={cn(
+                             "p-5 rounded-2xl cursor-pointer transition-all flex items-center justify-between border-2",
+                             formData.transactionId === t_item.id ? "bg-primary border-primary text-white shadow-xl shadow-primary/20" : "bg-white border-transparent hover:border-slate-100 hover:bg-slate-50"
+                           )}
+                         >
+                            <div className="text-start min-w-0">
+                               <p className="font-black text-sm truncate">{t_item.subServiceName}</p>
+                               <div className="flex items-center gap-2 mt-1">
+                                  <Badge className={cn("text-[8px] font-black h-4 px-2", formData.transactionId === t_item.id ? "bg-white text-primary" : "bg-slate-900 text-white")} dir="ltr">#{t_item.transactionNumber}</Badge>
+                                  <span className={cn("text-[9px] font-bold truncate", formData.transactionId === t_item.id ? "text-white/70" : "text-slate-400")}>{t_item.clientName}</span>
+                               </div>
+                            </div>
+                            {formData.transactionId === t_item.id && <CheckCircle2 className="h-5 w-5 text-white" />}
+                         </div>
+                       ))}
+                    </div>
+                 </ScrollArea>
+              </CardContent>
+           </Card>
+
+           {/* Section 3: Template Selection */}
+           <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden group hover:ring-primary/20 transition-all">
+              <CardHeader className="bg-slate-50 p-8 border-b text-start">
+                 <CardTitle className="text-base font-black flex items-center gap-3">
+                    <FileText className="h-5 w-5 text-primary" />
+                    {tSafe('subcon.form.template', 'القالب القانوني المعتمد', 'Legal Template')}
+                 </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                 <div className="p-6 bg-slate-50 border-b">
+                    <div className="relative">
+                       <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
+                       <Input 
+                         placeholder={tSafe('common.search', 'بحث في مكتبة القوالب...', 'Search templates...')}
+                         className="h-12 ps-12 rounded-xl border-2 font-bold focus:bg-white transition-all shadow-inner"
+                         value={tempSearch}
+                         onChange={e => setTempSearch(e.target.value)}
+                       />
+                    </div>
+                 </div>
+                 <ScrollArea className="h-[400px]">
+                    <div className="p-3 space-y-1.5">
+                       {filteredTemps.map(temp => (
+                         <div 
+                           key={temp.id} 
+                           onClick={() => setFormData({...formData, templateId: temp.id, templateName: temp.name})}
+                           className={cn(
+                             "p-5 rounded-2xl cursor-pointer transition-all flex items-center justify-between border-2",
+                             formData.templateId === temp.id ? "bg-primary border-primary text-white shadow-xl shadow-primary/20" : "bg-white border-transparent hover:border-slate-100 hover:bg-slate-50"
+                           )}
+                         >
+                            <div className="text-start">
+                               <p className="font-black text-sm">{temp.name}</p>
+                               <div className="flex items-center gap-2 mt-1">
+                                  <Badge className={cn("text-[7px] font-black h-4 px-2 uppercase", formData.templateId === temp.id ? "bg-white text-primary" : "bg-slate-100 text-slate-500")}>{temp.trade}</Badge>
+                               </div>
+                            </div>
+                            {formData.templateId === temp.id && <CheckCircle2 className="h-5 w-5 text-white" />}
+                         </div>
+                       ))}
+                    </div>
+                 </ScrollArea>
+              </CardContent>
+           </Card>
+        </div>
+
+        <div className="p-10 bg-white border-2 border-primary/10 rounded-[3rem] shadow-2xl flex items-start gap-8 text-start relative overflow-hidden">
+           <div className="absolute top-0 right-0 p-10 opacity-5"><Landmark className="h-40 w-40 text-primary" /></div>
+           <div className="h-16 w-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shrink-0 shadow-inner">
+              <Info className="h-8 w-8" />
+           </div>
+           <div className="space-y-2 relative z-10">
+              <h5 className="font-black text-slate-900 text-lg uppercase tracking-widest">{tSafe('inline.ready.to.award', 'جاهز لإصدار أمر الإسناد', 'Ready to Award')}</h5>
+              <p className="text-sm font-bold text-slate-500 leading-relaxed max-w-3xl italic">
+                 {tSafe('subcon.provisioning.hint', 'تنبيه: عند الضغط على "إصدار"، سيقوم النظام آلياً بدمج بيانات المقاول مع شروط القالب المختار وفتح مسودة عقد حي مرتبطة بالمشروع. يمكنك بعدها تعديل المبالغ والتوقيتات بحرية.', 'Clicking issue will merge contractor data with template terms and open a live draft linked to the project.')}
+              </p>
+           </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20 text-start" dir={dir}>
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-6">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-6 text-start">
         <div className="text-start space-y-1">
            <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit">
               <ShieldCheck className="h-3 w-3" /> {tSafe('subcon.authorizedPortal', 'بوابة العقود المعتمدة', 'Authorized Contracts Portal')}
            </div>
            <h1 className="text-3xl font-black font-headline text-slate-900">{tSafe('subcon.contracts.title', 'عقود مقاولي الباطن', 'SubCon Contracts')}</h1>
            <p className="text-muted-foreground text-xs font-bold opacity-70 italic text-start">
-              {tSafe('subcon.contracts.desc', 'إدارة عقود تنفيذ الباطن والارتباطات المالية للمشاريع.', 'Manage subcontractor awards and project financial links.')}
+              {tSafe('subcon.contracts.desc', 'إدارة وتتبع كافة الاتفاقيات المبرمة مع القوى العاملة الخارجية والارتباطات المالية للمشاريع.', 'Manage and track all external labor agreements and project financial links.')}
            </p>
         </div>
 
         <Button 
-          onClick={() => setIsIssueOpen(true)}
+          onClick={() => setIsAdding(true)}
           className="h-11 px-8 rounded-xl bg-primary text-white font-black shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all gap-2 border-b-4 border-orange-700"
         >
           <Plus className="h-4 w-4" />
@@ -168,7 +342,7 @@ export default function SubConContractsListPage() {
             <TableHeader className="bg-muted/10 border-b">
               <TableRow>
                 <TableHead className="py-6 ps-10 text-start text-[10px] font-black uppercase tracking-widest">{tSafe('common.name', 'الاسم', 'Name')}</TableHead>
-                <TableHead className="text-start text-[10px] font-black uppercase tracking-widest">{tSafe('common.vendor', 'المقاول / المورد', 'Vendor')}</TableHead>
+                <TableHead className="text-start text-[10px] font-black uppercase tracking-widest">{tSafe('common.vendor', 'المقاول', 'Vendor')}</TableHead>
                 <TableHead className="text-end text-[10px] font-black uppercase tracking-widest">{tSafe('common.amount', 'المبلغ', 'Amount')}</TableHead>
                 <TableHead className="text-center text-[10px] font-black uppercase tracking-widest">{tSafe('common.status', 'الحالة', 'Status')}</TableHead>
                 <TableHead className="pe-10 text-end"></TableHead>
@@ -177,15 +351,13 @@ export default function SubConContractsListPage() {
             <TableBody>
               {contractsLoading ? (
                 <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/20" /></TableCell></TableRow>
-              ) : filtered.length === 0 ? (
+              ) : filteredContracts.length === 0 ? (
                 <TableRow><TableCell colSpan={5} className="text-center py-24 text-slate-300 font-black italic">{tSafe('subcon.contracts.empty', 'لا توجد عقود باطن مسجلة حالياً.', 'No SubCon contracts found.')}</TableCell></TableRow>
-              ) : filtered.map((contract) => (
+              ) : filteredContracts.map((contract) => (
                 <TableRow key={contract.id} className="hover:bg-primary/[0.02] transition-colors group border-b-slate-100 cursor-pointer" onClick={() => router.push(`/dashboard/procurement/subcontractors/contracts/${contract.id}`)}>
                    <TableCell className="py-6 ps-10 text-start">
                       <div className="flex items-center gap-4 text-start">
-                         <div className={cn(
-                            "h-11 w-11 rounded-2xl bg-white shadow-lg flex items-center justify-center text-primary border-2 border-primary/5",
-                         )}>
+                         <div className="h-11 w-11 rounded-2xl bg-white shadow-lg flex items-center justify-center text-primary border-2 border-primary/5">
                             <Handshake className="h-6 w-6" />
                          </div>
                          <div className="text-start">
@@ -214,7 +386,7 @@ export default function SubConContractsListPage() {
                    </TableCell>
                    <TableCell className="pe-10 text-end">
                       <Button variant="ghost" size="icon" className="rounded-xl h-10 w-10 text-slate-300 group-hover:text-primary transition-all">
-                         <ArrowRight className={cn("h-5 w-5", isRtl && "rotate-180")} />
+                         <ArrowUpRight className={cn("h-5 w-5", isRtl && "rotate-180")} />
                       </Button>
                    </TableCell>
                 </TableRow>
@@ -223,214 +395,7 @@ export default function SubConContractsListPage() {
           </Table>
         </CardContent>
       </Card>
-
-      <Dialog open={isIssueOpen} onOpenChange={(v) => { if(!v) setIsIssueOpen(false); setActivePicker(null); }}>
-         <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-2xl text-start" dir={dir}>
-            <div className="bg-primary p-10 text-white text-start">
-               <DialogTitle className="text-3xl font-black font-headline flex items-center gap-4 text-white">
-                  <Handshake className="h-10 w-10 text-white" />
-                  {tSafe('subcon.contracts.new', 'تعاقد جديد مع مقاول باطن', 'New SubCon Award')}
-               </DialogTitle>
-               <p className="text-white/60 font-bold mt-2 uppercase text-[10px] tracking-widest">{tSafe('inline.sovereign.provisioning', 'نظام التأسيس السيادي', 'Sovereign Provisioning')}</p>
-            </div>
-
-            <div className="p-10 space-y-6 text-start bg-white max-h-[60vh] overflow-y-auto scrollbar-hide">
-               
-               {/* Picker 1: Subcontractor */}
-               <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase text-slate-400 tracking-widest">{tSafe('subcon.form.vendor', 'المقاول / المورد', 'Subcontractor Vendor')}</Label>
-                  <div className="relative">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setActivePicker(activePicker === 'sub' ? null : 'sub')}
-                      className="w-full h-14 rounded-2xl border-2 font-black text-lg bg-slate-50 shadow-inner justify-between px-6"
-                    >
-                       <span className="truncate">{formData.subcontractorName || tSafe('subcon.selectSub', 'اختيار المقاول...', 'Choose contractor...')}</span>
-                       <ChevronDown className={cn("h-5 w-5 opacity-40 transition-transform", activePicker === 'sub' && "rotate-180")} />
-                    </Button>
-                    
-                    {activePicker === 'sub' && (
-                      <div className="absolute top-full left-0 right-0 z-[200] mt-2 bg-white rounded-2xl shadow-3xl border-2 border-slate-100 overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-4 bg-slate-50 border-b">
-                           <div className="relative">
-                              <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
-                              <Input 
-                                placeholder={tSafe('common.search', 'بحث...', 'Search...')}
-                                value={subSearch}
-                                onChange={e => setSubSearch(e.target.value)}
-                                className="h-12 ps-12 rounded-xl border-2 font-bold focus:bg-white transition-all"
-                                autoFocus
-                              />
-                           </div>
-                        </div>
-                        <ScrollArea className="h-60">
-                           <div className="p-2 space-y-1">
-                              {filteredSubs.map(s => (
-                                <div 
-                                  key={s.id} 
-                                  onClick={(e) => { 
-                                    e.stopPropagation();
-                                    setFormData({...formData, subcontractorId: s.id, subcontractorName: s.name}); 
-                                    setActivePicker(null); 
-                                    setSubSearch(""); 
-                                  }}
-                                  className={cn(
-                                    "p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between group",
-                                    formData.subcontractorId === s.id ? "bg-primary/5 text-primary border-primary/20" : "hover:bg-slate-50"
-                                  )}
-                                >
-                                   <div className="flex flex-col text-start">
-                                      <span className="font-black text-sm">{s.name}</span>
-                                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{s.trade}</span>
-                                   </div>
-                                   {formData.subcontractorId === s.id && <Check className="h-4 w-4" />}
-                                </div>
-                              ))}
-                           </div>
-                        </ScrollArea>
-                      </div>
-                    )}
-                  </div>
-               </div>
-
-               {/* Picker 2: Transaction */}
-               <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase text-slate-400 tracking-widest">{tSafe('subcon.form.project', 'المشروع المستهدف', 'Target Project')}</Label>
-                  <div className="relative">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setActivePicker(activePicker === 'trans' ? null : 'trans')}
-                      className="w-full h-14 rounded-2xl border-2 font-black text-lg bg-slate-50 shadow-inner justify-between px-6"
-                    >
-                       <span className="truncate">{formData.transactionName || tSafe('subcon.selectProject', 'اختيار المشروع...', 'Choose Project...')}</span>
-                       <ChevronDown className={cn("h-5 w-5 opacity-40 transition-transform", activePicker === 'trans' && "rotate-180")} />
-                    </Button>
-                    
-                    {activePicker === 'trans' && (
-                      <div className="absolute top-full left-0 right-0 z-[200] mt-2 bg-white rounded-2xl shadow-3xl border-2 border-slate-100 overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-4 bg-slate-50 border-b">
-                           <div className="relative">
-                              <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
-                              <Input 
-                                placeholder={tSafe('common.search', 'بحث...', 'Search...')}
-                                value={transSearch}
-                                onChange={e => setTransSearch(e.target.value)}
-                                className="h-12 ps-12 rounded-xl border-2 font-bold"
-                                autoFocus
-                              />
-                           </div>
-                        </div>
-                        <ScrollArea className="h-60">
-                           <div className="p-2 space-y-1">
-                              {filteredTrans.map(t_item => (
-                                <div 
-                                  key={t_item.id} 
-                                  onClick={(e) => { 
-                                    e.stopPropagation();
-                                    setFormData({...formData, transactionId: t_item.id, transactionNumber: t_item.transactionNumber, transactionName: t_item.subServiceName}); 
-                                    setActivePicker(null); 
-                                    setTransSearch(""); 
-                                  }}
-                                  className={cn(
-                                    "p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between group",
-                                    formData.transactionId === t_item.id ? "bg-primary/5 text-primary border-primary/20" : "hover:bg-slate-50"
-                                  )}
-                                >
-                                   <div className="flex flex-col text-start min-w-0">
-                                      <span className="font-black text-sm text-slate-800 truncate">{t_item.subServiceName}</span>
-                                      <div className="flex items-center gap-2 mt-1">
-                                         <Badge variant="outline" className="h-4 px-2 bg-white text-[8px] font-mono font-black uppercase" dir="ltr">#{t_item.transactionNumber}</Badge>
-                                         <span className="text-[9px] font-bold text-slate-400 uppercase truncate">{t_item.clientName}</span>
-                                      </div>
-                                   </div>
-                                   {formData.transactionId === t_item.id && <Check className="h-4 w-4" />}
-                                </div>
-                              ))}
-                           </div>
-                        </ScrollArea>
-                      </div>
-                    )}
-                  </div>
-               </div>
-
-               {/* Picker 3: Template */}
-               <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase text-slate-400 tracking-widest">{tSafe('subcon.form.template', 'القالب المرجعي', 'Legal Template')}</Label>
-                  <div className="relative">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setActivePicker(activePicker === 'temp' ? null : 'temp')}
-                      className="w-full h-14 rounded-2xl border-2 font-black text-lg bg-slate-50 shadow-inner justify-between px-6"
-                    >
-                       <span className="truncate">{formData.templateName || tSafe('subcon.selectTemplate', 'اختيار القالب المرجعي...', 'Choose Template...')}</span>
-                       <ChevronDown className={cn("h-5 w-5 opacity-40 transition-transform", activePicker === 'temp' && "rotate-180")} />
-                    </Button>
-                    
-                    {activePicker === 'temp' && (
-                      <div className="absolute top-full left-0 right-0 z-[200] mt-2 bg-white rounded-2xl shadow-3xl border-2 border-slate-100 overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-4 bg-slate-50 border-b">
-                           <div className="relative">
-                              <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
-                              <Input 
-                                placeholder={tSafe('common.search', 'بحث...', 'Search...')}
-                                value={tempSearch}
-                                onChange={e => setTempSearch(e.target.value)}
-                                className="h-12 ps-12 rounded-xl border-2 font-bold"
-                                autoFocus
-                              />
-                           </div>
-                        </div>
-                        <ScrollArea className="h-60">
-                           <div className="p-2 space-y-1">
-                              {filteredTemps.map(temp => (
-                                <div 
-                                  key={temp.id} 
-                                  onClick={(e) => { 
-                                    e.stopPropagation();
-                                    setFormData({...formData, templateId: temp.id, templateName: temp.name}); 
-                                    setActivePicker(null); 
-                                    setTempSearch(""); 
-                                  }}
-                                  className={cn(
-                                    "p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between group",
-                                    formData.templateId === temp.id ? "bg-primary/5 text-primary border-primary/20" : "hover:bg-slate-50"
-                                  )}
-                                >
-                                   <div className="flex flex-col text-start">
-                                      <span className="font-black text-sm">{temp.name}</span>
-                                      <div className="flex items-center gap-2 mt-1">
-                                         <Badge className="bg-amber-100 text-amber-600 border-0 h-4 text-[7px] font-black uppercase tracking-tighter">{temp.trade}</Badge>
-                                         <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">REF: {temp.code}</span>
-                                      </div>
-                                   </div>
-                                   {formData.templateId === temp.id && <Check className="h-4 w-4" />}
-                                </div>
-                              ))}
-                           </div>
-                        </ScrollArea>
-                      </div>
-                    )}
-                  </div>
-               </div>
-
-               <div className="p-6 rounded-3xl bg-blue-50 border-2 border-white shadow-inner flex items-start gap-4">
-                  <Info className="h-5 w-5 text-blue-600 mt-0.5" />
-                  <p className="text-[10px] font-bold text-blue-700/70 leading-relaxed italic">
-                    {tSafe('subcon.provisioning.hint', 'سيتم تحويل القالب المختار إلى مسودة عقد حية مرتبطة بالمقاول والمشروع فوراً.', 'Template will be instantiated as a live contract linked to the vendor.')}
-                  </p>
-               </div>
-
-               <Button 
-                  onClick={handleIssueContract} 
-                  disabled={loading || !formData.subcontractorId || !formData.transactionId || !formData.templateId}
-                  className="w-full h-20 rounded-[2rem] bg-primary text-white font-black text-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-4 border-b-8 border-orange-700 mt-6"
-               >
-                  {loading ? <Loader2 className="animate-spin h-8 w-8" /> : <Sparkles className="h-8 w-8" />}
-                  {tSafe('subcon.contracts.issueNow', 'إصدار الاتفاقية الآن', 'Issue Award Now')}
-               </Button>
-            </div>
-         </DialogContent>
-      </Dialog>
     </div>
   );
 }
+
