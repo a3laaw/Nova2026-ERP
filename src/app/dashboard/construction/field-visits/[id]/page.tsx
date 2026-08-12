@@ -35,7 +35,7 @@ export default function FieldVisitDetailsPage() {
   const { data: visit, loading } = useDoc<any>(visitRef);
 
   if (loading) return <div className="h-[60vh] flex items-center justify-center bg-[#fdfaf3]"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
-  if (!visit) return <div className="p-20 text-center font-black">404 - Not Found</div>;
+  if (!visit) return <div className="p-20 text-center font-black">{tSafe('inline.not.found', '404 - غير موجود', '404 - Not Found')}</div>;
 
   const DetailTable = ({ title, columns, data }: any) => (
     <Card className="border-2 shadow-sm rounded-2xl overflow-hidden bg-white h-full print:border-slate-300 print:shadow-none">
@@ -53,7 +53,7 @@ export default function FieldVisitDetailsPage() {
           </TableHeader>
           <TableBody>
             {data?.length === 0 ? (
-               <TableRow><TableCell colSpan={columns.length} className="py-8 text-center text-slate-300 italic text-xs">--- No Records Registered ---</TableCell></TableRow>
+               <TableRow><TableCell colSpan={columns.length} className="py-8 text-center text-slate-300 italic text-xs">--- {tSafe('inline.no.records', 'لا يوجد سجلات', 'No Records')} ---</TableCell></TableRow>
             ) : data?.map((row: any, idx: number) => (
               <TableRow key={idx} className="border-b last:border-0">
                 {Object.values(row).map((val: any, i: number) => (
@@ -102,7 +102,7 @@ export default function FieldVisitDetailsPage() {
                     <div className="flex gap-6 items-center">
                        <Badge className="bg-slate-900 text-white border-0 font-black px-8 py-2 rounded-2xl uppercase text-[11px] shadow-xl">#{visit.transactionNumber}</Badge>
                        <div className="flex items-center gap-3 text-slate-500 font-black text-sm border-s-2 border-slate-100 ps-6">
-                          <History className="h-5 w-5 text-primary" /> {visit.activeStageName || 'Project Execution'}
+                          <History className="h-5 w-5 text-primary" /> {visit.activeStageName || tSafe('general.progress', 'التقدم العام', 'General Progress')}
                        </div>
                     </div>
                  </div>
@@ -116,14 +116,15 @@ export default function FieldVisitDetailsPage() {
 
               <div className="space-y-8">
                  <h3 className="text-2xl font-black font-headline text-slate-900 flex items-center gap-4 border-b-4 pb-4 border-primary/10">
-                    <Hammer className="h-8 w-8 text-primary" /> {isRtl ? 'إنجاز بنود المقايسة الموثق' : 'Certified BOQ Work Execution'}
+                    <Hammer className="h-8 w-8 text-primary" /> 
+                    {tSafe('inline.certified.boq.execution', 'إنجاز بنود المقايسة الموثق', 'Certified BOQ Work Execution')}
                  </h3>
                  <div className="border-2 border-slate-100 rounded-[3rem] bg-white overflow-hidden shadow-2xl ring-1 ring-black/[0.02] print:shadow-none print:border-slate-300">
                     <Table className="w-full">
                        <TableHeader className="bg-slate-50/80">
                           <TableRow className="border-0">
                              <TableHead className="py-8 ps-12 text-slate-500 font-black uppercase text-xs tracking-widest w-[80px]">#</TableHead>
-                             <TableHead className="text-slate-500 font-black uppercase text-xs tracking-widest">{isRtl ? 'وصف بند العمل' : 'Work Item Description'}</TableHead>
+                             <TableHead className="text-slate-500 font-black uppercase text-xs tracking-widest">{tSafe('inline.work.item.desc', 'وصف بند العمل', 'Work Item Description')}</TableHead>
                              <TableHead className="text-center text-primary font-black uppercase text-xs tracking-widest w-[200px]">{t('common.quantity')}</TableHead>
                              <TableHead className="pe-12 text-slate-500 font-black uppercase text-xs tracking-widest">{t('common.notes')}</TableHead>
                           </TableRow>
@@ -154,18 +155,18 @@ export default function FieldVisitDetailsPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10 pt-10">
                   <DetailTable 
-                    title="I. STAFF RESOURCES" 
+                    title={tSafe('inline.staff.resources', 'الموارد البشرية', 'Staff Resources')} 
                     columns={[isRtl ? 'الموظف' : 'EMPLOYEE', isRtl ? 'المسمى' : 'POSITION', isRtl ? 'العدد' : 'COUNT']} 
                     data={visit.staffDetails} 
                   />
                   <DetailTable 
-                    title="III. EQUIPMENT DEPLOYED" 
+                    title={tSafe('common.equipment', 'المعدات والآليات', 'Equipment')} 
                     columns={[isRtl ? 'اسم المعدة' : 'EQUIPMENT', isRtl ? 'العدد' : 'COUNT', isRtl ? 'ساعات' : 'HOURS']} 
                     data={visit.equipmentUsed} 
                   />
                   <div className="md:col-span-2">
                     <DetailTable 
-                        title="IV. MATERIAL RECEIPTS" 
+                        title={tSafe('inline.materials', 'المواد الموردة للموقع', 'Materials')} 
                         columns={[isRtl ? 'نوع المادة' : 'MATERIAL TYPE', isRtl ? 'الوحدة' : 'UNIT', isRtl ? 'الكمية' : 'QTY']} 
                         data={visit.materialsDelivered} 
                     />
@@ -175,10 +176,10 @@ export default function FieldVisitDetailsPage() {
               <div className="p-12 bg-white border-2 border-slate-100 rounded-[3.5rem] shadow-2xl flex flex-col md:flex-row items-center justify-between gap-12 border-t-8 border-primary text-start ring-1 ring-black/[0.02]">
                  <div className="flex items-center gap-8 text-start relative group">
                     <Avatar className="h-24 w-24 rounded-[2rem] border-4 border-white shadow-2xl transition-transform group-hover:scale-105">
-                       <AvatarFallback className="bg-primary text-white font-black text-3xl">{visit.engineerName?.charAt(0)}</AvatarFallback>
+                       <AvatarFallback className="bg-primary/5 text-primary font-black text-3xl">{visit.engineerName?.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div className="space-y-1">
-                       <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">{isRtl ? 'المهندس الموثق' : 'Authorized Engineer'}</p>
+                       <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">{tSafe('inline.authorized.engineer', 'المهندس الموثق', 'Authorized Engineer')}</p>
                        <h4 className="text-3xl font-black font-headline text-slate-900">{visit.engineerName}</h4>
                        <div className="flex items-center gap-2 text-slate-400 font-bold text-xs">
                           <ShieldCheck className="h-4 w-4 text-emerald-500" /> {tSafe('inline.verified.record', 'سجل ميداني موثق', 'Verified Field Record')}
@@ -192,7 +193,7 @@ export default function FieldVisitDetailsPage() {
                        <p className="text-sm font-mono font-bold text-slate-700">{visit.createdAt?.toDate().toLocaleString()}</p>
                     </div>
                     <Badge variant="outline" className="h-8 px-6 rounded-xl font-mono text-[10px] border-2 border-slate-100 font-black text-slate-300">
-                       REF: {visit.id?.toUpperCase()}
+                       REF: {visit.id?.toUpperCase().slice(-8)}
                     </Badge>
                  </div>
               </div>

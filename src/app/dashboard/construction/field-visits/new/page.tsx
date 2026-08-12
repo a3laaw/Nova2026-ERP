@@ -49,28 +49,21 @@ function NewFieldVisitForm() {
   const [activeStage, setActiveStage] = useState<StageInstance | null>(null);
   const [loadingStage, setLoadingStage] = useState(false);
 
-  // جداول الموارد المربوطة (The 2x2 Sovereign Grid Data)
   const [staffRows, setStaffRows] = useState<any[]>([{ employeeId: '', position: '', count: 1 }]);
   const [equipRows, setEquipRows] = useState<any[]>([{ equipmentId: '', count: 1, hours: 8 }]);
   const [materialRows, setMaterialRows] = useState<any[]>([{ type: '', unit: '', quantity: 0 }]);
-
-  // بنود التنفيذ المرتبطة بالمرحلة
   const [executionRows, setExecutionRows] = useState<any[]>([{ boqItemId: '', quantity: '', notes: '' }]);
 
-  // جلب البيانات المرجعية
   const transQuery = useMemo(() => 
     (companyId && db) ? query(collection(db, paths.transactions(companyId)), where('status', '!=', 'completed')) : null, [db, companyId]);
   const empsQuery = useMemo(() => 
     (companyId && db) ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
   const equipQuery = useMemo(() => 
     (companyId && db) ? query(collection(db, paths.equipment(companyId)), where('status', '==', 'available')) : null, [db, companyId]);
-  const groupsQuery = useMemo(() => 
-    (companyId && db) ? query(collection(db, paths.workGroups(companyId)), where('isActive', '==', true)) : null, [db, companyId]);
 
   const { data: allTransactions } = useCollection<Transaction>(transQuery);
   const { data: employees } = useCollection<Employee>(empsQuery);
   const { data: equipmentList } = useCollection<any>(equipQuery);
-  const { data: workGroups } = useCollection<WorkGroup>(groupsQuery);
 
   const fieldProjects = useMemo(() => {
     return (allTransactions || []).filter(t => {
@@ -130,7 +123,6 @@ function NewFieldVisitForm() {
       const project = allTransactions?.find(t => t.id === selectedProjectId);
       const officialName = globalUser?.fullName || user.displayName || 'Engineer';
 
-      // 1. تسجيل الحركات الفنية في المقايسة
       for (const row of executionRows.filter(r => r.boqItemId && Number(r.quantity) > 0)) {
          await execService.recordBOQItemExecution(
            activeBoq.id, row.boqItemId, activeStage.technicalStageId, Number(row.quantity),
@@ -139,7 +131,6 @@ function NewFieldVisitForm() {
          );
       }
 
-      // 2. حفظ التقرير الموحد
       await setDoc(visitRef, {
         id: visitRef.id,
         companyId,
@@ -179,7 +170,7 @@ function NewFieldVisitForm() {
   };
 
   return (
-    <div className="space-y-6 w-full max-w-full pb-20 animate-in fade-in duration-500 text-start bg-[#fdfaf3]" dir={dir}>
+    <div className="space-y-6 w-full max-w-full pb-20 animate-in fade-in duration-500 text-start bg-slate-50/30" dir={dir}>
       
       <header className="sticky top-0 z-50 flex justify-between items-center gap-6 border-b bg-white/95 backdrop-blur-md px-8 py-5 shadow-sm border-primary/10">
         <div className="flex items-center gap-5 text-start">
@@ -187,22 +178,23 @@ function NewFieldVisitForm() {
             <PlusCircle className="h-8 w-8" />
           </div>
           <div className="text-start">
-            <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{isRtl ? 'تسجيل تقرير ميداني جديد' : 'New Field Report'}</h1>
-            <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 text-[9px] font-black uppercase mt-1 tracking-widest px-3">Sovereign Center of Ops</Badge>
+            <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">
+               {tSafe('inline.new.field.report', 'تسجيل تقرير ميداني جديد', 'New Field Report')}
+            </h1>
+            <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 text-[9px] font-black uppercase mt-1 tracking-widest px-3">Center of Site Operations</Badge>
           </div>
         </div>
 
         <div className="flex gap-4">
            <Button variant="ghost" onClick={() => router.back()} className="rounded-xl font-black h-12 px-8 border-2 border-slate-100 bg-white hover:bg-slate-50 transition-all">{t('common.cancel')}</Button>
-           <Button onClick={handleSave} disabled={loading || !activeStage} className="h-12 px-12 rounded-xl bg-primary text-white font-black shadow-2xl shadow-primary/20 gap-3 border-b-8 border-orange-700 hover:scale-[1.02] active:scale-95 transition-all">
+           <Button onClick={handleSave} disabled={loading || !activeStage} className="h-12 px-12 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 gap-3 border-b-8 border-orange-700 hover:scale-[1.02] active:scale-95 transition-all">
               {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />} 
-              {isRtl ? 'اعتماد التقرير الآن' : 'Commit Report Now'}
+              {tSafe('inline.commit.report.now', 'اعتماد التقرير الآن', 'Commit Report Now')}
            </Button>
         </div>
       </header>
 
       <div className="px-8 space-y-10">
-         {/* Context Bar - Full Width */}
          <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden w-full">
             <CardContent className="p-8 grid grid-cols-1 md:grid-cols-4 gap-10 items-center">
                 <div className="space-y-2">
@@ -220,16 +212,16 @@ function NewFieldVisitForm() {
                    </Select>
                 </div>
                 <div className="space-y-2">
-                   <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5"><Workflow className="h-3 w-3" /> {isRtl ? 'المرحلة النشطة' : 'Active Stage'}</Label>
+                   <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5"><Workflow className="h-3 w-3" /> {tSafe('inline.active.stage', 'المرحلة النشطة', 'Active Stage')}</Label>
                    {loadingStage ? <div className="h-14 flex items-center animate-pulse"><Loader2 className="h-5 w-5 animate-spin text-primary/30" /></div> : activeStage ? (
                      <div className="h-14 rounded-2xl bg-emerald-50 border-2 border-emerald-100 flex items-center px-6 gap-4 shadow-sm group">
                         <div className="h-8 w-8 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 transition-transform group-hover:scale-110"><Workflow className="h-4 w-4" /></div>
                         <span className="text-sm font-black text-emerald-800 truncate">{activeStage.name}</span>
                      </div>
-                   ) : (
-                     <div className="h-14 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center px-6 text-slate-300">
+                   ) : selectedProjectId && (
+                     <div className="h-14 rounded-2xl bg-rose-50 border-2 border-dashed border-rose-200 flex items-center px-6 text-rose-500">
                         <ShieldAlert className="h-4 w-4 me-3" />
-                        <span className="text-[11px] font-bold italic">---</span>
+                        <span className="text-[11px] font-bold italic">{isRtl ? 'لا توجد مرحلة نشطة.' : 'No active stage found.'}</span>
                      </div>
                    )}
                 </div>
@@ -240,15 +232,16 @@ function NewFieldVisitForm() {
             </CardContent>
          </Card>
 
-         {/* BOQ Work Progress - Wide Section */}
          <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
             <CardHeader className="bg-slate-50/50 p-8 border-b flex flex-row justify-between items-center">
                <div className="text-start">
-                  <CardTitle className="text-xl font-black font-headline flex items-center gap-4 text-slate-800"><Hammer className="h-7 w-7 text-primary" /> {isRtl ? 'إنجاز بنود المقايسة (BOQ)' : 'Work Items Execution Grid'}</CardTitle>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">Direct linkage to Technical Path & Billing Triggers</p>
+                  <CardTitle className="text-xl font-black font-headline flex items-center gap-4 text-slate-800">
+                     <Hammer className="h-7 w-7 text-primary" /> 
+                     {tSafe('inline.work.items.execution.grid', 'إنجاز بنود المقايسة (BOQ)', 'Work Items Execution Grid')}
+                  </CardTitle>
                </div>
                <Button variant="outline" onClick={() => setExecutionRows([...executionRows, { boqItemId: '', quantity: '', notes: '' }])} className="rounded-xl h-11 px-8 font-black border-2 gap-3 bg-white hover:bg-primary/5 transition-all">
-                  <Plus className="h-5 w-5 text-primary" /> {isRtl ? 'إضافة بند تنفيذ' : 'Add Work Item'}
+                  <Plus className="h-5 w-5 text-primary" /> {t('common.add')}
                </Button>
             </CardHeader>
             <CardContent className="p-0">
@@ -282,7 +275,6 @@ function NewFieldVisitForm() {
                            <TableCell className="py-6">
                               <div className="relative group">
                                  <Input type="number" step="0.01" value={row.quantity} onChange={e => { const nr = [...executionRows]; nr[idx].quantity = e.target.value; setExecutionRows(nr); }} className="h-14 rounded-2xl text-center font-black text-3xl border-2 text-primary bg-primary/5 focus:bg-white transition-all shadow-inner" />
-                                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300 uppercase">UNIT</span>
                               </div>
                            </TableCell>
                            <TableCell className="py-6">
@@ -300,14 +292,14 @@ function NewFieldVisitForm() {
             </CardContent>
          </Card>
 
-         {/* Resources Grid - STAFF | EQUIPMENT | MATERIALS */}
          <div className="grid grid-cols-1 xl:grid-cols-2 gap-10 pb-20">
-            {/* Table 1: I. STAFF RESOURCES (Linked to Employees & Groups) */}
-            <Card className="border-2 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
+            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
                <CardHeader className="bg-slate-50/80 border-b p-6 flex flex-row items-center justify-between">
                   <div>
-                    <CardTitle className="text-sm font-black uppercase text-slate-700 tracking-widest flex items-center gap-2"><UserCircle className="h-4 w-4" /> I. STAFF RESOURCES</CardTitle>
-                    <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase">Official Employee & Management Assignment</p>
+                    <CardTitle className="text-sm font-black uppercase text-slate-700 tracking-widest flex items-center gap-2">
+                       <UserCircle className="h-4 w-4" /> 
+                       {tSafe('inline.staff.resources', 'الموارد البشرية', 'Staff Resources')}
+                    </CardTitle>
                   </div>
                   <Button variant="ghost" size="icon" onClick={() => setStaffRows([...staffRows, { employeeId: '', position: '', count: 1 }])} className="text-primary hover:bg-primary/5 rounded-full"><PlusCircle className="h-6 w-6" /></Button>
                </CardHeader>
@@ -353,12 +345,13 @@ function NewFieldVisitForm() {
                </CardContent>
             </Card>
 
-            {/* Table 2: III. EQUIPMENT (Linked to Reference List) */}
-            <Card className="border-2 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
+            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
                <CardHeader className="bg-slate-50/80 border-b p-6 flex flex-row items-center justify-between">
                   <div>
-                    <CardTitle className="text-sm font-black uppercase text-slate-700 tracking-widest flex items-center gap-2"><Truck className="h-4 w-4" /> III. EQUIPMENT (STATIONARY & MOBILE)</CardTitle>
-                    <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase">Assets Tracked via Sovereign Inventory</p>
+                    <CardTitle className="text-sm font-black uppercase text-slate-700 tracking-widest flex items-center gap-2">
+                       <Truck className="h-4 w-4" /> 
+                       {tSafe('common.equipment', 'المعدات والآليات', 'Equipment')}
+                    </CardTitle>
                   </div>
                   <Button variant="ghost" size="icon" onClick={() => setEquipRows([...equipRows, { equipmentId: '', count: 1, hours: 8 }])} className="text-primary hover:bg-primary/5 rounded-full"><PlusCircle className="h-6 w-6" /></Button>
                </CardHeader>
@@ -403,12 +396,13 @@ function NewFieldVisitForm() {
                </CardContent>
             </Card>
 
-            {/* Table 3: IV. MATERIALS (Free Text/Project Based) */}
-            <Card className="xl:col-span-2 border-2 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
+            <Card className="xl:col-span-2 border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
                <CardHeader className="bg-slate-50/80 border-b p-6 flex flex-row items-center justify-between">
                   <div>
-                    <CardTitle className="text-sm font-black uppercase text-slate-700 tracking-widest flex items-center gap-2"><Package className="h-4 w-4" /> IV. MATERIALS (DELIVERED TO SITE)</CardTitle>
-                    <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase">Field Logistics & Material Receipts</p>
+                    <CardTitle className="text-sm font-black uppercase text-slate-700 tracking-widest flex items-center gap-2">
+                       <Package className="h-4 w-4" /> 
+                       {tSafe('inline.materials', 'المواد الموردة للموقع', 'Materials')}
+                    </CardTitle>
                   </div>
                   <Button variant="ghost" size="icon" onClick={() => setMaterialRows([...materialRows, { type: '', unit: '', quantity: 0 }])} className="text-primary hover:bg-primary/5 rounded-full"><PlusCircle className="h-6 w-6" /></Button>
                </CardHeader>
@@ -426,10 +420,10 @@ function NewFieldVisitForm() {
                         {materialRows.map((row, idx) => (
                            <TableRow key={idx} className="border-b last:border-0 hover:bg-slate-50/50 transition-colors">
                               <TableCell className="ps-10 py-4">
-                                 <Input value={row.type} onChange={e => { const nr = [...materialRows]; nr[idx].type = e.target.value; setMaterialRows(nr); }} className="h-11 border-2 font-bold bg-white rounded-xl shadow-inner" placeholder="Cement, Steel, etc..." />
+                                 <Input value={row.type} onChange={e => { const nr = [...materialRows]; nr[idx].type = e.target.value; setMaterialRows(nr); }} className="h-11 border-2 font-bold bg-white rounded-xl shadow-inner" placeholder="..." />
                               </TableCell>
                               <TableCell className="py-4">
-                                 <Input value={row.unit} onChange={e => { const nr = [...materialRows]; nr[idx].unit = e.target.value; setMaterialRows(nr); }} className="h-11 text-center border-2 font-bold uppercase text-[10px] rounded-xl" placeholder="UOM" />
+                                 <Input value={row.unit} onChange={e => { const nr = [...materialRows]; nr[idx].unit = e.target.value; setMaterialRows(nr); }} className="h-11 text-center border-2 font-bold uppercase text-[10px] rounded-xl" placeholder="..." />
                               </TableCell>
                               <TableCell className="py-4">
                                  <Input type="number" value={row.quantity} onChange={e => { const nr = [...materialRows]; nr[idx].quantity = e.target.value; setMaterialRows(nr); }} className="h-11 text-center border-2 font-black text-xl text-primary rounded-xl bg-primary/5" />
@@ -449,6 +443,6 @@ function NewFieldVisitForm() {
   );
 }
 
-export default function NewSovereignGridReportPage() {
+export default function NewStructuredFieldVisitPage() {
    return <Suspense fallback={<div className="h-screen flex items-center justify-center bg-[#fdfaf3]"><Loader2 className="animate-spin text-primary" /></div>}><NewFieldVisitForm /></Suspense>;
 }
