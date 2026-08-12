@@ -55,7 +55,7 @@ import { BOQReferenceService } from '@/services/boq-reference-service';
 
 export default function BOQNodesPage() {
   const { globalUser, user } = useAuthContext();
-  const { t, lang, dir, isRtl, tSafe } = useLanguage(); // Fixed: Added tSafe
+  const { t, lang, dir, isRtl, tSafe } = useLanguage(); 
   const { check, permissions } = usePermissions();
   const db = useFirestore();
   const companyId = globalUser?.companyId;
@@ -202,15 +202,15 @@ export default function BOQNodesPage() {
 
     if (editingNode.isExecutable) {
       if (!editingNode.unitTypeId) {
-        toast({ variant: "destructive", title: t('common.alert'), description: t('ref.error.unitRequired') });
+        toast({ variant: "destructive", title: t('common.alert'), description: tSafe('inline.unit.type.required', 'يجب اختيار وحدة قياس للبند التنفيذي', 'Unit type required') });
         return;
       }
       if (!actId || !srvId || !subId) {
-        toast({ variant: "destructive", title: t('common.alert'), description: t('ref.error.contextRequired') });
+        toast({ variant: "destructive", title: t('common.alert'), description: tSafe('inline.context.required', 'يجب اكتمال النشاط والخدمة والمسار الفني أولاً', 'Context required') });
         return;
       }
       if (!editingNode.technicalStageIds || editingNode.technicalStageIds.length === 0) {
-        toast({ variant: "destructive", title: t('common.alert'), description: t('ref.error.stageRequired') });
+        toast({ variant: "destructive", title: t('common.alert'), description: tSafe('inline.stage.required', 'يجب اختيار مرحلة فنية واحدة على الأقل لتمكين المهندس من تسجيل الإنجاز', 'Stage required') });
         return;
       }
     }
@@ -321,26 +321,26 @@ export default function BOQNodesPage() {
   };
 
   return (
-    <div className="space-y-6 text-start animate-in fade-in duration-500">
+    <div className="space-y-6 text-start animate-in fade-in duration-500 max-w-full">
       <div className="flex justify-between items-center px-1">
         <div>
           <h2 className="text-2xl font-black font-headline flex items-center gap-3 text-slate-900">
             <GitBranch className="h-7 w-7 text-primary" />
-            {t('ref.tree.title')}
+            {tSafe('ref.tree.title', 'شجرة بنود الأعمال المرجعية', 'BOQ Master Tree')}
           </h2>
-          <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{t('ref.tree.subtitle')}</p>
+          <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{tSafe('ref.tree.subtitle', 'السجل المرجعي الموحد للأعمال والمراحل', 'Standard Reference Tree')}</p>
         </div>
         {canCreate && (
            <Button 
              onClick={() => setEditingNode({ parentId: null, nodeRole: 'group', isActive: true, isExecutable: false, order: treeData.length })}
              className="h-12 px-8 rounded-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2"
            >
-             <Plus className="h-5 w-5" /> {t('ref.node.addRoot')}
+             <Plus className="h-5 w-5" /> {tSafe('ref.node.addRoot', 'إضافة قسم رئيسي', 'Add Root Node')}
            </Button>
         )}
       </div>
 
-      <Card className="border-0 shadow-2xl rounded-[1.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+      <Card className="border-0 shadow-2xl rounded-[1.5rem] bg-white overflow-hidden ring-1 ring-black/5 w-full">
          <CardHeader className="bg-slate-50/50 border-b p-6">
             <div className="relative w-full max-w-sm">
                <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
@@ -351,12 +351,12 @@ export default function BOQNodesPage() {
             {loading ? (
               <div className="py-24 text-center flex flex-col items-center gap-4">
                  <Loader2 className="h-12 w-12 animate-spin text-primary/20" />
-                 <p className="text-xs font-black text-slate-300 uppercase tracking-widest italic">{t('ref.node.indexing')}</p>
+                 <p className="text-xs font-black text-slate-300 uppercase tracking-widest italic">{tSafe('ref.node.indexing', 'جاري فهرسة القاموس الديناميكي...', 'Indexing Registry...')}</p>
               </div>
             ) : treeData.length === 0 ? (
               <div className="py-24 text-center flex flex-col items-center gap-6 opacity-30">
                  <GitBranch className="h-20 w-20 text-slate-200" />
-                 <p className="text-xl font-black text-slate-400">{t('ref.node.empty')}</p>
+                 <p className="text-xl font-black text-slate-400">{tSafe('ref.node.empty', 'القاموس فارغ حالياً', 'Registry is Empty')}</p>
               </div>
             ) : (
               treeData.map((node, i) => renderNode(node, (i + 1).toString()))
@@ -374,11 +374,11 @@ export default function BOQNodesPage() {
           }
         }}
       >
-         <DialogContent className="rounded-xl p-0 overflow-hidden max-w-2xl border-0 shadow-3xl bg-white" dir={dir}>
+         <DialogContent className="rounded-xl p-0 overflow-hidden max-w-4xl border-0 shadow-3xl bg-white" dir={dir}>
             <div className="bg-slate-50 p-6 text-slate-900 text-start border-b flex items-center justify-between">
                <DialogTitle className="text-xl font-black font-headline flex items-center gap-3">
                   <Settings2 className="h-6 w-6 text-primary" />
-                  {editingNode?.id ? t('ref.node.edit') : t('ref.node.addNew')}
+                  {editingNode?.id ? tSafe('ref.node.edit', 'تعديل بيانات العقدة', 'Edit Registry Node') : tSafe('ref.node.addNew', 'إضافة عقدة جديدة', 'Add New Node')}
                </DialogTitle>
             </div>
 
@@ -386,17 +386,17 @@ export default function BOQNodesPage() {
                
                <div className="space-y-4">
                   <div className="space-y-1.5">
-                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('ref.node.titleLabel')}</Label>
+                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('ref.node.titleLabel', 'المسمى الهندسي / التجاري', 'Node Professional Title')}</Label>
                      <Input value={editingNode?.title || ''} onChange={e => setEditingNode({...editingNode!, title: e.target.value})} className="h-12 rounded-xl border-2 font-black text-base bg-slate-50/30" />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{t('common.code')}</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('common.code', 'الكود المرجعي', 'Reference Code')}</Label>
                         <Input value={editingNode?.code || ''} onChange={e => setEditingNode({...editingNode!, code: e.target.value.toUpperCase()})} className="h-11 rounded-xl border-2 font-mono font-black text-primary" />
                     </div>
                     <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{t('ref.node.displayOrder')}</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('ref.node.displayOrder', 'ترتيب العرض', 'Display Order')}</Label>
                         <Input type="number" value={editingNode?.order || 0} onChange={e => setEditingNode({...editingNode!, order: Number(e.target.value)})} className="h-11 rounded-xl border-2 font-bold" />
                     </div>
                   </div>
@@ -404,7 +404,7 @@ export default function BOQNodesPage() {
 
                <div className="p-6 bg-slate-50 rounded-2xl border-2 border-white shadow-inner space-y-6">
                   <h4 className="font-black text-[11px] text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                     <Workflow className="h-4 w-4 text-primary" /> {t('ref.node.inheritance')}
+                     <Workflow className="h-4 w-4 text-primary" /> {tSafe('ref.node.inheritance', 'الارتباط التشغيلي الموروث', 'Inheritance')}
                   </h4>
 
                   {editingNode?.parentId ? (
@@ -467,14 +467,14 @@ export default function BOQNodesPage() {
                     <div className="pt-6 border-t border-slate-200 animate-in slide-in-from-top-2">
                        <div className="space-y-3">
                           <Label className="text-[11px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
-                             <MapPin className="h-3.5 w-3.5" /> {t('ref.node.fieldLinks')}
+                             <MapPin className="h-3.5 w-3.5" /> {tSafe('ref.node.fieldLinks', 'ربط مراحل التنفيذ الميداني', 'Field Links')}
                           </Label>
 
                           <div className="bg-blue-50 p-5 rounded-2xl border-2 border-blue-100 flex items-start gap-4 mb-4">
                              <ShieldAlert className="h-6 w-6 text-blue-600 shrink-0 mt-1" />
                              <div className="text-start space-y-1">
-                                <h5 className="font-black text-xs text-blue-900 uppercase">{t('ref.node.fieldRule')}</h5>
-                                <p className="text-[10px] text-blue-700/80 font-bold leading-relaxed">{t('ref.node.fieldRuleDesc')}</p>
+                                <h5 className="font-black text-xs text-blue-900 uppercase">{tSafe('ref.node.fieldRule', 'قاعدة الظهور الميداني', 'Field Rule')}</h5>
+                                <p className="text-[10px] text-blue-700/80 font-bold leading-relaxed">{tSafe('ref.node.fieldRuleDesc', 'الربط يضمن دقة التتبع ومنع تسجيل كميات في مراحل خاطئة.', 'Links ensure accuracy.')}</p>
                              </div>
                           </div>
                           
@@ -491,12 +491,12 @@ export default function BOQNodesPage() {
                                     {editingNode?.technicalStageIds?.length ? (
                                       <>
                                         <Badge className="bg-primary text-white border-0 text-[10px] font-black h-6 px-3">
-                                          {editingNode.technicalStageIds.length} {t('ref.node.fieldLinks')}
+                                          {editingNode.technicalStageIds.length} {tSafe('ref.node.fieldLinks', 'مراحل', 'Stages')}
                                         </Badge>
-                                        <span className="text-slate-500 truncate italic">{t('ref.node.selectStages')}</span>
+                                        <span className="text-slate-500 truncate italic">{tSafe('ref.node.selectStages', 'اختيار المراحل', 'Select Stages')}</span>
                                       </>
                                     ) : (
-                                      <span className="text-slate-400 font-bold">{t('ref.node.selectStages')}</span>
+                                      <span className="text-slate-400 font-bold">{tSafe('ref.node.selectStages', 'اختيار المراحل الميدانية', 'Select Stages')}</span>
                                     )}
                                   </div>
                                   <ChevronDown className={cn("h-5 w-5 opacity-40 transition-transform", showStagePicker && "rotate-180")} />
@@ -521,7 +521,7 @@ export default function BOQNodesPage() {
                                     <Input
                                       value={stageSearch}
                                       onChange={(e) => setStageSearch(e.target.value)}
-                                      placeholder={t('ref.node.searchStage')}
+                                      placeholder={tSafe('ref.node.searchStage', 'ابحث باسم المرحلة...', 'Search Stage')}
                                       className="h-11 rounded-xl border-2 font-bold ps-10"
                                     />
                                   </div>
@@ -531,10 +531,10 @@ export default function BOQNodesPage() {
                                       {loadingStages ? (
                                         <div className="py-20 text-center flex flex-col items-center gap-3">
                                           <Loader2 className="animate-spin h-8 w-8 text-primary/30" />
-                                          <p className="text-[10px] font-black text-slate-400 uppercase">{t('ref.node.fetchingStages')}</p>
+                                          <p className="text-[10px] font-black text-slate-400 uppercase">{tSafe('ref.node.fetchingStages', 'جاري الجلب...', 'Fetching...')}</p>
                                         </div>
                                       ) : availableStages.length === 0 ? (
-                                        <div className="py-16 text-center text-xs font-bold text-slate-400 italic">{t('ref.node.noStages')}</div>
+                                        <div className="py-16 text-center text-xs font-bold text-slate-400 italic">{tSafe('ref.node.noStages', 'لا يوجد مراحل', 'No Stages')}</div>
                                       ) : (
                                         availableStages.filter(s => !stageSearch || s.name.toLowerCase().includes(stageSearch.toLowerCase())).map(stage => {
                                           const isChecked = editingNode?.technicalStageIds?.includes(stage.id!);
@@ -554,7 +554,7 @@ export default function BOQNodesPage() {
                                                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{stage.code}</span>
                                                 </div>
                                               </div>
-                                              {isChecked && editingNode?.technicalStageId === stage.id && <Badge className="bg-emerald-50 text-white text-[7px] font-black h-4 px-2 border-0">{tSafe('inline.primary', 'رئيسي', 'PRIMARY')}</Badge>}
+                                              {isChecked && editingNode?.technicalStageId === stage.id && <Badge className="bg-emerald-500 text-white text-[7px] font-black h-4 px-2 border-0">{tSafe('inline.primary', 'رئيسي', 'PRIMARY')}</Badge>}
                                             </div>
                                           );
                                         })
@@ -569,7 +569,7 @@ export default function BOQNodesPage() {
                                       onClick={() => setEditingNode(prev => prev ? { ...prev, technicalStageIds: [], technicalStageId: '' } : prev)}
                                       className="text-rose-600 hover:bg-rose-50 text-[10px] font-black h-9 px-4"
                                     >
-                                      {t('ref.node.clearLinks')}
+                                      {tSafe('ref.node.clearLinks', 'إلغاء الربط', 'Clear')}
                                     </Button>
                                     <Button type="button" variant="default" onClick={() => setShowStagePicker(false)} className="rounded-xl h-10 px-8 text-xs font-black shadow-lg">{t('common.confirm')}</Button>
                                   </div>
@@ -580,8 +580,8 @@ export default function BOQNodesPage() {
                                  <div className="p-6 bg-slate-50 rounded-[2rem] border-2 border-white shadow-inner animate-in zoom-in-95">
                                     <div className="flex items-center justify-between mb-4">
                                        <div className="space-y-1 text-start">
-                                          <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{t('ref.node.defaultStage')}</Label>
-                                          <p className="text-[8px] text-slate-400 font-bold">{t('ref.node.defaultStageDesc')}</p>
+                                          <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{tSafe('ref.node.defaultStage', 'المرحلة الافتراضية', 'Default Stage')}</Label>
+                                          <p className="text-[8px] text-slate-400 font-bold">{tSafe('ref.node.defaultStageDesc', 'تستخدم كخيار أول في السجلات', 'First choice in field logs')}</p>
                                        </div>
                                        <Badge variant="outline" className="text-[8px] font-black border-primary/20 bg-white px-3 py-1">AUTO-ASSIGN PRIORITY</Badge>
                                     </div>
@@ -611,8 +611,8 @@ export default function BOQNodesPage() {
                             <div className="flex items-center gap-4 text-rose-500 p-6 bg-rose-50/50 rounded-[2rem] border-2 border-rose-100 ring-4 ring-rose-50/20 text-start">
                                <AlertTriangle className="h-7 w-7 shrink-0" />
                                <div className="text-start space-y-1">
-                                  <p className="text-[11px] font-black uppercase tracking-widest">{t('ref.node.unknownPath')}</p>
-                                  <p className="text-[10px] font-bold text-rose-600/80 leading-relaxed">{t('ref.node.unknownPathDesc')}</p>
+                                  <p className="text-[11px] font-black uppercase tracking-widest">{tSafe('ref.node.unknownPath', 'مسار غير معروف', 'Unknown Path')}</p>
+                                  <p className="text-[10px] font-bold text-rose-600/80 leading-relaxed">{tSafe('ref.node.unknownPathDesc', 'يرجى ربط الأب بمسار محدد أولاً.', 'Link parent first.')}</p>
                                </div>
                             </div>
                           )}
@@ -624,7 +624,7 @@ export default function BOQNodesPage() {
                {editingNode?.isExecutable && (
                  <div className="grid grid-cols-2 gap-6 animate-in fade-in">
                     <div className="space-y-1.5 text-start">
-                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('ref.node.unitType')}</Label>
+                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('ref.node.unitType', 'وحدة القياس', 'Unit')}</Label>
                        <Select value={editingNode.unitTypeId} onValueChange={v => {
                             const u = unitTypes?.find(x => x.id === v);
                             setEditingNode({...editingNode!, unitTypeId: v, unitName: u?.name, unitSymbol: u?.symbol});
@@ -636,7 +636,7 @@ export default function BOQNodesPage() {
                        </Select>
                     </div>
                     <div className="space-y-1.5 text-start">
-                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('ref.node.refPrice')}</Label>
+                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('ref.node.refPrice', 'السعر المرجعي (د.ك)', 'Ref Price')}</Label>
                        <div className="relative">
                           <Input type="number" step="0.001" value={editingNode.estimatedRate || ''} onChange={e => setEditingNode({...editingNode!, estimatedRate: e.target.value === '' ? '' : Number(e.target.value)} as any)} className="h-12 rounded-xl border-2 font-black text-emerald-600 text-xl text-center" placeholder="..." />
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-300">KWD</div>
@@ -646,22 +646,22 @@ export default function BOQNodesPage() {
                )}
 
                <div className="space-y-2 text-start">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('ref.node.techSpec')}</Label>
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('ref.node.techSpec', 'المواصفة الفنية القياسية', 'Tech Spec')}</Label>
                   <Textarea value={editingNode?.description || ''} onChange={e => setEditingNode({...editingNode!, description: e.target.value})} className="min-h-[120px] rounded-2xl border-2 p-5 text-xs font-bold leading-relaxed resize-none bg-slate-50/50 focus:bg-white transition-all shadow-inner" placeholder="..." />
                </div>
 
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-slate-900 text-white rounded-[2rem] shadow-2xl ring-4 ring-slate-100">
                   <div className="flex items-center justify-between">
                      <div className="space-y-0.5 text-start">
-                        <Label className="font-black text-xs uppercase tracking-tighter text-primary">{t('ref.node.executable')}</Label>
-                        <p className="text-[8px] text-slate-400 font-bold">{t('ref.node.executableDesc')}</p>
+                        <Label className="font-black text-xs uppercase tracking-tighter text-primary">{tSafe('ref.node.executable', 'بند تنفيذي (Item)', 'Executable')}</Label>
+                        <p className="text-[8px] text-slate-400 font-bold">{tSafe('ref.node.executableDesc', 'يسمح بتسجيل الإنجاز والميزانية', 'Allows tracking')}</p>
                      </div>
                      <Switch checked={editingNode?.isExecutable || false} onCheckedChange={v => setEditingNode({...editingNode!, isExecutable: v, nodeRole: v ? 'work_item' : 'group'})} />
                   </div>
                   <div className="flex items-center justify-between border-s border-white/10 md:ps-8">
                      <div className="space-y-0.5 text-start">
                         <Label className="font-black text-xs uppercase tracking-tighter">{t('common.isActive')}</Label>
-                        <p className="text-[8px] text-slate-400 font-bold">{t('ref.node.activeDesc')}</p>
+                        <p className="text-[8px] text-slate-400 font-bold">{tSafe('ref.node.activeDesc', 'إتاحة البند للاستخدام', 'Enable item')}</p>
                      </div>
                      <Switch checked={editingNode?.isActive !== false} onCheckedChange={v => setEditingNode({...editingNode!, isActive: v})} />
                   </div>
@@ -670,7 +670,7 @@ export default function BOQNodesPage() {
 
             <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4">
                <Button variant="outline" onClick={() => setEditingNode(null)} className="flex-1 h-14 rounded-2xl border-2 font-bold bg-white">{t('common.cancel')}</Button>
-               <Button onClick={handleSave} disabled={loadingAction === 'save'} className="flex-[2] h-14 rounded-2xl bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2 border-b-8 border-orange-700">
+               <Button onClick={handleSave} disabled={loadingAction === 'save'} className="flex-[2] h-14 rounded-2xl bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2 border-b-4 border-orange-700">
                   {loadingAction === 'save' ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6 me-2" />}
                   {t('common.save')}
                </Button>
@@ -685,7 +685,7 @@ export default function BOQNodesPage() {
                 <Trash2 className="h-10 w-10" />
              </div>
              <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">{t('common.confirmDelete')}</AlertDialogTitle>
-             <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">{t('ref.node.confirmDeleteDesc')}</AlertDialogDescription>
+             <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">{tSafe('ref.node.confirmDeleteDesc', 'هل أنت متأكد؟ سيتم إزالة البند نهائياً.', 'Confirm deletion')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
             <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">{t('common.cancel')}</AlertDialogCancel>
