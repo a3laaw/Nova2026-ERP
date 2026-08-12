@@ -202,7 +202,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-white/95 backdrop-blur-md px-6 shadow-sm">
         <div className="flex items-center gap-4 text-start">
           <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 border-2 rounded-xl hover:bg-slate-50 transition-all text-slate-400">
-            <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
+            <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
           </Button>
           <div className="text-start">
              <h1 className="text-xl font-black text-slate-900 leading-none">{tSafe('inline.sovereign.contract.engineering', 'هندسة قوالب العقود السيادية', 'Sovereign Contract Engineering')}</h1>
@@ -227,7 +227,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
          <aside className="lg:col-span-3 space-y-6 text-start">
             <Card className="border-0 shadow-xl rounded-[2rem] bg-white ring-1 ring-black/5 overflow-hidden">
                <CardHeader className="bg-primary/5 p-6 border-b">
-                  <CardTitle className="text-xs font-black flex items-center gap-3 uppercase tracking-widest text-primary">
+                  <CardTitle className="text-[10px] font-black flex items-center gap-3 uppercase tracking-widest text-primary">
                      <Target className="h-4 w-4" /> {isRtl ? 'السياق التشغيلي' : 'Operational Context'}
                   </CardTitle>
                </CardHeader>

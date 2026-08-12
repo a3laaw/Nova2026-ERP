@@ -17,7 +17,7 @@ import {
 import { 
   Save, Plus, Trash2, Loader2, ArrowRight,
   FileText, Calculator, DollarSign, ShieldCheck,
-  AlertTriangle, Target, Percent, Workflow,
+  Target, Percent, Workflow,
   LayoutGrid, Clock, Link as LinkIcon, Info,
   Landmark, X, Sparkles
 } from "lucide-react";
@@ -228,7 +228,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
 
       <div className="max-w-full mx-auto px-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
          <aside className="lg:col-span-3 space-y-6 text-start">
-            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
+            <Card className="border-0 shadow-xl rounded-[2rem] bg-white ring-1 ring-black/5 overflow-hidden">
                <CardHeader className="bg-primary/5 p-6 border-b">
                   <CardTitle className="text-xs font-black flex items-center gap-3 uppercase tracking-widest text-primary">
                      <Target className="h-4 w-4" /> {tSafe('inline.operational.context', 'الارتباط التشغيلي السيادي', 'Operational Context')}
@@ -301,13 +301,13 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
             </div>
          </aside>
 
-         <div className="lg:col-span-9 space-y-8">
+         <div className="lg:col-span-9 space-y-8 text-start">
             <PrintWrapper className="mt-0" fullWidth={true}>
                <div className="space-y-12 text-start">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b-2 pb-8">
                      <div className="space-y-2">
                         <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'مسمى عرض السعر' : 'Quotation Name'}</Label>
-                        <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-14 rounded-2xl border-2 font-black text-xl bg-slate-50 shadow-inner" />
+                        <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-12 rounded-xl border-2 font-black text-lg bg-slate-50 shadow-inner" />
                      </div>
                      <div className="space-y-2">
                         <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'نمط التسعير' : 'Pricing Mode'}</Label>
