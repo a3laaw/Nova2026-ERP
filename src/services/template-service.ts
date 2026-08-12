@@ -76,7 +76,7 @@ export class TemplateService {
       serviceId: templateData.serviceId || '',
       subServiceId: templateData.subServiceId || '',
       isDefault: !!templateData.isDefault,
-      isActive: templateData.isActive !== false, // الافتراضي نشط إذا لم يحدد غير ذلك
+      isActive: templateData.isActive !== false, 
       itemsCount,
       sectionsCount,
       companyId: this.companyId,
@@ -85,23 +85,19 @@ export class TemplateService {
       ...(templateId ? {} : { createdBy: userId, createdAt: serverTimestamp(), version: 1 })
     };
     
-    // إزالة البنود من رأس القالب لتخزينها في المجموعة الفرعية (نظافة المعمارية)
+    // إزالة البنود من رأس القالب لتخزينها في المجموعة الفرعية
     delete (headData as any).items;
     batch.set(templateRef, headData, { merge: true });
 
     const itemsCollection = collection(this.db, paths.boqTemplateItems(this.companyId, finalTemplateId));
     
-    // إذا كان تحديثاً، نحذف البنود القديمة أولاً
     if (templateId) {
       const oldItemsSnap = await getDocs(itemsCollection);
       oldItemsSnap.docs.forEach(d => batch.delete(d.ref));
     }
 
-    // إضافة البنود الجديدة مع كامل مسارها المرجعي
     items.forEach((item, idx) => {
       const itemRef = doc(itemsCollection);
-
-      // BACKWARD COMPATIBILITY: Ensure technicalStageIds is populated from technicalStageId if missing
       const technicalStageIds = item.technicalStageIds && item.technicalStageIds.length > 0
         ? item.technicalStageIds
         : (item.technicalStageId ? [item.technicalStageId] : []);
@@ -109,7 +105,7 @@ export class TemplateService {
       const itemToSave = {
         ...item,
         id: itemRef.id,
-        technicalStageIds, // Always save the array
+        technicalStageIds, 
         order: idx,
         companyId: this.companyId,
         createdAt: item.createdAt || serverTimestamp(),
@@ -141,6 +137,7 @@ export class TemplateService {
   async deleteTemplate(type: TemplateType, id: string) {
     ensureActionPermission(this.userPermissions, 'ref:delete');
     const path = this.getCollectionPath(type);
+    if (!path) throw new Error('INVALID_PATH');
     const docRef = doc(this.db, path, id);
     return deleteDoc(docRef);
   }
@@ -148,6 +145,7 @@ export class TemplateService {
   async updateTemplate(type: TemplateType, id: string, data: Partial<BaseTemplate>, userId: string) {
     ensureActionPermission(this.userPermissions, 'ref:edit');
     const path = this.getCollectionPath(type);
+    if (!path) throw new Error('INVALID_PATH');
     const docRef = doc(this.db, path, id);
     return updateDoc(docRef, { ...data, updatedBy: userId, updatedAt: serverTimestamp() });
   }
@@ -155,6 +153,7 @@ export class TemplateService {
   async addTemplate(type: TemplateType, data: Partial<BaseTemplate>, userId: string) {
     ensureActionPermission(this.userPermissions, 'ref:edit');
     const path = this.getCollectionPath(type);
+    if (!path) throw new Error('INVALID_PATH');
     const collRef = collection(this.db, path);
     return addDoc(collRef, {
       ...data,
