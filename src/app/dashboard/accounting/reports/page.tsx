@@ -11,21 +11,22 @@ import {
 import { 
   Calculator, Loader2, Printer, LayoutGrid, DatabaseZap, Activity,
   TrendingUp, Wallet, Receipt, Briefcase, FileText, Target,
-  History
+  History,
+  TrendingDown,
+  Sparkles
 } from "lucide-react";
-import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, getDocs } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
+import { collection, getDocs, query } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
-import { JournalEntry, Account } from '@/types/accounting';
+import { JournalEntry } from '@/types/accounting';
 import { CostCenter, ProfitCenter } from '@/types/cost-profit-centers';
 import { cn } from '@/lib/utils';
-import { PrintWrapper } from '@/components/layout/print-wrapper';
 
 export default function FinancialReportsPage() {
   const { globalUser } = useAuthContext();
-  const { t, lang, dir, isRtl } = useLanguage();
+  const { t, tSafe, lang, dir, isRtl } = useLanguage();
   const db = useFirestore();
   const companyId = globalUser?.companyId;
 
@@ -41,9 +42,8 @@ export default function FinancialReportsPage() {
       if (!db || !companyId) return;
       
       try {
-        const [journalsSnap, accountsSnap, costSnap, profitSnap, projectsSnap] = await Promise.all([
+        const [journalsSnap, costSnap, profitSnap, projectsSnap] = await Promise.all([
           getDocs(collection(db, paths.journalEntries(companyId))),
-          getDocs(collection(db, paths.accounts(companyId))),
           getDocs(collection(db, paths.costCenters(companyId))),
           getDocs(collection(db, paths.profitCenters(companyId))),
           getDocs(collection(db, paths.transactions(companyId)))
@@ -98,7 +98,7 @@ export default function FinancialReportsPage() {
     <div className="space-y-8 animate-in fade-in pb-20" dir={dir}>
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-6 text-start">
         <div className="text-start space-y-1">
-           <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit">
+           <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit border border-primary/10">
               <TrendingUp className="h-3 w-3" /> {isRtl ? 'التحليل المالي السيادي' : 'Sovereign Financial Analysis'}
            </div>
            <h1 className="text-3xl font-black font-headline text-slate-900">{isRtl ? 'تقارير مراكز التكلفة والربحية' : 'Cost & Profit Analytics'}</h1>
@@ -110,19 +110,19 @@ export default function FinancialReportsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
          <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-            <CardHeader className="bg-slate-900 p-8 text-white flex flex-row items-center justify-between">
+            <CardHeader className="bg-primary/5 p-8 text-slate-900 border-b flex flex-row items-center justify-between">
                <div>
                   <CardTitle className="text-xl font-black font-headline flex items-center gap-3">
                      <Target className="h-6 w-6 text-primary" /> {isRtl ? 'ربحية المشاريع' : 'Project Profitability'}
                   </CardTitle>
                </div>
-               <Badge className="bg-primary text-white border-0 font-black">{tSafe('inline.roi.active', 'العائد على الاستثمار نشط', 'ROI ACTIVE')}</Badge>
+               <Badge className="bg-emerald-600 text-white border-0 font-black">{tSafe('inline.roi.active', 'العائد على الاستثمار نشط', 'ROI ACTIVE')}</Badge>
             </CardHeader>
-            <CardContent className="p-0 overflow-x-auto">
+            <CardContent className="p-0 overflow-x-auto text-start">
                <table className="w-full text-start">
                   <thead className="bg-slate-50 border-b">
                      <tr className="font-black text-slate-500 uppercase text-[10px] tracking-widest">
-                        <th className="p-6 ps-8">{isRtl ? 'المشروع' : 'Project'}</th>
+                        <th className="p-6 ps-8 text-start">{isRtl ? 'المشروع' : 'Project'}</th>
                         <th className="p-6 text-end">{isRtl ? 'إيرادات' : 'Revenue'}</th>
                         <th className="p-6 text-end">{isRtl ? 'مصروفات' : 'Costs'}</th>
                         <th className="p-6 text-end pe-8">{isRtl ? 'الربح' : 'Net'}</th>
@@ -131,9 +131,9 @@ export default function FinancialReportsPage() {
                   <tbody className="divide-y divide-slate-100">
                      {reportData.projects.map((p, i) => (
                         <tr key={i} className="hover:bg-slate-50 transition-colors">
-                           <td className="p-6 ps-8">
+                           <td className="p-6 ps-8 text-start">
                               <p className="font-black text-slate-800 text-sm">{p.name}</p>
-                              <Badge variant="outline" className="text-[8px] font-black mt-1">{p.margin}% MARGIN</Badge>
+                              <Badge variant="outline" className="text-[8px] font-black mt-1 uppercase border-slate-100">{p.margin}% MARGIN</Badge>
                            </td>
                            <td className="p-6 text-end font-mono font-bold text-emerald-600">{p.revenue.toLocaleString()}</td>
                            <td className="p-6 text-end font-mono font-bold text-rose-500">{p.costs.toLocaleString()}</td>
@@ -147,16 +147,16 @@ export default function FinancialReportsPage() {
 
          <div className="space-y-8">
             <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/5">
-               <CardHeader className="bg-rose-50/50 p-6 border-b text-start">
+               <CardHeader className="bg-rose-50/30 p-6 border-b text-start">
                   <CardTitle className="text-sm font-black flex items-center gap-2 text-rose-900">
                      <LayoutGrid className="h-4 w-4" /> {isRtl ? 'توزيع المصاريف حسب مركز التكلفة' : 'Costs by Center'}
                   </CardTitle>
                </CardHeader>
                <CardContent className="p-0">
                   <table className="w-full text-start text-xs">
-                     <tbody className="divide-y">
+                     <tbody className="divide-y divide-slate-100">
                         {reportData.costCenters.map((cc, i) => (
-                           <tr key={i} className="hover:bg-slate-50">
+                           <tr key={i} className="hover:bg-rose-50/20 transition-all">
                               <td className="p-4 ps-8 font-bold text-slate-700">{cc.name}</td>
                               <td className="p-4 text-end pe-8 font-mono font-black text-rose-600">{cc.amount.toLocaleString()} <span className="text-[8px] opacity-40">KWD</span></td>
                            </tr>
@@ -167,16 +167,16 @@ export default function FinancialReportsPage() {
             </Card>
 
             <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/5">
-               <CardHeader className="bg-emerald-50/50 p-6 border-b text-start">
+               <CardHeader className="bg-emerald-50/30 p-6 border-b text-start">
                   <CardTitle className="text-sm font-black flex items-center gap-2 text-emerald-900">
                      <DatabaseZap className="h-4 w-4" /> {isRtl ? 'تحليل الإيرادات حسب مركز الربحية' : 'Revenue by Profit Center'}
                   </CardTitle>
                </CardHeader>
                <CardContent className="p-0">
                   <table className="w-full text-start text-xs">
-                     <tbody className="divide-y">
+                     <tbody className="divide-y divide-slate-100">
                         {reportData.profitCenters.map((pc, i) => (
-                           <tr key={i} className="hover:bg-slate-50">
+                           <tr key={i} className="hover:bg-emerald-50/20 transition-all">
                               <td className="p-4 ps-8 font-bold text-slate-700">{pc.name}</td>
                               <td className="p-4 text-end pe-8 font-mono font-black text-emerald-600">{pc.amount.toLocaleString()} <span className="text-[8px] opacity-40">KWD</span></td>
                            </tr>
@@ -185,10 +185,13 @@ export default function FinancialReportsPage() {
                   </table>
                </CardContent>
             </Card>
-            <div className="space-y-6 text-start">
-               <h3 className="font-black text-lg border-s-4 border-emerald-500 ps-3 flex items-center gap-2">
-                  <History className="h-5 w-5 text-emerald-500" /> {isRtl ? 'السجل التاريخي للتحليل' : 'Historical Analytics Log'}
-               </h3>
+
+            <div className="p-6 bg-slate-50 rounded-[1.5rem] border-2 border-white shadow-inner flex items-start gap-4 text-start">
+               <History className="h-5 w-5 text-slate-400 mt-1 shrink-0" />
+               <div className="space-y-1">
+                  <h5 className="font-black text-slate-800 text-xs uppercase tracking-widest">{isRtl ? 'السجل التاريخي للتحليل' : 'Historical Analytics Log'}</h5>
+                  <p className="text-[10px] font-bold text-slate-400 leading-relaxed italic">{isRtl ? 'يتم تحديث هذه البيانات لحظياً بناءً على ترحيل القيود المحاسبية.' : 'Data is updated in real-time based on journal entry posting.'}</p>
+               </div>
             </div>
          </div>
       </div>
