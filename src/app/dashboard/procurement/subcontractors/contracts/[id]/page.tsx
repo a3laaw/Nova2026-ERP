@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useEffect, useState } from 'react';
@@ -39,7 +38,7 @@ import { Label } from "@/components/ui/label";
 export default function SubConContractViewPage() {
   const params = useParams();
   const contractId = params.id as string;
-  const { globalUser, user, roleData } = useAuthContext();
+  const { globalUser, user } = useAuthContext();
   const { lang, dir, t, tSafe } = useLanguage();
   const db = useFirestore();
   const router = useRouter();
@@ -61,13 +60,6 @@ export default function SubConContractViewPage() {
       setEditForm(contract);
     }
   }, [contract]);
-
-  const stats = useMemo(() => {
-    const milestones = editData.milestones || [];
-    const totalPercentage = milestones.reduce((acc: number, m: any) => acc + (Number(m.percentage) || 0), 0);
-    const isValid = Math.abs(totalPercentage - 100) < 0.1;
-    return { totalPercentage, isValid };
-  }, [editData.milestones]);
 
   const handleSave = async () => {
     if (!db || !companyId || !user) return;
@@ -256,4 +248,3 @@ export default function SubConContractViewPage() {
     </div>
   );
 }
-

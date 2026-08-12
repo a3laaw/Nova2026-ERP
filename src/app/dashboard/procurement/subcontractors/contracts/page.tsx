@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,13 +10,8 @@ import {
   Handshake, ShieldCheck, 
   Building2, ArrowUpRight, CheckCircle2, Clock,
   Landmark, Sparkles, ChevronDown, Check, X,
-  Workflow, Hash, FileText, HardHat, AlertCircle
+  Workflow, Hash
 } from "lucide-react";
-import { 
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where } from 'firebase/firestore';
@@ -50,9 +45,8 @@ export default function SubConContractsListPage() {
   const [transSearch, setTransSearch] = useState("");
   const [tempSearch, setTempSearch] = useState("");
   
-  const [openSubPicker, setOpenSubPicker] = useState(false);
-  const [openTransPicker, setOpenTransPicker] = useState(false);
-  const [openTempPicker, setOpenTempPicker] = useState(false);
+  // Custom Pickers UI states
+  const [activePicker, setActivePicker] = useState<'sub' | 'trans' | 'temp' | null>(null);
 
   const [formData, setFormData] = useState({
     subcontractorId: '',
@@ -86,7 +80,7 @@ export default function SubConContractsListPage() {
   const { data: templates } = useCollection<any>(templatesQuery);
 
   const filteredSubs = useMemo(() => {
-    return (subcontractors || []).filter(s => s.name.toLowerCase().includes(subSearch.toLowerCase()) || s.trade.toLowerCase().includes(subSearch.toLowerCase()));
+    return (subcontractors || []).filter(s => s.name.toLowerCase().includes(subSearch.toLowerCase()) || (s.trade && s.trade.toLowerCase().includes(subSearch.toLowerCase())));
   }, [subcontractors, subSearch]);
 
   const filteredTrans = useMemo(() => {
@@ -94,7 +88,7 @@ export default function SubConContractsListPage() {
   }, [transactions, transSearch]);
 
   const filteredTemps = useMemo(() => {
-    return (templates || []).filter(t => t.name.toLowerCase().includes(tempSearch.toLowerCase()) || t.trade.toLowerCase().includes(tempSearch.toLowerCase()));
+    return (templates || []).filter(t => t.name.toLowerCase().includes(tempSearch.toLowerCase()) || (t.trade && t.trade.toLowerCase().includes(tempSearch.toLowerCase())));
   }, [templates, tempSearch]);
 
   const filtered = (contracts || []).filter(c => 
@@ -116,7 +110,7 @@ export default function SubConContractsListPage() {
         projectTitle: formData.transactionName
       }, user.uid);
 
-      toast({ title: tSafe('common.saved', 'تم الحفظ بنجاح', 'Saved Successfully') });
+      toast({ title: tSafe('inline.provisioning.success', 'تم التأسيس بنجاح', 'Provisioning Success') });
       setIsIssueOpen(false);
       router.push(`/dashboard/procurement/subcontractors/contracts/${docId}`);
     } catch (e: any) {
@@ -149,8 +143,8 @@ export default function SubConContractsListPage() {
       </header>
 
       <Card className="rounded-[2rem] border-0 shadow-xl bg-white overflow-hidden ring-1 ring-black/5">
-        <CardHeader className="bg-slate-50/50 border-b p-6">
-           <div className="relative w-full max-w-md text-start">
+        <CardHeader className="bg-slate-50/50 border-b p-6 text-start">
+           <div className="relative w-full max-w-md">
               <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <Input 
                 placeholder={tSafe('subcon.contracts.search', 'بحث في العقود المبرمة...', 'Search executed contracts...')} 
@@ -164,10 +158,10 @@ export default function SubConContractsListPage() {
           <Table>
             <TableHeader className="bg-muted/10 border-b">
               <TableRow>
-                <TableHead className="py-6 ps-10 text-start text-[10px] font-black uppercase tracking-widest">{tSafe('name', 'الاسم', 'Name')}</TableHead>
-                <TableHead className="text-start text-[10px] font-black uppercase tracking-widest">{tSafe('vendor', 'المقاول / المورد', 'Vendor')}</TableHead>
-                <TableHead className="text-end text-[10px] font-black uppercase tracking-widest">{tSafe('amount', 'المبلغ', 'Amount')}</TableHead>
-                <TableHead className="text-center text-[10px] font-black uppercase tracking-widest">{tSafe('status', 'الحالة', 'Status')}</TableHead>
+                <TableHead className="py-6 ps-10 text-start text-[10px] font-black uppercase tracking-widest">{tSafe('common.name', 'الاسم', 'Name')}</TableHead>
+                <TableHead className="text-start text-[10px] font-black uppercase tracking-widest">{tSafe('common.vendor', 'المقاول / المورد', 'Vendor')}</TableHead>
+                <TableHead className="text-end text-[10px] font-black uppercase tracking-widest">{tSafe('common.amount', 'المبلغ', 'Amount')}</TableHead>
+                <TableHead className="text-center text-[10px] font-black uppercase tracking-widest">{tSafe('common.status', 'الحالة', 'Status')}</TableHead>
                 <TableHead className="pe-10 text-end"></TableHead>
               </TableRow>
             </TableHeader>
@@ -180,7 +174,9 @@ export default function SubConContractsListPage() {
                 <TableRow key={contract.id} className="hover:bg-primary/[0.02] transition-colors group border-b-slate-100 cursor-pointer" onClick={() => router.push(`/dashboard/procurement/subcontractors/contracts/${contract.id}`)}>
                    <TableCell className="py-6 ps-10 text-start">
                       <div className="flex items-center gap-4 text-start">
-                         <div className="h-11 w-11 rounded-2xl bg-white shadow-lg flex items-center justify-center text-primary border-2 border-primary/5">
+                         <div className={cn(
+                            "h-11 w-11 rounded-2xl bg-white shadow-lg flex items-center justify-center text-primary border-2 border-primary/5",
+                         )}>
                             <Handshake className="h-6 w-6" />
                          </div>
                          <div className="text-start">
@@ -219,151 +215,122 @@ export default function SubConContractsListPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={isIssueOpen} onOpenChange={(v) => { if(!v) setIsIssueOpen(false); }}>
-         <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl text-start" dir={dir}>
+      {/* النافذة المنبثقة لإصدار العقد - إعادة بناء نظام البحث */}
+      <Dialog open={isIssueOpen} onOpenChange={(v) => { if(!v) setIsIssueOpen(false); setActivePicker(null); }}>
+         <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-2xl text-start" dir={dir}>
             <div className="bg-primary p-10 text-white text-start">
-               <DialogTitle className="text-3xl font-black font-headline flex items-center gap-3">
+               <DialogTitle className="text-3xl font-black font-headline flex items-center gap-4 text-white">
                   <Handshake className="h-10 w-10 text-white" />
                   {tSafe('subcon.contracts.new', 'تعاقد جديد مع مقاول باطن', 'New SubCon Award')}
                </DialogTitle>
+               <p className="text-white/60 font-bold mt-2 uppercase text-[10px] tracking-widest">{tSafe('inline.sovereign.provisioning', 'نظام التأسيس السيادي', 'Sovereign Provisioning')}</p>
             </div>
 
-            <div className="p-10 space-y-6 text-start bg-white">
+            <div className="p-10 space-y-6 text-start bg-white max-h-[60vh] overflow-y-auto scrollbar-hide">
                
-               {/* 1. Subcontractor Custom Picker */}
-               <div className="space-y-2 text-start relative">
+               {/* Picker 1: Subcontractor */}
+               <div className="space-y-2">
                   <Label className="text-xs font-black uppercase text-slate-400 tracking-widest">{tSafe('subcon.form.vendor', 'المقاول / المورد', 'Subcontractor Vendor')}</Label>
-                  <Popover open={openSubPicker} onOpenChange={setOpenSubPicker}>
-                     <PopoverTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          className="w-full h-14 rounded-2xl border-2 font-black text-lg bg-slate-50 shadow-inner justify-between px-6 hover:bg-slate-100 transition-colors"
-                        >
-                           <span className="truncate flex items-center gap-2">
-                              {formData.subcontractorName ? <HardHat className="h-5 w-5 text-primary" /> : null}
-                              {formData.subcontractorName || tSafe('subcon.selectSub', 'اختيار المقاول...', 'Choose staff...')}
-                           </span>
-                           <ChevronDown className="h-5 w-5 opacity-40" />
-                        </Button>
-                     </PopoverTrigger>
-                     <PopoverContent 
-                       className="w-[450px] p-0 rounded-2xl shadow-3xl border-2 z-[200]" 
-                       align="start"
-                       onOpenAutoFocus={(e) => e.preventDefault()}
-                     >
-                        <div className="p-3 bg-slate-50 border-b border-slate-100">
+                  <div className="relative">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setActivePicker(activePicker === 'sub' ? null : 'sub')}
+                      className="w-full h-14 rounded-2xl border-2 font-black text-lg bg-slate-50 shadow-inner justify-between px-6"
+                    >
+                       <span className="truncate">{formData.subcontractorName || tSafe('subcon.selectSub', 'اختيار المقاول...', 'Choose contractor...')}</span>
+                       <ChevronDown className={cn("h-5 w-5 opacity-40 transition-transform", activePicker === 'sub' && "rotate-180")} />
+                    </Button>
+                    
+                    {activePicker === 'sub' && (
+                      <div className="absolute top-full left-0 right-0 z-[200] mt-2 bg-white rounded-2xl shadow-3xl border-2 border-slate-100 overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-4 bg-slate-50 border-b">
                            <div className="relative">
-                              <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                              <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
                               <Input 
                                 placeholder={tSafe('common.search', 'بحث...', 'Search...')}
                                 value={subSearch}
                                 onChange={e => setSubSearch(e.target.value)}
-                                className="h-10 ps-10 rounded-xl border-2 font-bold focus:border-primary"
+                                className="h-12 ps-12 rounded-xl border-2 font-bold focus:bg-white transition-all"
+                                autoFocus
                               />
                            </div>
                         </div>
-                        <ScrollArea className="h-64">
+                        <ScrollArea className="h-60">
                            <div className="p-2 space-y-1">
-                              {filteredSubs.length === 0 ? (
-                                 <div className="p-8 text-center text-slate-400 text-xs font-bold flex flex-col items-center gap-2">
-                                    <AlertCircle className="h-5 w-5" />
-                                    {tSafe('common.noresults', 'لا توجد نتائج', 'No results found')}
-                                 </div>
-                              ) : filteredSubs.map(s => (
+                              {filteredSubs.map(s => (
                                 <div 
                                   key={s.id} 
-                                  onClick={(e) => { 
-                                    e.stopPropagation();
+                                  onClick={() => { 
                                     setFormData({...formData, subcontractorId: s.id, subcontractorName: s.name}); 
-                                    setOpenSubPicker(false); 
+                                    setActivePicker(null); 
                                     setSubSearch(""); 
                                   }}
                                   className={cn(
-                                    "p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between group",
+                                    "p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between group",
                                     formData.subcontractorId === s.id ? "bg-primary/5 text-primary border-primary/20" : "hover:bg-slate-50"
                                   )}
                                 >
-                                   <div className="flex items-center gap-3 text-start">
-                                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                                         <HardHat className="h-4 w-4 text-primary" />
-                                      </div>
-                                      <div className="flex flex-col">
-                                         <span className="font-black text-sm">{s.name}</span>
-                                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{s.trade}</span>
-                                      </div>
+                                   <div className="flex flex-col text-start">
+                                      <span className="font-black text-sm">{s.name}</span>
+                                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{s.trade}</span>
                                    </div>
                                    {formData.subcontractorId === s.id && <Check className="h-4 w-4" />}
                                 </div>
                               ))}
                            </div>
                         </ScrollArea>
-                     </PopoverContent>
-                  </Popover>
+                      </div>
+                    )}
+                  </div>
                </div>
 
-               {/* 2. Project Custom Picker */}
-               <div className="space-y-2 text-start relative">
+               {/* Picker 2: Transaction */}
+               <div className="space-y-2">
                   <Label className="text-xs font-black uppercase text-slate-400 tracking-widest">{tSafe('subcon.form.project', 'المشروع المستهدف', 'Target Project')}</Label>
-                  <Popover open={openTransPicker} onOpenChange={setOpenTransPicker}>
-                     <PopoverTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          className="w-full h-14 rounded-2xl border-2 font-black text-lg bg-slate-50 shadow-inner justify-between px-6 hover:bg-slate-100 transition-colors"
-                        >
-                           <span className="truncate flex items-center gap-2">
-                              {formData.transactionName ? <Building2 className="h-5 w-5 text-primary" /> : null}
-                              {formData.transactionName || tSafe('subcon.selectProject', 'اختيار المشروع...', 'Choose Project...')}
-                           </span>
-                           <ChevronDown className="h-5 w-5 opacity-40" />
-                        </Button>
-                     </PopoverTrigger>
-                     <PopoverContent 
-                       className="w-[450px] p-0 rounded-2xl shadow-3xl border-2 z-[200]" 
-                       align="start"
-                       onOpenAutoFocus={(e) => e.preventDefault()}
-                     >
-                        <div className="p-3 bg-slate-50 border-b border-slate-100">
+                  <div className="relative">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setActivePicker(activePicker === 'trans' ? null : 'trans')}
+                      className="w-full h-14 rounded-2xl border-2 font-black text-lg bg-slate-50 shadow-inner justify-between px-6"
+                    >
+                       <span className="truncate">{formData.transactionName || tSafe('subcon.selectProject', 'اختيار المشروع...', 'Choose Project...')}</span>
+                       <ChevronDown className={cn("h-5 w-5 opacity-40 transition-transform", activePicker === 'trans' && "rotate-180")} />
+                    </Button>
+                    
+                    {activePicker === 'trans' && (
+                      <div className="absolute top-full left-0 right-0 z-[200] mt-2 bg-white rounded-2xl shadow-3xl border-2 border-slate-100 overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-4 bg-slate-50 border-b">
                            <div className="relative">
-                              <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                              <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
                               <Input 
                                 placeholder={tSafe('common.search', 'بحث...', 'Search...')}
                                 value={transSearch}
                                 onChange={e => setTransSearch(e.target.value)}
-                                className="h-10 ps-10 rounded-xl border-2 font-bold focus:border-primary"
+                                className="h-12 ps-12 rounded-xl border-2 font-bold"
+                                autoFocus
                               />
                            </div>
                         </div>
-                        <ScrollArea className="h-72">
+                        <ScrollArea className="h-60">
                            <div className="p-2 space-y-1">
-                              {filteredTrans.length === 0 ? (
-                                 <div className="p-8 text-center text-slate-400 text-xs font-bold flex flex-col items-center gap-2">
-                                    <AlertCircle className="h-5 w-5" />
-                                    {tSafe('common.noresults', 'لا توجد نتائج', 'No results found')}
-                                 </div>
-                              ) : filteredTrans.map(t_item => (
+                              {filteredTrans.map(t_item => (
                                 <div 
                                   key={t_item.id} 
-                                  onClick={(e) => { 
-                                    e.stopPropagation();
+                                  onClick={() => { 
                                     setFormData({...formData, transactionId: t_item.id, transactionNumber: t_item.transactionNumber, transactionName: t_item.subServiceName}); 
-                                    setOpenTransPicker(false); 
+                                    setActivePicker(null); 
                                     setTransSearch(""); 
                                   }}
                                   className={cn(
-                                    "p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between group",
+                                    "p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between group",
                                     formData.transactionId === t_item.id ? "bg-primary/5 text-primary border-primary/20" : "hover:bg-slate-50"
                                   )}
                                 >
-                                   <div className="flex items-center gap-3 text-start min-w-0">
-                                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                                         <Building2 className="h-4 w-4 text-primary" />
-                                      </div>
-                                      <div className="flex flex-col min-w-0">
-                                         <span className="font-black text-sm text-slate-800 truncate">{t_item.subServiceName}</span>
-                                         <div className="flex items-center gap-2 mt-1">
-                                            <Badge variant="outline" className="h-4 px-2 bg-white text-[8px] font-mono font-black uppercase" dir="ltr">#{t_item.transactionNumber}</Badge>
-                                            <span className="text-[9px] font-bold text-slate-400 uppercase truncate">{t_item.clientName}</span>
-                                         </div>
+                                   <div className="flex flex-col text-start min-w-0">
+                                      <span className="font-black text-sm text-slate-800 truncate">{t_item.subServiceName}</span>
+                                      <div className="flex items-center gap-2 mt-1">
+                                         <Badge variant="outline" className="h-4 px-2 bg-white text-[8px] font-mono font-black uppercase" dir="ltr">#{t_item.transactionNumber}</Badge>
+                                         <span className="text-[9px] font-bold text-slate-400 uppercase truncate">{t_item.clientName}</span>
                                       </div>
                                    </div>
                                    {formData.transactionId === t_item.id && <Check className="h-4 w-4" />}
@@ -371,73 +338,58 @@ export default function SubConContractsListPage() {
                               ))}
                            </div>
                         </ScrollArea>
-                     </PopoverContent>
-                  </Popover>
+                      </div>
+                    )}
+                  </div>
                </div>
 
-               {/* 3. Template Custom Picker */}
-               <div className="space-y-2 text-start relative">
+               {/* Picker 3: Template */}
+               <div className="space-y-2">
                   <Label className="text-xs font-black uppercase text-slate-400 tracking-widest">{tSafe('subcon.form.template', 'القالب المرجعي', 'Legal Template')}</Label>
-                  <Popover open={openTempPicker} onOpenChange={setOpenTempPicker}>
-                     <PopoverTrigger asChild>
-                        <Button 
-                          variant="outline" 
-                          className="w-full h-14 rounded-2xl border-2 font-black text-lg bg-slate-50 shadow-inner justify-between px-6 hover:bg-slate-100 transition-colors"
-                        >
-                           <span className="truncate flex items-center gap-2">
-                              {formData.templateName ? <FileText className="h-5 w-5 text-primary" /> : null}
-                              {formData.templateName || tSafe('subcon.selectTemplate', 'اختيار القالب المرجعي...', 'Choose Template...')}
-                           </span>
-                           <ChevronDown className="h-5 w-5 opacity-40" />
-                        </Button>
-                     </PopoverTrigger>
-                     <PopoverContent 
-                       className="w-[450px] p-0 rounded-2xl shadow-3xl border-2 z-[200]" 
-                       align="start"
-                       onOpenAutoFocus={(e) => e.preventDefault()}
-                     >
-                        <div className="p-3 bg-slate-50 border-b border-slate-100">
+                  <div className="relative">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setActivePicker(activePicker === 'temp' ? null : 'temp')}
+                      className="w-full h-14 rounded-2xl border-2 font-black text-lg bg-slate-50 shadow-inner justify-between px-6"
+                    >
+                       <span className="truncate">{formData.templateName || tSafe('subcon.selectTemplate', 'اختيار القالب المرجعي...', 'Choose Template...')}</span>
+                       <ChevronDown className={cn("h-5 w-5 opacity-40 transition-transform", activePicker === 'temp' && "rotate-180")} />
+                    </Button>
+                    
+                    {activePicker === 'temp' && (
+                      <div className="absolute top-full left-0 right-0 z-[200] mt-2 bg-white rounded-2xl shadow-3xl border-2 border-slate-100 overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-4 bg-slate-50 border-b">
                            <div className="relative">
-                              <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                              <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
                               <Input 
                                 placeholder={tSafe('common.search', 'بحث...', 'Search...')}
                                 value={tempSearch}
                                 onChange={e => setTempSearch(e.target.value)}
-                                className="h-10 ps-10 rounded-xl border-2 font-bold focus:border-primary"
+                                className="h-12 ps-12 rounded-xl border-2 font-bold"
+                                autoFocus
                               />
                            </div>
                         </div>
-                        <ScrollArea className="h-64">
+                        <ScrollArea className="h-60">
                            <div className="p-2 space-y-1">
-                              {filteredTemps.length === 0 ? (
-                                 <div className="p-8 text-center text-slate-400 text-xs font-bold flex flex-col items-center gap-2">
-                                    <AlertCircle className="h-5 w-5" />
-                                    {tSafe('common.noresults', 'لا توجد نتائج', 'No results found')}
-                                 </div>
-                              ) : filteredTemps.map(temp => (
+                              {filteredTemps.map(temp => (
                                 <div 
                                   key={temp.id} 
-                                  onClick={(e) => { 
-                                    e.stopPropagation();
+                                  onClick={() => { 
                                     setFormData({...formData, templateId: temp.id, templateName: temp.name}); 
-                                    setOpenTempPicker(false); 
+                                    setActivePicker(null); 
                                     setTempSearch(""); 
                                   }}
                                   className={cn(
-                                    "p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between group",
+                                    "p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between group",
                                     formData.templateId === temp.id ? "bg-primary/5 text-primary border-primary/20" : "hover:bg-slate-50"
                                   )}
                                 >
-                                   <div className="flex items-center gap-3 text-start">
-                                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                                         <FileText className="h-4 w-4 text-primary" />
-                                      </div>
-                                      <div className="flex flex-col">
-                                         <span className="font-black text-sm">{temp.name}</span>
-                                         <div className="flex items-center gap-2 mt-1">
-                                            <Badge className="bg-amber-100 text-amber-600 border-0 h-4 text-[7px] font-black uppercase tracking-tighter">{temp.trade}</Badge>
-                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">REF: {temp.code}</span>
-                                         </div>
+                                   <div className="flex flex-col text-start">
+                                      <span className="font-black text-sm">{temp.name}</span>
+                                      <div className="flex items-center gap-2 mt-1">
+                                         <Badge className="bg-amber-100 text-amber-600 border-0 h-4 text-[7px] font-black uppercase tracking-tighter">{temp.trade}</Badge>
+                                         <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">REF: {temp.code}</span>
                                       </div>
                                    </div>
                                    {formData.templateId === temp.id && <Check className="h-4 w-4" />}
@@ -445,14 +397,22 @@ export default function SubConContractsListPage() {
                               ))}
                            </div>
                         </ScrollArea>
-                     </PopoverContent>
-                  </Popover>
+                      </div>
+                    )}
+                  </div>
+               </div>
+
+               <div className="p-6 rounded-3xl bg-blue-50 border-2 border-white shadow-inner flex items-start gap-4">
+                  <Info className="h-5 w-5 text-blue-600 mt-0.5" />
+                  <p className="text-[10px] font-bold text-blue-700/70 leading-relaxed italic">
+                    {tSafe('subcon.provisioning.hint', 'سيتم تحويل القالب المختار إلى مسودة عقد حية مرتبطة بالمقاول والمشروع فوراً.', 'Template will be instantiated as a live contract linked to the vendor.')}
+                  </p>
                </div>
 
                <Button 
                   onClick={handleIssueContract} 
                   disabled={loading || !formData.subcontractorId || !formData.transactionId || !formData.templateId}
-                  className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-4 border-b-8 border-orange-700 mt-6"
+                  className="w-full h-20 rounded-[2rem] bg-primary text-white font-black text-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-4 border-b-8 border-orange-700 mt-6"
                >
                   {loading ? <Loader2 className="animate-spin h-8 w-8" /> : <Sparkles className="h-8 w-8" />}
                   {tSafe('subcon.contracts.issueNow', 'إصدار الاتفاقية الآن', 'Issue Award Now')}
