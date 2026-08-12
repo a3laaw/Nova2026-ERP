@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -17,8 +16,7 @@ import { doc, collection, query, where, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
-import { Employee } from '@/types/hr';
-import { PayrollRecord } from '@/types/payroll';
+import { Employee, PayrollRecord } from '@/types/hr';
 import { cn } from '@/lib/utils';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
 
@@ -55,7 +53,7 @@ export default function IndividualPayrollLedger() {
   if (empLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   return (
-    <div className="space-y-8 pb-20 animate-in fade-in duration-700" dir={dir}>
+    <div className="space-y-8 pb-20 animate-in fade-in duration-700 bg-white" dir={dir}>
       <div className="flex items-center justify-between print:hidden">
         <div className="flex items-center gap-4 text-start">
            <Button variant="ghost" onClick={() => router.back()} className="h-12 w-12 p-0 rounded-2xl bg-white shadow-sm border">
@@ -75,10 +73,10 @@ export default function IndividualPayrollLedger() {
          <div className="space-y-10">
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-               <div className="p-8 rounded-[2.5rem] bg-slate-900 text-white flex flex-col justify-center text-start">
+               <div className="p-8 rounded-[2.5rem] bg-white border-2 border-primary/20 flex flex-col justify-center text-start shadow-inner">
                   <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">{t('hr.reports.payroll.contractedSalary')}</p>
-                  <h3 className="text-4xl font-black font-headline text-emerald-400">{employee?.basicSalary.toLocaleString()} <span className="text-sm">KWD</span></h3>
-                  <div className="mt-6 flex items-center gap-2 text-slate-500 font-bold text-[9px] uppercase">
+                  <h3 className="text-4xl font-black font-headline text-slate-900">{employee?.basicSalary.toLocaleString()} <span className="text-sm">KWD</span></h3>
+                  <div className="mt-6 flex items-center gap-2 text-slate-400 font-bold text-[9px] uppercase">
                      <Landmark className="h-3 w-3" /> {employee?.bankName || 'CASH BASIS'}
                   </div>
                </div>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -64,10 +63,10 @@ export default function ExecutiveReportPage() {
   if (!data) return null;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700 pb-20 bg-[#fdfaf3]" dir={dir}>
+    <div className="space-y-8 animate-in fade-in duration-700 pb-20 bg-white min-h-screen" dir={dir}>
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 print:hidden px-4 pt-4 text-start">
         <div className="text-start space-y-1">
-           <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-white px-4 py-1.5 rounded-full w-fit border-2 border-primary/10 shadow-sm">
+           <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit border border-primary/10 shadow-sm">
               <Landmark className="h-3 w-3" /> {t('reports.executive.title')}
            </div>
            <h1 className="text-4xl font-black font-headline text-slate-900">{isRtl ? 'ملخص الأداء العام للمنشأة' : 'Enterprise Performance Summary'}</h1>

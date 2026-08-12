@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { 
   Calculator, Scale, Wallet, Clock, 
   CalendarDays, ShieldCheck, AlertCircle, Info,
-  TrendingUp, ArrowDownRight, Receipt
+  TrendingUp, ArrowDownRight, Receipt, Landmark
 } from "lucide-react";
 import { SettlementResult } from "@/types/settlement";
 import { cn } from "@/lib/utils";
@@ -31,16 +31,21 @@ export function SettlementBreakdown({ result, isRtl }: Props) {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       
-      {/* Hero Result - Updated to light style */}
+      {/* Hero Result - Sanitize dark color */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
          <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white p-8 flex flex-col justify-between overflow-hidden relative group ring-1 ring-black/5 border-b-8 border-b-primary">
             <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform">
                <Receipt className="h-32 w-32 text-primary" />
             </div>
-            <p className="text-xs font-black text-primary uppercase tracking-[0.2em] mb-4">{t('إجمالي التسوية النهائية', 'Final Settlement Total')}</p>
-            <h3 className="text-5xl font-black font-headline text-slate-900">
-               {result.total.toLocaleString()} <span className="text-sm font-bold text-slate-400">KWD</span>
-            </h3>
+            <div className="space-y-2 relative z-10">
+               <div className="flex items-center gap-3 text-primary mb-1">
+                  <Landmark className="h-6 w-6" />
+                  <p className="text-xs font-black uppercase tracking-[0.2em]">{t('إجمالي التسوية النهائية', 'Final Settlement Total')}</p>
+               </div>
+               <h3 className="text-5xl font-black font-headline text-slate-900">
+                  {result.total.toLocaleString()} <span className="text-sm font-bold text-slate-400">KWD</span>
+               </h3>
+            </div>
             <div className="mt-8 pt-6 border-t border-slate-100 flex items-center gap-2">
                <ShieldCheck className="h-4 w-4 text-emerald-500" />
                <span className="text-[10px] font-bold text-slate-500 italic">{result.notice}</span>
@@ -55,7 +60,6 @@ export function SettlementBreakdown({ result, isRtl }: Props) {
          </div>
       </div>
 
-      {/* Detailed Items */}
       <Card className="border-0 shadow-xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
         <CardHeader className="bg-slate-50/50 border-b p-8 text-start">
            <CardTitle className="text-xl font-black flex items-center gap-3 text-slate-900">
@@ -67,7 +71,6 @@ export function SettlementBreakdown({ result, isRtl }: Props) {
            
            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 text-start">
               
-              {/* Gratuity Section */}
               <div className="space-y-6">
                  <div className="flex items-center gap-3 border-b-2 border-slate-50 pb-4">
                     <div className="h-10 w-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center shadow-sm">
@@ -100,7 +103,6 @@ export function SettlementBreakdown({ result, isRtl }: Props) {
                  </div>
               </div>
 
-              {/* Other Settlements */}
               <div className="space-y-6">
                  <div className="flex items-center gap-3 border-b-2 border-slate-50 pb-4">
                     <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-sm">
@@ -131,7 +133,6 @@ export function SettlementBreakdown({ result, isRtl }: Props) {
               </div>
            </div>
 
-           {/* Legal Footer Note - Updated to light style */}
            <div className="p-8 rounded-[2rem] bg-primary/5 border-2 border-white shadow-inner flex items-start gap-4">
               <Clock className="h-6 w-6 text-primary shrink-0 mt-1" />
               <div className="text-start space-y-2">

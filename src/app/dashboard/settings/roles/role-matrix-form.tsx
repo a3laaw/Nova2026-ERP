@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview واجهة مصفوفة الصلاحيات المدمجة والعملية (Compact Matrix Form).
  * تم تطهير اللون الكحلي تماماً واستبداله بالهوية الفاتحة.
@@ -16,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   ShieldCheck, Save, X, Loader2, 
   LayoutGrid, Globe, User, Users,
-  Info
+  Info, Shield
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { Role } from '@/types/roles';
@@ -134,33 +133,38 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
 
   return (
     <div className="space-y-4 animate-in slide-in-from-bottom-2 duration-300 pb-10 text-start">
-      <Card className="border-0 shadow-xl rounded-2xl bg-white overflow-hidden ring-1 ring-black/5">
-        <CardHeader className="bg-slate-50 p-5 border-b flex flex-row items-center justify-between">
-           <div className="flex items-center gap-3">
-              <ShieldCheck className="h-6 w-6 text-primary" />
-              <CardTitle className="text-lg font-black font-headline text-slate-900">
-                 {isRtl ? 'مصفوفة الصلاحيات الميدانية' : 'Permission Matrix'}
-              </CardTitle>
+      <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+        <CardHeader className="bg-primary/5 p-8 border-b flex flex-row items-center justify-between">
+           <div className="flex items-center gap-4 text-start">
+              <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-primary shadow-lg border border-primary/10">
+                 <ShieldCheck className="h-6 w-6" />
+              </div>
+              <div>
+                 <CardTitle className="text-xl font-black font-headline text-slate-900">
+                    {isRtl ? 'مصفوفة الصلاحيات الميدانية' : 'Permission Matrix'}
+                 </CardTitle>
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Configure Access Levels</p>
+              </div>
            </div>
-           <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-8 w-8 hover:bg-white text-slate-400"><X className="h-4 w-4" /></Button>
+           <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-10 w-10 hover:bg-white text-slate-300"><X className="h-6 w-6" /></Button>
         </CardHeader>
         
         <CardContent className="p-0">
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-slate-50/30 border-b">
-              <div className="space-y-1.5">
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-10 bg-slate-50/50 border-b">
+              <div className="space-y-2 text-start">
                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('name')} (AR)</Label>
                  <Input 
                    value={formData.name} 
                    onChange={e => setFormData({...formData, name: e.target.value})} 
-                   className="h-10 rounded-lg border-2 font-bold text-sm bg-white" 
+                   className="h-12 rounded-xl border-2 font-black text-lg bg-white shadow-inner" 
                  />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-2 text-start">
                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('name')} (EN)</Label>
                  <Input 
                    value={formData.nameEn} 
                    onChange={e => setFormData({...formData, nameEn: e.target.value})} 
-                   className="h-10 rounded-lg border-2 font-bold text-sm bg-white" 
+                   className="h-12 rounded-xl border-2 font-black text-lg bg-white shadow-inner text-start" 
                    dir="ltr" 
                  />
               </div>
@@ -168,38 +172,38 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
 
            <div className="overflow-x-auto max-h-[60vh] scrollbar-hide">
               <Table>
-                 <TableHeader className="bg-slate-50/80 sticky top-0 z-10">
-                    <TableRow>
-                       <TableHead className="py-4 ps-6 w-[200px] text-start font-black text-slate-900 uppercase text-[9px] tracking-widest">{isRtl ? 'المورد' : 'Module'}</TableHead>
-                       <TableHead className="text-start font-black text-slate-900 uppercase text-[9px] tracking-widest">{isRtl ? 'العمليات والنطاق' : 'Actions & Scopes'}</TableHead>
+                 <TableHeader className="bg-slate-50 sticky top-0 z-10 border-b-2">
+                    <TableRow className="hover:bg-slate-50 border-0">
+                       <TableHead className="py-5 ps-10 w-[240px] text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'المورد' : 'Module'}</TableHead>
+                       <TableHead className="text-start font-black text-slate-500 uppercase text-[10px] tracking-widest">{isRtl ? 'العمليات والنطاق' : 'Actions & Scopes'}</TableHead>
                     </TableRow>
                  </TableHeader>
                  <TableBody>
                     {SYSTEM_RESOURCES.map((resource) => (
                        <TableRow key={resource.id} className="hover:bg-primary/[0.01] transition-colors border-b-slate-100 group">
-                          <TableCell className="py-5 ps-6 align-top">
-                             <div className="flex items-center gap-3">
-                                <div className="h-9 w-9 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-primary shadow-sm group-hover:border-primary/20 transition-all">
-                                   <LayoutGrid className="h-4 w-4" />
+                          <TableCell className="py-6 ps-10 align-top">
+                             <div className="flex items-center gap-4 text-start">
+                                <div className="h-10 w-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-primary shadow-sm group-hover:border-primary/20 transition-all">
+                                   <LayoutGrid className="h-5 w-5" />
                                 </div>
                                 <div className="text-start">
-                                   <p className="font-bold text-slate-900 text-xs">{isRtl ? resource.labelAr : resource.labelEn}</p>
-                                   <span className="text-[7px] font-black uppercase tracking-tighter text-slate-300">
+                                   <p className="font-black text-slate-800 text-sm leading-none">{isRtl ? resource.labelAr : resource.labelEn}</p>
+                                   <Badge variant="outline" className="text-[7px] font-black uppercase tracking-widest mt-1.5 border-slate-100 bg-white">
                                       {resource.module}
-                                   </span>
+                                   </Badge>
                                 </div>
                              </div>
                           </TableCell>
-                          <TableCell className="py-5 pe-6">
-                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          <TableCell className="py-6 pe-10">
+                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {resource.allowedActions.map((action) => {
                                    const currentScope = getScope(resource.id, action);
                                    const scopeInfo = SCOPES.find(s => s.value === currentScope);
 
                                    return (
-                                     <div key={action} className="flex items-center gap-2 bg-white p-1.5 rounded-lg border border-slate-100 shadow-sm">
-                                        <div className="min-w-[40px] text-start">
-                                           <span className="text-[8px] font-black text-slate-400 uppercase">
+                                     <div key={action} className="flex items-center gap-3 bg-white p-2.5 rounded-2xl border-2 border-slate-50 shadow-sm transition-all hover:border-primary/20">
+                                        <div className="min-w-[50px] text-start">
+                                           <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">
                                               {isRtl ? ACTION_LABELS[action].ar : ACTION_LABELS[action].en}
                                            </span>
                                         </div>
@@ -208,22 +212,22 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
                                           onValueChange={(v: Scope) => setScope(resource.id, action, v)}
                                         >
                                            <SelectTrigger className={cn(
-                                             "h-8 rounded-md border text-[9px] font-black transition-all flex-1 px-2",
-                                             currentScope !== 'none' ? "border-primary/20 bg-primary/5 text-primary" : "bg-white border-slate-100 text-slate-300"
+                                             "h-9 rounded-xl border text-[10px] font-black transition-all flex-1 px-3",
+                                             currentScope !== 'none' ? "border-primary/20 bg-primary/5 text-primary" : "bg-slate-50 border-slate-100 text-slate-300"
                                            )}>
                                               <SelectValue>
-                                                 <div className="flex items-center gap-1.5">
-                                                    {scopeInfo?.icon && <scopeInfo.icon className={cn("h-2.5 w-2.5", scopeInfo.color)} />}
+                                                 <div className="flex items-center gap-2">
+                                                    {scopeInfo?.icon && <scopeInfo.icon className={cn("h-3 w-3", scopeInfo.color)} />}
                                                     <span className="truncate">{scopeInfo?.label}</span>
                                                  </div>
                                               </SelectValue>
                                            </SelectTrigger>
-                                           <SelectContent className="rounded-xl border-0 shadow-2xl bg-white">
+                                           <SelectContent className="rounded-xl border-0 shadow-3xl bg-white z-[200]">
                                               {SCOPES.map(s => (
-                                                 <SelectItem key={s.value} value={s.value} className="font-bold text-[10px] py-2 px-3">
-                                                    <div className="flex items-center gap-2">
-                                                       <div className={cn("p-1 rounded-md bg-slate-50", s.color)}>
-                                                          <s.icon className="h-3 w-3" />
+                                                 <SelectItem key={s.value} value={s.value} className="font-bold text-[10px] py-3 px-4">
+                                                    <div className="flex items-center gap-3">
+                                                       <div className={cn("p-2 rounded-xl bg-slate-50", s.color)}>
+                                                          <s.icon className="h-4 w-4" />
                                                        </div>
                                                        <span>{s.label}</span>
                                                     </div>
@@ -242,17 +246,21 @@ export function RoleMatrixForm({ role, onClose, roleService }: Props) {
               </Table>
            </div>
 
-           <div className="p-6 bg-slate-50 border-t flex justify-end">
-              <div className="flex gap-3 w-full md:w-auto">
-                 <Button variant="outline" onClick={onClose} className="flex-1 md:w-32 h-11 rounded-xl font-bold text-xs bg-white">
-                    إغلاق
+           <div className="p-8 bg-slate-50 border-t flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="flex items-center gap-4 text-slate-400 bg-white px-6 py-3 rounded-2xl border-2 border-white shadow-sm">
+                 <Shield className="h-5 w-5" />
+                 <p className="text-[10px] font-bold italic leading-relaxed">{isRtl ? 'الأدمن يتمتع بصلاحية وصول مطلقة (N نجمة) لكافة الموارد تلقائياً.' : 'Admins have absolute wildcard access (*) to all resources automatically.'}</p>
+              </div>
+              <div className="flex gap-4 w-full md:w-auto">
+                 <Button variant="outline" onClick={onClose} className="flex-1 md:w-40 h-14 rounded-2xl font-black text-base bg-white border-2">
+                    {isRtl ? 'إغلاق بدون حفظ' : 'Cancel'}
                  </Button>
                  <Button 
                    onClick={handleSave} 
                    disabled={loading}
-                   className="flex-1 md:w-64 h-11 rounded-xl bg-primary text-white font-black text-sm shadow-lg gap-2 border-b-4 border-orange-700"
+                   className="flex-[2] md:w-72 h-14 rounded-2xl bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 gap-3 border-b-8 border-orange-700 hover:scale-[1.02] transition-all"
                  >
-                    {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
+                    {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
                     {t('save')}
                  </Button>
               </div>

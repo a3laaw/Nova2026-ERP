@@ -24,16 +24,13 @@ import { Subcontractor } from '@/types/procurement';
 
 export default function SubcontractorsPage() {
   const { globalUser, user } = useAuthContext();
-  const { t, lang, dir, isRtl, tSafe } = useLanguage(); // أضفنا tSafe
+  const { t, lang, dir, isRtl, tSafe } = useLanguage(); 
   const db = useFirestore();
   const companyId = globalUser?.companyId;
 
   const [searchTerm, setSearchTerm] = useState("");
-  
-  // تم الفصل بين متغير فتح النافذة ومتغير الحفظ
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  
   const [form, setForm] = useState({ name: '', trade: '', phone: '', email: '', civilId: '' });
 
   const subsQuery = useMemo(() => 
@@ -44,7 +41,7 @@ export default function SubcontractorsPage() {
 
   const handleAdd = async () => {
     if (!db || !companyId || !form.name || !user) return;
-    setIsSaving(true); // تفعيل حالة التحميل للزر فقط
+    setIsSaving(true); 
     try {
       await addDoc(collection(db, paths.subcontractors(companyId)), {
         ...form,
@@ -57,12 +54,12 @@ export default function SubcontractorsPage() {
       });
       toast({ title: t('common.saved') });
       setForm({ name: '', trade: '', phone: '', email: '', civilId: '' });
-      setIsDialogOpen(false); // إغلاق النافذة بعد نجاح الحفظ
+      setIsDialogOpen(false); 
     } catch (e: any) {
       console.error(e);
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
-      setIsSaving(false); // إيقاف حالة التحميل للزر
+      setIsSaving(false); 
     }
   };
 
@@ -72,8 +69,8 @@ export default function SubcontractorsPage() {
   );
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-20 text-start" dir={dir}>
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-8">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-20 text-start bg-white" dir={dir}>
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-8 px-4 pt-4">
         <div className="text-start space-y-1">
            <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit border border-primary/10">
               <HardHat className="h-3 w-3" /> {isRtl ? 'إدارة القوى العاملة الخارجية' : 'Subcontractor Management'}
@@ -84,13 +81,13 @@ export default function SubcontractorsPage() {
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => setIsDialogOpen(true)} className="h-14 px-10 font-black rounded-2xl bg-slate-900 text-white shadow-2xl hover:scale-105 transition-all gap-3 border-b-8 border-slate-700">
-               <Plus className="h-6 w-6 text-primary" />
+            <Button onClick={() => setIsDialogOpen(true)} className="h-14 px-10 font-black rounded-2xl bg-primary text-white shadow-2xl hover:scale-105 transition-all gap-3 border-b-8 border-orange-700">
+               <Plus className="h-6 w-6" />
                {isRtl ? 'إضافة مقاول باطن' : 'Add Subcontractor'}
             </Button>
           </DialogTrigger>
           <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
-             <div className="bg-slate-50 p-10 text-slate-900 text-start border-b">
+             <div className="bg-primary/5 p-10 text-slate-900 text-start border-b">
                 <DialogTitle className="text-3xl font-black font-headline flex items-center gap-4">
                    <HardHat className="h-9 w-9 text-primary" />
                    {isRtl ? 'تسجيل مقاول جديد' : 'New Subcontractor'}
@@ -117,7 +114,6 @@ export default function SubcontractorsPage() {
                 </div>
              </div>
              <DialogFooter className="p-8 bg-slate-50 border-t">
-                {/* تم تغيير isAdding إلى isSaving هنا */}
                 <Button onClick={handleAdd} disabled={isSaving || !form.name} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl border-b-8 border-orange-700">
                    {isSaving ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="me-2 h-6 w-6" />}
                    {isRtl ? 'حفظ المقاول' : 'Save Subcontractor'}
@@ -127,8 +123,8 @@ export default function SubcontractorsPage() {
         </Dialog>
       </header>
 
-      <Card className="rounded-[3rem] border-0 shadow-2xl overflow-hidden bg-white ring-1 ring-black/5">
-        <div className="p-8 flex flex-col md:flex-row items-center justify-between gap-6 bg-slate-50/50 border-b text-start">
+      <Card className="rounded-[3rem] border-0 shadow-2xl overflow-hidden bg-white ring-1 ring-black/5 mx-4">
+        <div className="p-8 flex flex-col md:flex-row items-center justify-between gap-6 bg-slate-50 border-b text-start">
            <div className="relative w-full max-w-md text-start">
               <Search className="absolute start-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
               <Input 

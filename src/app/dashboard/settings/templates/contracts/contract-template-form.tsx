@@ -15,11 +15,10 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { 
-  Save, X, Plus, Trash2, Loader2, ArrowRight,
+  Save, Plus, Trash2, Loader2, ArrowRight,
   Gavel, Calculator, DollarSign, ShieldCheck,
   AlertTriangle, Target, Percent, Workflow,
-  FileText, LayoutGrid, Clock, FileSpreadsheet,
-  Link as LinkIcon, Info // تم إضافة Info هنا لإصلاح الخطأ
+  FileText, LayoutGrid, Clock, Link as LinkIcon, Info
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -27,7 +26,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, getDocs, doc } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
-import { ContractTemplate, ContractMilestone, PricingMode, MilestoneTiming, BOQTemplate } from '@/types/templates';
+import { ContractTemplate, ContractMilestone, PricingMode, BOQTemplate } from '@/types/templates';
 import { ActivityType, Service, SubService, TechnicalStage } from '@/types/reference';
 import { TemplateService } from '@/services/template-service';
 import { toast } from '@/hooks/use-toast';
@@ -185,7 +184,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
     : (formData.baseAmount || 0);
 
   return (
-    <div className="space-y-6 pb-20 animate-in fade-in duration-500 bg-[#fdfaf3] min-h-screen" dir={dir}>
+    <div className="space-y-6 pb-20 animate-in fade-in duration-500 bg-white min-h-screen" dir={dir}>
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-white/95 backdrop-blur-md px-6 shadow-sm">
         <div className="flex items-center gap-4 text-start">
           <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 border-2 rounded-xl hover:bg-slate-50 transition-all text-slate-400">
@@ -213,7 +212,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
       <div className="max-w-full mx-auto px-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
          <div className="lg:col-span-9 space-y-8">
             
-            <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
+            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
                <CardHeader className="bg-primary/5 p-8 border-b">
                   <CardTitle className="text-lg font-black flex items-center gap-3 text-slate-800">
                      <Target className="h-6 w-6 text-primary" /> {isRtl ? 'السياق التشغيلي والارتباط المسبق' : 'Operational Context & Sovereign Link'}
@@ -291,18 +290,18 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                      <div className="space-y-4">
                         <div className="space-y-2">
                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('inline.contract.name', 'مسمى العقد الرسمي', 'Official Contract Name')}</Label>
-                           <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-14 rounded-2xl border-2 font-black text-xl bg-slate-50/50 shadow-inner" />
+                           <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-14 rounded-2xl border-2 font-black text-xl bg-slate-50 shadow-inner" />
                         </div>
                      </div>
-                     <div className="p-8 rounded-[2.5rem] bg-slate-900 text-white flex flex-col justify-center relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-8 opacity-5"><Calculator className="h-32 w-32" /></div>
+                     <div className="p-8 rounded-[2.5rem] bg-slate-50 border-2 border-primary/20 text-slate-900 flex flex-col justify-center relative overflow-hidden shadow-inner">
+                        <div className="absolute top-0 right-0 p-8 opacity-5"><Calculator className="h-32 w-32 text-primary" /></div>
                         <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em] mb-2">{isRtl ? 'الميزانية المستهدفة' : 'Target Budget'}</p>
                         <div className="flex items-center gap-4 relative z-10">
                            <Input 
                              type="number" 
                              value={formData.baseAmount === 0 ? "" : formData.baseAmount} 
                              onChange={e => setFormData({...formData, baseAmount: e.target.value === '' ? 0 : Number(e.target.value)})} 
-                             className="h-16 rounded-2xl bg-white/10 border-0 text-3xl font-black text-center text-primary shadow-inner" 
+                             className="h-16 rounded-2xl bg-white border-2 border-primary/10 text-3xl font-black text-center text-primary shadow-sm" 
                            />
                            <span className="text-xl font-bold opacity-40">KWD</span>
                         </div>
@@ -313,7 +312,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                         <FileText className="h-4 w-4 text-primary" /> {isRtl ? 'مقدمة العقد' : 'Intro Text'}
                      </h4>
-                     <Textarea value={formData.introText || ''} onChange={e => setFormData({...formData, introText: e.target.value})} className="min-h-[120px] rounded-[2rem] border-2 p-8 text-sm font-bold leading-relaxed bg-slate-50/30" />
+                     <Textarea value={formData.introText || ''} onChange={e => setFormData({...formData, introText: e.target.value})} className="min-h-[120px] rounded-[2rem] border-2 p-8 text-sm font-bold leading-relaxed bg-slate-50" />
                   </div>
 
                   <div className="space-y-6">
@@ -425,7 +424,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 border-b-4 border-primary/20 pb-3">
                         <Gavel className="h-6 w-6 text-primary" /> {isRtl ? 'البنود والالتزامات القانونية' : 'Legal Clauses & Obligations'}
                      </h4>
-                     <Textarea value={formData.legalText || ''} onChange={e => setFormData({...formData, legalText: e.target.value})} className="min-h-[400px] rounded-[3rem] border-2 p-10 text-base font-bold leading-relaxed bg-slate-50/50 focus:bg-white transition-all shadow-inner" placeholder="..." />
+                     <Textarea value={formData.legalText || ''} onChange={e => setFormData({...formData, legalText: e.target.value})} className="min-h-[400px] rounded-[3rem] border-2 p-10 text-base font-bold leading-relaxed bg-slate-50 focus:bg-white transition-all shadow-inner" placeholder="..." />
                   </div>
                </div>
             </PrintWrapper>
@@ -433,7 +432,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
 
          <aside className="lg:col-span-3 space-y-6 text-start sticky top-24">
             <Card className="border-0 shadow-xl rounded-[2rem] bg-white ring-1 ring-black/5 overflow-hidden">
-               <CardHeader className="bg-slate-900 p-6 border-b text-start">
+               <CardHeader className="bg-slate-50 p-6 border-b text-start">
                   <CardTitle className="text-[10px] font-black flex items-center gap-2 uppercase text-primary tracking-widest">
                      <Target className="h-4 w-4" /> {isRtl ? 'حالة القالب' : 'Template Status'}
                   </CardTitle>

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   Loader2, ShieldCheck, Printer,
-  History, Info
+  History, Info, Landmark, Calculator
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where, orderBy } from 'firebase/firestore';
@@ -51,13 +51,13 @@ export default function IndividualAttendanceReport() {
   if (empLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   return (
-    <div className="space-y-8 pb-20 animate-in fade-in duration-700" dir={dir}>
+    <div className="space-y-8 pb-20 animate-in fade-in duration-700 bg-white" dir={dir}>
       <div className="flex items-center justify-between print:hidden">
         <div className="text-start">
           <h1 className="text-3xl font-black font-headline">{t('hr.reports.attendance.individualTitle')}</h1>
           <p className="text-xs font-bold text-muted-foreground">{employee?.fullName} | {employee?.employeeNumber}</p>
         </div>
-        <Button onClick={() => window.print()} className="rounded-xl h-12 px-6 font-black gap-2 bg-primary text-white">
+        <Button onClick={() => window.print()} className="rounded-xl h-12 px-6 font-black gap-2 bg-primary text-white shadow-lg">
            <Printer className="h-4 w-4" /> {t('common.print')}
         </Button>
       </div>
@@ -65,9 +65,12 @@ export default function IndividualAttendanceReport() {
       <PrintWrapper title={t('hr.reports.attendance.disciplineReport')}>
          <div className="space-y-10">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-               <Card className="border-0 shadow-lg rounded-[2rem] bg-slate-900 text-white p-8">
-                  <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-2">{t('hr.reports.attendance.punctualityRate')}</p>
-                  <h3 className="text-5xl font-black font-headline text-emerald-400">{stats.punctualityRate}%</h3>
+               <Card className="border-0 shadow-xl rounded-[2rem] bg-white border-2 border-primary/20 p-8 shadow-inner flex flex-col justify-center">
+                  <div className="flex items-center gap-3 text-primary mb-2">
+                     <Landmark className="h-5 w-5" />
+                     <p className="text-[10px] font-black uppercase tracking-widest">{t('hr.reports.attendance.punctualityRate')}</p>
+                  </div>
+                  <h3 className="text-5xl font-black font-headline text-slate-900">{stats.punctualityRate}%</h3>
                </Card>
                <Card className="border-0 shadow-lg rounded-[2rem] bg-white p-8 border-b-4 border-rose-500">
                   <p className="text-[10px] font-black text-slate-400 uppercase mb-2">{t('hr.reports.totalLateMins')}</p>
