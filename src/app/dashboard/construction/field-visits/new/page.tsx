@@ -208,16 +208,15 @@ function NewFieldVisitForm() {
   };
 
   return (
-    <div className="space-y-6 w-full max-w-[1600px] mx-auto pb-20 animate-in fade-in duration-500 text-start bg-[#fdfaf3]" dir={dir}>
+    <div className="space-y-6 w-full max-w-full pb-20 animate-in fade-in duration-500 text-start bg-[#fdfaf3]" dir={dir}>
       
-      {/* Header السيادي الفاتح - يضم زر الاعتماد الوحيد */}
       <header className="sticky top-0 z-50 flex flex-col md:flex-row justify-between items-center gap-4 border-b bg-white/95 backdrop-blur-md px-6 py-4 shadow-sm border-primary/10">
         <div className="flex items-center gap-4 text-start">
           <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/5 shadow-inner">
             <PlusCircle className="h-7 w-7" />
           </div>
           <div className="text-start">
-            <h1 className="text-2xl font-black font-headline text-slate-900 tracking-tight">{isRtl ? 'تقرير ميداني ذكي' : 'Smart Field Report'}</h1>
+            <h1 className="text-2xl font-black font-headline text-slate-900 tracking-tight">{isRtl ? 'تسجيل تقرير ميداني جديد' : 'New Field Report'}</h1>
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mt-1">Live Execution Center</p>
           </div>
         </div>
@@ -232,58 +231,63 @@ function NewFieldVisitForm() {
       </header>
 
       <div className="px-6 space-y-6">
-         {/* Context Bar */}
-         <Card className="border-0 shadow-lg rounded-[2rem] bg-white ring-1 ring-black/5 overflow-hidden">
-            <CardContent className="p-4 grid grid-cols-1 md:grid-cols-4 gap-6 items-center">
+         {/* Context Bar - Full Width */}
+         <Card className="border-0 shadow-lg rounded-[2rem] bg-white ring-1 ring-black/5 overflow-hidden w-full">
+            <CardContent className="p-6 grid grid-cols-1 md:grid-cols-4 gap-8 items-center">
                 <div className="space-y-1">
                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{t('common.clients')}</Label>
                    <Select value={selectedClientId} onValueChange={v => { setSelectedClientId(v); setSelectedProjectId(''); }}>
-                      <SelectTrigger className="h-10 rounded-xl border-2 font-black bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
+                      <SelectTrigger className="h-11 rounded-xl border-2 font-black bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
                       <SelectContent className="rounded-2xl z-[150]">{contractedClients.map(c => <SelectItem key={c.id} value={c.id} className="font-bold py-3 border-b last:border-0">{c.name}</SelectItem>)}</SelectContent>
                    </Select>
                 </div>
                 <div className="space-y-1">
                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{t('common.projects')}</Label>
                    <Select disabled={!selectedClientId} value={selectedProjectId} onValueChange={setSelectedProjectId}>
-                      <SelectTrigger className="h-10 rounded-xl border-2 font-black bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
+                      <SelectTrigger className="h-11 rounded-xl border-2 font-black bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
                       <SelectContent className="rounded-2xl z-[150]">{clientProjects.map(p => <SelectItem key={p.id} value={p.id} className="font-bold py-3 border-b last:border-0">{p.subServiceName}</SelectItem>)}</SelectContent>
                    </Select>
                 </div>
                 <div className="space-y-1">
                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'المرحلة النشطة' : 'Active Stage'}</Label>
-                   {loadingStage ? <div className="h-10 flex items-center animate-pulse"><Loader2 className="h-4 w-4 animate-spin text-primary/30" /></div> : activeStage ? (
-                     <div className="h-10 rounded-xl bg-emerald-50 border-2 border-emerald-100 flex items-center px-4 gap-3">
+                   {loadingStage ? <div className="h-11 flex items-center animate-pulse"><Loader2 className="h-4 w-4 animate-spin text-primary/30" /></div> : activeStage ? (
+                     <div className="h-11 rounded-xl bg-emerald-50 border-2 border-emerald-100 flex items-center px-4 gap-3">
                         <Workflow className="h-3.5 w-3.5 text-emerald-600" />
                         <span className="text-xs font-black text-emerald-800 truncate">{activeStage.name}</span>
                      </div>
-                   ) : <div className="h-10 rounded-xl bg-slate-100 border-2 border-dashed flex items-center px-4 italic text-[10px] text-slate-400">---</div>}
+                   ) : (
+                     <div className="h-11 rounded-xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center px-4">
+                        <ShieldAlert className="h-3.5 w-3.5 text-slate-300 me-2" />
+                        <span className="text-[10px] font-bold text-slate-400 italic">---</span>
+                     </div>
+                   )}
                 </div>
                 <div className="space-y-1">
                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{t('common.date')}</Label>
-                   <SmartDateInput value={visitDate} onChange={setVisitDate} className="h-10" />
+                   <SmartDateInput value={visitDate} onChange={setVisitDate} className="h-11" />
                 </div>
             </CardContent>
          </Card>
 
-         {/* Main Operations Hub */}
+         {/* Main Hub - Using Full Width Tabs */}
          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="bg-white border-2 border-slate-100 rounded-2xl h-14 p-1.5 gap-2 shadow-sm mb-6 inline-flex">
-               <TabsTrigger value="execution" className="rounded-xl px-10 font-black text-xs data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2 h-full">
+               <TabsTrigger value="execution" className="rounded-xl px-12 font-black text-xs data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2 h-full">
                   <Hammer className="h-4 w-4" /> {isRtl ? 'إنجاز البنود' : 'Execution'}
                   <Badge variant="outline" className="bg-white/20 border-0 h-5 px-2 text-[9px]">{gridRows.filter(r => r.boqItemId).length}</Badge>
                </TabsTrigger>
-               <TabsTrigger value="labor" className="rounded-xl px-10 font-black text-xs data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2 h-full">
+               <TabsTrigger value="labor" className="rounded-xl px-12 font-black text-xs data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2 h-full">
                   <Users className="h-4 w-4" /> {isRtl ? 'العمالة والمشرفين' : 'Human Resources'}
                   <Badge variant="outline" className="bg-white/20 border-0 h-5 px-2 text-[9px]">{laborDetails.filter(l => l.trade).length}</Badge>
                </TabsTrigger>
-               <TabsTrigger value="equipment" className="rounded-xl px-10 font-black text-xs data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2 h-full">
+               <TabsTrigger value="equipment" className="rounded-xl px-12 font-black text-xs data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2 h-full">
                   <Truck className="h-4 w-4" /> {isRtl ? 'المعدات والآليات' : 'Equipment'}
                   <Badge variant="outline" className="bg-white/20 border-0 h-5 px-2 text-[9px]">{equipmentUsed.filter(e => e.equipmentId).length}</Badge>
                </TabsTrigger>
             </TabsList>
 
             <TabsContent value="execution" className="animate-in fade-in duration-300">
-               <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
+               <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5 w-full">
                   <CardHeader className="bg-slate-50/50 p-8 border-b flex flex-row justify-between items-center">
                      <div className="text-start">
                         <CardTitle className="text-xl font-black text-slate-800 flex items-center gap-3"><LayoutGrid className="h-6 w-6 text-primary" /> {t('construction.siteProgress')}</CardTitle>
@@ -298,16 +302,16 @@ function NewFieldVisitForm() {
                         <TableHeader className="bg-slate-50/50">
                            <TableRow className="border-0">
                               <TableHead className="py-6 ps-10 text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'بند العمل المرجعي' : 'BOQ Item'}</TableHead>
-                              <TableHead className="text-center w-[150px] text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('common.quantity')}</TableHead>
-                              <TableHead className="text-center w-[150px] text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('common.photos')}</TableHead>
-                              <TableHead className="pe-10"></TableHead>
+                              <TableHead className="text-center w-[180px] text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('common.quantity')}</TableHead>
+                              <TableHead className="text-center w-[180px] text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('common.photos')}</TableHead>
+                              <TableHead className="pe-10 w-[80px]"></TableHead>
                            </TableRow>
                         </TableHeader>
                         <TableBody>
                            {gridRows.map((row, idx) => (
                               <TableRow key={idx} className="border-b-slate-100 transition-colors hover:bg-primary/[0.01]">
                                  <TableCell className="ps-10 py-6 text-start">
-                                    <div className="max-w-2xl space-y-3">
+                                    <div className="w-full space-y-3">
                                        <Select value={row.boqItemId} onValueChange={v => updateRow(idx, 'boqItemId', v)}>
                                           <SelectTrigger className="h-12 rounded-xl border-2 font-black text-sm bg-white shadow-sm"><SelectValue placeholder="..." /></SelectTrigger>
                                           <SelectContent className="rounded-2xl border-0 shadow-3xl z-[160] max-h-[400px]">
@@ -334,26 +338,26 @@ function NewFieldVisitForm() {
                                              ))}
                                           </SelectContent>
                                        </Select>
-                                       <Input value={row.notes} onChange={e => updateRow(idx, 'notes', e.target.value)} className="h-10 text-xs mt-2 border-2 bg-slate-50/30 font-medium rounded-xl" placeholder={isRtl ? "ملاحظات فنية عن جودة التنفيذ أو الموقع..." : "Technical notes..."} />
+                                       <Input value={row.notes} onChange={e => updateRow(idx, 'notes', e.target.value)} className="h-11 text-xs mt-2 border-2 bg-slate-50/30 font-medium rounded-xl focus:bg-white" placeholder={isRtl ? "ملاحظات فنية عن جودة التنفيذ أو الموقع..." : "Technical notes..."} />
                                     </div>
                                  </TableCell>
                                  <TableCell className="py-6 text-center">
                                     <div className="flex flex-col items-center gap-2">
-                                       <Input type="number" step="0.01" value={row.quantity} onChange={e => updateRow(idx, 'quantity', e.target.value)} className="h-14 w-28 text-center font-black text-2xl rounded-2xl border-2 bg-white text-primary shadow-inner" />
-                                       <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">{row.boqItemId ? allBoqItems?.find(i => i.id === row.boqItemId)?.unitSymbol : '---'}</span>
+                                       <Input type="number" step="0.01" value={row.quantity} onChange={e => updateRow(idx, 'quantity', e.target.value)} className="h-16 w-32 text-center font-black text-3xl rounded-2xl border-2 bg-white text-primary shadow-inner" />
+                                       <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{row.boqItemId ? allBoqItems?.find(i => i.id === row.boqItemId)?.unitSymbol : '---'}</span>
                                     </div>
                                  </TableCell>
                                  <TableCell className="py-6 text-center">
-                                    <div className="flex items-center justify-center gap-3">
-                                       <label className="h-14 w-14 rounded-2xl bg-slate-100 border-2 border-slate-200 flex items-center justify-center cursor-pointer hover:bg-white hover:border-primary/40 transition-all shadow-sm">
-                                          {row.isUploading ? <Loader2 className="h-6 w-6 animate-spin text-primary/30" /> : <Camera className="h-7 w-7 text-slate-300" />}
+                                    <div className="flex items-center justify-center gap-4">
+                                       <label className="h-16 w-16 rounded-2xl bg-slate-100 border-2 border-slate-200 flex items-center justify-center cursor-pointer hover:bg-white hover:border-primary/40 transition-all shadow-sm">
+                                          {row.isUploading ? <Loader2 className="h-7 w-7 animate-spin text-primary/30" /> : <Camera className="h-8 w-8 text-slate-300" />}
                                           <input type="file" multiple accept="image/*" className="hidden" onChange={e => handlePhotoUpload(idx, e)} disabled={row.isUploading} />
                                        </label>
-                                       {row.photoUrls?.length > 0 && <Badge className="bg-emerald-600 text-white font-black h-7 w-7 p-0 flex items-center justify-center rounded-xl shadow-lg border-2 border-white">{row.photoUrls.length}</Badge>}
+                                       {row.photoUrls?.length > 0 && <Badge className="bg-emerald-600 text-white font-black h-8 w-8 p-0 flex items-center justify-center rounded-2xl shadow-lg border-2 border-white">{row.photoUrls.length}</Badge>}
                                     </div>
                                  </TableCell>
                                  <TableCell className="pe-10 text-end">
-                                    <Button variant="ghost" size="icon" onClick={() => setGridRows(gridRows.filter((_, i) => i !== idx))} className="h-10 w-10 text-rose-200 hover:text-rose-600 hover:bg-rose-50 rounded-xl"><Trash2 className="h-5 w-5" /></Button>
+                                    <Button variant="ghost" size="icon" onClick={() => setGridRows(gridRows.filter((_, i) => i !== idx))} className="h-12 w-12 text-rose-200 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"><Trash2 className="h-6 w-6" /></Button>
                                  </TableCell>
                               </TableRow>
                            ))}
@@ -364,40 +368,40 @@ function NewFieldVisitForm() {
             </TabsContent>
 
             <TabsContent value="labor" className="animate-in fade-in duration-300">
-               <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
-                  <CardHeader className="bg-slate-50/50 p-8 border-b flex flex-row justify-between items-center">
+               <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5 w-full">
+                  <CardHeader className="bg-slate-50/50 p-8 border-b flex flex-col md:flex-row justify-between items-center gap-4">
                      <div className="text-start">
                         <CardTitle className="text-xl font-black text-slate-800 flex items-center gap-3"><Users className="h-6 w-6 text-primary" /> {isRtl ? 'الموارد البشرية' : 'Human Resources'}</CardTitle>
                         <p className="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-widest">{isRtl ? 'تسجيل حضور وتكاليف العمالة' : 'Log worker attendance and costs'}</p>
                      </div>
-                     <div className="flex gap-4">
+                     <div className="flex gap-4 w-full md:w-auto">
                         <Select onValueChange={handleApplyGroup}>
-                           <SelectTrigger className="h-11 w-56 rounded-xl border-2 font-black text-xs bg-white shadow-sm"><SelectValue placeholder={t('common.loadFromGroup')} /></SelectTrigger>
+                           <SelectTrigger className="h-12 w-full md:w-64 rounded-xl border-2 font-black text-xs bg-white shadow-sm"><SelectValue placeholder={t('common.loadFromGroup')} /></SelectTrigger>
                            <SelectContent className="rounded-2xl z-[160]">{workGroups?.map(g => <SelectItem key={g.id} value={g.id!} className="font-bold py-3">{g.name}</SelectItem>)}</SelectContent>
                         </Select>
-                        <Button variant="outline" onClick={() => setLaborDetails([...laborDetails, { trade: '', count: 1, hours: 8, hourlyCostRef: 0 }])} className="rounded-xl h-11 px-6 font-black border-2 gap-2 bg-white"><Plus className="h-4 w-4" /> {isRtl ? 'إضافة عامل' : 'Add Labor'}</Button>
+                        <Button variant="outline" onClick={() => setLaborDetails([...laborDetails, { trade: '', count: 1, hours: 8, hourlyCostRef: 0 }])} className="rounded-xl h-12 px-8 font-black border-2 gap-2 bg-white hover:bg-primary/5 transition-all"><Plus className="h-4 w-4" /> {isRtl ? 'إضافة سجل عمالة' : 'Add Labor'}</Button>
                      </div>
                   </CardHeader>
                   <CardContent className="p-8">
-                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {laborDetails.map((l, i) => (
-                           <div key={i} className="p-6 rounded-[2rem] bg-slate-50 border-2 border-white shadow-inner flex flex-col gap-4 group relative">
-                              <button onClick={() => setLaborDetails(laborDetails.filter((_, idx) => idx !== i))} className="absolute top-4 end-4 opacity-0 group-hover:opacity-100 text-rose-300 hover:text-rose-600 transition-all"><X className="h-4 w-4" /></button>
+                           <div key={i} className="p-6 rounded-[2.5rem] bg-slate-50 border-2 border-white shadow-inner flex flex-col gap-6 group relative">
+                              <button onClick={() => setLaborDetails(laborDetails.filter((_, idx) => idx !== i))} className="absolute top-4 end-4 opacity-0 group-hover:opacity-100 text-rose-300 hover:text-rose-600 transition-all p-2"><X className="h-5 w-5" /></button>
                               <div className="space-y-1 text-start">
-                                 <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'الموظف / التخصص' : 'Employee / Trade'}</Label>
+                                 <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الموظف / التخصص' : 'Employee / Trade'}</Label>
                                  <Select value={l.trade} onValueChange={v => { const emp = employees?.find(x => x.fullName === v); const nl = [...laborDetails]; nl[i].trade = v; nl[i].hourlyCostRef = (emp?.basicSalary || 0) / 26 / 8; setLaborDetails(nl); }}>
-                                    <SelectTrigger className="h-10 rounded-xl border-2 bg-white font-bold text-xs"><SelectValue placeholder="..." /></SelectTrigger>
-                                    <SelectContent className="rounded-2xl z-[161] max-h-[300px]">{employees?.map(e => <SelectItem key={e.id} value={e.fullName} className="font-bold py-2 border-b last:border-0">{e.fullName}</SelectItem>)}</SelectContent>
+                                    <SelectTrigger className="h-12 rounded-xl border-2 bg-white font-bold text-sm"><SelectValue placeholder="..." /></SelectTrigger>
+                                    <SelectContent className="rounded-2xl z-[161] max-h-[300px]">{employees?.map(e => <SelectItem key={e.id} value={e.fullName} className="font-bold py-3 border-b last:border-0">{e.fullName}</SelectItem>)}</SelectContent>
                                  </Select>
                               </div>
                               <div className="grid grid-cols-2 gap-4">
                                  <div className="space-y-1 text-start">
                                     <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'العدد' : 'Count'}</Label>
-                                    <Input type="number" value={l.count} onChange={e => { const nl = [...laborDetails]; nl[i].count = Number(e.target.value); setLaborDetails(nl); }} className="h-10 text-center font-black rounded-xl border-2 bg-white" />
+                                    <Input type="number" value={l.count} onChange={e => { const nl = [...laborDetails]; nl[i].count = Number(e.target.value); setLaborDetails(nl); }} className="h-12 text-center font-black text-xl rounded-xl border-2 bg-white" />
                                  </div>
                                  <div className="space-y-1 text-start">
                                     <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'ساعات العمل' : 'Hours'}</Label>
-                                    <Input type="number" value={l.hours} onChange={e => { const nl = [...laborDetails]; nl[i].hours = Number(e.target.value); setLaborDetails(nl); }} className="h-10 text-center font-black rounded-xl border-2 bg-white" />
+                                    <Input type="number" value={l.hours} onChange={e => { const nl = [...laborDetails]; nl[i].hours = Number(e.target.value); setLaborDetails(nl); }} className="h-12 text-center font-black text-xl rounded-xl border-2 bg-white text-blue-600" />
                                  </div>
                               </div>
                            </div>
@@ -408,29 +412,29 @@ function NewFieldVisitForm() {
             </TabsContent>
 
             <TabsContent value="equipment" className="animate-in fade-in duration-300">
-               <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
+               <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5 w-full">
                   <CardHeader className="bg-slate-50/50 p-8 border-b flex flex-row justify-between items-center">
                      <div className="text-start">
                         <CardTitle className="text-xl font-black text-slate-800 flex items-center gap-3"><Truck className="h-6 w-6 text-primary" /> {isRtl ? 'المعدات والآليات' : 'Heavy Equipment'}</CardTitle>
                         <p className="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-widest">{isRtl ? 'توثيق استخدام الآليات الثقيلة' : 'Log machinery usage'}</p>
                      </div>
-                     <Button variant="outline" size="sm" onClick={() => setEquipmentUsed([...equipmentUsed, { equipmentId: '', name: '', hoursUsed: 4, hourlyRateRef: 0 }])} className="rounded-xl h-11 px-8 font-black border-2 bg-white gap-2 shadow-sm"><Plus className="h-4 w-4" /> {isRtl ? 'إضافة معدة' : 'Add Equipment'}</Button>
+                     <Button variant="outline" size="sm" onClick={() => setEquipmentUsed([...equipmentUsed, { equipmentId: '', name: '', hoursUsed: 4, hourlyRateRef: 0 }])} className="rounded-xl h-12 px-8 font-black border-2 bg-white gap-2 shadow-sm hover:bg-primary/5 transition-all"><Plus className="h-4 w-4" /> {isRtl ? 'إضافة معدة' : 'Add Equipment'}</Button>
                   </CardHeader>
                   <CardContent className="p-8">
-                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {equipmentUsed.map((e, i) => (
-                           <div key={i} className="p-6 rounded-[2rem] bg-blue-50/30 border-2 border-white shadow-inner flex flex-col gap-4 group relative">
-                              <button onClick={() => setEquipmentUsed(equipmentUsed.filter((_, idx) => idx !== i))} className="absolute top-4 end-4 opacity-0 group-hover:opacity-100 text-blue-300 hover:text-blue-600 transition-all"><X className="h-4 w-4" /></button>
+                           <div key={i} className="p-6 rounded-[2.5rem] bg-blue-50/20 border-2 border-white shadow-inner flex flex-col gap-6 group relative">
+                              <button onClick={() => setEquipmentUsed(equipmentUsed.filter((_, idx) => idx !== i))} className="absolute top-4 end-4 opacity-0 group-hover:opacity-100 text-rose-300 hover:text-rose-600 transition-all p-2"><X className="h-5 w-5" /></button>
                               <div className="space-y-1 text-start">
-                                 <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'المعدة / الآلية' : 'Equipment'}</Label>
+                                 <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'المعدة / الآلية' : 'Equipment'}</Label>
                                  <Select value={e.equipmentId} onValueChange={v => { const equip = equipmentItems?.find((x:any) => x.id === v); const ne = [...equipmentUsed]; ne[i].equipmentId = v; ne[i].name = equip?.name || ''; ne[i].hourlyRateRef = equip?.hourlyRentalRate || equip?.hourlyDepreciationRate || 0; setEquipmentUsed(ne); }}>
-                                    <SelectTrigger className="h-10 rounded-xl border-2 bg-white font-bold text-xs"><SelectValue placeholder="..." /></SelectTrigger>
-                                    <SelectContent className="rounded-2xl z-[161] max-h-[300px]">{equipmentItems?.map((x:any) => <SelectItem key={x.id} value={x.id!} className="font-bold py-2 border-b last:border-0">{x.name}</SelectItem>)}</SelectContent>
+                                    <SelectTrigger className="h-12 rounded-xl border-2 bg-white font-bold text-sm"><SelectValue placeholder="..." /></SelectTrigger>
+                                    <SelectContent className="rounded-2xl z-[161] max-h-[300px]">{equipmentItems?.map((x:any) => <SelectItem key={x.id} value={x.id!} className="font-bold py-3 border-b last:border-0">{x.name}</SelectItem>)}</SelectContent>
                                  </Select>
                               </div>
                               <div className="space-y-1 text-start">
-                                 <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'ساعات التشغيل' : 'Operating Hours'}</Label>
-                                 <Input type="number" value={e.hoursUsed} onChange={v => { const ne = [...equipmentUsed]; ne[i].hoursUsed = Number(v.target.value); setEquipmentUsed(ne); }} className="h-10 text-center font-black rounded-xl border-2 bg-white text-blue-600" />
+                                 <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'ساعات التشغيل' : 'Operating Hours'}</Label>
+                                 <Input type="number" value={e.hoursUsed} onChange={v => { const ne = [...equipmentUsed]; ne[i].hoursUsed = Number(v.target.value); setEquipmentUsed(ne); }} className="h-12 text-center font-black text-2xl rounded-xl border-2 bg-white text-blue-600" />
                               </div>
                            </div>
                         ))}
