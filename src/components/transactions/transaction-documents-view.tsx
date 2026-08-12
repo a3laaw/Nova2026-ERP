@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, where, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { DocumentService } from '@/services/document-service';
 import { cn } from '@/lib/utils';
@@ -85,7 +85,16 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
     const path = docTypeToCreate === 'quotation' ? paths.quotationTemplates(companyId) : paths.contractTemplates(companyId);
     return query(collection(db, path), where('isActive', '==', true), where('activityTypeId', '==', transaction.activityTypeId));
   }, [db, companyId, docTypeToCreate, transaction?.activityTypeId]);
-  const { data: templates } = useCollection<any>(templatesQuery);
+  const { data: rawTemplates } = useCollection<any>(templatesQuery);
+
+  const templates = useMemo(() => {
+    if (!rawTemplates) return [];
+    return [...rawTemplates].sort((a, b) => {
+       if (a.subServiceId === transaction.subServiceId) return -1;
+       if (b.subServiceId === transaction.subServiceId) return 1;
+       return 0;
+    });
+  }, [rawTemplates, transaction?.subServiceId]);
 
   const handleCreate = async () => {
     if (!db || !companyId || !docTypeToCreate || !selectedTemplateId) return;
@@ -102,14 +111,34 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
 
       toast({ title: tSafe('inline.draft.ready', 'تم تجهيز المسودة', 'Draft Ready') });
       setDocTypeToCreate(null);
+      setSelectedTemplateId("");
       router.push(`/dashboard/clients/${clientId}/${docTypeToCreate === 'quotation' ? 'quotations' : 'contracts'}/${docId}`);
     } catch (e: any) {
-      toast({ variant: "destructive", title: t('error'), description: e.message });
+      toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally { setLoading(false); }
   };
 
+  const handleDelete = async () => {
+    if (!db || !companyId || !deletingContext) return;
+    setLoading(true);
+    try {
+      const service = new DocumentService(db, companyId, permissions);
+      if (deletingContext.type === 'quotation') {
+        await service.deleteQuotation(deletingContext.id);
+      } else {
+        await service.deleteContract(deletingContext.id);
+      }
+      toast({ title: tSafe('inline.document.deleted', 'تم حذف المستند بنجاح', 'Document deleted') });
+      setDeletingContext(null);
+    } catch (e) {
+      toast({ variant: "destructive", title: t('common.error') });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const DocList = ({ title, data, type, icon: Icon, colorClass, bgClass, showAdd = false }: any) => (
-    <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+    <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 flex-1">
        <CardHeader className="bg-slate-50/50 border-b p-8 flex flex-row items-center justify-between">
           <div className="flex items-center gap-4 text-start">
              <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center shadow-sm border", bgClass, colorClass)}>
@@ -154,9 +183,21 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
                           </Badge>
                        </TableCell>
                        <TableCell className="pe-10 text-end">
-                          <Button variant="outline" size="icon" className="rounded-xl h-9 w-9 text-primary border-primary/20 hover:bg-primary hover:text-white shadow-sm transition-all opacity-0 group-hover:opacity-100">
-                             <ArrowUpRight className="h-5 w-5" />
-                          </Button>
+                          <div className="flex justify-end gap-2">
+                             <Button variant="outline" size="icon" className="rounded-xl h-9 w-9 text-primary border-primary/20 hover:bg-primary hover:text-white shadow-sm transition-all opacity-0 group-hover:opacity-100">
+                                <ArrowUpRight className="h-5 w-5" />
+                             </Button>
+                             {isAdmin && (
+                               <Button 
+                                 variant="ghost" 
+                                 size="icon" 
+                                 className="rounded-xl h-9 w-9 text-rose-300 hover:text-rose-600 hover:bg-rose-50 opacity-0 group-hover:opacity-100 transition-all"
+                                 onClick={(e) => { e.stopPropagation(); setDeletingContext({ id: item.id, type }); }}
+                               >
+                                  <Trash2 className="h-4 w-4" />
+                               </Button>
+                             )}
+                          </div>
                        </TableCell>
                     </TableRow>
                   ))
@@ -182,7 +223,7 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
          </div>
 
          <TabsContent value="owner" className="space-y-8 animate-in slide-in-from-bottom-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+            <div className="flex flex-col md:flex-row gap-8 items-start">
                <DocList title={isRtl ? 'عروض الأسعار' : 'Quotations'} data={quotes} type="quotation" icon={FileText} colorClass="text-blue-600" bgClass="bg-blue-50" showAdd />
                <DocList title={isRtl ? 'العقود الرسمية' : 'Formal Contracts'} data={contracts} type="contract" icon={Gavel} colorClass="text-indigo-600" bgClass="bg-indigo-50" showAdd />
             </div>
@@ -203,6 +244,83 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
             <DocList title={isRtl ? 'مستخلصات مقاولي الباطن' : 'Sub-Con Progress Payments'} data={subIpcs} type="subipc" icon={Receipt} colorClass="text-amber-600" bgClass="bg-amber-50" />
          </TabsContent>
       </Tabs>
+
+      {/* نافذة إنشاء مستند جديد */}
+      <Dialog open={!!docTypeToCreate} onOpenChange={(v) => !v && setDocTypeToCreate(null)}>
+         <DialogContent className="max-w-xl rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
+            <div className="bg-primary/5 p-10 text-slate-900 text-start border-b">
+               <DialogTitle className="text-2xl font-black font-headline flex items-center gap-4 text-slate-900">
+                  {docTypeToCreate === 'quotation' ? <FileText className="h-8 w-8 text-primary" /> : <Gavel className="h-8 w-8 text-primary" />}
+                  {docTypeToCreate === 'quotation' ? tSafe('inline.issue.quote', 'إصدار عرض سعر', 'Issue Quote') : tSafe('inline.issue.contract', 'إصدار عقد جديد', 'Issue Contract')}
+               </DialogTitle>
+               <p className="text-slate-500 font-bold mt-2 uppercase text-[10px] tracking-widest">{transaction.activityTypeName}</p>
+            </div>
+
+            <div className="p-10 space-y-6 text-start">
+               <div className="space-y-2">
+                  <Label className="text-[11px] font-black uppercase text-slate-400 tracking-widest">
+                     {tSafe('inline.choose.template', 'اختر القالب المرجعي', 'Choose Template')}
+                  </Label>
+                  <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                     <SelectTrigger className="h-14 rounded-2xl border-2 font-black text-lg bg-white shadow-inner">
+                        <SelectValue placeholder="..." />
+                     </SelectTrigger>
+                     <SelectContent className="rounded-xl border-0 shadow-2xl z-[200]">
+                        {templates?.map(temp => (
+                           <SelectItem key={temp.id} value={temp.id!} className="font-bold py-4 border-b last:border-0 border-slate-50">
+                              <div className="flex flex-col text-start">
+                                 <span className="text-slate-800">{temp.name}</span>
+                                 {temp.subServiceId === transaction.subServiceId && (
+                                    <Badge className="bg-emerald-50 text-emerald-600 border-0 text-[8px] font-black h-4 w-fit mt-1">{tSafe('inline.direct.matching.key', 'مطابقة مباشرة', 'DIRECT MATCH')}</Badge>
+                                 )}
+                              </div>
+                           </SelectItem>
+                        ))}
+                     </SelectContent>
+                  </Select>
+               </div>
+
+               <div className="p-4 rounded-2xl bg-blue-50 border-2 border-blue-100 flex items-start gap-3">
+                  <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                  <p className="text-[10px] font-bold text-blue-700 leading-relaxed italic">{tSafe('inline.template_hint', 'يتم فلترة القوالب بناءً على نوع نشاط المعاملة لضمان دقة التعاقد.', 'Templates are filtered based on transaction activity type.')}</p>
+               </div>
+
+               <Button 
+                  onClick={handleCreate} 
+                  disabled={loading || !selectedTemplateId}
+                  className="w-full h-20 rounded-[2rem] bg-primary text-white font-black text-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-4 border-b-8 border-orange-700 mt-4"
+               >
+                  {loading ? <Loader2 className="animate-spin h-8 w-8" /> : <Sparkles className="h-8 w-8" />}
+                  {tSafe('inline.create.draft', 'تجهيز المسودة الآن', 'Create Draft Now')}
+               </Button>
+            </div>
+         </DialogContent>
+      </Dialog>
+
+      {/* حوار تأكيد الحذف */}
+      <AlertDialog open={!!deletingContext} onOpenChange={(v) => !v && setDeletingContext(null)}>
+         <AlertDialogContent className="rounded-xl p-10 border-0 shadow-3xl bg-white" dir={dir}>
+            <AlertDialogHeader>
+               <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
+                  <Trash2 className="h-10 w-10" />
+               </div>
+               <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">{t('common.confirmDelete')}</AlertDialogTitle>
+               <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
+                  {tSafe('inline.are.you.sure..this.document.will.be.permanently.removed.from.the.archive', 'هل أنت متأكد؟ سيتم حذف المستند نهائياً من الأرشيف ولا يمكن التراجع.', 'Are you sure? This document will be permanently removed from the archive.')}
+               </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
+               <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white" onClick={() => setDeletingContext(null)}>{t('common.cancel')}</AlertDialogCancel>
+               <AlertDialogAction 
+                 onClick={handleDelete} 
+                 disabled={loading}
+                 className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 text-white shadow-xl shadow-rose-200"
+               >
+                  {loading ? <Loader2 className="animate-spin h-5 w-5" /> : t('common.confirm')}
+               </AlertDialogAction>
+            </AlertDialogFooter>
+         </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
