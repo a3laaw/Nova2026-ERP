@@ -3,9 +3,6 @@ import { LaborDetail, EquipmentUsed } from './documents';
 
 export type FieldVisitStatus = 'draft' | 'submitted' | 'approved' | 'verified';
 
-/**
- * حالات الإنجاز الفني (رد المهندس المسؤول - يتم تحديدها بعد التقرير)
- */
 export type WorkItemExecutionStatus = 'pending' | 'completed' | 'partial' | 'not_completed';
 
 export interface WorkItemLog {
@@ -13,10 +10,16 @@ export interface WorkItemLog {
   itemName: string;
   quantity: number;
   unit: string;
-  notes: string;           // ملاحظات المهندس الميداني/المراقب
+  notes: string;
   photoUrls: string[];
-  executionStatus?: WorkItemExecutionStatus; // رد المهندس المسؤول (الحالة)
-  engineerResponseNote?: string;             // رد المهندس المسؤول (نصي)
+  executionStatus?: WorkItemExecutionStatus;
+  engineerResponseNote?: string;
+}
+
+export interface MaterialLog {
+  type: string;
+  unit: string;
+  quantity: number;
 }
 
 export interface FieldVisit extends BaseReference {
@@ -28,31 +31,25 @@ export interface FieldVisit extends BaseReference {
   clientName: string;
   engineerId: string;
   engineerName: string;
-  visitDate: string; // YYYY-MM-DD
+  visitDate: string; 
   
-  // الموقع الموثق
-  locationUrl?: string;
-  gpsLocation?: {
-    lat: number;
-    lng: number;
-  } | null;
+  activeStageId?: string;
+  activeStageName?: string;
 
-  // الإنجاز التفصيلي (الجدول مع رد المسؤول)
+  locationUrl?: string;
+  
+  // الإنجاز الفني (BOQ)
   items: WorkItemLog[];
   
-  // الموارد المستخدمة
-  laborDetails: any[];
-  equipmentUsed: any[];
+  // الموارد (الشبكة الرباعية)
+  staffDetails: any[];      // الموظفون (Position, No)
+  laborDetails: any[];      // العمالة (Trade, Area, No)
+  equipmentUsed: any[];     // المعدات (Type, No, Hours)
+  materialsDelivered: MaterialLog[]; // المواد (Type, Unit, Qty)
   
-  overallProgress?: number;
-  generalNotes?: string;
   status: FieldVisitStatus;
   isVerified?: boolean;
   
-  createdBy: string;
   createdAt: any;
   updatedAt: any;
-  updatedByName?: string;
-  isEdited?: boolean;
-  clonedFromId?: string; 
 }

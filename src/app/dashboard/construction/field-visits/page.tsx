@@ -21,7 +21,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function FieldVisitsListPage() {
   const { globalUser } = useAuthContext();
-  const { lang, dir, t } = useLanguage();
+  const { lang, dir, t, tSafe } = useLanguage(); // تم إضافة tSafe
   const db = useFirestore();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
@@ -80,7 +80,9 @@ export default function FieldVisitsListPage() {
            {loading ? (
              <div className="py-32 text-center flex flex-col items-center gap-4">
                 <Loader2 className="animate-spin h-10 w-10 text-primary/20" />
-                <p className="text-xs font-black text-slate-300 uppercase tracking-widest italic">Indexing Reports Hub...</p>
+                <p className="text-xs font-black text-slate-300 uppercase tracking-widest italic">
+                  {tSafe('inline.indexing.reports', 'جاري فهرسة مركز التقارير...', 'Indexing Reports Hub...')}
+                </p>
              </div>
            ) : filtered.length === 0 ? (
              <div className="py-32 text-center opacity-30 italic font-black text-xl text-slate-400">
@@ -99,12 +101,18 @@ export default function FieldVisitsListPage() {
                           <Calendar className="h-3.5 w-3.5 text-primary" />
                           <span className="font-black text-[10px] text-slate-500 uppercase tracking-tighter">{visit.visitDate}</span>
                        </div>
-                       <Badge variant="outline" className="text-[8px] font-black uppercase border-2 px-3 h-5 bg-white">{visit.status}</Badge>
+                       <Badge variant="outline" className="text-[8px] font-black uppercase border-2 px-3 h-5 bg-white">
+                         {/* تم تغليف الحالة لترجمتها تلقائياً */}
+                         {tSafe('status.' + visit.status, visit.status, visit.status)}
+                       </Badge>
                     </CardHeader>
                     <CardContent className="p-6 space-y-4 text-start">
                        <div className="space-y-1">
                           <p className="text-[9px] font-black text-primary uppercase tracking-widest">{visit.clientName}</p>
-                          <h4 className="font-black text-base text-slate-800 line-clamp-1">{visit.activeStageName || 'General Progress'}</h4>
+                          <h4 className="font-black text-base text-slate-800 line-clamp-1">
+                            {/* تم استخدام tSafe لترجمة النص الافتراضي */}
+                            {visit.activeStageName || tSafe('general.progress', 'التقدم العام', 'General Progress')}
+                          </h4>
                           <p className="text-[10px] font-bold text-slate-400">REF: {visit.transactionNumber}</p>
                        </div>
                        <div className="flex items-center justify-between pt-4 border-t border-slate-50">

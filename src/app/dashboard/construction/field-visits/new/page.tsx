@@ -8,21 +8,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
 } from "@/components/ui/select";
 import { 
-  Save, Loader2, ArrowRight, Camera, Users, Target,
-  Plus, CheckCircle2, Trash2, Truck, LayoutGrid, Sparkles,
-  Workflow, Clock, AlertTriangle, Hammer, PlusCircle,
-  ShieldAlert, Landmark, HardHat, Info, CalendarDays,
-  X, Trash
+  Save, Loader2, Plus, CheckCircle2, Trash2, 
+  Truck, LayoutGrid, Hammer, Users, 
+  Package, MapPin, Workflow, ShieldAlert,
+  CalendarDays, PlusCircle, X
 } from "lucide-react";
 import { useFirestore, useCollection, useFirebaseApp } from '@/firebase';
 import { collection, query, where, getDocs, orderBy, doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
@@ -34,14 +30,12 @@ import { BOQ, BOQItem } from '@/types/documents';
 import { usePermissions } from '@/hooks/use-permissions';
 import { BOQExecutionService } from '@/services/boq-execution-service';
 import { SmartDateInput } from '@/components/ui/smart-date-input';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 function NewFieldVisitForm() {
   const { globalUser, user } = useAuthContext();
   const { lang, dir, t, tSafe } = useLanguage();
   const { isAdmin, permissions } = usePermissions();
   const db = useFirestore();
-  const firebaseApp = useFirebaseApp();
   const router = useRouter();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
@@ -50,17 +44,18 @@ function NewFieldVisitForm() {
   const [selectedClientId, setSelectedClientId] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [visitDate, setVisitDate] = useState(new Date().toISOString().split('T')[0]);
-  const [activeTab, setActiveTab] = useState("execution");
   
   const [activeStage, setActiveStage] = useState<StageInstance | null>(null);
   const [loadingStage, setLoadingStage] = useState(false);
 
-  const [laborDetails, setLaborDetails] = useState<any[]>([{ trade: '', count: 1, hours: 8, hourlyCostRef: 0 }]);
-  const [equipmentUsed, setEquipmentUsed] = useState<any[]>([{ equipmentId: '', name: '', hoursUsed: 4, hourlyRateRef: 0 }]);
+  // مصفوفات البيانات للشبكة الرباعية (Resources)
+  const [staffRows, setStaffDetails] = useState<any[]>([{ position: '', count: 1 }]);
+  const [laborRows, setLaborDetails] = useState<any[]>([{ trade: '', area: '', count: 1 }]);
+  const [equipRows, setEquipmentUsed] = useState<any[]>([{ type: '', count: 1, hours: 8 }]);
+  const [materialRows, setMaterialRows] = useState<any[]>([{ type: '', unit: '', quantity: 0 }]);
 
-  const [gridRows, setGridRows] = useState<any[]>([
-    { boqItemId: '', quantity: '', notes: '', photoUrls: [], isUploading: false }
-  ]);
+  // بنود التنفيذ (BOQ)
+  const [executionRows, setExecutionRows] = useState<any[]>([{ boqItemId: '', quantity: '', notes: '' }]);
 
   const transQuery = useMemo(() => 
     (companyId && db) ? query(collection(db, paths.transactions(companyId)), where('status', '!=', 'completed')) : null, [db, companyId]);
@@ -76,9 +71,7 @@ function NewFieldVisitForm() {
 
   const contractedClients = useMemo(() => {
     const clientsMap = new Map();
-    fieldProjects.forEach(p => {
-       clientsMap.set(p.clientId, p.clientName);
-    });
+    fieldProjects.forEach(p => clientsMap.set(p.clientId, p.clientName));
     return Array.from(clientsMap.entries()).map(([id, name]) => ({ id, name }));
   }, [fieldProjects]);
 
@@ -116,61 +109,8 @@ function NewFieldVisitForm() {
     return allBoqItems.filter(i => (i.technicalStageIds?.includes(activeStage.technicalStageId) || i.technicalStageId === activeStage.technicalStageId));
   }, [activeStage, allBoqItems]);
 
-  const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
-  const { data: employees } = useCollection<Employee>(empsQuery);
-
-  const groupsQuery = useMemo(() => companyId && db ? query(collection(db, paths.workGroups(companyId)), where('isActive', '==', true)) : null, [db, companyId]);
-  const { data: workGroups } = useCollection<WorkGroup>(groupsQuery);
-
-  const inventoryQuery = useMemo(() => companyId && db ? query(collection(db, paths.equipment(companyId)), where('status', '==', 'available')) : null, [db, companyId]);
-  const { data: equipmentItems } = useCollection<any>(inventoryQuery);
-
-  const handlePhotoUpload = async (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || !companyId || !firebaseApp) return;
-    
-    updateRow(idx, 'isUploading', true);
-    const storage = getStorage(firebaseApp);
-    const urls: string[] = [];
-    
-    try {
-      for (let i = 0; i < files.length; i++) {
-        const sRef = ref(storage, `site_logs/${companyId}/${Date.now()}_${files[i].name}`);
-        const snap = await uploadBytes(sRef, files[i]);
-        const url = await getDownloadURL(snap.ref);
-        urls.push(url);
-      }
-      const newPhotos = [...(gridRows[idx].photoUrls || []), ...urls];
-      updateRow(idx, 'photoUrls', newPhotos);
-      toast({ title: t('common.photosUploaded') });
-    } finally {
-      updateRow(idx, 'isUploading', false);
-    }
-  };
-
-  const updateRow = (idx: number, field: string, val: any) => {
-    const newRows = [...gridRows];
-    newRows[idx][field] = val;
-    setGridRows(newRows);
-  };
-
-  const handleApplyGroup = (groupId: string) => {
-     const group = workGroups?.find(g => g.id === groupId);
-     if (!group) return;
-     const groupLabor = (group.memberIds || []).map(mid => {
-        const emp = employees?.find(e => e.id === mid);
-        return { trade: emp?.fullName || 'Worker', count: 1, hours: 8, hourlyCostRef: (emp?.basicSalary || 0) / 26 / 8 };
-     });
-     const supervisor = employees?.find(e => e.id === group.supervisorId);
-     if (supervisor) {
-        groupLabor.unshift({ trade: supervisor.fullName, count: 1, hours: 8, hourlyCostRef: (supervisor.basicSalary || 0) / 26 / 8 });
-     }
-     setLaborDetails([...laborDetails.filter(l => l.trade), ...groupLabor]);
-  };
-
   const handleSave = async () => {
     if (!db || !companyId || !user || !selectedProjectId || !activeBoq || !activeStage) return;
-    const validRows = gridRows.filter(r => r.boqItemId && Number(r.quantity) > 0);
     
     setLoading(true);
     try {
@@ -179,27 +119,42 @@ function NewFieldVisitForm() {
       const project = allTransactions?.find(t => t.id === selectedProjectId);
       const officialName = globalUser?.fullName || user.displayName || 'Engineer';
 
-      for (const row of validRows) {
+      // 1. تسجيل الحركات الفنية في المقايسة والتايملاين
+      for (const row of executionRows.filter(r => r.boqItemId && Number(r.quantity) > 0)) {
          await execService.recordBOQItemExecution(
            activeBoq.id, row.boqItemId, activeStage.technicalStageId, Number(row.quantity),
            user.uid, officialName, row.notes || '', activeStage.id!, false, '', 
-           { laborDetails: laborDetails.filter(l => l.trade), equipmentUsed: equipmentUsed.filter(e => e.equipmentId) }
+           { laborDetails: laborRows.filter(l => l.trade), equipmentUsed: [] }
          );
       }
 
+      // 2. حفظ التقرير الموحد
       await setDoc(visitRef, {
-        id: visitRef.id, companyId, transactionId: selectedProjectId, transactionNumber: project?.transactionNumber || '',
-        clientId: selectedClientId, clientName: project?.clientName || '',
-        activeStageId: activeStage.id, activeStageName: activeStage.name,
-        visitDate, items: gridRows.filter(r => r.boqItemId).map(r => {
-           const boqItem = allBoqItems?.find(i => i.id === r.boqItemId);
-           return { ...r, itemName: boqItem?.referenceTitle || '', executionStatus: 'executed' };
-        }),
-        laborDetails: laborDetails.filter(l => l.trade),
-        equipmentUsed: equipmentUsed.filter(e => e.equipmentId),
-        engineerId: globalUser?.employeeId || user.uid, engineerName: officialName,
-        status: 'submitted', createdAt: serverTimestamp(),
+        id: visitRef.id,
+        companyId,
+        transactionId: selectedProjectId,
+        transactionNumber: project?.transactionNumber || '',
+        clientId: selectedClientId,
+        clientName: project?.clientName || '',
+        activeStageId: activeStage.id,
+        activeStageName: activeStage.name,
+        visitDate,
+        items: executionRows.filter(r => r.boqItemId).map(r => ({
+          ...r,
+          itemName: allBoqItems?.find(i => i.id === r.boqItemId)?.referenceTitle || '',
+          unit: allBoqItems?.find(i => i.id === r.boqItemId)?.unitSymbol || '',
+          executionStatus: 'executed'
+        })),
+        staffDetails: staffRows.filter(s => s.position),
+        laborDetails: laborRows.filter(l => l.trade),
+        equipmentUsed: equipRows.filter(e => e.type),
+        materialsDelivered: materialRows.filter(m => m.type),
+        engineerId: globalUser?.employeeId || user.uid,
+        engineerName: officialName,
+        status: 'submitted',
+        createdAt: serverTimestamp(),
       });
+
       toast({ title: t('construction.visitCreated') });
       router.push('/dashboard/construction/field-visits');
     } catch (e: any) {
@@ -207,45 +162,88 @@ function NewFieldVisitForm() {
     } finally { setLoading(false); }
   };
 
+  const ResourceTable = ({ title, columns, data, setData, addRow }: any) => (
+    <Card className="border shadow-sm rounded-xl overflow-hidden bg-white h-full">
+      <CardHeader className="bg-slate-50/80 border-b py-3 px-4 flex flex-row items-center justify-between">
+        <CardTitle className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{title}</CardTitle>
+        <button type="button" onClick={addRow} className="text-primary hover:scale-110 transition-transform"><PlusCircle className="h-4 w-4" /></button>
+      </CardHeader>
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader className="bg-white">
+            <TableRow className="hover:bg-transparent border-b-2">
+              {columns.map((col: string, i: number) => (
+                <TableHead key={i} className="h-8 text-[9px] font-black text-slate-400 uppercase text-center border-e last:border-0">{col}</TableHead>
+              ))}
+              <TableHead className="w-8"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {data.map((row: any, idx: number) => (
+              <TableRow key={idx} className="border-b last:border-0">
+                {Object.keys(row).map((key, i) => (
+                  <TableCell key={i} className="p-1 border-e last:border-0">
+                    <Input 
+                      value={row[key]} 
+                      onChange={e => {
+                        const newData = [...data];
+                        newData[idx][key] = e.target.value;
+                        setData(newData);
+                      }}
+                      className="h-8 border-0 shadow-none text-center font-bold text-[11px] focus-visible:ring-0 bg-transparent"
+                    />
+                  </TableCell>
+                ))}
+                <TableCell className="p-0 text-center">
+                   <button onClick={() => setData(data.filter((_:any, i:number) => i !== idx))} className="text-slate-200 hover:text-rose-500"><X className="h-3 w-3" /></button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+
   return (
-    <div className="space-y-6 w-full max-w-full pb-20 animate-in fade-in duration-500 text-start bg-[#fdfaf3]" dir={dir}>
+    <div className="space-y-6 w-full max-w-full pb-20 animate-in fade-in duration-500 text-start" dir={dir}>
       
-      <header className="sticky top-0 z-50 flex flex-col md:flex-row justify-between items-center gap-4 border-b bg-white/95 backdrop-blur-md px-6 py-4 shadow-sm border-primary/10">
+      <header className="sticky top-0 z-50 flex justify-between items-center gap-4 border-b bg-white/95 backdrop-blur-md px-6 py-4 shadow-sm border-primary/10">
         <div className="flex items-center gap-4 text-start">
           <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/5 shadow-inner">
             <PlusCircle className="h-7 w-7" />
           </div>
           <div className="text-start">
-            <h1 className="text-2xl font-black font-headline text-slate-900 tracking-tight">{isRtl ? 'تسجيل تقرير ميداني جديد' : 'New Field Report'}</h1>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mt-1">Live Execution Center</p>
+            <h1 className="text-2xl font-black font-headline text-slate-900 tracking-tight">{isRtl ? 'تقرير ميداني جديد' : 'New Site Report'}</h1>
+            <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 text-[8px] font-black uppercase mt-1">Live Grid Mode</Badge>
           </div>
         </div>
 
         <div className="flex gap-3">
            <Button variant="ghost" onClick={() => router.back()} className="rounded-xl font-bold h-10 px-6 border-2 border-slate-100 bg-white hover:bg-slate-50">{t('common.cancel')}</Button>
            <Button onClick={handleSave} disabled={loading || !activeStage} className="h-10 px-10 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 gap-2 border-b-4 border-orange-700 hover:scale-[1.02] active:scale-95 transition-all">
-              {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />} 
-              {isRtl ? 'اعتماد التقرير الآن' : 'Commit Report Now'}
+              {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />} 
+              {isRtl ? 'اعتماد التقرير' : 'Commit Report'}
            </Button>
         </div>
       </header>
 
-      <div className="px-6 space-y-6">
-         {/* Context Bar - Full Width */}
+      <div className="px-6 space-y-8">
+         {/* Context Bar */}
          <Card className="border-0 shadow-lg rounded-[2rem] bg-white ring-1 ring-black/5 overflow-hidden w-full">
             <CardContent className="p-6 grid grid-cols-1 md:grid-cols-4 gap-8 items-center">
                 <div className="space-y-1">
                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{t('common.clients')}</Label>
                    <Select value={selectedClientId} onValueChange={v => { setSelectedClientId(v); setSelectedProjectId(''); }}>
                       <SelectTrigger className="h-11 rounded-xl border-2 font-black bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
-                      <SelectContent className="rounded-2xl z-[150]">{contractedClients.map(c => <SelectItem key={c.id} value={c.id} className="font-bold py-3 border-b last:border-0">{c.name}</SelectItem>)}</SelectContent>
+                      <SelectContent className="rounded-2xl z-[150]">{contractedClients.map(c => <SelectItem key={c.id} value={c.id} className="font-bold py-3">{c.name}</SelectItem>)}</SelectContent>
                    </Select>
                 </div>
                 <div className="space-y-1">
                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{t('common.projects')}</Label>
                    <Select disabled={!selectedClientId} value={selectedProjectId} onValueChange={setSelectedProjectId}>
                       <SelectTrigger className="h-11 rounded-xl border-2 font-black bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
-                      <SelectContent className="rounded-2xl z-[150]">{clientProjects.map(p => <SelectItem key={p.id} value={p.id} className="font-bold py-3 border-b last:border-0">{p.subServiceName}</SelectItem>)}</SelectContent>
+                      <SelectContent className="rounded-2xl z-[150]">{clientProjects.map(p => <SelectItem key={p.id} value={p.id} className="font-bold py-3">{p.subServiceName}</SelectItem>)}</SelectContent>
                    </Select>
                 </div>
                 <div className="space-y-1">
@@ -269,185 +267,98 @@ function NewFieldVisitForm() {
             </CardContent>
          </Card>
 
-         {/* Main Hub - Using Full Width Tabs */}
-         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="bg-white border-2 border-slate-100 rounded-2xl h-14 p-1.5 gap-2 shadow-sm mb-6 inline-flex">
-               <TabsTrigger value="execution" className="rounded-xl px-12 font-black text-xs data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2 h-full">
-                  <Hammer className="h-4 w-4" /> {isRtl ? 'إنجاز البنود' : 'Execution'}
-                  <Badge variant="outline" className="bg-white/20 border-0 h-5 px-2 text-[9px]">{gridRows.filter(r => r.boqItemId).length}</Badge>
-               </TabsTrigger>
-               <TabsTrigger value="labor" className="rounded-xl px-12 font-black text-xs data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2 h-full">
-                  <Users className="h-4 w-4" /> {isRtl ? 'العمالة والمشرفين' : 'Human Resources'}
-                  <Badge variant="outline" className="bg-white/20 border-0 h-5 px-2 text-[9px]">{laborDetails.filter(l => l.trade).length}</Badge>
-               </TabsTrigger>
-               <TabsTrigger value="equipment" className="rounded-xl px-12 font-black text-xs data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2 h-full">
-                  <Truck className="h-4 w-4" /> {isRtl ? 'المعدات والآليات' : 'Equipment'}
-                  <Badge variant="outline" className="bg-white/20 border-0 h-5 px-2 text-[9px]">{equipmentUsed.filter(e => e.equipmentId).length}</Badge>
-               </TabsTrigger>
-            </TabsList>
+         {/* BOQ Work Progress - Section 0 */}
+         <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+            <CardHeader className="bg-slate-50/50 p-6 border-b flex flex-row justify-between items-center">
+               <div className="text-start">
+                  <CardTitle className="text-base font-black flex items-center gap-3 text-slate-800"><Hammer className="h-5 w-5 text-primary" /> {isRtl ? 'إنجاز بنود المقايسة (BOQ)' : 'Work Items Progress'}</CardTitle>
+               </div>
+               <Button variant="outline" size="sm" onClick={() => setExecutionRows([...executionRows, { boqItemId: '', quantity: '', notes: '' }])} className="rounded-xl h-9 px-6 font-black border-2 gap-2">
+                  <Plus className="h-3.5 w-3.5" /> {isRtl ? 'إضافة بند' : 'Add Item'}
+               </Button>
+            </CardHeader>
+            <CardContent className="p-0 overflow-x-auto">
+               <Table>
+                  <TableHeader>
+                     <TableRow className="bg-white hover:bg-transparent border-b-2">
+                        <TableHead className="ps-8 text-start text-[10px] font-black uppercase text-slate-400">{isRtl ? 'بند العمل' : 'Work Item'}</TableHead>
+                        <TableHead className="text-center w-[120px] text-[10px] font-black uppercase text-slate-400">{t('common.quantity')}</TableHead>
+                        <TableHead className="text-start text-[10px] font-black uppercase text-slate-400">{t('common.notes')}</TableHead>
+                        <TableHead className="w-12"></TableHead>
+                     </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                     {executionRows.map((row, idx) => (
+                        <TableRow key={idx} className="border-b last:border-0 hover:bg-primary/[0.01]">
+                           <TableCell className="ps-8 py-4 text-start">
+                              <Select value={row.boqItemId} onValueChange={v => { const nr = [...executionRows]; nr[idx].boqItemId = v; setExecutionRows(nr); }}>
+                                 <SelectTrigger className="h-10 rounded-lg border-2 font-black text-[11px]"><SelectValue placeholder="..." /></SelectTrigger>
+                                 <SelectContent className="rounded-xl z-[160] max-h-[300px]">
+                                    {filteredBoqItems.map(i => (
+                                       <SelectItem key={i.id} value={i.id!} className="font-bold py-2 border-b last:border-0">
+                                          <div className="flex flex-col text-start">
+                                             <span>{i.referenceTitle}</span>
+                                             <span className="text-[8px] text-slate-400 uppercase">#{i.referenceCode}</span>
+                                          </div>
+                                       </SelectItem>
+                                    ))}
+                                 </SelectContent>
+                              </Select>
+                           </TableCell>
+                           <TableCell className="py-4"><Input type="number" step="0.01" value={row.quantity} onChange={e => { const nr = [...executionRows]; nr[idx].quantity = e.target.value; setExecutionRows(nr); }} className="h-10 text-center font-black text-xl border-2 text-primary bg-primary/5" /></TableCell>
+                           <TableCell className="py-4"><Input value={row.notes} onChange={e => { const nr = [...executionRows]; nr[idx].notes = e.target.value; setExecutionRows(nr); }} className="h-10 text-xs border-2 bg-slate-50/50" placeholder="..." /></TableCell>
+                           <TableCell className="text-center"><button onClick={() => setExecutionRows(executionRows.filter((_, i) => i !== idx))} className="text-rose-300 hover:text-rose-600"><Trash2 className="h-4 w-4" /></button></TableCell>
+                        </TableRow>
+                     ))}
+                  </TableBody>
+               </Table>
+            </CardContent>
+         </Card>
 
-            <TabsContent value="execution" className="animate-in fade-in duration-300">
-               <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5 w-full">
-                  <CardHeader className="bg-slate-50/50 p-8 border-b flex flex-row justify-between items-center">
-                     <div className="text-start">
-                        <CardTitle className="text-xl font-black text-slate-800 flex items-center gap-3"><LayoutGrid className="h-6 w-6 text-primary" /> {t('construction.siteProgress')}</CardTitle>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-widest">{isRtl ? 'توثيق الإنجاز الكمي والمواصفة' : 'Log quantities and specs'}</p>
-                     </div>
-                     <Button variant="outline" size="sm" onClick={() => setGridRows([...gridRows, { boqItemId: '', quantity: '', notes: '', photoUrls: [], isUploading: false }])} className="rounded-xl h-11 px-8 font-black border-2 bg-white hover:bg-slate-50 shadow-sm gap-2">
-                        <Plus className="h-4 w-4" /> {isRtl ? 'إضافة بند تنفيذ' : 'Add Item'}
-                     </Button>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                     <Table>
-                        <TableHeader className="bg-slate-50/50">
-                           <TableRow className="border-0">
-                              <TableHead className="py-6 ps-10 text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'بند العمل المرجعي' : 'BOQ Item'}</TableHead>
-                              <TableHead className="text-center w-[180px] text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('common.quantity')}</TableHead>
-                              <TableHead className="text-center w-[180px] text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('common.photos')}</TableHead>
-                              <TableHead className="pe-10 w-[80px]"></TableHead>
-                           </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                           {gridRows.map((row, idx) => (
-                              <TableRow key={idx} className="border-b-slate-100 transition-colors hover:bg-primary/[0.01]">
-                                 <TableCell className="ps-10 py-6 text-start">
-                                    <div className="w-full space-y-3">
-                                       <Select value={row.boqItemId} onValueChange={v => updateRow(idx, 'boqItemId', v)}>
-                                          <SelectTrigger className="h-12 rounded-xl border-2 font-black text-sm bg-white shadow-sm"><SelectValue placeholder="..." /></SelectTrigger>
-                                          <SelectContent className="rounded-2xl border-0 shadow-3xl z-[160] max-h-[400px]">
-                                             {!activeStage ? (
-                                               <div className="p-8 text-center flex flex-col items-center gap-3 opacity-30">
-                                                  <ShieldAlert className="h-8 w-8" />
-                                                  <p className="text-xs font-black">{isRtl ? 'يرجى اختيار مشروع به مرحلة نشطة' : 'Select a project with active stage'}</p>
-                                               </div>
-                                             ) : filteredBoqItems.length === 0 ? (
-                                                <div className="p-8 text-center flex flex-col items-center gap-3 opacity-30">
-                                                   <ShieldAlert className="h-8 w-8" />
-                                                   <p className="text-xs font-black">{isRtl ? 'لا توجد بنود لهذه المرحلة' : 'No items for this stage'}</p>
-                                                </div>
-                                             ) : filteredBoqItems.map(i => (
-                                                <SelectItem key={i.id} value={i.id!} className="font-bold py-4 border-b last:border-0">
-                                                   <div className="flex flex-col text-start gap-1">
-                                                      <span className="text-sm font-black">{i.referenceTitle}</span>
-                                                      <div className="flex items-center gap-2">
-                                                         <span className="text-[8px] text-slate-400 font-mono uppercase tracking-tighter">#{i.referenceCode}</span>
-                                                         <Badge className="bg-slate-100 text-slate-500 border-0 text-[7px] font-black h-4 px-2 uppercase">{tSafe('inline.remaining', 'المتبقي:', 'REM:')} {(i.plannedQuantity || 0) - (i.executedQuantity || 0)} {i.unitSymbol}</Badge>
-                                                      </div>
-                                                   </div>
-                                                </SelectItem>
-                                             ))}
-                                          </SelectContent>
-                                       </Select>
-                                       <Input value={row.notes} onChange={e => updateRow(idx, 'notes', e.target.value)} className="h-11 text-xs mt-2 border-2 bg-slate-50/30 font-medium rounded-xl focus:bg-white" placeholder={isRtl ? "ملاحظات فنية عن جودة التنفيذ أو الموقع..." : "Technical notes..."} />
-                                    </div>
-                                 </TableCell>
-                                 <TableCell className="py-6 text-center">
-                                    <div className="flex flex-col items-center gap-2">
-                                       <Input type="number" step="0.01" value={row.quantity} onChange={e => updateRow(idx, 'quantity', e.target.value)} className="h-16 w-32 text-center font-black text-3xl rounded-2xl border-2 bg-white text-primary shadow-inner" />
-                                       <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{row.boqItemId ? allBoqItems?.find(i => i.id === row.boqItemId)?.unitSymbol : '---'}</span>
-                                    </div>
-                                 </TableCell>
-                                 <TableCell className="py-6 text-center">
-                                    <div className="flex items-center justify-center gap-4">
-                                       <label className="h-16 w-16 rounded-2xl bg-slate-100 border-2 border-slate-200 flex items-center justify-center cursor-pointer hover:bg-white hover:border-primary/40 transition-all shadow-sm">
-                                          {row.isUploading ? <Loader2 className="h-7 w-7 animate-spin text-primary/30" /> : <Camera className="h-8 w-8 text-slate-300" />}
-                                          <input type="file" multiple accept="image/*" className="hidden" onChange={e => handlePhotoUpload(idx, e)} disabled={row.isUploading} />
-                                       </label>
-                                       {row.photoUrls?.length > 0 && <Badge className="bg-emerald-600 text-white font-black h-8 w-8 p-0 flex items-center justify-center rounded-2xl shadow-lg border-2 border-white">{row.photoUrls.length}</Badge>}
-                                    </div>
-                                 </TableCell>
-                                 <TableCell className="pe-10 text-end">
-                                    <Button variant="ghost" size="icon" onClick={() => setGridRows(gridRows.filter((_, i) => i !== idx))} className="h-12 w-12 text-rose-200 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"><Trash2 className="h-6 w-6" /></Button>
-                                 </TableCell>
-                              </TableRow>
-                           ))}
-                        </TableBody>
-                     </Table>
-                  </CardContent>
-               </Card>
-            </TabsContent>
+         {/* The 2x2 Resource Grid */}
+         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 pb-10">
+            {/* Table 1: Staff */}
+            <ResourceTable 
+               title="STAFF" 
+               columns={[isRtl ? 'الوظيفة' : 'POSITION', isRtl ? 'العدد' : 'NO']} 
+               data={staffRows}
+               setData={setStaffDetails}
+               addRow={() => setStaffDetails([...staffRows, { position: '', count: 1 }])}
+            />
 
-            <TabsContent value="labor" className="animate-in fade-in duration-300">
-               <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5 w-full">
-                  <CardHeader className="bg-slate-50/50 p-8 border-b flex flex-col md:flex-row justify-between items-center gap-4">
-                     <div className="text-start">
-                        <CardTitle className="text-xl font-black text-slate-800 flex items-center gap-3"><Users className="h-6 w-6 text-primary" /> {isRtl ? 'الموارد البشرية' : 'Human Resources'}</CardTitle>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-widest">{isRtl ? 'تسجيل حضور وتكاليف العمالة' : 'Log worker attendance and costs'}</p>
-                     </div>
-                     <div className="flex gap-4 w-full md:w-auto">
-                        <Select onValueChange={handleApplyGroup}>
-                           <SelectTrigger className="h-12 w-full md:w-64 rounded-xl border-2 font-black text-xs bg-white shadow-sm"><SelectValue placeholder={t('common.loadFromGroup')} /></SelectTrigger>
-                           <SelectContent className="rounded-2xl z-[160]">{workGroups?.map(g => <SelectItem key={g.id} value={g.id!} className="font-bold py-3">{g.name}</SelectItem>)}</SelectContent>
-                        </Select>
-                        <Button variant="outline" onClick={() => setLaborDetails([...laborDetails, { trade: '', count: 1, hours: 8, hourlyCostRef: 0 }])} className="rounded-xl h-12 px-8 font-black border-2 gap-2 bg-white hover:bg-primary/5 transition-all"><Plus className="h-4 w-4" /> {isRtl ? 'إضافة سجل عمالة' : 'Add Labor'}</Button>
-                     </div>
-                  </CardHeader>
-                  <CardContent className="p-8">
-                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {laborDetails.map((l, i) => (
-                           <div key={i} className="p-6 rounded-[2.5rem] bg-slate-50 border-2 border-white shadow-inner flex flex-col gap-6 group relative">
-                              <button onClick={() => setLaborDetails(laborDetails.filter((_, idx) => idx !== i))} className="absolute top-4 end-4 opacity-0 group-hover:opacity-100 text-rose-300 hover:text-rose-600 transition-all p-2"><X className="h-5 w-5" /></button>
-                              <div className="space-y-1 text-start">
-                                 <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'الموظف / التخصص' : 'Employee / Trade'}</Label>
-                                 <Select value={l.trade} onValueChange={v => { const emp = employees?.find(x => x.fullName === v); const nl = [...laborDetails]; nl[i].trade = v; nl[i].hourlyCostRef = (emp?.basicSalary || 0) / 26 / 8; setLaborDetails(nl); }}>
-                                    <SelectTrigger className="h-12 rounded-xl border-2 bg-white font-bold text-sm"><SelectValue placeholder="..." /></SelectTrigger>
-                                    <SelectContent className="rounded-2xl z-[161] max-h-[300px]">{employees?.map(e => <SelectItem key={e.id} value={e.fullName} className="font-bold py-3 border-b last:border-0">{e.fullName}</SelectItem>)}</SelectContent>
-                                 </Select>
-                              </div>
-                              <div className="grid grid-cols-2 gap-4">
-                                 <div className="space-y-1 text-start">
-                                    <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'العدد' : 'Count'}</Label>
-                                    <Input type="number" value={l.count} onChange={e => { const nl = [...laborDetails]; nl[i].count = Number(e.target.value); setLaborDetails(nl); }} className="h-12 text-center font-black text-xl rounded-xl border-2 bg-white" />
-                                 </div>
-                                 <div className="space-y-1 text-start">
-                                    <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'ساعات العمل' : 'Hours'}</Label>
-                                    <Input type="number" value={l.hours} onChange={e => { const nl = [...laborDetails]; nl[i].hours = Number(e.target.value); setLaborDetails(nl); }} className="h-12 text-center font-black text-xl rounded-xl border-2 bg-white text-blue-600" />
-                                 </div>
-                              </div>
-                           </div>
-                        ))}
-                     </div>
-                  </CardContent>
-               </Card>
-            </TabsContent>
+            {/* Table 2: Labour */}
+            <ResourceTable 
+               title="LABOUR" 
+               columns={[isRtl ? 'التخصص' : 'TRADE', isRtl ? 'المنطقة' : 'AREA', isRtl ? 'العدد' : 'NO']} 
+               data={laborRows}
+               setData={setLaborDetails}
+               addRow={() => setLaborDetails([...laborRows, { trade: '', area: '', count: 1 }])}
+            />
 
-            <TabsContent value="equipment" className="animate-in fade-in duration-300">
-               <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5 w-full">
-                  <CardHeader className="bg-slate-50/50 p-8 border-b flex flex-row justify-between items-center">
-                     <div className="text-start">
-                        <CardTitle className="text-xl font-black text-slate-800 flex items-center gap-3"><Truck className="h-6 w-6 text-primary" /> {isRtl ? 'المعدات والآليات' : 'Heavy Equipment'}</CardTitle>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-widest">{isRtl ? 'توثيق استخدام الآليات الثقيلة' : 'Log machinery usage'}</p>
-                     </div>
-                     <Button variant="outline" size="sm" onClick={() => setEquipmentUsed([...equipmentUsed, { equipmentId: '', name: '', hoursUsed: 4, hourlyRateRef: 0 }])} className="rounded-xl h-12 px-8 font-black border-2 bg-white gap-2 shadow-sm hover:bg-primary/5 transition-all"><Plus className="h-4 w-4" /> {isRtl ? 'إضافة معدة' : 'Add Equipment'}</Button>
-                  </CardHeader>
-                  <CardContent className="p-8">
-                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {equipmentUsed.map((e, i) => (
-                           <div key={i} className="p-6 rounded-[2.5rem] bg-blue-50/20 border-2 border-white shadow-inner flex flex-col gap-6 group relative">
-                              <button onClick={() => setEquipmentUsed(equipmentUsed.filter((_, idx) => idx !== i))} className="absolute top-4 end-4 opacity-0 group-hover:opacity-100 text-rose-300 hover:text-rose-600 transition-all p-2"><X className="h-5 w-5" /></button>
-                              <div className="space-y-1 text-start">
-                                 <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'المعدة / الآلية' : 'Equipment'}</Label>
-                                 <Select value={e.equipmentId} onValueChange={v => { const equip = equipmentItems?.find((x:any) => x.id === v); const ne = [...equipmentUsed]; ne[i].equipmentId = v; ne[i].name = equip?.name || ''; ne[i].hourlyRateRef = equip?.hourlyRentalRate || equip?.hourlyDepreciationRate || 0; setEquipmentUsed(ne); }}>
-                                    <SelectTrigger className="h-12 rounded-xl border-2 bg-white font-bold text-sm"><SelectValue placeholder="..." /></SelectTrigger>
-                                    <SelectContent className="rounded-2xl z-[161] max-h-[300px]">{equipmentItems?.map((x:any) => <SelectItem key={x.id} value={x.id!} className="font-bold py-3 border-b last:border-0">{x.name}</SelectItem>)}</SelectContent>
-                                 </Select>
-                              </div>
-                              <div className="space-y-1 text-start">
-                                 <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'ساعات التشغيل' : 'Operating Hours'}</Label>
-                                 <Input type="number" value={e.hoursUsed} onChange={v => { const ne = [...equipmentUsed]; ne[i].hoursUsed = Number(v.target.value); setEquipmentUsed(ne); }} className="h-12 text-center font-black text-2xl rounded-xl border-2 bg-white text-blue-600" />
-                              </div>
-                           </div>
-                        ))}
-                     </div>
-                  </CardContent>
-               </Card>
-            </TabsContent>
-         </Tabs>
+            {/* Table 3: Equipment */}
+            <ResourceTable 
+               title="EQUIPMENT (Available at site today)" 
+               columns={[isRtl ? 'النوع' : 'TYPE', isRtl ? 'العدد' : 'NO', isRtl ? 'ساعات' : 'HOURS']} 
+               data={equipRows}
+               setData={setEquipmentUsed}
+               addRow={() => setEquipmentUsed([...equipRows, { type: '', count: 1, hours: 8 }])}
+            />
+
+            {/* Table 4: Material */}
+            <ResourceTable 
+               title="MATERIAL (Delivered to site today)" 
+               columns={[isRtl ? 'النوع' : 'TYPE', isRtl ? 'الوحدة' : 'UNIT', isRtl ? 'الكمية' : 'QTY']} 
+               data={materialRows}
+               setData={setMaterialRows}
+               addRow={() => setMaterialRows([...materialRows, { type: '', unit: '', quantity: 0 }])}
+            />
+         </div>
       </div>
     </div>
   );
 }
 
-export default function NewStructuredFieldVisitPage() {
+export default function NewSovereignGridReportPage() {
    return <Suspense fallback={<div className="h-screen flex items-center justify-center bg-[#fdfaf3]"><Loader2 className="animate-spin text-primary" /></div>}><NewFieldVisitForm /></Suspense>;
 }
+
