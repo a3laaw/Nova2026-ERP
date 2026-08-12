@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -8,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   Plus, Loader2, Search, ArrowRight, 
-  Gavel, Trash2, Edit3, ShieldCheck, FileText
+  Gavel, Trash2, Edit3, ShieldCheck, FileText,
+  AlertTriangle
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -22,18 +22,29 @@ import { Input } from '@/components/ui/input';
 import { ContractTemplateForm } from './contract-template-form';
 import { TemplateService } from '@/services/template-service';
 import { toast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function ContractTemplatesPage() {
-  const { globalUser } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
-  const { permissions } = usePermissions();
+  const { globalUser, user } = useAuthContext();
+  const { t, lang, dir, tSafe } = useLanguage();
+  const { permissions, isAdmin } = usePermissions();
   const db = useFirestore();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
   const [searchTerm, setSearchTerm] = useState("");
   const [editingTemplate, setEditingTemplate] = useState<ContractTemplate | null | 'new'>(null);
-  const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const templatesQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.contractTemplates(companyId)), orderBy('name')) : null, 
@@ -41,17 +52,18 @@ export default function ContractTemplatesPage() {
 
   const { data: templates, loading } = useCollection<ContractTemplate>(templatesQuery);
 
-  const handleDelete = async (id: string) => {
-    if (!db || !companyId || !confirm(t('confirmDelete'))) return;
-    setLoadingAction(id);
+  const handleDelete = async () => {
+    if (!db || !companyId || !deletingId) return;
+    setIsDeleting(true);
     try {
       const service = new TemplateService(db, companyId, permissions);
-      await service.deleteTemplate('contract', id);
-      toast({ title: t('deleted') });
+      await service.deleteTemplate('contract', deletingId);
+      toast({ title: t('common.deleted') });
+      setDeletingId(null);
     } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+      toast({ variant: "destructive", title: t('common.error') });
     } finally {
-      setLoadingAction(null);
+      setIsDeleting(false);
     }
   };
 
@@ -70,11 +82,11 @@ export default function ContractTemplatesPage() {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500" dir={dir}>
+    <div className="space-y-8 animate-in fade-in duration-500 max-w-full" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start space-y-2">
           <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit border border-primary/10">
-             <ShieldCheck className="h-3 w-3" /> {isRtl ? 'مكتبة الوثائق القانونية' : 'Legal Document Library'}
+             <ShieldCheck className="h-3 w-3" /> {tSafe('inline.legal.document.library', 'مكتبة الوثائق القانونية', 'Legal Document Library')}
           </div>
           <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
             <Gavel className="h-10 w-10 text-primary" />
@@ -153,15 +165,16 @@ export default function ContractTemplatesPage() {
                           <Button variant="outline" size="icon" onClick={() => setEditingTemplate(temp)} className="rounded-xl h-12 w-12 text-primary border-primary/20 hover:bg-primary hover:text-white shadow-sm transition-all">
                              <Edit3 className="h-5 w-5" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            disabled={loadingAction === temp.id}
-                            onClick={() => handleDelete(temp.id!)}
-                            className="rounded-xl h-12 w-12 text-rose-300 hover:text-rose-600 hover:bg-rose-50 transition-all"
-                          >
-                             {loadingAction === temp.id ? <Loader2 className="animate-spin h-5 w-5" /> : <Trash2 className="h-5 w-5" />}
-                          </Button>
+                          {isAdmin && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => setDeletingId(temp.id!)}
+                              className="rounded-xl h-12 w-12 text-rose-300 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                            >
+                               <Trash2 className="h-5 w-5" />
+                            </Button>
+                          )}
                        </div>
                     </TableCell>
                   </TableRow>
@@ -171,6 +184,32 @@ export default function ContractTemplatesPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!deletingId} onOpenChange={(v) => !v && setDeletingId(null)}>
+        <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white" dir={dir}>
+          <AlertDialogHeader>
+             <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
+                <AlertTriangle className="h-10 w-10" />
+             </div>
+             <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">{t('common.confirmDelete')}</AlertDialogTitle>
+             <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
+                {isRtl 
+                  ? 'هل أنت متأكد؟ سيتم حذف هذا القالب المرجعي نهائياً من مكتبة العقود. لن يتأثر المشاريع القائمة بهذا الإجراء، ولكن لن تتمكن من استخدامه مرة أخرى.' 
+                  : 'Are you sure? This contract template will be permanently removed from the library. Existing projects won\'t be affected.'}
+             </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-12 gap-4 flex flex-row items-center justify-center">
+            <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete} 
+              disabled={isDeleting}
+              className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200"
+            >
+               {isDeleting ? <Loader2 className="animate-spin h-5 w-5" /> : (isRtl ? 'نعم، احذف القالب' : 'Confirm Delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

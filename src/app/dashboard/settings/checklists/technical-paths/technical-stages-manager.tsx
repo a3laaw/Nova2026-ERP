@@ -9,7 +9,8 @@ import {
   Workflow, ArrowRight, Clock,
   ListChecks, ShieldCheck,
   GripVertical, ChevronUp, ChevronDown,
-  Building2, Check, Search, X, Save, Settings2
+  Building2, Check, Search, X, Save, Settings2,
+  AlertTriangle
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,6 +29,16 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { TechnicalStage, SubService, ActivityType, Service, Department } from '@/types/reference';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Props {
   activityType: ActivityType;
@@ -37,8 +48,8 @@ interface Props {
 }
 
 export function TechnicalStagesManager({ activityType, service: mainService, subService, onBack }: Props) {
-  const { globalUser } = useAuthContext();
-  const { t, lang, dir, isRtl } = useLanguage();
+  const { globalUser, user } = useAuthContext();
+  const { t, lang, dir, isRtl, tSafe } = useLanguage();
   const db = useFirestore();
   const companyId = globalUser?.companyId;
 
@@ -46,6 +57,7 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
   const [form, setForm] = useState<Partial<TechnicalStage> | null>(null);
   const [deptSearch, setDeptSearch] = useState("");
   const [showDeptPicker, setShowDeptPicker] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const technicalPathService = useMemo(() => db && companyId ? new TechnicalPathService(db, companyId) : null, [db, companyId]);
   const stagesQuery = useMemo(() => companyId && db ? query(collection(db, paths.technicalStages(companyId, activityType.id!, mainService.id!, subService.id!))) : null, [db, companyId, activityType, mainService, subService]);
@@ -105,6 +117,20 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
     }
   };
 
+  const handleFinalDelete = async () => {
+    if (!technicalPathService || !deletingId) return;
+    setLoadingAction('deleting_stage');
+    try {
+      await technicalPathService.deleteTechnicalStage(activityType.id!, mainService.id!, subService.id!, deletingId);
+      toast({ title: t('common.deleted') });
+      setDeletingId(null);
+    } catch (e) {
+      toast({ variant: "destructive", title: t('common.error') });
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
   const handleMove = async (index: number, direction: 'up' | 'down') => {
     if (!technicalPathService || !stages) return;
     const newStages = [...sortedStages];
@@ -152,7 +178,7 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300 text-start">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300 text-start max-w-full">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex items-center gap-4">
           <Button variant="ghost" onClick={onBack} className="rounded-xl h-10 w-10 p-0 bg-white shadow-sm border hover:bg-slate-50">
@@ -198,7 +224,7 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                     <Button variant="ghost" size="icon" onClick={() => setForm(stage)} className="h-10 w-10 rounded-xl text-blue-600 hover:bg-blue-50"><Edit3 className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => { if(confirm(t('common.confirmDelete'))) technicalPathService?.deleteTechnicalStage(activityType.id!, mainService.id!, subService.id!, stage.id!); }} className="h-10 w-10 rounded-xl text-destructive hover:bg-destructive/5"><Trash2 className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => setDeletingId(stage.id!)} className="h-10 w-10 rounded-xl text-destructive hover:bg-destructive/5"><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 </div>
               </Card>
@@ -207,6 +233,7 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
         </div>
       )}
 
+      {/* Dialog for Edit/Create */}
       {form && (
         <Dialog open onOpenChange={() => setForm(null)}>
           <DialogContent className="rounded-xl p-0 overflow-hidden max-w-5xl border-0 shadow-3xl bg-white" dir={dir}>
@@ -214,7 +241,7 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
               <div className="lg:col-span-7 p-8 space-y-6 overflow-y-auto bg-white border-e scrollbar-hide">
                 <DialogHeader className="text-start">
                   <DialogTitle className="text-2xl font-black font-headline flex items-center gap-2 text-slate-800">
-                    <ShieldCheck className="text-primary h-7 w-7" /> {form.id ? t('edit') : t('newPath')}
+                    <ShieldCheck className="text-primary h-7 w-7" /> {form.id ? t('common.edit') : t('newPath')}
                   </DialogTitle>
                 </DialogHeader>
                 
@@ -248,7 +275,7 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
                           <ChevronDown className="h-4 w-4 opacity-30" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-[400px] p-0 rounded-2xl shadow-3xl border-2" align="start">
+                      <PopoverContent className="w-[400px] p-0 rounded-2xl shadow-3xl border-2 z-[200]" align="start">
                          <div className="p-4 bg-slate-50 border-b">
                             <div className="relative">
                                <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
@@ -300,7 +327,7 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
                 </div>
 
                 <DialogFooter className="pt-4 border-t">
-                  <Button onClick={handleSave} disabled={loadingAction === 'save'} className="w-full h-12 rounded-xl font-bold">
+                  <Button onClick={handleSave} disabled={loadingAction === 'save'} className="w-full h-12 rounded-xl font-bold shadow-lg">
                     {loadingAction === 'save' ? <Loader2 className="animate-spin" /> : t('common.save')}
                   </Button>
                 </DialogFooter>
@@ -327,6 +354,33 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Professional AlertDialog for Deletion */}
+      <AlertDialog open={!!deletingId} onOpenChange={(v) => !v && setDeletingId(null)}>
+        <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white" dir={dir}>
+          <AlertDialogHeader>
+             <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
+                <AlertTriangle className="h-10 w-10" />
+             </div>
+             <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">{t('common.confirmDelete')}</AlertDialogTitle>
+             <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
+                {isRtl 
+                  ? 'هل أنت متأكد؟ سيتم حذف هذه المرحلة نهائياً من المسار الفني. قد يؤثر هذا الإجراء على تسلسل العمليات الميدانية المرتبطة.' 
+                  : 'Are you sure? This stage will be permanently removed. This may affect the sequence of linked field operations.'}
+             </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-12 gap-4 flex flex-row items-center justify-center">
+            <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleFinalDelete} 
+              disabled={loadingAction === 'deleting_stage'}
+              className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200"
+            >
+               {loadingAction === 'deleting_stage' ? <Loader2 className="animate-spin h-5 w-5" /> : (isRtl ? 'نعم، احذف المرحلة' : 'Confirm Delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
