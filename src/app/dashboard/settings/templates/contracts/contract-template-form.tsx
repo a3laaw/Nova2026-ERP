@@ -19,13 +19,13 @@ import {
   Gavel, Calculator, DollarSign, ShieldCheck,
   AlertTriangle, Target, Percent, Workflow,
   FileText, LayoutGrid, Clock, FileSpreadsheet,
-  Link as LinkIcon
+  Link as LinkIcon, Info // تم إضافة Info هنا لإصلاح الخطأ
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, where, getDocs, doc } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { ContractTemplate, ContractMilestone, PricingMode, MilestoneTiming, BOQTemplate } from '@/types/templates';
 import { ActivityType, Service, SubService, TechnicalStage } from '@/types/reference';
@@ -80,7 +80,6 @@ export function ContractTemplateForm({ template, onClose }: Props) {
     return query(collection(db, paths.services(companyId, formData.activityTypeId)), orderBy('order'));
   }, [db, companyId, formData.activityTypeId]);
 
-  // جلب قوالب المقايسات للربط
   const boqTemplatesQuery = useMemo(() => {
     if (!companyId || !db || !formData.subServiceId) return null;
     return query(collection(db, paths.boqTemplates(companyId)), where('subServiceId', '==', formData.subServiceId));
@@ -127,11 +126,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
     const isPercentageMode = formData.pricingMode === 'percentage';
     const isValid = isPercentageMode ? Math.abs(totalPercentage - 100) < 0.1 : true;
 
-    return {
-      totalPercentage,
-      totalItemizedAmount,
-      isValid
-    };
+    return { totalPercentage, totalItemizedAmount, isValid };
   }, [formData.defaultMilestones, formData.pricingMode]);
 
   const handleSave = async () => {
@@ -218,7 +213,6 @@ export function ContractTemplateForm({ template, onClose }: Props) {
       <div className="max-w-full mx-auto px-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
          <div className="lg:col-span-9 space-y-8">
             
-            {/* 1. السياق التشغيلي والربط السيادي */}
             <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
                <CardHeader className="bg-primary/5 p-8 border-b">
                   <CardTitle className="text-lg font-black flex items-center gap-3 text-slate-800">
@@ -290,7 +284,6 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                </CardContent>
             </Card>
 
-            {/* 2. المستند الرسمي الموجه للطباعة */}
             <PrintWrapper className="mt-4 overflow-hidden" fullWidth={true}>
                <div className="space-y-12 text-start">
                   
@@ -389,7 +382,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                               <SelectValue placeholder={isRtl ? "ربط فني..." : "Link..."} />
                                             </SelectTrigger>
                                             <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
-                                               <SelectItem value="SIGNING" className="font-black text-xs py-3 border-b border-slate-50">
+                                               <SelectItem value="SIGNING" className="font-black text-[10px] py-3 border-b border-slate-50">
                                                   <span className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-emerald-500" /> {isRtl ? 'توقيع العقد' : 'Contract Signing'}</span>
                                                </SelectItem>
                                                {pathStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
