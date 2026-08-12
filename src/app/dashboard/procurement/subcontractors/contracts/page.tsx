@@ -10,7 +10,7 @@ import {
   Handshake, ShieldCheck, 
   Building2, ArrowUpRight, CheckCircle2, Clock,
   Landmark, Sparkles, ChevronDown, Check, X,
-  Workflow, Hash
+  Workflow, Hash, Info
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFirestore, useCollection } from '@/firebase';
@@ -40,12 +40,12 @@ export default function SubConContractsListPage() {
   const [isIssueOpen, setIsIssueOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   
-  // Search states for pickers
+  // Search states for custom pickers
   const [subSearch, setSubSearch] = useState("");
   const [transSearch, setTransSearch] = useState("");
   const [tempSearch, setTempSearch] = useState("");
   
-  // Custom Pickers UI states
+  // Custom Pickers UI states (To fix Focus Trap)
   const [activePicker, setActivePicker] = useState<'sub' | 'trans' | 'temp' | null>(null);
 
   const [formData, setFormData] = useState({
@@ -80,15 +80,24 @@ export default function SubConContractsListPage() {
   const { data: templates } = useCollection<any>(templatesQuery);
 
   const filteredSubs = useMemo(() => {
-    return (subcontractors || []).filter(s => s.name.toLowerCase().includes(subSearch.toLowerCase()) || (s.trade && s.trade.toLowerCase().includes(subSearch.toLowerCase())));
+    return (subcontractors || []).filter(s => 
+      s.name.toLowerCase().includes(subSearch.toLowerCase()) || 
+      (s.trade && s.trade.toLowerCase().includes(subSearch.toLowerCase()))
+    );
   }, [subcontractors, subSearch]);
 
   const filteredTrans = useMemo(() => {
-    return (transactions || []).filter(t => t.subServiceName.toLowerCase().includes(transSearch.toLowerCase()) || t.transactionNumber.toLowerCase().includes(transSearch.toLowerCase()));
+    return (transactions || []).filter(t => 
+      t.subServiceName.toLowerCase().includes(transSearch.toLowerCase()) || 
+      t.transactionNumber.toLowerCase().includes(transSearch.toLowerCase())
+    );
   }, [transactions, transSearch]);
 
   const filteredTemps = useMemo(() => {
-    return (templates || []).filter(t => t.name.toLowerCase().includes(tempSearch.toLowerCase()) || (t.trade && t.trade.toLowerCase().includes(tempSearch.toLowerCase())));
+    return (templates || []).filter(t => 
+      t.name.toLowerCase().includes(tempSearch.toLowerCase()) || 
+      (t.trade && t.trade.toLowerCase().includes(tempSearch.toLowerCase()))
+    );
   }, [templates, tempSearch]);
 
   const filtered = (contracts || []).filter(c => 
@@ -215,7 +224,6 @@ export default function SubConContractsListPage() {
         </CardContent>
       </Card>
 
-      {/* النافذة المنبثقة لإصدار العقد - إعادة بناء نظام البحث */}
       <Dialog open={isIssueOpen} onOpenChange={(v) => { if(!v) setIsIssueOpen(false); setActivePicker(null); }}>
          <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-2xl text-start" dir={dir}>
             <div className="bg-primary p-10 text-white text-start">
@@ -260,7 +268,8 @@ export default function SubConContractsListPage() {
                               {filteredSubs.map(s => (
                                 <div 
                                   key={s.id} 
-                                  onClick={() => { 
+                                  onClick={(e) => { 
+                                    e.stopPropagation();
                                     setFormData({...formData, subcontractorId: s.id, subcontractorName: s.name}); 
                                     setActivePicker(null); 
                                     setSubSearch(""); 
@@ -316,7 +325,8 @@ export default function SubConContractsListPage() {
                               {filteredTrans.map(t_item => (
                                 <div 
                                   key={t_item.id} 
-                                  onClick={() => { 
+                                  onClick={(e) => { 
+                                    e.stopPropagation();
                                     setFormData({...formData, transactionId: t_item.id, transactionNumber: t_item.transactionNumber, transactionName: t_item.subServiceName}); 
                                     setActivePicker(null); 
                                     setTransSearch(""); 
@@ -375,7 +385,8 @@ export default function SubConContractsListPage() {
                               {filteredTemps.map(temp => (
                                 <div 
                                   key={temp.id} 
-                                  onClick={() => { 
+                                  onClick={(e) => { 
+                                    e.stopPropagation();
                                     setFormData({...formData, templateId: temp.id, templateName: temp.name}); 
                                     setActivePicker(null); 
                                     setTempSearch(""); 
