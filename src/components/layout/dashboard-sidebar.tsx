@@ -33,7 +33,7 @@ import {
 export function DashboardSidebar() {
   const pathname = usePathname()
   const { state } = useSidebar()
-  const { t, isRtl } = useLanguage()
+  const { t, tSafe, isRtl } = useLanguage()
   const { canAccess, check } = usePermissions()
   const isCollapsed = state === "collapsed"
 
@@ -90,6 +90,7 @@ export function DashboardSidebar() {
         subItems: [
           { title: t('suppliers'), url: "/dashboard/procurement/suppliers", icon: Truck },
           { title: t('contracts'), url: "/dashboard/procurement/contracts", icon: Gavel },
+          { title: tSafe('subcon.contracts.title', 'عقود مقاولي الباطن', 'SubCon Contracts'), url: "/dashboard/procurement/subcontractors/contracts", icon: Handshake },
           { title: t('aiAnalysis'), url: "/dashboard/ai", icon: FileSearch },
         ]
       },
@@ -141,7 +142,7 @@ export function DashboardSidebar() {
         ]
       }
     ];
-  }, [t, check]);
+  }, [t, tSafe, check, isAdmin, globalUser?.employeeId, globalUser?.departmentId]);
 
   const visibleItems = React.useMemo(() => {
     const finalItems: any[] = [];
