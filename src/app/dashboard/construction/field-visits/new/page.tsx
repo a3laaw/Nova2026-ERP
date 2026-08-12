@@ -16,7 +16,7 @@ import {
   Truck, LayoutGrid, Hammer, Users, 
   Package, MapPin, Workflow, ShieldAlert,
   PlusCircle, X, UserCircle, HardHat,
-  Search
+  Search, Handshake, ChevronDown
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, where, getDocs, orderBy, doc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -31,6 +31,7 @@ import { BOQ, BOQItem } from '@/types/documents';
 import { usePermissions } from '@/hooks/use-permissions';
 import { BOQExecutionService } from '@/services/boq-execution-service';
 import { SmartDateInput } from '@/components/ui/smart-date-input';
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 function NewFieldVisitForm() {
   const { globalUser, user } = useAuthContext();
@@ -60,10 +61,13 @@ function NewFieldVisitForm() {
     (companyId && db) ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
   const equipQuery = useMemo(() => 
     (companyId && db) ? query(collection(db, paths.equipment(companyId)), where('status', '==', 'available')) : null, [db, companyId]);
+  const groupsQuery = useMemo(() => 
+    (companyId && db) ? query(collection(db, paths.workGroups(companyId)), where('isActive', '==', true)) : null, [db, companyId]);
 
   const { data: allTransactions } = useCollection<Transaction>(transQuery);
   const { data: employees } = useCollection<Employee>(empsQuery);
   const { data: equipmentList } = useCollection<any>(equipQuery);
+  const { data: workGroups } = useCollection<WorkGroup>(groupsQuery);
 
   const fieldProjects = useMemo(() => {
     return (allTransactions || []).filter(t => {
@@ -112,6 +116,44 @@ function NewFieldVisitForm() {
     if (!activeStage || !allBoqItems) return [];
     return allBoqItems.filter(i => (i.technicalStageIds?.includes(activeStage.technicalStageId) || i.technicalStageId === activeStage.technicalStageId));
   }, [activeStage, allBoqItems]);
+
+  // منع تكرار الموظفين
+  const getAvailableEmployees = (currentRowIdx: number) => {
+    const selectedIds = staffRows.map((r, i) => i !== currentRowIdx ? r.employeeId : null).filter(Boolean);
+    return (employees || []).filter(e => !selectedIds.includes(e.id));
+  };
+
+  // منع تكرار المعدات
+  const getAvailableEquipment = (currentRowIdx: number) => {
+    const selectedIds = equipRows.map((r, i) => i !== currentRowIdx ? r.equipmentId : null).filter(Boolean);
+    return (equipmentList || []).filter(e => !selectedIds.includes(e.id));
+  };
+
+  // تحميل من فريق عمل
+  const handleLoadGroup = (groupId: string) => {
+    const group = workGroups?.find(g => g.id === groupId);
+    if (!group || !employees) return;
+
+    const currentStaffIds = new Set(staffRows.map(r => r.employeeId).filter(Boolean));
+    const newRows = [...staffRows.filter(r => r.employeeId)];
+
+    group.memberIds.forEach(mid => {
+      if (!currentStaffIds.has(mid)) {
+        const emp = employees.find(e => e.id === mid);
+        if (emp) {
+          newRows.push({ employeeId: emp.id, position: emp.jobTitle, count: 1 });
+          currentStaffIds.add(mid);
+        }
+      }
+    });
+
+    if (newRows.length === 0) {
+      toast({ variant: "destructive", title: isRtl ? "الموظفون مضافون مسبقاً" : "Employees already added" });
+    } else {
+      setStaffRows(newRows);
+      toast({ title: isRtl ? "تم تحميل الطاقم" : "Group Loaded" });
+    }
+  };
 
   const handleSave = async () => {
     if (!db || !companyId || !user || !selectedProjectId || !activeBoq || !activeStage) return;
@@ -187,7 +229,7 @@ function NewFieldVisitForm() {
 
         <div className="flex gap-4">
            <Button variant="ghost" onClick={() => router.back()} className="rounded-xl font-black h-12 px-8 border-2 border-slate-100 bg-white hover:bg-slate-50 transition-all">{t('common.cancel')}</Button>
-           <Button onClick={handleSave} disabled={loading || !activeStage} className="h-12 px-12 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 gap-3 border-b-8 border-orange-700 hover:scale-[1.02] active:scale-95 transition-all">
+           <Button onClick={handleSave} disabled={loading || !activeStage} className="h-12 px-12 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 gap-3 border-b-4 border-orange-700 hover:scale-[1.02] active:scale-95 transition-all">
               {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />} 
               {tSafe('inline.commit.report.now', 'اعتماد التقرير الآن', 'Commit Report Now')}
            </Button>
@@ -294,14 +336,28 @@ function NewFieldVisitForm() {
 
          <div className="grid grid-cols-1 xl:grid-cols-2 gap-10 pb-20">
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
-               <CardHeader className="bg-slate-50/80 border-b p-6 flex flex-row items-center justify-between">
-                  <div>
+               <CardHeader className="bg-slate-50/80 border-b p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div className="text-start">
                     <CardTitle className="text-sm font-black uppercase text-slate-700 tracking-widest flex items-center gap-2">
-                       <UserCircle className="h-4 w-4" /> 
+                       <UserCircle className="h-4 w-4 text-primary" /> 
                        {tSafe('inline.staff.resources', 'الموارد البشرية', 'Staff Resources')}
                     </CardTitle>
                   </div>
-                  <Button variant="ghost" size="icon" onClick={() => setStaffRows([...staffRows, { employeeId: '', position: '', count: 1 }])} className="text-primary hover:bg-primary/5 rounded-full"><PlusCircle className="h-6 w-6" /></Button>
+                  <div className="flex gap-2">
+                     <Select onValueChange={handleLoadGroup}>
+                        <SelectTrigger className="h-10 w-48 rounded-xl border-2 font-black text-[10px] bg-white">
+                           <SelectValue placeholder={isRtl ? 'تحميل من طاقم...' : 'Load from Group...'} />
+                        </SelectTrigger>
+                        <SelectContent className="z-[160] shadow-3xl rounded-xl">
+                           {workGroups?.map(g => (
+                             <SelectItem key={g.id} value={g.id!} className="font-bold py-3">
+                                <div className="flex items-center gap-2"><Handshake className="h-3 w-3 text-primary" /> {g.name}</div>
+                             </SelectItem>
+                           ))}
+                        </SelectContent>
+                     </Select>
+                     <Button variant="ghost" size="icon" onClick={() => setStaffRows([...staffRows, { employeeId: '', position: '', count: 1 }])} className="text-primary hover:bg-primary/5 rounded-full"><PlusCircle className="h-6 w-6" /></Button>
+                  </div>
                </CardHeader>
                <CardContent className="p-0">
                   <Table>
@@ -313,33 +369,36 @@ function NewFieldVisitForm() {
                         </TableRow>
                      </TableHeader>
                      <TableBody>
-                        {staffRows.map((row, idx) => (
-                           <TableRow key={idx} className="border-b last:border-0 hover:bg-slate-50/50">
-                              <TableCell className="ps-6 py-3">
-                                 <Select value={row.employeeId} onValueChange={v => {
-                                    const emp = employees?.find(e => e.id === v);
-                                    const nr = [...staffRows];
-                                    nr[idx] = { ...nr[idx], employeeId: v, position: emp?.jobTitle || '' };
-                                    setStaffRows(nr);
-                                 }}>
-                                    <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs bg-white"><SelectValue placeholder="..." /></SelectTrigger>
-                                    <SelectContent className="rounded-xl z-[160] shadow-3xl">
-                                       {employees?.map(e => (
-                                         <SelectItem key={e.id} value={e.id!} className="font-bold py-3">
-                                            {e.fullName} <Badge variant="outline" className="ms-2 text-[8px] h-4 border-0 bg-slate-100">{e.jobTitle}</Badge>
-                                         </SelectItem>
-                                       ))}
-                                    </SelectContent>
-                                 </Select>
-                              </TableCell>
-                              <TableCell className="py-3">
-                                 <Input type="number" value={row.count} onChange={e => { const nr = [...staffRows]; nr[idx].count = e.target.value; setStaffRows(nr); }} className="h-10 text-center font-black border-2 rounded-xl" />
-                              </TableCell>
-                              <TableCell className="pe-4 text-center">
-                                 <button onClick={() => setStaffRows(staffRows.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-rose-500 p-1"><X className="h-4 w-4" /></button>
-                              </TableCell>
-                           </TableRow>
-                        ))}
+                        {staffRows.map((row, idx) => {
+                           const availableEmps = getAvailableEmployees(idx);
+                           return (
+                             <TableRow key={idx} className="border-b last:border-0 hover:bg-slate-50/50 transition-colors">
+                                <TableCell className="ps-6 py-3">
+                                   <Select value={row.employeeId} onValueChange={v => {
+                                      const emp = employees?.find(e => e.id === v);
+                                      const nr = [...staffRows];
+                                      nr[idx] = { ...nr[idx], employeeId: v, position: emp?.jobTitle || '' };
+                                      setStaffRows(nr);
+                                   }}>
+                                      <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs bg-white"><SelectValue placeholder="..." /></SelectTrigger>
+                                      <SelectContent className="rounded-xl z-[160] shadow-3xl">
+                                         {availableEmps?.map(e => (
+                                           <SelectItem key={e.id} value={e.id!} className="font-bold py-3">
+                                              {e.fullName} <Badge variant="outline" className="ms-2 text-[8px] h-4 border-0 bg-slate-100">{e.jobTitle}</Badge>
+                                           </SelectItem>
+                                         ))}
+                                      </SelectContent>
+                                   </Select>
+                                </TableCell>
+                                <TableCell className="py-3">
+                                   <Input type="number" value={row.count} onChange={e => { const nr = [...staffRows]; nr[idx].count = e.target.value; setStaffRows(nr); }} className="h-10 text-center font-black border-2 rounded-xl" />
+                                </TableCell>
+                                <TableCell className="pe-4 text-center">
+                                   <button onClick={() => setStaffRows(staffRows.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-rose-500 p-1 transition-colors"><X className="h-4 w-4" /></button>
+                                </TableCell>
+                             </TableRow>
+                           );
+                        })}
                      </TableBody>
                   </Table>
                </CardContent>
@@ -349,7 +408,7 @@ function NewFieldVisitForm() {
                <CardHeader className="bg-slate-50/80 border-b p-6 flex flex-row items-center justify-between">
                   <div>
                     <CardTitle className="text-sm font-black uppercase text-slate-700 tracking-widest flex items-center gap-2">
-                       <Truck className="h-4 w-4" /> 
+                       <Truck className="h-4 w-4 text-primary" /> 
                        {tSafe('common.equipment', 'المعدات والآليات', 'Equipment')}
                     </CardTitle>
                   </div>
@@ -366,31 +425,34 @@ function NewFieldVisitForm() {
                         </TableRow>
                      </TableHeader>
                      <TableBody>
-                        {equipRows.map((row, idx) => (
-                           <TableRow key={idx} className="border-b last:border-0 hover:bg-slate-50/50">
-                              <TableCell className="ps-6 py-3">
-                                 <Select value={row.equipmentId} onValueChange={v => { const nr = [...equipRows]; nr[idx].equipmentId = v; setEquipRows(nr); }}>
-                                    <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs bg-white"><SelectValue placeholder="..." /></SelectTrigger>
-                                    <SelectContent className="rounded-xl z-[160] shadow-3xl">
-                                       {equipmentList?.map(eq => (
-                                         <SelectItem key={eq.id} value={eq.id!} className="font-bold py-3">
-                                            {eq.name} <span className="text-[8px] text-slate-400">({eq.code})</span>
-                                         </SelectItem>
-                                       ))}
-                                    </SelectContent>
-                                 </Select>
-                              </TableCell>
-                              <TableCell className="py-3">
-                                 <Input type="number" value={row.count} onChange={e => { const nr = [...equipRows]; nr[idx].count = e.target.value; setEquipRows(nr); }} className="h-10 text-center font-black border-2 rounded-xl" />
-                              </TableCell>
-                              <TableCell className="py-3">
-                                 <Input type="number" value={row.hours} onChange={e => { const nr = [...equipRows]; nr[idx].hours = e.target.value; setEquipRows(nr); }} className="h-10 text-center font-black border-2 rounded-xl" />
-                              </TableCell>
-                              <TableCell className="pe-4 text-center">
-                                 <button onClick={() => setEquipRows(equipRows.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-rose-500 p-1"><X className="h-4 w-4" /></button>
-                              </TableCell>
-                           </TableRow>
-                        ))}
+                        {equipRows.map((row, idx) => {
+                           const availableEquip = getAvailableEquipment(idx);
+                           return (
+                             <TableRow key={idx} className="border-b last:border-0 hover:bg-slate-50/50 transition-colors">
+                                <TableCell className="ps-6 py-3">
+                                   <Select value={row.equipmentId} onValueChange={v => { const nr = [...equipRows]; nr[idx].equipmentId = v; setEquipRows(nr); }}>
+                                      <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs bg-white"><SelectValue placeholder="..." /></SelectTrigger>
+                                      <SelectContent className="rounded-xl z-[160] shadow-3xl">
+                                         {availableEquip?.map(eq => (
+                                           <SelectItem key={eq.id} value={eq.id!} className="font-bold py-3">
+                                              {eq.name} <span className="text-[8px] text-slate-400">({eq.code})</span>
+                                           </SelectItem>
+                                         ))}
+                                      </SelectContent>
+                                   </Select>
+                                </TableCell>
+                                <TableCell className="py-3">
+                                   <Input type="number" value={row.count} onChange={e => { const nr = [...equipRows]; nr[idx].count = e.target.value; setEquipRows(nr); }} className="h-10 text-center font-black border-2 rounded-xl" />
+                                </TableCell>
+                                <TableCell className="py-3">
+                                   <Input type="number" value={row.hours} onChange={e => { const nr = [...equipRows]; nr[idx].hours = e.target.value; setEquipRows(nr); }} className="h-10 text-center font-black border-2 rounded-xl" />
+                                </TableCell>
+                                <TableCell className="pe-4 text-center">
+                                   <button onClick={() => setEquipRows(equipRows.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-rose-500 p-1 transition-colors"><X className="h-4 w-4" /></button>
+                                </TableCell>
+                             </TableRow>
+                           );
+                        })}
                      </TableBody>
                   </Table>
                </CardContent>
@@ -400,7 +462,7 @@ function NewFieldVisitForm() {
                <CardHeader className="bg-slate-50/80 border-b p-6 flex flex-row items-center justify-between">
                   <div>
                     <CardTitle className="text-sm font-black uppercase text-slate-700 tracking-widest flex items-center gap-2">
-                       <Package className="h-4 w-4" /> 
+                       <Package className="h-4 w-4 text-primary" /> 
                        {tSafe('inline.materials', 'المواد الموردة للموقع', 'Materials')}
                     </CardTitle>
                   </div>
