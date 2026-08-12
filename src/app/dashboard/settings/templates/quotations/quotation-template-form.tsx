@@ -15,7 +15,7 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { 
-  Save, X, Plus, Trash2, Loader2, ArrowRight,
+  Save, Plus, Trash2, Loader2, ArrowRight,
   FileText, Calculator, DollarSign, ShieldCheck,
   AlertTriangle, Target, Percent, Workflow,
   LayoutGrid, Clock, Link as LinkIcon, Info,
@@ -78,7 +78,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
     return query(collection(db, paths.services(companyId, formData.activityTypeId)), orderBy('order'));
   }, [db, companyId, formData.activityTypeId]);
 
-  // الربط السيادي الصارم بالنشاط والمسار
   const boqTemplatesQuery = useMemo(() => {
     if (!companyId || !db || !formData.subServiceId || !formData.activityTypeId) return null;
     return query(
@@ -155,11 +154,18 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
     }
   };
 
+  const getOrdinalLabel = (index: number) => {
+    const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"];
+    const enOrdinals = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
+    const base = tSafe('inline.installment', 'الدفعة', 'Installment');
+    const ordinal = isRtl ? (arOrdinals[index] || `#${index + 1}`) : (enOrdinals[index] || `#${index + 1}`);
+    return `${base} ${ordinal}`;
+  };
+
   const updateItem = (idx: number, field: keyof QuotationItem, value: any) => {
     const newItems = [...(formData.items || [])];
     const item = { ...newItems[idx], [field]: value };
     
-    // ربط النسبة المئوية بالمبلغ تلقائياً بناءً على الميزانية المستهدفة
     if (formData.pricingMode === 'percentage' && (field === 'percentage' || field === 'amount')) {
       const total = formData.baseAmount || 0;
       if (field === 'percentage') {
@@ -174,10 +180,11 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
   };
 
   const addItem = () => {
+    const nextIdx = (formData.items || []).length;
     setFormData({
       ...formData, 
       items: [...(formData.items || []), { 
-        label: '', 
+        label: getOrdinalLabel(nextIdx), 
         percentage: 0, 
         unitPrice: 0, 
         quantity: 0, 
@@ -199,7 +206,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
             <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
           </Button>
           <div className="text-start">
-             <h1 className="text-xl font-black text-slate-900 leading-none">{tSafe('inline.quotation.design', 'هندسة قوالب عروض الأسعار', 'Quotation Template Design')}</h1>
+             <h1 className="text-xl font-black text-slate-900 leading-none">{tSafe('inline.quotation.template.design', 'هندسة قوالب عروض الأسعار', 'Quotation Template Design')}</h1>
              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{formData.name || 'Draft Quotation Template'}</p>
           </div>
         </div>
@@ -222,27 +229,27 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
             <Card className="border-0 shadow-xl rounded-[2rem] bg-white ring-1 ring-black/5 overflow-hidden">
                <CardHeader className="bg-primary/5 p-6 border-b">
                   <CardTitle className="text-xs font-black flex items-center gap-3 uppercase tracking-widest text-primary">
-                     <Target className="h-4 w-4" /> {isRtl ? 'السياق التشغيلي' : 'Operational Context'}
+                     <Target className="h-4 w-4" /> {tSafe('inline.operational.context', 'الارتباط التشغيلي السيادي', 'Operational Context')}
                   </CardTitle>
                </CardHeader>
                <CardContent className="p-6 space-y-6">
                   <div className="space-y-4">
                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">النشاط</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'النشاط الرئيسي' : 'Activity Type'}</Label>
                         <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: '', boqTemplateId: ''})}>
                            <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
                            <SelectContent className="rounded-xl">{activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent>
                         </Select>
                      </div>
                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">الخدمة</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الخدمة الأساسية' : 'Main Service'}</Label>
                         <Select disabled={!formData.activityTypeId} value={formData.serviceId} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: '', boqTemplateId: ''})}>
                            <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
                            <SelectContent className="rounded-xl">{services?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
                         </Select>
                      </div>
                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">المسار</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المسار الفني الدقيق' : 'Specific Technical Path'}</Label>
                         <Select disabled={!formData.serviceId} value={formData.subServiceId} onValueChange={v => {
                            const sub = activeSubs.find(s => s.id === v);
                            setFormData({...formData, subServiceId: v, subServiceName: sub?.name || '', boqTemplateId: ''});
@@ -269,6 +276,10 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                               ))}
                            </SelectContent>
                         </Select>
+                     </div>
+                     <div className="p-4 rounded-2xl bg-blue-50 border-2 border-blue-100 flex items-start gap-3">
+                        <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                        <p className="text-[9px] font-bold text-blue-700 leading-relaxed italic">{isRtl ? 'تنبيه: ربط القوالب يضمن دقة الفوترة ومنع الخطأ في اختيار المقايسات أثناء التعاقد مع العملاء.' : 'Linking templates ensures billing accuracy and prevents errors in selecting BOQs during client contracting.'}</p>
                      </div>
                   </div>
                </CardContent>
@@ -312,23 +323,23 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                   <div className="space-y-6">
                      <div className="flex justify-between items-center px-4">
                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                           <LayoutGrid className="h-5 w-5 text-primary" /> {isRtl ? 'جدول بنود التسعير والربط الفني' : 'Pricing Items & Pipeline Link'}
+                           <LayoutGrid className="h-5 w-5 text-primary" /> {tSafe('inline.pricing.items...pipeline.links', 'بنود التسعير والارتباط الفني', 'Pricing Items & Pipeline Links')}
                         </h4>
                         <Button variant="outline" size="sm" onClick={addItem} className="rounded-xl font-black text-[10px] border-2 h-10 px-8 gap-3 bg-white hover:bg-primary/5 shadow-md">
-                           <Plus className="h-4 w-4 text-primary" /> {isRtl ? 'إضافة بند' : 'Add Item'}
+                           <Plus className="h-4 w-4 text-primary" /> {tSafe('inline.add.detail', 'إضافة بند', 'Add Item')}
                         </Button>
                      </div>
 
-                     <div className="border-2 border-slate-200 rounded-[2.5rem] overflow-hidden bg-white shadow-xl ring-1 ring-black/[0.02]">
+                     <div className="border-2 border-slate-100 rounded-[2.5rem] overflow-hidden bg-white shadow-xl ring-1 ring-black/[0.02]">
                         <table className="w-full text-xs text-start">
                            <thead className="bg-slate-50 border-b-2 text-slate-600 font-black uppercase text-[10px] tracking-widest">
                               <tr>
                                  <th className="p-6 w-12 text-start">#</th>
-                                 <th className="p-6 text-start">{isRtl ? 'مسمى البند' : 'Item Label'}</th>
+                                 <th className="p-6 text-start">{tSafe('inline.item.label', 'مسمى البند / الدفعة', 'Description')}</th>
                                  {formData.pricingMode === 'percentage' && <th className="p-6 text-center w-24">%</th>}
-                                 <th className="p-6 text-center w-32">{isRtl ? 'التوقيت' : 'Timing'}</th>
-                                 <th className="p-6 text-start w-48">{isRtl ? 'الارتباط الفني' : 'Technical Link'}</th>
-                                 <th className="p-6 text-end pe-12 w-48">{isRtl ? 'المبلغ' : 'Amount'}</th>
+                                 <th className="p-6 text-center w-32">{tSafe('inline.timing', 'التوقيت', 'Timing')}</th>
+                                 <th className="p-6 text-start w-48">{tSafe('inline.technical.link', 'الارتباط الفني', 'Technical Link')}</th>
+                                 <th className="p-6 text-end pe-12 w-48">{tSafe('inline.amount', 'القيمة', 'Amount')}</th>
                                  <th className="p-6 w-14"></th>
                               </tr>
                            </thead>
@@ -351,10 +362,10 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                       <Select value={m.timing || 'at'} onValueChange={v => updateItem(idx, 'timing', v)}>
                                          <SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs bg-white"><SelectValue /></SelectTrigger>
                                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
-                                            <SelectItem value="at" className="font-bold text-xs">{isRtl ? 'عند' : 'at'}</SelectItem>
-                                            <SelectItem value="before" className="font-bold text-xs">{isRtl ? 'قبل' : 'before'}</SelectItem>
-                                            <SelectItem value="during" className="font-bold text-xs">{isRtl ? 'أثناء' : 'during'}</SelectItem>
-                                            <SelectItem value="after" className="font-bold text-xs">{isRtl ? 'بعد' : 'after'}</SelectItem>
+                                            <SelectItem value="at" className="font-bold text-xs">{t('at')}</SelectItem>
+                                            <SelectItem value="before" className="font-bold text-xs">{t('before')}</SelectItem>
+                                            <SelectItem value="during" className="font-bold text-xs">{t('during')}</SelectItem>
+                                            <SelectItem value="after" className="font-bold text-xs">{t('after')}</SelectItem>
                                          </SelectContent>
                                       </Select>
                                    </td>
@@ -368,7 +379,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                          </SelectTrigger>
                                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
                                             <SelectItem value="SIGNING" className="font-black text-[10px] py-3 border-b border-slate-50">
-                                               <span className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-emerald-500" /> {isRtl ? 'توقيع العقد' : 'Contract Signing'}</span>
+                                               <span className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-emerald-500" /> {t('contractSigning')}</span>
                                             </SelectItem>
                                             {pathStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
                                                <span className="flex items-center gap-2"><Workflow className="h-3 w-3 text-primary" /> {s.name}</span>
@@ -402,7 +413,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                       </div>
                                    </td>
                                    <td className="p-4 text-center">
-                                      <button type="button" onClick={() => setFormData({...formData, items: formData.items?.filter((_, i) => i !== idx)})} className="text-rose-300 hover:text-rose-600 transition-colors hover:scale-110"><Trash2 className="h-5 w-5" /></button>
+                                      <button type="button" onClick={() => setFormData({...formData, items: formData.items?.filter((_, i) => i !== idx)})} className="text-rose-300 hover:text-rose-600 transition-colors"><Trash2 className="h-5 w-5" /></button>
                                    </td>
                                 </tr>
                               ))}
@@ -429,7 +440,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
 
                   <div className="space-y-4 pt-10 text-start">
                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 border-b-4 border-primary/20 pb-3">
-                        <ShieldCheck className="h-6 w-6 text-primary" /> {isRtl ? 'الشروط والأحكام المرجعية' : 'Terms & Conditions'}
+                        <ShieldCheck className="h-6 w-6 text-primary" /> {t('defaultTerms')}
                      </h4>
                      <Textarea value={formData.defaultTerms || ''} onChange={e => setFormData({...formData, defaultTerms: e.target.value})} className="min-h-[250px] rounded-[3rem] border-2 p-10 text-base font-bold leading-relaxed bg-slate-50 focus:bg-white transition-all shadow-inner" placeholder="..." />
                   </div>

@@ -167,9 +167,29 @@ export default function QuotationViewPage() {
     }
   };
 
+  const getOrdinalLabel = (index: number) => {
+    const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"];
+    const enOrdinals = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
+    const base = tSafe('inline.installment', 'الدفعة', 'Installment');
+    const ordinal = isRtl ? (arOrdinals[index] || `#${index + 1}`) : (enOrdinals[index] || `#${index + 1}`);
+    return `${base} ${ordinal}`;
+  };
+
   const updateItem = (idx: number, field: keyof QuotationItem, val: any) => {
     const newItems = [...(editData.items || [])];
-    (newItems[idx] as any)[field] = val;
+    const item = { ...newItems[idx], [field]: val };
+    
+    // ربط تفاعلي للنسبة
+    if (editData.pricingMode === 'percentage' && (field === 'percentage' || field === 'amount')) {
+      const total = editData.totalAmount || quote?.totalAmount || 0;
+      if (field === 'percentage') {
+        item.amount = (total * (Number(val) || 0)) / 100;
+      } else if (field === 'amount' && total > 0) {
+        item.percentage = (Number(val) / total) * 100;
+      }
+    }
+
+    newItems[idx] = item;
     setEditForm({ ...editData, items: newItems });
   };
 
@@ -188,14 +208,6 @@ export default function QuotationViewPage() {
         technicalStageId: ''
       }]
     });
-  };
-
-  const getOrdinalLabel = (index: number) => {
-    const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"];
-    const enOrdinals = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
-    const base = tSafe('inline.installment', 'الدفعة', 'Installment');
-    const ordinal = isRtl ? (arOrdinals[index] || `#${index + 1}`) : (enOrdinals[index] || `#${index + 1}`);
-    return `${base} ${ordinal}`;
   };
 
   if (loading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
@@ -222,7 +234,7 @@ export default function QuotationViewPage() {
                  <h1 className="text-2xl font-black text-slate-900">{t('common.quotation')}</h1>
                  <Badge className={cn(
                    "font-black px-4 py-1.5 rounded-xl shadow-sm uppercase text-[10px]",
-                   (editData.status || quote.status) === 'approved' ? 'bg-emerald-500 text-white' : 'bg-primary text-white'
+                   (editData.status || quote.status) === 'approved' ? 'bg-emerald-50 text-emerald-600' : 'bg-primary text-white'
                  )}>
                     {editData.status || quote.status}
                  </Badge>
@@ -285,9 +297,9 @@ export default function QuotationViewPage() {
                     </div>
                  </div>
                  <div className="text-center md:text-end relative z-10 shrink-0">
-                    <div className="bg-slate-900 text-white p-10 rounded-[2.5rem] shadow-2xl ring-4 ring-white">
+                    <div className="bg-primary/5 p-10 rounded-[2.5rem] border-2 border-white shadow-xl ring-4 ring-white">
                        <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-2">{tSafe('inline.total.amount', 'إجمالي قيمة العرض', 'Total Proposal Value')}</p>
-                       <h3 className="text-5xl font-black font-headline">
+                       <h3 className="text-5xl font-black font-headline text-slate-900">
                           {(currentDisplayAmount || 0).toLocaleString()} <span className="text-sm font-bold opacity-40">KWD</span>
                        </h3>
                     </div>
@@ -412,9 +424,9 @@ export default function QuotationViewPage() {
                                   <td className="p-4 text-end pe-12 w-48">
                                      {isEditing && editData.pricingMode !== 'percentage' ? (
                                         <div className="flex items-center gap-2 justify-end">
-                                           <Input type="number" step="1" value={item.quantity || 1} onChange={e => updateItem(originalIdx, 'quantity', Number(e.target.value))} className="h-10 w-14 text-center font-black border-2 rounded-xl" />
+                                           <Input type="number" step="1" value={item.quantity || 1} onChange={e => updateItem(originalIdx, 'quantity', Number(e.target.value))} className="h-10 w-14 text-center font-black border-2 rounded-xl" placeholder="Qty" />
                                            <X className="h-3 w-3 opacity-20" />
-                                           <Input type="number" step="0.001" value={item.unitPrice === 0 ? "" : item.unitPrice} onChange={e => updateItem(originalIdx, 'unitPrice', Number(e.target.value))} className="h-10 w-24 text-end font-black text-emerald-600 text-sm bg-slate-50 border-2 rounded-xl" />
+                                           <Input type="number" step="0.001" value={item.unitPrice === 0 ? "" : item.unitPrice} onChange={e => updateItem(originalIdx, 'unitPrice', Number(e.target.value))} className="h-10 w-24 text-end font-black text-emerald-600 text-sm bg-slate-50 border-2 rounded-xl" placeholder="Rate" />
                                         </div>
                                      ) : (
                                         <p className="font-mono font-black text-emerald-600 text-2xl">{(lineAmount || 0).toLocaleString()} <span className="text-xs opacity-40">KWD</span></p>
@@ -428,7 +440,7 @@ export default function QuotationViewPage() {
                        <tfoot className="bg-slate-50 border-t-8 border-primary">
                           <tr>
                              <td colSpan={editData.pricingMode === 'percentage' ? (isEditing ? 5 : 4) : (isEditing ? 4 : 3)} className="p-10 text-start">
-                                <h3 className="text-2xl font-black font-headline uppercase tracking-tighter text-slate-900">{tSafe('inline.total.amount', 'إجمالي قيمة العرض المقترح', 'Total Quotation Proposed Value')}</h3>
+                                <h3 className="text-2xl font-black font-headline uppercase tracking-tighter text-slate-800">{tSafe('inline.total.amount', 'إجمالي قيمة العرض المقترح', 'Total Quotation Proposed Value')}</h3>
                                 {editData.pricingMode === 'percentage' && (
                                    <Badge className={cn("mt-3 border-0 text-[10px] font-black h-8 px-6 shadow-xl", stats.isValid ? "bg-emerald-600 text-white" : "bg-rose-600 text-white")}>
                                       {stats.isValid ? `${tSafe('inline.balanced', 'متوازن', 'BALANCED')}: 100%` : `${tSafe('inline.mismatch', 'غير متوازن', 'MISMATCH')}: ${stats.totalPercentage}%`}

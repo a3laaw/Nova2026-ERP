@@ -93,8 +93,8 @@ export default function ContractViewPage() {
 
   const stats = useMemo(() => {
     const milestones = editData.milestones || [];
-    const totalPercentage = milestones.reduce((acc, m) => acc + (m.percentage || 0), 0);
-    const totalItemizedAmount = milestones.reduce((acc, m) => acc + (m.amount || 0), 0);
+    const totalPercentage = milestones.reduce((acc, m) => acc + (Number(m.percentage) || 0), 0);
+    const totalItemizedAmount = milestones.reduce((acc, m) => acc + (Number(m.amount) || 0), 0);
     const isPercentageMode = editData.pricingMode === 'percentage';
     const isValid = isPercentageMode ? Math.abs(totalPercentage - 100) < 0.1 : true;
     return { totalPercentage, totalItemizedAmount, isValid };
@@ -146,9 +146,29 @@ export default function ContractViewPage() {
     }
   };
 
+  const getOrdinalLabel = (index: number) => {
+    const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"];
+    const enOrdinals = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
+    const base = tSafe('inline.installment', 'الدفعة', 'Installment');
+    const ordinal = isRtl ? (arOrdinals[index] || `#${index + 1}`) : (enOrdinals[index] || `#${index + 1}`);
+    return `${base} ${ordinal}`;
+  };
+
   const updateMilestone = (idx: number, field: keyof ContractMilestone, value: any) => {
     const newM = [...(editData.milestones || [])];
-    newM[idx] = { ...newM[idx], [field]: value };
+    const item = { ...newM[idx], [field]: value };
+
+    // ربط تفاعلي للنسبة
+    if (editData.pricingMode === 'percentage' && (field === 'percentage' || field === 'amount')) {
+       const total = editData.totalAmount || 0;
+       if (field === 'percentage') {
+         item.amount = (total * (Number(value) || 0)) / 100;
+       } else if (field === 'amount' && total > 0) {
+         item.percentage = (Number(value) / total) * 100;
+       }
+    }
+
+    newM[idx] = item;
     setEditForm({ ...editData, milestones: newM });
   };
 
@@ -165,14 +185,6 @@ export default function ContractViewPage() {
         contractualEvent: 'SIGNING' 
       }]
     });
-  };
-
-  const getOrdinalLabel = (index: number) => {
-    const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"];
-    const enOrdinals = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
-    const base = tSafe('inline.installment', 'الدفعة', 'Installment');
-    const ordinal = isRtl ? (arOrdinals[index] || `#${index + 1}`) : (enOrdinals[index] || `#${index + 1}`);
-    return `${base} ${ordinal}`;
   };
 
   const handleMarkAsPaid = async (docId: string) => {
@@ -223,7 +235,7 @@ export default function ContractViewPage() {
         <div className="flex gap-2">
            {!isEditing && contract.status !== 'paid' && isAdmin && (
               <Button onClick={() => handleMarkAsPaid(contract.id)} disabled={saving} variant="outline" className="rounded-xl h-10 px-6 font-black gap-2 bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100">
-                 <Wallet className="h-4 w-4" /> {t('contracts.markPaid')}
+                 <Wallet className="h-4 w-4" /> {isRtl ? 'توثيق سداد' : 'Mark Paid'}
               </Button>
            )}
            {isEditing ? (
@@ -255,7 +267,7 @@ export default function ContractViewPage() {
                 <div className="flex items-center gap-4 text-start">
                   <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-lg"><Calculator className="h-5 w-5" /></div>
                   <div>
-                    <p className="text-[10px] font-black uppercase text-primary tracking-widest">{t('pricingMode')}</p>
+                    <p className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'نمط التسعير' : 'Pricing Mode'}</p>
                     {isEditing ? (
                       <Select value={editData.pricingMode} onValueChange={(v: PricingMode) => setEditForm({...editData, pricingMode: v})}>
                          <SelectTrigger className="h-10 w-40 rounded-xl border-2 bg-white text-slate-900 font-black text-xs mt-1"><SelectValue /></SelectTrigger>
@@ -389,7 +401,7 @@ export default function ContractViewPage() {
                                 <td className="p-5 text-start">
                                    {isEditing ? (
                                       <Select value={m.technicalStageId || 'SIGNING'} onValueChange={v => updateMilestone(idx, 'technicalStageId', v)}>
-                                         <SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs bg-white"><SelectValue /></SelectTrigger>
+                                         <SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs bg-white"><SelectValue placeholder="..." /></SelectTrigger>
                                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
                                             <SelectItem value="SIGNING" className="font-bold text-xs">{t('contractSigning')}</SelectItem>
                                             {stages?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50 text-start">
@@ -407,7 +419,7 @@ export default function ContractViewPage() {
                                    )}
                                 </td>
                                 <td className="p-5 text-end pe-10 w-40">
-                                   {isEditing && editData.pricingMode === 'itemized' ? (
+                                   {isEditing && editData.pricingMode !== 'percentage' ? (
                                       <Input type="number" step="0.001" value={m.amount === 0 ? "" : m.amount} onChange={e => updateMilestone(idx, 'amount', e.target.value === "" ? 0 : Number(e.target.value))} className="h-10 w-32 ms-auto text-end font-black text-emerald-600 text-sm bg-slate-50 border-2" />
                                    ) : (
                                       <span className="font-mono font-black text-emerald-600 text-lg">{(lineAmount || 0).toLocaleString()} <span className="text-[10px] opacity-40">KWD</span></span>

@@ -17,9 +17,9 @@ import {
 import { 
   Save, Plus, Trash2, Loader2, ArrowRight,
   Gavel, Calculator, DollarSign, ShieldCheck,
-  AlertTriangle, Target, Percent, Workflow,
-  FileText, LayoutGrid, Clock, Link as LinkIcon, Info,
-  X, Landmark
+  Target, Percent, Workflow,
+  LayoutGrid, Clock, Link as LinkIcon, Info,
+  Landmark
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -78,7 +78,6 @@ export function ContractTemplateForm({ template, onClose }: Props) {
     return query(collection(db, paths.services(companyId, formData.activityTypeId)), orderBy('order'));
   }, [db, companyId, formData.activityTypeId]);
 
-  // الربط السيادي: فلترة المقايسات بناءً على المسار الفني والنشاط حصراً
   const boqTemplatesQuery = useMemo(() => {
     if (!companyId || !db || !formData.subServiceId || !formData.activityTypeId) return null;
     return query(
@@ -155,11 +154,18 @@ export function ContractTemplateForm({ template, onClose }: Props) {
     }
   };
 
+  const getOrdinalLabel = (index: number) => {
+    const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"];
+    const enOrdinals = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
+    const base = tSafe('inline.installment', 'الدفعة', 'Installment');
+    const ordinal = isRtl ? (arOrdinals[index] || `#${index + 1}`) : (enOrdinals[index] || `#${index + 1}`);
+    return `${base} ${ordinal}`;
+  };
+
   const updateMilestone = (idx: number, field: keyof ContractMilestone, value: any) => {
     const newM = [...(formData.defaultMilestones || [])];
     const item = { ...newM[idx], [field]: value };
     
-    // ربط النسبة المئوية بالمبلغ تلقائياً
     if (formData.pricingMode === 'percentage' && (field === 'percentage' || field === 'amount')) {
       const total = formData.baseAmount || 0;
       if (field === 'percentage') {
@@ -174,10 +180,11 @@ export function ContractTemplateForm({ template, onClose }: Props) {
   };
 
   const addMilestone = () => {
+    const nextIdx = (formData.defaultMilestones || []).length;
     setFormData({
       ...formData, 
       defaultMilestones: [...(formData.defaultMilestones || []), { 
-        name: '', 
+        name: getOrdinalLabel(nextIdx), 
         percentage: 0, 
         amount: 0, 
         timing: 'at', 
@@ -198,7 +205,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
             <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
           </Button>
           <div className="text-start">
-             <h1 className="text-xl font-black text-slate-900 leading-none">{isRtl ? 'هندسة قوالب العقود السيادية' : 'Sovereign Contract Engineering'}</h1>
+             <h1 className="text-xl font-black text-slate-900 leading-none">{tSafe('inline.sovereign.contract.engineering', 'هندسة قوالب العقود السيادية', 'Sovereign Contract Engineering')}</h1>
              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{formData.name || 'Draft Contract Template'}</p>
           </div>
         </div>
@@ -269,6 +276,10 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                            </SelectContent>
                         </Select>
                      </div>
+                     <div className="p-4 rounded-2xl bg-blue-50 border-2 border-blue-100 flex items-start gap-3">
+                        <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                        <p className="text-[9px] font-bold text-blue-700 leading-relaxed italic">{isRtl ? 'تنبيه: ربط القوالب يضمن دقة الفوترة ومنع الخطأ في اختيار المقايسات أثناء التعاقد مع العملاء.' : 'Linking templates ensures billing accuracy and prevents errors in selecting BOQs during client contracting.'}</p>
+                     </div>
                   </div>
                </CardContent>
             </Card>
@@ -292,7 +303,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                <div className="space-y-12 text-start">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b-2 pb-8">
                      <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'مسمى القالب' : 'Template Name'}</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.template.name', 'مسمى القالب', 'Template Name')}</Label>
                         <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-12 rounded-xl border-2 font-black text-lg bg-slate-50 shadow-inner" />
                      </div>
                      <div className="space-y-2">
@@ -311,10 +322,10 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                   <div className="space-y-6">
                      <div className="flex justify-between items-center px-4">
                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                           <LayoutGrid className="h-5 w-5 text-primary" /> {isRtl ? 'جدول الدفعات والربط الفني' : 'Payment Milestones & Pipeline'}
+                           <LayoutGrid className="h-5 w-5 text-primary" /> {tSafe('inline.payment.milestones.pipeline', 'جدول الدفعات والربط الفني', 'Payment Milestones & Pipeline')}
                         </h4>
                         <Button variant="outline" size="sm" onClick={addMilestone} className="rounded-xl font-black text-[10px] border-2 h-10 px-8 gap-3 bg-white hover:bg-primary/5 shadow-md">
-                           <Plus className="h-4 w-4 text-primary" /> {isRtl ? 'إضافة دفعة' : 'Add Milestone'}
+                           <Plus className="h-4 w-4 text-primary" /> {tSafe('inline.add.payment', 'إضافة دفعة', 'Add Payment')}
                         </Button>
                      </div>
 
@@ -323,11 +334,11 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                            <thead className="bg-slate-50 border-b-2 text-slate-600 font-black uppercase text-[10px] tracking-widest">
                               <tr>
                                  <th className="p-6 w-12 text-start">#</th>
-                                 <th className="p-6 text-start">{isRtl ? 'مسمى الدفعة' : 'Milestone Name'}</th>
+                                 <th className="p-6 text-start">{tSafe('inline.milestone.name', 'مسمى الدفعة', 'Milestone Name')}</th>
                                  {formData.pricingMode === 'percentage' && <th className="p-6 text-center w-24">%</th>}
-                                 <th className="p-6 text-center w-32">{isRtl ? 'التوقيت' : 'Timing'}</th>
-                                 <th className="p-6 text-start w-48">{isRtl ? 'الارتباط الفني' : 'Technical Link'}</th>
-                                 <th className="p-6 text-end pe-12 w-48">{isRtl ? 'المبلغ' : 'Amount'}</th>
+                                 <th className="p-6 text-center w-32">{tSafe('inline.timing', 'التوقيت', 'Timing')}</th>
+                                 <th className="p-6 text-start w-48">{tSafe('inline.technical.link', 'الارتباط الفني', 'Technical Link')}</th>
+                                 <th className="p-6 text-end pe-12 w-48">{tSafe('inline.amount', 'القيمة', 'Amount')}</th>
                                  <th className="p-6 w-14"></th>
                               </tr>
                            </thead>
@@ -350,10 +361,10 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                       <Select value={m.timing || 'at'} onValueChange={v => updateMilestone(idx, 'timing', v)}>
                                          <SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs bg-white"><SelectValue /></SelectTrigger>
                                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
-                                            <SelectItem value="at" className="font-bold text-xs">{isRtl ? 'عند' : 'at'}</SelectItem>
-                                            <SelectItem value="before" className="font-bold text-xs">{isRtl ? 'قبل' : 'before'}</SelectItem>
-                                            <SelectItem value="during" className="font-bold text-xs">{isRtl ? 'أثناء' : 'during'}</SelectItem>
-                                            <SelectItem value="after" className="font-bold text-xs">{isRtl ? 'بعد' : 'after'}</SelectItem>
+                                            <SelectItem value="at" className="font-bold text-xs">{t('at')}</SelectItem>
+                                            <SelectItem value="before" className="font-bold text-xs">{t('before')}</SelectItem>
+                                            <SelectItem value="during" className="font-bold text-xs">{t('during')}</SelectItem>
+                                            <SelectItem value="after" className="font-bold text-xs">{t('after')}</SelectItem>
                                          </SelectContent>
                                       </Select>
                                    </td>
@@ -367,7 +378,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                          </SelectTrigger>
                                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
                                             <SelectItem value="SIGNING" className="font-black text-[10px] py-3 border-b border-slate-50">
-                                               <span className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-emerald-500" /> {isRtl ? 'توقيع العقد' : 'Contract Signing'}</span>
+                                               <span className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-emerald-500" /> {t('contractSigning')}</span>
                                             </SelectItem>
                                             {pathStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
                                                <span className="flex items-center gap-2"><Workflow className="h-3 w-3 text-primary" /> {s.name}</span>
@@ -397,7 +408,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                            <tfoot className="bg-slate-50 border-t-8 border-primary">
                               <tr>
                                  <td colSpan={formData.pricingMode === 'percentage' ? 5 : 4} className="p-10 text-start">
-                                    <h3 className="text-xl font-black font-headline uppercase tracking-tighter text-slate-800">{isRtl ? 'إجمالي قيمة العقد المعتمد' : 'Total Contract Approved Value'}</h3>
+                                    <h3 className="text-xl font-black font-headline uppercase tracking-tighter text-slate-800">{tSafe('inline.total.contract.value', 'إجمالي قيمة العقد المعتمد', 'Total Contract Approved Value')}</h3>
                                     <Badge className={cn("mt-3 border-0 text-[10px] font-black h-7 px-5 shadow-lg", stats.isValid ? "bg-emerald-600 text-white" : "bg-rose-600 text-white")}>
                                        {stats.isValid ? `BALANCED: 100%` : `MISMATCH: ${stats.totalPercentage}%`}
                                     </Badge>
@@ -405,7 +416,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                  <td colSpan={2} className="p-10 text-end pe-12">
                                     <div className="space-y-1">
                                        <h2 className="text-5xl font-black font-headline text-primary">{(currentDisplayAmount || 0).toLocaleString()}</h2>
-                                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em]">{isRtl ? 'دينار كويتي لا غير' : 'KUWAITI DINARS ONLY'}</p>
+                                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em]">{tSafe('inline.kuwaiti.dinars', 'دينار كويتي لا غير', 'KUWAITI DINARS ONLY')}</p>
                                     </div>
                                  </td>
                               </tr>
