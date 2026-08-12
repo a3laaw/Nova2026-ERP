@@ -235,21 +235,21 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                   <div className="space-y-4">
                      <div className="space-y-1.5">
                         <Label className="text-[10px] font-black uppercase text-slate-400">النشاط</Label>
-                        <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: '', boqTemplateId: ''})}>
+                        <Select value={formData.activityTypeId || ''} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: '', boqTemplateId: ''})}>
                            <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
                            <SelectContent className="rounded-xl">{activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent>
                         </Select>
                      </div>
                      <div className="space-y-1.5">
                         <Label className="text-[10px] font-black uppercase text-slate-400">الخدمة</Label>
-                        <Select disabled={!formData.activityTypeId} value={formData.serviceId} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: '', boqTemplateId: ''})}>
+                        <Select disabled={!formData.activityTypeId} value={formData.serviceId || ''} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: '', boqTemplateId: ''})}>
                            <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
                            <SelectContent className="rounded-xl">{services?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
                         </Select>
                      </div>
                      <div className="space-y-1.5">
                         <Label className="text-[10px] font-black uppercase text-slate-400">المسار</Label>
-                        <Select disabled={!formData.serviceId} value={formData.subServiceId} onValueChange={v => {
+                        <Select disabled={!formData.serviceId} value={formData.subServiceId || ''} onValueChange={v => {
                            const sub = activeSubs.find(s => s.id === v);
                            setFormData({...formData, subServiceId: v, subServiceName: sub?.name || '', boqTemplateId: ''});
                         }}>
@@ -262,7 +262,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                   <div className="pt-6 border-t space-y-4">
                      <div className="space-y-1.5">
                         <Label className="text-[10px] font-black uppercase text-primary flex items-center gap-1.5"><LinkIcon className="h-3 w-3" /> {isRtl ? 'قالب المقايسة المرتبط' : 'Linked BOQ'}</Label>
-                        <Select disabled={!formData.subServiceId} value={formData.boqTemplateId} onValueChange={v => {
+                        <Select disabled={!formData.subServiceId} value={formData.boqTemplateId || ''} onValueChange={v => {
                            const bt = boqTemplates?.find(b => b.id === v);
                            setFormData({...formData, boqTemplateId: v, boqTemplateName: bt?.name || ''});
                         }}>
@@ -290,7 +290,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                <Input 
                  type="number" 
                  disabled={formData.pricingMode !== 'percentage'}
-                 value={formData.baseAmount === 0 ? "" : formData.baseAmount} 
+                 value={formData.baseAmount === 0 ? "" : (formData.baseAmount || "")} 
                  onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} 
                  className="h-14 rounded-2xl border-2 bg-white text-2xl text-center shadow-inner font-black text-primary" 
                />
@@ -347,12 +347,12 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                 <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                                    <td className="p-6 font-black text-slate-300 text-start">{idx + 1}</td>
                                    <td className="p-4">
-                                      <Input value={m.name} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-10 rounded-xl font-black text-sm bg-white border-2" />
+                                      <Input value={m.name || ''} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-10 rounded-xl font-black text-sm bg-white border-2" />
                                    </td>
                                    {formData.pricingMode === 'percentage' && (
                                       <td className="p-4">
                                          <div className="relative w-20 mx-auto">
-                                            <Input type="number" value={m.percentage === 0 ? "" : m.percentage} onChange={e => updateMilestone(idx, 'percentage', e.target.value)} className="h-10 rounded-xl border-2 font-black text-center pe-6 text-sm" />
+                                            <Input type="number" value={m.percentage === 0 ? "" : (m.percentage || "")} onChange={e => updateMilestone(idx, 'percentage', e.target.value)} className="h-10 rounded-xl border-2 font-black text-center pe-6 text-sm" />
                                             <Percent className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
                                          </div>
                                       </td>
@@ -392,7 +392,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                            type="number" 
                                            step="0.001" 
                                            readOnly={formData.pricingMode === 'percentage'}
-                                           value={m.amount === 0 ? "" : m.amount} 
+                                           value={m.amount === 0 ? "" : (m.amount || "")} 
                                            onChange={e => updateMilestone(idx, 'amount', e.target.value)} 
                                            className="h-10 w-32 text-end font-black text-emerald-600 text-sm bg-slate-50 border-2 rounded-xl" 
                                          />

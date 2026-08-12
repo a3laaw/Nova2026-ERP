@@ -209,7 +209,7 @@ export default function ContractViewPage() {
     : (editData.totalAmount || 0);
 
   return (
-    <div className="space-y-6 pb-20 animate-in fade-in duration-700 bg-[#fdfaf3]" dir={dir}>
+    <div className="space-y-6 pb-20 animate-in fade-in duration-700 bg-white" dir={dir}>
       <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 print:hidden px-6 pt-6 text-start">
         <div className="flex items-center gap-4">
            <Button 
@@ -269,7 +269,7 @@ export default function ContractViewPage() {
                   <div>
                     <p className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'نمط التسعير' : 'Pricing Mode'}</p>
                     {isEditing ? (
-                      <Select value={editData.pricingMode} onValueChange={(v: PricingMode) => setEditForm({...editData, pricingMode: v})}>
+                      <Select value={editData.pricingMode || 'percentage'} onValueChange={(v: PricingMode) => setEditForm({...editData, pricingMode: v})}>
                          <SelectTrigger className="h-10 w-40 rounded-xl border-2 bg-white text-slate-900 font-black text-xs mt-1"><SelectValue /></SelectTrigger>
                          <SelectContent className="rounded-xl border-2 shadow-2xl">
                             <SelectItem value="itemized" className="font-bold text-xs">{t('itemized')}</SelectItem>
@@ -288,7 +288,7 @@ export default function ContractViewPage() {
                        <div className="relative">
                           <Input 
                             type="number" 
-                            value={editData.totalAmount === 0 ? "" : editData.totalAmount} 
+                            value={editData.totalAmount === 0 ? "" : (editData.totalAmount || "")} 
                             onChange={e => setEditForm({...editData, totalAmount: e.target.value === "" ? 0 : Number(e.target.value)})} 
                             className="h-10 rounded-xl border-2 bg-white text-slate-900 font-black text-xl text-center shadow-inner" 
                           />
@@ -308,7 +308,7 @@ export default function ContractViewPage() {
                   <div className="space-y-1">
                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{tSafe('inline.subject', 'الموضوع /', 'Subject:')}</p>
                      {isEditing ? (
-                        <Input value={editData.name} onChange={e => setEditForm({...editData, name: e.target.value})} className="font-bold border-2 h-12 rounded-xl text-sm" />
+                        <Input value={editData.name || ''} onChange={e => setEditForm({...editData, name: e.target.value})} className="font-bold border-2 h-12 rounded-xl text-sm" />
                      ) : (
                         <p className="text-base font-black text-primary">{contract.name}</p>
                      )}
@@ -355,7 +355,7 @@ export default function ContractViewPage() {
                                 <td className="p-5 text-start">
                                    {isEditing ? (
                                       <div className="space-y-2">
-                                         <Input value={m.name} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-10 rounded-xl font-bold text-sm bg-white" />
+                                         <Input value={m.name || ''} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-10 rounded-xl font-bold text-sm bg-white" />
                                          {m.technicalStageId && m.technicalStageId !== 'NONE' && (
                                             <p className="text-[8px] font-black text-primary/60 italic flex items-center gap-1 mt-1">
                                                <Clock className="h-3 w-3" />
@@ -379,7 +379,7 @@ export default function ContractViewPage() {
                                    <td className="p-5 text-center">
                                       {isEditing ? (
                                          <div className="relative w-20 mx-auto">
-                                            <Input type="number" value={m.percentage === 0 ? "" : m.percentage} onChange={e => updateMilestone(idx, 'percentage', e.target.value === "" ? 0 : Number(e.target.value))} className="h-10 rounded-xl border-2 font-black text-center pe-6 text-sm" />
+                                            <Input type="number" value={m.percentage === 0 ? "" : (m.percentage || "")} onChange={e => updateMilestone(idx, 'percentage', e.target.value === "" ? 0 : Number(e.target.value))} className="h-10 rounded-xl border-2 font-black text-center pe-6 text-sm" />
                                             <Percent className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
                                          </div>
                                       ) : <span className="font-black text-slate-900 text-lg">{m.percentage}%</span>}
@@ -420,7 +420,7 @@ export default function ContractViewPage() {
                                 </td>
                                 <td className="p-5 text-end pe-10 w-40">
                                    {isEditing && editData.pricingMode !== 'percentage' ? (
-                                      <Input type="number" step="0.001" value={m.amount === 0 ? "" : m.amount} onChange={e => updateMilestone(idx, 'amount', e.target.value === "" ? 0 : Number(e.target.value))} className="h-10 w-32 ms-auto text-end font-black text-emerald-600 text-sm bg-slate-50 border-2" />
+                                      <Input type="number" step="0.001" value={m.amount === 0 ? "" : (m.amount || "")} onChange={e => updateMilestone(idx, 'amount', e.target.value === "" ? 0 : Number(e.target.value))} className="h-10 w-32 ms-auto text-end font-black text-emerald-600 text-sm bg-slate-50 border-2" />
                                    ) : (
                                       <span className="font-mono font-black text-emerald-600 text-lg">{(lineAmount || 0).toLocaleString()} <span className="text-[10px] opacity-40">KWD</span></span>
                                    )}
@@ -462,7 +462,7 @@ export default function ContractViewPage() {
                   <Gavel className="h-5 w-5 text-primary" /> {tSafe('inline.legal.clauses.obligations', 'البنود والالتزامات القانونية', 'Legal Clauses & Obligations')}
                </h4>
                {isEditing ? (
-                  <Textarea value={editData.legalText} onChange={e => setEditForm({...editData, legalText: e.target.value})} className="min-h-[300px] rounded-[2rem] border-2 p-8 text-sm font-bold leading-relaxed bg-slate-50/50 shadow-inner" />
+                  <Textarea value={editData.legalText || ''} onChange={e => setEditForm({...editData, legalText: e.target.value})} className="min-h-[300px] rounded-[2rem] border-2 p-8 text-sm font-bold leading-relaxed bg-slate-50/50 shadow-inner" />
                ) : (
                   <p className="p-10 bg-slate-50/50 rounded-[3rem] border-2 border-white shadow-inner text-sm font-bold text-slate-700 leading-relaxed whitespace-pre-wrap italic text-start">
                      {contract.legalText}

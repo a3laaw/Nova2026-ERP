@@ -19,7 +19,7 @@ import {
   FileText, Calculator, DollarSign, ShieldCheck,
   AlertTriangle, Target, Percent, Workflow,
   LayoutGrid, Clock, Link as LinkIcon, Info,
-  Landmark
+  Landmark, X, Sparkles
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -28,8 +28,9 @@ import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, getDocs, doc } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { QuotationTemplate, QuotationItem, PricingMode, BOQTemplate } from '@/types/templates';
-import { ActivityType, Service, SubService, TechnicalStage } from '@/types/reference';
+import { ActivityType, Service, SubService, TechnicalStage, BOQReferenceNode } from '@/types/reference';
 import { TemplateService } from '@/services/template-service';
+import { transformToBOQTree } from '@/lib/boq-tree-utils';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
@@ -185,6 +186,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
       ...formData, 
       items: [...(formData.items || []), { 
         label: getOrdinalLabel(nextIdx), 
+        description: '',
         percentage: 0, 
         unitPrice: 0, 
         quantity: 0, 
@@ -226,7 +228,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
 
       <div className="max-w-full mx-auto px-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
          <aside className="lg:col-span-3 space-y-6 text-start">
-            <Card className="border-0 shadow-xl rounded-[2rem] bg-white ring-1 ring-black/5 overflow-hidden">
+            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
                <CardHeader className="bg-primary/5 p-6 border-b">
                   <CardTitle className="text-xs font-black flex items-center gap-3 uppercase tracking-widest text-primary">
                      <Target className="h-4 w-4" /> {tSafe('inline.operational.context', 'الارتباط التشغيلي السيادي', 'Operational Context')}
@@ -235,22 +237,22 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                <CardContent className="p-6 space-y-6">
                   <div className="space-y-4">
                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'النشاط الرئيسي' : 'Activity Type'}</Label>
-                        <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: '', boqTemplateId: ''})}>
+                        <Label className="text-[10px] font-black uppercase text-slate-400">النشاط</Label>
+                        <Select value={formData.activityTypeId || ''} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: '', boqTemplateId: ''})}>
                            <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
                            <SelectContent className="rounded-xl">{activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent>
                         </Select>
                      </div>
                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الخدمة الأساسية' : 'Main Service'}</Label>
-                        <Select disabled={!formData.activityTypeId} value={formData.serviceId} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: '', boqTemplateId: ''})}>
+                        <Label className="text-[10px] font-black uppercase text-slate-400">الخدمة</Label>
+                        <Select disabled={!formData.activityTypeId} value={formData.serviceId || ''} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: '', boqTemplateId: ''})}>
                            <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
                            <SelectContent className="rounded-xl">{services?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
                         </Select>
                      </div>
                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المسار الفني الدقيق' : 'Specific Technical Path'}</Label>
-                        <Select disabled={!formData.serviceId} value={formData.subServiceId} onValueChange={v => {
+                        <Label className="text-[10px] font-black uppercase text-slate-400">المسار</Label>
+                        <Select disabled={!formData.serviceId} value={formData.subServiceId || ''} onValueChange={v => {
                            const sub = activeSubs.find(s => s.id === v);
                            setFormData({...formData, subServiceId: v, subServiceName: sub?.name || '', boqTemplateId: ''});
                         }}>
@@ -263,7 +265,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                   <div className="pt-6 border-t space-y-4">
                      <div className="space-y-1.5">
                         <Label className="text-[10px] font-black uppercase text-primary flex items-center gap-1.5"><LinkIcon className="h-3 w-3" /> {isRtl ? 'قالب المقايسة المرتبط' : 'Linked BOQ'}</Label>
-                        <Select disabled={!formData.subServiceId} value={formData.boqTemplateId} onValueChange={v => {
+                        <Select disabled={!formData.subServiceId} value={formData.boqTemplateId || ''} onValueChange={v => {
                            const bt = boqTemplates?.find(b => b.id === v);
                            setFormData({...formData, boqTemplateId: v, boqTemplateName: bt?.name || ''});
                         }}>
@@ -287,11 +289,11 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
 
             <div className="p-6 rounded-[2rem] bg-slate-50 border-2 border-primary/20 space-y-4 relative overflow-hidden shadow-inner">
                <div className="absolute top-0 right-0 p-6 opacity-5"><Calculator className="h-24 w-24 text-primary" /></div>
-               <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em] mb-2">{isRtl ? 'الميزانية المستهدفة' : 'Target Budget'}</p>
+               <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-2">{isRtl ? 'الميزانية المستهدفة' : 'Target Budget'}</p>
                <Input 
                  type="number" 
                  disabled={formData.pricingMode !== 'percentage'}
-                 value={formData.baseAmount === 0 ? "" : formData.baseAmount} 
+                 value={formData.baseAmount === 0 ? "" : (formData.baseAmount || "")} 
                  onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} 
                  className="h-14 rounded-2xl border-2 bg-white text-2xl text-center shadow-inner font-black text-primary" 
                />
@@ -348,12 +350,12 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                 <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                                    <td className="p-6 font-black text-slate-300 text-start">{idx + 1}</td>
                                    <td className="p-4">
-                                      <Input value={m.label} onChange={e => updateItem(idx, 'label', e.target.value)} className="h-10 rounded-xl font-black text-sm bg-white border-2" />
+                                      <Input value={m.label || ''} onChange={e => updateItem(idx, 'label', e.target.value)} className="h-10 rounded-xl font-black text-sm bg-white border-2" />
                                    </td>
                                    {formData.pricingMode === 'percentage' && (
                                       <td className="p-4">
                                          <div className="relative w-20 mx-auto">
-                                            <Input type="number" value={m.percentage === 0 ? "" : m.percentage} onChange={e => updateItem(idx, 'percentage', e.target.value)} className="h-10 rounded-xl border-2 font-black text-center pe-6 text-sm" />
+                                            <Input type="number" value={m.percentage === 0 ? "" : (m.percentage || "")} onChange={e => updateItem(idx, 'percentage', e.target.value)} className="h-10 rounded-xl border-2 font-black text-center pe-6 text-sm" />
                                             <Percent className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
                                          </div>
                                       </td>
@@ -391,9 +393,9 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                       <div className="flex items-center gap-2 justify-end">
                                          {formData.pricingMode === 'itemized' ? (
                                             <div className="flex items-center gap-1">
-                                               <Input type="number" value={m.quantity === 0 ? "" : m.quantity} onChange={e => updateItem(idx, 'quantity', e.target.value)} className="h-10 w-14 text-center font-bold border-2 rounded-xl" placeholder="Qty" />
+                                               <Input type="number" value={m.quantity === 0 ? "" : (m.quantity || "")} onChange={e => updateItem(idx, 'quantity', e.target.value)} className="h-10 w-14 text-center font-bold border-2 rounded-xl" placeholder="Qty" />
                                                <X className="h-3 w-3 opacity-20" />
-                                               <Input type="number" step="0.001" value={m.unitPrice === 0 ? "" : m.unitPrice} onChange={e => {
+                                               <Input type="number" step="0.001" value={m.unitPrice === 0 ? "" : (m.unitPrice || "")} onChange={e => {
                                                   updateItem(idx, 'unitPrice', e.target.value);
                                                   const q = Number(m.quantity) || 0;
                                                   updateItem(idx, 'amount', q * (Number(e.target.value) || 0));
@@ -404,7 +406,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                               type="number" 
                                               step="0.001" 
                                               readOnly={formData.pricingMode === 'percentage'}
-                                              value={m.amount === 0 ? "" : m.amount} 
+                                              value={m.amount === 0 ? "" : (m.amount || "")} 
                                               onChange={e => updateItem(idx, 'amount', e.target.value)} 
                                               className="h-10 w-32 text-end font-black text-emerald-600 text-sm bg-slate-50 border-2 rounded-xl" 
                                             />
@@ -442,7 +444,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 border-b-4 border-primary/20 pb-3">
                         <ShieldCheck className="h-6 w-6 text-primary" /> {t('defaultTerms')}
                      </h4>
-                     <Textarea value={formData.defaultTerms || ''} onChange={e => setFormData({...formData, defaultTerms: e.target.value})} className="min-h-[250px] rounded-[3rem] border-2 p-10 text-base font-bold leading-relaxed bg-slate-50 focus:bg-white transition-all shadow-inner" placeholder="..." />
+                     <Textarea value={formData.defaultTerms || ''} onChange={e => setFormData({...formData, defaultTerms: e.target.value})} className="min-h-[400px] rounded-[3rem] border-2 p-10 text-base font-bold leading-relaxed bg-slate-50 focus:bg-white transition-all shadow-inner" placeholder="..." />
                   </div>
                </div>
             </PrintWrapper>
