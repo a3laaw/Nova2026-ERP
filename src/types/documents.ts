@@ -26,6 +26,15 @@ export interface BaseDocument extends BaseReference {
   isHistoryRecorded?: boolean;
 }
 
+export interface Quotation extends BaseDocument {
+  name: string;
+  items: QuotationItem[];
+  pricingMode: PricingMode;
+  introText?: string;
+  defaultTerms?: string;
+  boqTemplateId?: string;
+}
+
 export interface Contract extends BaseDocument {
   name: string;
   introText?: string;
@@ -42,6 +51,7 @@ export interface Contract extends BaseDocument {
   requiresClientCertification: boolean;
   isPaid?: boolean; 
   pricingMode?: PricingMode;
+  boqTemplateId?: string;
 }
 
 export interface BOQItem extends BaseReference {

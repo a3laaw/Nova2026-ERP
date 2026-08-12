@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -8,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   FileText, Plus, Loader2, Search, ArrowRight, 
-  LayoutTemplate, Trash2, Edit3, ShieldCheck
+  LayoutTemplate, Trash2, Edit3, ShieldCheck, AlertTriangle
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -22,18 +21,29 @@ import { Input } from '@/components/ui/input';
 import { QuotationTemplateForm } from './quotation-template-form';
 import { TemplateService } from '@/services/template-service';
 import { toast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function QuotationTemplatesPage() {
-  const { globalUser, user } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
-  const { permissions } = usePermissions();
+  const { globalUser } = useAuthContext();
+  const { t, lang, dir, tSafe } = useLanguage();
+  const { permissions, isAdmin } = usePermissions();
   const db = useFirestore();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
   const [searchTerm, setSearchTerm] = useState("");
   const [editingTemplate, setEditingTemplate] = useState<QuotationTemplate | null | 'new'>(null);
-  const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const templatesQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.quotationTemplates(companyId)), orderBy('name')) : null, 
@@ -41,23 +51,24 @@ export default function QuotationTemplatesPage() {
 
   const { data: templates, loading } = useCollection<QuotationTemplate>(templatesQuery);
 
-  const handleDelete = async (id: string) => {
-    if (!db || !companyId || !confirm(t('confirmDelete'))) return;
-    setLoadingAction(id);
+  const handleDelete = async () => {
+    if (!db || !companyId || !deletingId) return;
+    setIsDeleting(true);
     try {
       const service = new TemplateService(db, companyId, permissions);
-      await service.deleteTemplate('quotation', id);
-      toast({ title: t('deleted') });
+      await service.deleteTemplate('quotation', deletingId);
+      toast({ title: t('common.deleted') });
+      setDeletingId(null);
     } catch (e) {
-      toast({ variant: "destructive", title: t('error') });
+      toast({ variant: "destructive", title: t('common.error') });
     } finally {
-      setLoadingAction(null);
+      setIsDeleting(false);
     }
   };
 
-  const filtered = templates.filter(temp => 
+  const filtered = (templates || []).filter(temp => 
     temp.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    temp.code.toLowerCase().includes(searchTerm.toLowerCase())
+    (temp.code && temp.code.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   if (editingTemplate) {
@@ -70,9 +81,12 @@ export default function QuotationTemplatesPage() {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500" dir={dir}>
+    <div className="space-y-8 animate-in fade-in duration-500 max-w-full" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="text-start">
+        <div className="text-start space-y-2">
+          <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit border border-primary/10">
+             <ShieldCheck className="h-3 w-3" /> {tSafe('inline.legal.document.library', 'مكتبة الوثائق القانونية', 'Legal Document Library')}
+          </div>
           <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
             <FileText className="h-10 w-10 text-primary" />
             {t('quotationTemplates')}
@@ -84,10 +98,10 @@ export default function QuotationTemplatesPage() {
 
         <Button 
           onClick={() => setEditingTemplate('new')}
-          className="bg-primary text-white font-black rounded-2xl px-8 py-7 text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-transform"
+          className="bg-primary text-white font-black rounded-2xl px-10 py-7 text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-8 border-orange-700"
         >
-          <Plus className="me-2 h-6 w-6" />
-          {t('newTemplate')}
+          <Plus className="h-7 w-7" />
+          {isRtl ? 'قالب عرض سعر جديد' : 'New Quote Template'}
         </Button>
       </div>
 
@@ -96,8 +110,8 @@ export default function QuotationTemplatesPage() {
            <div className="relative w-full max-w-md">
               <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <Input 
-                placeholder={t('search')} 
-                className="ps-12 rounded-2xl h-14 bg-white border-2 border-slate-100 font-bold" 
+                placeholder={t('common.search')} 
+                className="ps-12 rounded-2xl h-14 bg-white border-2 border-slate-100 font-bold text-lg" 
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
@@ -107,40 +121,40 @@ export default function QuotationTemplatesPage() {
           <Table>
             <TableHeader className="bg-muted/30">
               <TableRow>
-                <TableHead className="py-6 ps-8 text-start">{t('name')}</TableHead>
-                <TableHead className="text-start">{isRtl ? 'الخدمة المرتبطة' : 'Linked Service'}</TableHead>
-                <TableHead className="text-center">{t('pricingMode')}</TableHead>
-                <TableHead className="text-center">{isRtl ? 'افتراضي' : 'Default'}</TableHead>
-                <TableHead className="pe-8 text-end">{isRtl ? 'إجراءات' : 'Actions'}</TableHead>
+                <TableHead className="py-8 ps-10 text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'مسمى القالب' : 'Template Name'}</TableHead>
+                <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'المسار المرتبط' : 'Associated Path'}</TableHead>
+                <TableHead className="text-center text-xs font-black uppercase tracking-widest">{isRtl ? 'نمط التسعير' : 'Pricing'}</TableHead>
+                <TableHead className="text-center text-xs font-black uppercase tracking-widest">{isRtl ? 'افتراضي' : 'Default'}</TableHead>
+                <TableHead className="pe-10 text-end text-xs font-black uppercase tracking-widest">{isRtl ? 'إجراءات' : 'Actions'}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-24"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/20" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-32"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/20" /></TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-24 text-slate-400 font-bold italic">{isRtl ? 'لا يوجد قوالب مسجلة.' : 'No templates found.'}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-32 text-slate-400 font-bold italic">{isRtl ? 'لا يوجد قوالب مسجلة.' : 'No templates found.'}</TableCell></TableRow>
               ) : (
                 filtered.map((temp) => (
-                  <TableRow key={temp.id} className="hover:bg-slate-50 transition-colors group border-b-slate-50">
-                    <TableCell className="py-6 ps-8 text-start">
-                       <div className="flex items-center gap-4">
-                          <div className="h-10 w-10 rounded-xl bg-primary/5 text-primary flex items-center justify-center font-black">
-                             {temp.code.charAt(0)}
+                  <TableRow key={temp.id} className="hover:bg-slate-50/50 transition-colors group border-b-slate-50 cursor-pointer" onClick={() => setEditingTemplate(temp)}>
+                    <TableCell className="py-8 ps-10 text-start">
+                       <div className="flex items-center gap-5">
+                          <div className="h-14 w-14 rounded-2xl bg-white shadow-lg flex items-center justify-center text-primary font-black text-xl border-2 border-orange-50 group-hover:scale-110 transition-transform">
+                             <FileText className="h-7 w-7" />
                           </div>
                           <div className="text-start">
-                             <p className="font-black text-slate-800">{temp.name}</p>
-                             <p className="text-[10px] font-mono text-slate-400 uppercase">CODE: {temp.code}</p>
+                             <p className="font-black text-xl text-slate-800">{temp.name}</p>
+                             <p className="text-[10px] font-mono text-slate-400 uppercase tracking-widest mt-1">REF: {temp.code || 'NO_CODE'}</p>
                           </div>
                        </div>
                     </TableCell>
                     <TableCell className="text-start">
-                       <div className="flex flex-col">
-                          <span className="text-xs font-bold text-slate-600">{temp.activityTypeName}</span>
-                          <span className="text-[10px] text-slate-400 font-bold">{temp.serviceName}</span>
+                       <div className="flex flex-col gap-1">
+                          <Badge variant="secondary" className="bg-primary/5 text-primary border-0 font-black text-[9px] uppercase px-3 w-fit">{temp.activityTypeName}</Badge>
+                          <span className="text-xs font-bold text-slate-500">{temp.subServiceName || temp.serviceName}</span>
                        </div>
                     </TableCell>
                     <TableCell className="text-center">
-                       <Badge variant="secondary" className="font-black text-[9px] uppercase px-3">
+                       <Badge variant="outline" className="font-black text-[9px] px-3 border-2 uppercase">
                           {t(temp.pricingMode)}
                        </Badge>
                     </TableCell>
@@ -149,20 +163,21 @@ export default function QuotationTemplatesPage() {
                          <ShieldCheck className="h-5 w-5 text-emerald-500 mx-auto" />
                        ) : <span className="text-slate-200">-</span>}
                     </TableCell>
-                    <TableCell className="pe-8 text-end">
-                       <div className="flex justify-end gap-2">
-                          <Button variant="outline" size="icon" onClick={() => setEditingTemplate(temp)} className="rounded-xl h-10 w-10 text-primary border-primary/20 hover:bg-primary hover:text-white">
+                    <TableCell className="pe-10 text-end" onClick={e => e.stopPropagation()}>
+                       <div className="flex justify-end gap-3">
+                          <Button variant="outline" size="icon" onClick={() => setEditingTemplate(temp)} className="rounded-xl h-12 w-12 text-primary border-primary/20 hover:bg-primary hover:text-white shadow-sm transition-all">
                              <Edit3 className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            disabled={loadingAction === temp.id}
-                            onClick={() => handleDelete(temp.id!)}
-                            className="rounded-xl h-10 w-10 text-rose-500 hover:bg-rose-50"
-                          >
-                             {loadingAction === temp.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
-                          </Button>
+                          {isAdmin && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => setDeletingId(temp.id!)}
+                              className="rounded-xl h-12 w-12 text-rose-300 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                            >
+                               <Trash2 className="h-5 w-5" />
+                            </Button>
+                          )}
                        </div>
                     </TableCell>
                   </TableRow>
@@ -172,6 +187,32 @@ export default function QuotationTemplatesPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!deletingId} onOpenChange={(v) => { if(!v) setDeletingId(null); }}>
+        <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white z-[200]" dir={dir}>
+          <AlertDialogHeader>
+             <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
+                <AlertTriangle className="h-10 w-10" />
+             </div>
+             <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">{t('common.confirmDelete')}</AlertDialogTitle>
+             <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
+                {isRtl 
+                  ? 'هل أنت متأكد؟ سيتم حذف هذا القالب المرجعي نهائياً من مكتبة عروض الأسعار. لن يتأثر المشاريع القائمة بهذا الإجراء.' 
+                  : 'Are you sure? This quotation template will be permanently removed. Existing projects won\'t be affected.'}
+             </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-12 gap-4 flex flex-row items-center justify-center">
+            <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete} 
+              disabled={isDeleting}
+              className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200"
+            >
+               {isDeleting ? <Loader2 className="animate-spin h-5 w-5" /> : (isRtl ? 'نعم، احذف القالب' : 'Confirm Delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

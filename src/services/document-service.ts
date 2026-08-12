@@ -116,6 +116,7 @@ export class DocumentService {
       status: 'draft',
       version: 1,
       totalAmount: template.baseAmount || 0,
+      boqTemplateId: template.boqTemplateId || '', 
       companyId: this.companyId,
       createdBy: userId,
       updatedBy: userId,
@@ -190,6 +191,7 @@ export class DocumentService {
       activityTypeId: quote.activityTypeId || '',
       serviceId: quote.serviceId || '',
       subServiceId: quote.subServiceId || '',
+      boqTemplateId: quote.boqTemplateId || template?.boqTemplateId || '', 
       version: 1,
       isPaid: false,
       isHistoryRecorded: true,
@@ -461,4 +463,3 @@ export class DocumentService {
     await batch.commit();
   }
 }
-

@@ -49,6 +49,8 @@ export interface BaseTemplate extends BaseReference {
 }
 
 export interface QuotationTemplate extends BaseTemplate {
+  boqTemplateId?: string; // الربط السيادي بالمقايسة
+  boqTemplateName?: string;
   introText?: string;
   defaultTerms?: string;
   validDays?: number;
