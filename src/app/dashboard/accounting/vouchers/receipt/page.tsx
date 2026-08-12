@@ -218,7 +218,12 @@ export default function ReceiptVouchersPage() {
                                <ChevronDown className="h-4 w-4 opacity-40" />
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-[400px] p-0 rounded-2xl shadow-3xl border-2" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+                          <PopoverContent 
+                            className="w-[400px] p-0 rounded-2xl shadow-3xl border-2 z-[200]" 
+                            align="start" 
+                            onOpenAutoFocus={(e) => e.preventDefault()}
+                            onInteractOutside={(e) => e.preventDefault()}
+                          >
                              <div className="p-3 bg-slate-50 border-b">
                                 <div className="relative">
                                    <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
@@ -235,7 +240,12 @@ export default function ReceiptVouchersPage() {
                                    {filteredClients.map(c => (
                                      <div 
                                        key={c.id} 
-                                       onClick={(e) => { e.stopPropagation(); setForm({ ...form, personName: c.nameAr, transactionId: '', transactionName: '', contractId: '', notes: '' }); setOpenClientPicker(false); setClientSearch(""); fetchClientTransactions(c.id!); }}
+                                       onClick={(e) => { 
+                                         e.stopPropagation(); 
+                                         setForm({ ...form, personName: c.nameAr, transactionId: '', transactionName: '', contractId: '', notes: '' }); 
+                                         setOpenClientPicker(false); 
+                                         setClientSearch(""); 
+                                       }}
                                        className={cn(
                                          "p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between",
                                          form.personName === c.nameAr ? "bg-primary/5 text-primary border-primary/20" : "hover:bg-slate-50"
@@ -262,7 +272,12 @@ export default function ReceiptVouchersPage() {
                                <ChevronDown className="h-4 w-4 opacity-40" />
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-[450px] p-0 rounded-2xl shadow-3xl border-2" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+                          <PopoverContent 
+                            className="w-[450px] p-0 rounded-2xl shadow-3xl border-2 z-[200]" 
+                            align="start" 
+                            onOpenAutoFocus={(e) => e.preventDefault()}
+                            onInteractOutside={(e) => e.preventDefault()}
+                          >
                              <div className="p-3 bg-slate-50 border-b">
                                 <div className="relative">
                                    <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
@@ -279,7 +294,12 @@ export default function ReceiptVouchersPage() {
                                    {filteredTrans.map(t_row => (
                                      <div 
                                        key={t_row.id} 
-                                       onClick={(e) => { e.stopPropagation(); setForm({ ...form, transactionId: t_row.id, transactionName: t_row.subServiceName, transactionNumber: t_row.transactionNumber, contractId: '', notes: '' }); setOpenTransPicker(false); setTransSearch(""); }}
+                                       onClick={(e) => { 
+                                         e.stopPropagation(); 
+                                         setForm({ ...form, transactionId: t_row.id, transactionName: t_row.subServiceName, transactionNumber: t_row.transactionNumber, contractId: '', notes: '' }); 
+                                         setOpenTransPicker(false); 
+                                         setTransSearch(""); 
+                                       }}
                                        className={cn(
                                          "p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between group",
                                          form.transactionId === t_row.id ? "bg-primary/5 text-primary border-primary/20" : "hover:bg-slate-50"

@@ -115,7 +115,7 @@ export default function SubConContractsListPage() {
         projectTitle: formData.transactionName
       }, user.uid);
 
-      toast({ title: tSafe('common.saved', 'تم الحفظ بنجاح', 'Saved Successfully') });
+      toast({ title: tSafe('inline.provisioning.success', 'تم التأسيس بنجاح', 'Provisioning Success') });
       router.push(`/dashboard/procurement/subcontractors/contracts/${docId}`);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
@@ -239,7 +239,12 @@ export default function SubConContractsListPage() {
                            <ChevronDown className="h-5 w-5 opacity-40" />
                         </Button>
                      </PopoverTrigger>
-                     <PopoverContent className="w-[450px] p-0 rounded-2xl shadow-3xl border-2" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+                     <PopoverContent 
+                        className="w-[450px] p-0 rounded-2xl shadow-3xl border-2 z-[200]" 
+                        align="start" 
+                        onOpenAutoFocus={(e) => e.preventDefault()}
+                        onInteractOutside={(e) => e.preventDefault()}
+                     >
                         <div className="p-3 bg-slate-50 border-b">
                            <div className="relative">
                               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -256,7 +261,12 @@ export default function SubConContractsListPage() {
                               {filteredSubs.map(s => (
                                 <div 
                                   key={s.id} 
-                                  onClick={(e) => { e.stopPropagation(); setFormData({...formData, subcontractorId: s.id, subcontractorName: s.name}); setOpenSubPicker(false); setSubSearch(""); }}
+                                  onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    setFormData({...formData, subcontractorId: s.id, subcontractorName: s.name}); 
+                                    setOpenSubPicker(false); 
+                                    setSubSearch(""); 
+                                  }}
                                   className={cn(
                                     "p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between group",
                                     formData.subcontractorId === s.id ? "bg-primary/5 text-primary border-primary/20" : "hover:bg-slate-50"
@@ -284,7 +294,12 @@ export default function SubConContractsListPage() {
                            <ChevronDown className="h-5 w-5 opacity-40" />
                         </Button>
                      </PopoverTrigger>
-                     <PopoverContent className="w-[450px] p-0 rounded-2xl shadow-3xl border-2" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+                     <PopoverContent 
+                        className="w-[450px] p-0 rounded-2xl shadow-3xl border-2 z-[200]" 
+                        align="start" 
+                        onOpenAutoFocus={(e) => e.preventDefault()}
+                        onInteractOutside={(e) => e.preventDefault()}
+                     >
                         <div className="p-3 bg-slate-50 border-b">
                            <div className="relative">
                               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -301,7 +316,12 @@ export default function SubConContractsListPage() {
                               {filteredTrans.map(t_item => (
                                 <div 
                                   key={t_item.id} 
-                                  onClick={(e) => { e.stopPropagation(); setFormData({...formData, transactionId: t_item.id, transactionNumber: t_item.transactionNumber, transactionName: t_item.subServiceName}); setOpenTransPicker(false); setTransSearch(""); }}
+                                  onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    setFormData({...formData, transactionId: t_item.id, transactionNumber: t_item.transactionNumber, transactionName: t_item.subServiceName}); 
+                                    setOpenTransPicker(false); 
+                                    setTransSearch(""); 
+                                  }}
                                   className={cn(
                                     "p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between group",
                                     formData.transactionId === t_item.id ? "bg-primary/5 text-primary border-primary/20" : "hover:bg-slate-50"
@@ -332,7 +352,12 @@ export default function SubConContractsListPage() {
                            <ChevronDown className="h-5 w-5 opacity-40" />
                         </Button>
                      </PopoverTrigger>
-                     <PopoverContent className="w-[450px] p-0 rounded-2xl shadow-3xl border-2" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+                     <PopoverContent 
+                        className="w-[450px] p-0 rounded-2xl shadow-3xl border-2 z-[200]" 
+                        align="start" 
+                        onOpenAutoFocus={(e) => e.preventDefault()}
+                        onInteractOutside={(e) => e.preventDefault()}
+                     >
                         <div className="p-3 bg-slate-50 border-b">
                            <div className="relative">
                               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -349,7 +374,12 @@ export default function SubConContractsListPage() {
                               {filteredTemps.map(temp => (
                                 <div 
                                   key={temp.id} 
-                                  onClick={(e) => { e.stopPropagation(); setFormData({...formData, templateId: temp.id, templateName: temp.name}); setOpenTempPicker(false); setTempSearch(""); }}
+                                  onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    setFormData({...formData, templateId: temp.id, templateName: temp.name}); 
+                                    setOpenTempPicker(false); 
+                                    setTempSearch(""); 
+                                  }}
                                   className={cn(
                                     "p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between group",
                                     formData.templateId === temp.id ? "bg-primary/5 text-primary border-primary/20" : "hover:bg-slate-50"
