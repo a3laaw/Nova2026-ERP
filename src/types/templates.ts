@@ -67,6 +67,8 @@ export interface ContractMilestone {
 }
 
 export interface ContractTemplate extends BaseTemplate {
+  boqTemplateId?: string; // الربط السيادي بالمقايسة
+  boqTemplateName?: string;
   introText?: string;
   legalText?: string;
   closingText?: string;

@@ -256,6 +256,22 @@ export class DocumentService {
     } as any;
 
     await setDoc(contractRef, contractData);
+
+    // إذا كان العقد مرتبطاً بمقايسة (Sovereign Link)، نقوم باستنساخها آلياً كمسودة
+    if (template.boqTemplateId) {
+       try {
+         await this.instantiateBoqFromTemplate(template.boqTemplateId, {
+            ...payload,
+            activityTypeId: template.activityTypeId,
+            serviceId: template.serviceId,
+            subServiceId: template.subServiceId,
+            name: `دراسة مقايسة آلية - ${payload.name}`
+         }, userId, userName);
+       } catch (e) {
+         console.warn("Auto BOQ instantiation skipped:", e);
+       }
+    }
+
     return contractRef.id;
   }
 
@@ -445,3 +461,4 @@ export class DocumentService {
     await batch.commit();
   }
 }
+
