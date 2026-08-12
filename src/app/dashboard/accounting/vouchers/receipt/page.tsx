@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -29,6 +28,7 @@ import { cn } from '@/lib/utils';
 import { Transaction } from '@/types/transaction';
 import { Contract } from '@/types/documents';
 import { useRouter } from 'next/navigation';
+import { Textarea } from '@/components/ui/textarea';
 
 export default function ReceiptVouchersPage() {
   const { globalUser, user } = useAuthContext();
@@ -295,20 +295,20 @@ export default function ReceiptVouchersPage() {
            </Card>
 
            <aside className="lg:col-span-4 space-y-6 text-start">
-              <Card className="rounded-[2rem] border shadow-sm p-8 bg-slate-900 text-white space-y-6 overflow-hidden relative">
-                 <div className="absolute top-0 right-0 p-6 opacity-10"><Landmark className="h-32 w-32 text-primary" /></div>
+              <Card className="rounded-[2rem] border shadow-sm p-8 bg-primary/5 text-slate-900 space-y-6 overflow-hidden relative border-2 border-primary/10">
+                 <div className="absolute top-0 right-0 p-6 opacity-5"><Landmark className="h-32 w-32 text-primary" /></div>
                  <div className="relative z-10">
                     <h4 className="font-black text-sm uppercase tracking-widest text-primary mb-2">{tSafe('inline.financial.trace', 'التتبع المالي السيادي', 'Financial Traceability')}</h4>
-                    <p className="text-xs font-bold text-slate-400 leading-relaxed">{tSafe('inline.trace.desc', 'عند حفظ هذا السند، سيقوم النظام بتوليد قيد مزدوج يربط النقدية بالإيراد، مع توثيق الأثر المالي آلياً.', 'System will auto-generate a journal entry, updating project radar and client dossier.')}</p>
+                    <p className="text-xs font-bold text-slate-500 leading-relaxed">{tSafe('inline.trace.desc', 'عند حفظ هذا السند، سيقوم النظام بتوليد قيد مزدوج يربط النقدية بالإيراد، مع توثيق الأثر المالي آلياً.', 'System will auto-generate a journal entry, updating project radar and client dossier.')}</p>
                  </div>
                  {form.contractId && milestonesStatus.length > 0 && (
-                   <div className="relative z-10 pt-6 border-t border-white/10 space-y-4">
+                   <div className="relative z-10 pt-6 border-t border-primary/10 space-y-4">
                       <h5 className="text-[10px] font-black text-primary uppercase tracking-widest flex items-center gap-2"><History className="h-3.5 w-3.5" /> {tSafe('inline.contract.snapshot', 'حالة دفعات العقد الحالية', 'Contract Snapshot')}</h5>
                       <div className="space-y-2">
                          {milestonesStatus.map((m, i) => (
                            <div key={i} className="flex justify-between items-center text-[10px]">
-                              <span className="text-slate-400 font-bold truncate max-w-[140px]">{m.milestone.name}</span>
-                              <Badge className={cn("text-[8px] font-black h-4 px-1.5 border-0", m.remaining === 0 ? "bg-emerald-50 text-white" : "bg-white/10 text-slate-300")}>{m.remaining === 0 ? 'PAID' : `${m.paidToDate}/${m.milestoneAmount}`}</Badge>
+                              <span className="text-slate-500 font-bold truncate max-w-[140px]">{m.milestone.name}</span>
+                              <Badge className={cn("text-[8px] font-black h-4 px-1.5 border-0 shadow-sm", m.remaining === 0 ? "bg-emerald-500 text-white" : "bg-primary/10 text-primary")}>{m.remaining === 0 ? 'PAID' : `${m.paidToDate}/${m.milestoneAmount}`}</Badge>
                            </div>
                          ))}
                       </div>

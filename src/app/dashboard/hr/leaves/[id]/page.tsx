@@ -186,10 +186,10 @@ export default function LeaveDetailsPage() {
 
               {isAdmin && leave.status === 'pending' && (
                 <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-2 ring-primary/10 print:hidden">
-                   <div className="bg-slate-900 p-8 text-white text-start">
+                   <div className="bg-primary/5 p-8 text-slate-900 text-start border-b">
                       <h3 className="text-2xl font-black font-headline flex items-center gap-3"><Clock className="h-7 w-7 text-primary" /> {t('hr.adminDecision')}</h3>
                    </div>
-                   <CardContent className="p-8 space-y-8 text-start">
+                   <CardContent className="p-8 space-y-8 text-start bg-white">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-slate-50 rounded-[2rem] border-2 border-dashed border-primary/10">
                          <div className="space-y-2"><Label className="text-[10px] font-black text-slate-400 uppercase">{t('hr.approveStart')}</Label><SmartDateInput value={editForm.startDate} onChange={v => setEditForm({...editForm, startDate: v})} /></div>
                          <div className="space-y-2"><Label className="text-[10px] font-black text-slate-400 uppercase">{t('hr.approveReturn')}</Label><SmartDateInput value={editForm.endDate} onChange={v => setEditForm({...editForm, endDate: v})} /></div>
@@ -265,7 +265,7 @@ export default function LeaveDetailsPage() {
            </div>
 
            <div className="lg:col-span-4 space-y-6 print:hidden">
-              <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/5">
+              <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
                  <CardHeader className="bg-slate-50 border-b p-6">
                     <CardTitle className="text-base font-black flex items-center gap-2">
                        <History className="h-5 w-5 text-primary" />

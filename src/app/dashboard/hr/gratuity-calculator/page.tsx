@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -128,17 +127,17 @@ export default function GratuityCalculatorPage() {
   };
 
   return (
-    <div className="space-y-10 max-w-7xl mx-auto pb-20 animate-in fade-in duration-700" dir={dir}>
+    <div className="space-y-10 max-w-7xl mx-auto pb-20 animate-in fade-in duration-700 bg-[#fdfaf3]" dir={dir}>
       
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-8 border-slate-100">
         <div className="text-start space-y-2">
-           <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit border border-primary/10">
+           <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit border border-primary/10 shadow-sm">
               <Scale className="h-3 w-3" /> {t('hr.settlement.engineTitle')}
            </div>
            <h1 className="text-4xl font-black font-headline text-slate-900 tracking-tight">
              {t('hr.settlement.calculatorTitle')}
            </h1>
-           <p className="text-muted-foreground text-sm font-bold opacity-70 italic">
+           <p className="text-muted-foreground text-sm font-bold opacity-70 italic text-start">
              {t('hr.gratuity.strictApplication')}
            </p>
         </div>
@@ -228,7 +227,7 @@ export default function GratuityCalculatorPage() {
                  <Button 
                    onClick={handleCalculate}
                    disabled={!selectedEmpId}
-                   className="w-full h-20 rounded-[2rem] bg-primary text-white font-black text-2xl shadow-2xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all gap-4 border-b-8 border-orange-700"
+                   className="w-full h-20 rounded-[2rem] bg-primary text-white font-black text-2xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all gap-4 border-b-8 border-orange-700"
                  >
                     <Sparkles className="h-8 w-8" />
                     {t('common.confirm')}

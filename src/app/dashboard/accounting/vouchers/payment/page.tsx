@@ -124,13 +124,13 @@ export default function PaymentVouchersPage() {
       <header className="flex justify-between items-center text-start">
         <div className="text-start">
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2">
-            <Wallet className="h-6 w-6 text-rose-600" /> {t('accounting.vouchers.paymentTitle')}
+            <Wallet className="h-6 w-6 text-rose-600" /> {t('paymentVouchers')}
           </h1>
           <p className="text-muted-foreground text-xs font-medium">{tSafe('inline.payment.desc', 'إدارة المصروفات وربطها بمراكز تكلفة المشاريع', 'Manage expenses and link to project cost centers')}</p>
         </div>
         <Button onClick={() => setIsAdding(!isAdding)} size="sm" className="h-9 px-6 font-bold gap-2 bg-rose-600 hover:bg-rose-700">
            {isAdding ? <ArrowRight className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-           {isAdding ? t('common.back') : t('accounting.vouchers.issuePayment')}
+           {isAdding ? t('common.back') : tSafe('inline.issue.payment', 'إصدار سند صرف', 'Issue Payment')}
         </Button>
       </header>
 
@@ -139,7 +139,7 @@ export default function PaymentVouchersPage() {
            <Card className="lg:col-span-8 rounded-xl border-0 shadow-2xl bg-white overflow-hidden">
               <CardHeader className="bg-rose-50 p-6 border-b text-start">
                  <CardTitle className="text-rose-900 font-black flex items-center gap-3">
-                    <Plus className="h-5 w-5" /> {t('accounting.vouchers.issuePayment')}
+                    <Plus className="h-5 w-5" /> {tSafe('inline.issue.payment', 'إصدار سند صرف', 'Issue Payment')}
                  </CardTitle>
               </CardHeader>
               <CardContent className="p-8 space-y-6 text-start bg-white">
@@ -149,7 +149,7 @@ export default function PaymentVouchersPage() {
                        <Input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="h-10 rounded-lg" />
                     </div>
                     <div className="md:col-span-2 space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400">{t('accounting.vouchers.paidTo')}</Label>
+                       <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الصرف إلى السيد' : 'Paid To'}</Label>
                        <div className="relative">
                           <User className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
                           <Input value={form.personName} onChange={e => setForm({...form, personName: e.target.value})} className="h-10 rounded-lg ps-10 font-bold" placeholder="..." />
@@ -177,7 +177,7 @@ export default function PaymentVouchersPage() {
                        </Select>
                     </div>
                     <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400">{t('accounting.vouchers.payFrom')}</Label>
+                       <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الصرف من حساب' : 'Pay From'}</Label>
                        <Select disabled={!form.paymentMethod} value={form.cashAccountId} onValueChange={v => setForm({...form, cashAccountId: v})}>
                           <SelectTrigger className="h-14 rounded-xl border-2 font-black text-rose-600"><SelectValue placeholder="..." /></SelectTrigger>
                           <SelectContent className="rounded-xl">
@@ -194,7 +194,7 @@ export default function PaymentVouchersPage() {
 
                  <div className="pt-6 border-t space-y-4">
                     <div className="flex justify-between items-center mb-2">
-                       <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{t('accounting.vouchers.againstAccount')}</Label>
+                       <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'مقابل حساب (مصروف)' : 'Against Account (Expense)'}</Label>
                        <button 
                          type="button" 
                          onClick={() => { setIsDistOpen(true); if(form.distributions.length === 0) handleAddDist(); }} 
@@ -258,11 +258,11 @@ export default function PaymentVouchersPage() {
            </Card>
 
            <aside className="lg:col-span-4 space-y-6 text-start">
-              <Card className="rounded-2xl border shadow-sm p-6 bg-slate-900 text-white space-y-4 overflow-hidden relative">
-                 <div className="absolute top-0 right-0 p-6 opacity-10"><Landmark className="h-24 w-24" /></div>
-                 <h4 className="font-black text-xs uppercase tracking-widest text-primary">{t('accounting.vouchers.autoRecon')}</h4>
-                 <p className="text-[10px] font-bold text-slate-400 leading-relaxed">
-                    {t('accounting.vouchers.autoReconHint')}
+              <Card className="rounded-2xl border-2 border-primary/10 shadow-sm p-6 bg-primary/5 text-slate-900 space-y-4 overflow-hidden relative">
+                 <div className="absolute top-0 right-0 p-6 opacity-5"><Landmark className="h-24 w-24" /></div>
+                 <h4 className="font-black text-xs uppercase tracking-widest text-primary">{isRtl ? 'المطابقة التلقائية' : 'Auto Reconciliation'}</h4>
+                 <p className="text-[10px] font-bold text-slate-500 leading-relaxed italic">
+                    {isRtl ? 'سيقوم النظام بتوليد قيد اليومية المناظر فور حفظ السند، مع ربطه بمركز التكلفة المختار.' : 'System will auto-generate journal entries and link to the selected cost center.'}
                  </p>
               </Card>
            </aside>
@@ -273,10 +273,10 @@ export default function PaymentVouchersPage() {
               <Table>
                  <TableHeader className="bg-slate-50">
                     <TableRow>
-                       <TableHead className="py-3 ps-6 text-start">{tSafe('inline.voucher.no.date', 'رقم السند / التاريخ', 'Voucher No. / Date')}</TableHead>
-                       <TableHead className="text-start">{tSafe('inline.paid.to', 'إلى السيد', 'Paid To')}</TableHead>
+                       <TableHead className="py-3 ps-6 text-start">{isRtl ? 'رقم السند / التاريخ' : 'Voucher No. / Date'}</TableHead>
+                       <TableHead className="text-start">{isRtl ? 'إلى السيد' : 'Paid To'}</TableHead>
                        <TableHead className="text-end">{t('common.amount')}</TableHead>
-                       <TableHead className="text-center">{tSafe('inline.payment.method', 'طريقة الدفع', 'Payment Method')}</TableHead>
+                       <TableHead className="text-center">{isRtl ? 'طريقة الدفع' : 'Payment Method'}</TableHead>
                        <TableHead className="pe-6"></TableHead>
                     </TableRow>
                  </TableHeader>

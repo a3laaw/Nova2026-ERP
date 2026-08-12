@@ -23,6 +23,8 @@ import { paths } from '@/firebase/multi-tenant';
 import { Employee, AttendanceRecord } from '@/types/hr';
 import { cn } from '@/lib/utils';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function EmployeeDossierPage() {
   const empId = useParams().id as string;
@@ -37,7 +39,7 @@ export default function EmployeeDossierPage() {
   // فحص صلاحية الوصول للملف (عزل البيانات)
   const hrView = check('hr', 'view');
   const isOwn = globalUser?.employeeId === empId;
-  const canAccess = isOwn || hrView.scope === 'all' || (hrView.scope === 'dept' && true); // التبسيط للنموذج
+  const canAccess = isOwn || hrView.scope === 'all' || (hrView.scope === 'dept' && true); 
 
   // 1. جلب البيانات الأساسية
   const empRef = useMemo(() => 
@@ -98,7 +100,7 @@ export default function EmployeeDossierPage() {
   return (
     <div className="space-y-8 pb-20 animate-in fade-in duration-700" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 text-start">
            <Button variant="ghost" onClick={() => router.back()} className="h-12 w-12 p-0 rounded-2xl bg-white shadow-sm border hover:bg-slate-50">
              <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
            </Button>
@@ -117,7 +119,7 @@ export default function EmployeeDossierPage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         
         <div className="lg:col-span-1 space-y-6">
-           <h3 className="font-black text-xs text-slate-400 uppercase tracking-[0.2em] px-2">{isRtl ? 'التقارير الذاتية (ERP)' : 'Self-Service Reports'}</h3>
+           <h3 className="font-black text-xs text-slate-400 uppercase tracking-[0.2em] px-2 text-start">{isRtl ? 'التقارير الذاتية (ERP)' : 'Self-Service Reports'}</h3>
            <div className="grid grid-cols-1 gap-4">
               <ReportActionCard 
                 title={isRtl ? "كشف حركة الرصيد" : "Leave Ledger"} 
@@ -169,10 +171,10 @@ export default function EmployeeDossierPage() {
                           </div>
                        </div>
                     </div>
-                    <div className="bg-slate-900 text-white p-6 rounded-3xl text-center min-w-[180px] shadow-2xl">
+                    <div className="bg-primary/5 p-6 rounded-3xl text-center min-w-[180px] shadow-inner border-2 border-white">
                        <p className="text-[9px] font-black text-primary uppercase mb-1">{isRtl ? 'رصيد الإجازات الحالي' : 'Current Balance'}</p>
-                       <p className="text-4xl font-black font-mono">{employee.annualLeaveBalance || 0}</p>
-                       <p className="text-[10px] font-bold text-slate-500 mt-1 uppercase">{isRtl ? 'يوم مستحق' : 'Accrued Days'}</p>
+                       <p className="text-4xl font-black font-mono text-slate-900">{employee.annualLeaveBalance || 0}</p>
+                       <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">{isRtl ? 'يوم مستحق' : 'Accrued Days'}</p>
                     </div>
                  </div>
               </CardHeader>
