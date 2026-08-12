@@ -35,6 +35,7 @@ export class TemplateService {
     switch (type) {
       case 'quotation': return paths.quotationTemplates(this.companyId);
       case 'contract': return paths.contractTemplates(this.companyId);
+      case 'subcon_contract': return paths.subconContractTemplates(this.companyId);
       case 'boq': return paths.boqTemplates(this.companyId);
     }
   }

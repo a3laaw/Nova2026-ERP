@@ -5,7 +5,7 @@
 
 import { BaseReference } from './reference';
 
-export type TemplateType = 'quotation' | 'contract' | 'boq';
+export type TemplateType = 'quotation' | 'contract' | 'subcon_contract' | 'boq';
 
 export type PricingMode = 'fixed' | 'itemized' | 'percentage';
 
@@ -79,6 +79,13 @@ export interface ContractTemplate extends BaseTemplate {
   contractType?: string;
   durationNotes?: string;
   pricingMode?: PricingMode;
+}
+
+export interface SubConContractTemplate extends BaseTemplate {
+  trade: string; // التخصص المعتمد للقالب (مثلاً: حدادة)
+  legalText?: string;
+  defaultMilestones: ContractMilestone[];
+  pricingMode: PricingMode;
 }
 
 /**

@@ -5,14 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   LayoutTemplate, FileText, Gavel, FileSpreadsheet, 
-  ChevronRight, ArrowUpRight
+  ChevronRight, ArrowUpRight, Handshake
 } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/context/language-context';
 import { cn } from '@/lib/utils';
 
 export default function TemplatesHubPage() {
-  const { t, dir, lang } = useLanguage();
+  const { t, dir, lang, tSafe } = useLanguage();
   const router = useRouter();
   const isRtl = lang === 'ar';
 
@@ -34,6 +34,15 @@ export default function TemplatesHubPage() {
       color: 'text-indigo-600',
       bg: 'bg-indigo-50',
       path: '/dashboard/settings/templates/contracts'
+    },
+    {
+      id: 'subcon',
+      title: tSafe('inline.subcon.templates', 'عقود مقاولي الباطن', 'Subcon Contracts'),
+      desc: tSafe('inline.subcon.templates.desc', 'إدارة نماذج اتفاقيات مقاولي الباطن حسب التخصص.', 'Manage subcontractor agreement templates by trade.'),
+      icon: Handshake,
+      color: 'text-amber-600',
+      bg: 'bg-amber-50',
+      path: '/dashboard/settings/templates/subcon-contracts'
     },
     {
       id: 'boq',
@@ -60,7 +69,7 @@ export default function TemplatesHubPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {templateModules.map((module) => (
           <Card 
             key={module.id} 
@@ -72,13 +81,13 @@ export default function TemplatesHubPage() {
                <div className={cn("w-16 h-16 rounded-[1.5rem] flex items-center justify-center mb-6 transition-transform group-hover:scale-110 shadow-lg", module.bg, module.color)}>
                   <module.icon className="h-8 w-8" />
                </div>
-               <CardTitle className="text-2xl font-black font-headline text-slate-900">{module.title}</CardTitle>
-               <CardDescription className="text-base font-bold leading-relaxed mt-4">
+               <CardTitle className="text-2xl font-black font-headline text-slate-900 leading-tight">{module.title}</CardTitle>
+               <CardDescription className="text-xs font-bold leading-relaxed mt-4">
                   {module.desc}
                </CardDescription>
             </CardHeader>
             <CardContent className="p-10 pt-0 text-start">
-               <div className={cn("flex items-center gap-2 font-black text-xs transition-all mt-8", module.color)}>
+               <div className={cn("flex items-center gap-2 font-black text-[10px] uppercase transition-all mt-8", module.color)}>
                   {t('manageLibrary')}
                   <ChevronRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
                </div>
