@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useEffect, useState } from 'react';
@@ -17,10 +18,14 @@ import {
   Plus,
   Workflow,
   Clock,
-  Landmark
+  Landmark,
+  User,
+  Gavel,
+  CheckCircle2,
+  FileText
 } from "lucide-react";
 import { useFirestore, useDoc } from '@/firebase';
-import { doc, updateDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
@@ -34,7 +39,7 @@ import { Label } from "@/components/ui/label";
 export default function SubConContractViewPage() {
   const params = useParams();
   const contractId = params.id as string;
-  const { globalUser, user } = useAuthContext();
+  const { globalUser, user, roleData } = useAuthContext();
   const { lang, dir, t, tSafe } = useLanguage();
   const db = useFirestore();
   const router = useRouter();
@@ -60,9 +65,8 @@ export default function SubConContractViewPage() {
   const stats = useMemo(() => {
     const milestones = editData.milestones || [];
     const totalPercentage = milestones.reduce((acc: number, m: any) => acc + (Number(m.percentage) || 0), 0);
-    const totalItemizedAmount = milestones.reduce((acc: number, m: any) => acc + (Number(m.amount) || 0), 0);
     const isValid = Math.abs(totalPercentage - 100) < 0.1;
-    return { totalPercentage, totalItemizedAmount, isValid };
+    return { totalPercentage, isValid };
   }, [editData.milestones]);
 
   const handleSave = async () => {
@@ -75,30 +79,13 @@ export default function SubConContractViewPage() {
         updatedAt: serverTimestamp(),
         updatedBy: user.uid
       });
-      toast({ title: tSafe('common.saved', 'تم الحفظ', 'Saved') });
+      toast({ title: tSafe('common.saved', 'تم الحفظ بنجاح', 'Saved Successfully') });
       setIsEditing(false);
     } catch (e) {
       toast({ variant: "destructive", title: t('common.error') });
     } finally {
       setSaving(false);
     }
-  };
-
-  const updateMilestone = (idx: number, field: string, value: any) => {
-    const newM = [...(editData.milestones || [])];
-    const item = { ...newM[idx], [field]: value };
-    
-    if (editData.pricingMode === 'percentage' && (field === 'percentage' || field === 'amount')) {
-      const total = editData.totalAmount || 0;
-      if (field === 'percentage') {
-        item.amount = (total * (Number(value) || 0)) / 100;
-      } else if (field === 'amount' && total > 0) {
-        item.percentage = (Number(value) / total) * 100;
-      }
-    }
-    
-    newM[idx] = item;
-    setEditForm({...editData, milestones: newM});
   };
 
   if (loading) return <div className="h-[60vh] flex items-center justify-center bg-white"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
@@ -108,72 +95,88 @@ export default function SubConContractViewPage() {
     <div className="space-y-6 pb-20 animate-in fade-in duration-700 bg-white" dir={dir}>
       <div className="max-w-full mx-auto flex flex-col md:flex-row justify-between items-center gap-4 print:hidden px-8 pt-6 text-start">
         <div className="flex items-center gap-4 text-start">
-           <button onClick={() => router.back()} className="h-12 w-12 p-0 rounded-2xl border-2 bg-white text-slate-400 hover:text-slate-900 transition-all shadow-sm shrink-0 flex items-center justify-center">
-              <ArrowRight className={cn("h-6 w-6", !isRtl && "rotate-180")} />
+           <button onClick={() => router.back()} className="h-10 w-10 border-2 rounded-xl flex items-center justify-center hover:bg-slate-50 transition-colors text-slate-400 shadow-sm shrink-0">
+              <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
            </button>
            <div className="text-start">
-              <h1 className="text-2xl font-black text-slate-900">{tSafe('subcon.details.official', 'اتفاقية تنفيذ أعمال باطن', 'SubCon Services Agreement')}</h1>
-              <Badge className="bg-primary text-white border-0 font-black px-4 py-1.5 rounded-xl uppercase text-[10px] mt-1 shadow-lg">#{contract.id.slice(-8).toUpperCase()}</Badge>
+              <h1 className="text-xl font-black text-slate-900">{tSafe('subcon.details.official', 'اتفاقية تنفيذ أعمال باطن', 'SubCon Services Agreement')}</h1>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">REF: {contract.id.slice(-8).toUpperCase()}</p>
            </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2">
            {isEditing ? (
-              <Button onClick={handleSave} disabled={saving} className="h-12 px-10 rounded-xl bg-primary text-white font-black shadow-xl border-b-4 border-orange-700 hover:scale-[1.02] transition-all">
+              <Button onClick={handleSave} disabled={saving} className="h-10 px-8 rounded-xl bg-primary text-white font-black shadow-xl border-b-4 border-orange-700">
                 {saving ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
                 {tSafe('common.saveChanges', 'حفظ التغييرات', 'Save Changes')}
               </Button>
            ) : (
-             <Button onClick={() => setIsEditing(true)} variant="outline" className="rounded-xl h-12 px-8 font-black gap-3 border-2 border-primary/20 bg-white text-primary">
-                <Edit3 className="h-5 w-5" /> {tSafe('common.edit', 'تعديل', 'Edit')}
+             <Button onClick={() => setIsEditing(true)} variant="outline" className="rounded-xl h-10 px-6 font-black gap-2 border-2 bg-white text-primary">
+                <Edit3 className="h-4 w-4" /> {tSafe('common.edit', 'تعديل', 'Edit')}
              </Button>
            )}
-           <Button onClick={() => window.print()} className="rounded-xl h-12 px-10 font-black gap-3 bg-slate-900 text-white shadow-xl">
-              <Printer className="h-5 w-5" /> {tSafe('common.print', 'طباعة', 'Print')}
+           <Button onClick={() => window.print()} className="rounded-xl h-10 px-8 font-black gap-2 bg-slate-900 text-white shadow-xl">
+              <Printer className="h-4 w-4" /> {tSafe('common.print', 'طباعة', 'Print')}
            </Button>
         </div>
       </div>
 
-      <div className="px-8">
+      <div className="px-4 md:px-8">
         <PrintWrapper title={tSafe('subcon.details.official', 'اتفاقية تنفيذ أعمال باطن', 'SubCon Services Agreement')} fullWidth={true}>
            <div className="space-y-12 text-start">
               
-              <div className="p-10 rounded-[3rem] bg-white border-2 border-primary/10 flex flex-col md:flex-row justify-between items-center gap-10 relative overflow-hidden shadow-xl ring-1 ring-black/[0.02]">
-                 <div className="absolute top-0 right-0 p-10 opacity-5"><Landmark className="h-48 w-48 text-primary" /></div>
-                 <div className="space-y-4 relative z-10 text-start">
-                    <div className="space-y-1">
-                       <p className="text-[10px] font-black text-primary uppercase tracking-[0.4em]">{tSafe('subcon.vendor', 'المقاول الطرف الثاني /', 'Subcontractor:')}</p>
-                       <h2 className="text-4xl font-black font-headline text-slate-900">{contract.subcontractorName}</h2>
+              {/* القسم الأول: أطراف التعاقد */}
+              <div className="space-y-6">
+                 <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em] border-b-2 border-primary/10 pb-2">{tSafe('subcon.legal.parties', 'أولاً: أطراف التعاقد', 'Parties of the Agreement')}</h3>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div className="p-6 rounded-[2rem] bg-slate-50 border-2 border-white shadow-inner text-start space-y-4">
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{tSafe('subcon.first.party', 'الطرف الأول (المقاول الرئيسي)', 'First Party (Main Contractor)')}</p>
+                       <div className="space-y-1">
+                          <h4 className="text-xl font-black text-slate-900">{globalUser?.companyName || 'NovaFlow ERP'}</h4>
+                          <p className="text-[10px] font-bold text-slate-400">{tSafe('subcon.representedBy', 'يمثلها قانوناً: ', 'Represented by: ')} {globalUser?.fullName || 'Manager'}</p>
+                       </div>
                     </div>
-                    <div className="space-y-1">
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{tSafe('common.project', 'المشروع', 'Project')}</p>
-                       <p className="text-xl font-black text-slate-800">{contract.projectTitle}</p>
-                    </div>
-                 </div>
-                 <div className="text-center md:text-end relative z-10 shrink-0">
-                    <div className="bg-primary/5 p-10 rounded-[2.5rem] border-2 border-white shadow-xl ring-4 ring-white">
-                       <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-2">{tSafe('subcon.form.targetBudget', 'إجمالي قيمة العقد', 'Contract Value')}</p>
-                       <h3 className="text-5xl font-black font-headline text-slate-900">
-                          {contract.totalAmount?.toLocaleString()} <span className="text-sm font-bold opacity-40">KWD</span>
-                       </h3>
+                    <div className="p-6 rounded-[2rem] bg-orange-50/50 border-2 border-white shadow-inner text-start space-y-4">
+                       <p className="text-[10px] font-black text-primary uppercase tracking-widest">{tSafe('subcon.second.party', 'الطرف الثاني (مقاول الباطن)', 'Second Party (Subcontractor)')}</p>
+                       <div className="space-y-1">
+                          <h4 className="text-xl font-black text-slate-900">{contract.subcontractorName}</h4>
+                          <p className="text-[10px] font-bold text-slate-400">{tSafe('subcon.vendorId', 'رقم السجل/المدني:', 'Reg/Civil ID:')} {contract.subcontractorId?.slice(-8)}</p>
+                       </div>
                     </div>
                  </div>
               </div>
 
+              {/* القسم الثاني: موضوع التعاقد */}
               <div className="space-y-6">
-                 <div className="flex justify-between items-center px-4">
-                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-3">
-                       <Layers className="h-5 w-5 text-primary" /> {tSafe('subcon.details.review', 'مراجعة واعتماد بنود التعاقد', 'Contractual Milestones Review')}
-                    </h4>
+                 <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em] border-b-2 border-primary/10 pb-2">{tSafe('subcon.legal.subject', 'ثانياً: موضوع التعاقد والميزانية', 'Contract Subject & Budget')}</h3>
+                 <div className="p-8 rounded-[2rem] bg-white border-2 border-slate-100 shadow-sm text-start space-y-6">
+                    <div className="space-y-2">
+                       <Label className="text-[10px] font-black text-slate-400 uppercase">{tSafe('common.project', 'المشروع المرتبط', 'Linked Project')}</Label>
+                       <p className="text-lg font-black text-slate-900">{contract.projectTitle}</p>
+                    </div>
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-8 pt-6 border-t border-slate-50">
+                       <div className="text-start space-y-1">
+                          <p className="text-[10px] font-black text-slate-400 uppercase">{tSafe('subcon.form.targetBudget', 'إجمالي قيمة التعاقد (مقطوعية)', 'Total Contract Value (Lumpsum)')}</p>
+                          <h3 className="text-4xl font-black text-primary">{contract.totalAmount?.toLocaleString()} <span className="text-xs font-bold text-slate-400">KWD</span></h3>
+                       </div>
+                       <div className="bg-emerald-50 px-6 py-3 rounded-2xl border-2 border-emerald-100 flex items-center gap-3">
+                          <ShieldCheck className="h-5 w-5 text-emerald-600" />
+                          <span className="font-black text-[10px] text-emerald-800 uppercase tracking-widest">{tSafe('subcon.fixedPrice', 'سعر ثابت معتمد', 'Fixed Price Approved')}</span>
+                       </div>
+                    </div>
                  </div>
+              </div>
 
-                 <div className="border-2 border-slate-100 rounded-[2.5rem] overflow-hidden bg-white shadow-sm">
+              {/* القسم الثالث: جدول الدفعات */}
+              <div className="space-y-6">
+                 <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em] border-b-2 border-primary/10 pb-2">{tSafe('subcon.legal.milestones', 'ثالثاً: جدول استحقاق الدفعات', 'Payment Milestones')}</h3>
+                 <div className="border-2 border-slate-100 rounded-[2.5rem] overflow-hidden bg-white shadow-xl ring-1 ring-black/[0.02]">
                     <table className="w-full text-xs text-start">
                        <thead className="bg-slate-50 border-b-2 text-slate-600 font-black uppercase text-[10px] tracking-widest">
                           <tr>
                              <th className="p-6 w-12 text-start">#</th>
-                             <th className="p-6 text-start">{tSafe('name', 'مسمى الدفعة', 'Milestone Name')}</th>
+                             <th className="p-6 text-start">{tSafe('name', 'مسمى الدفعة المستحقة', 'Milestone Description')}</th>
                              {contract.pricingMode === 'percentage' && <th className="p-6 text-center w-24">%</th>}
-                             <th className="p-6 text-end pe-12 w-48">{tSafe('amount', 'المبلغ', 'Amount')}</th>
+                             <th className="p-6 text-end pe-12 w-48">{tSafe('amount', 'المبلغ المستحق', 'Payable Amount')}</th>
                           </tr>
                        </thead>
                        <tbody className="divide-y divide-slate-100">
@@ -182,6 +185,13 @@ export default function SubConContractViewPage() {
                                <td className="p-6 font-black text-slate-300 text-start">{idx + 1}</td>
                                <td className="p-4 text-start font-black text-slate-800 text-sm">
                                   {m.name}
+                                  {m.technicalStageId && (
+                                     <div className="flex items-center gap-2 mt-1.5">
+                                        <Badge variant="secondary" className="bg-primary/5 text-primary text-[8px] font-black h-4 px-2 border-0 uppercase">
+                                           <Workflow className="h-2.5 w-2.5 me-1" /> {tSafe('inline.link.stage', 'ارتباط فني معتمد', 'Technical Link Approved')}
+                                        </Badge>
+                                     </div>
+                                  )}
                                </td>
                                {contract.pricingMode === 'percentage' && (
                                  <td className="p-4 text-center font-black text-slate-900 text-lg">
@@ -200,13 +210,45 @@ export default function SubConContractViewPage() {
                  </div>
               </div>
 
-              <div className="space-y-6 text-start pt-10">
-                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-3 border-b-4 border-primary/20 pb-4">
-                    <ShieldCheck className="h-6 w-6 text-primary" /> {tSafe('subcon.legalTerms', 'البنود والشروط القانونية (عقد الباطن)', 'SubCon Legal Terms & Clauses')}
-                 </h4>
-                 <p className="p-12 bg-slate-50/50 rounded-[4rem] border-2 border-white shadow-inner text-base font-bold text-slate-700 leading-relaxed whitespace-pre-wrap italic text-start">
-                    {contract.legalText || tSafe('inline.no.terms', 'لم يتم تحديد شروط قانونية.', 'No terms defined.')}
-                 </p>
+              {/* القسم الرابع: الشروط القانونية */}
+              <div className="space-y-6">
+                 <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em] border-b-2 border-primary/10 pb-2">{tSafe('subcon.legalTerms', 'رابعاً: الشروط والأحكام القانونية', 'Legal Terms & Conditions')}</h3>
+                 <div className="p-12 bg-slate-50/50 rounded-[3rem] border-2 border-white shadow-inner text-sm font-bold text-slate-700 leading-relaxed whitespace-pre-wrap italic text-start min-h-[300px]">
+                    {contract.legalText || tSafe('inline.no.terms', 'لم يتم تحديد شروط إضافية.', 'No additional terms defined.')}
+                 </div>
+              </div>
+
+              {/* القسم الخامس: التواقيع (فقط للطباعة) */}
+              <div className="pt-20 grid grid-cols-2 gap-20">
+                 <div className="text-center space-y-6">
+                    <div className="h-32 border-b-4 border-slate-100 relative">
+                       <p className="absolute -top-10 left-1/2 -translate-x-1/2 text-[8px] font-black text-slate-300 uppercase tracking-widest">{tSafe('inline.seal.space', 'موضع الختم الرسمي', 'Official Seal Area')}</p>
+                    </div>
+                    <div className="space-y-1">
+                       <p className="text-[10px] font-black text-slate-400 uppercase">{tSafe('subcon.first.party.sign', 'توقيع الطرف الأول', 'First Party Signature')}</p>
+                       <p className="text-xs font-black text-slate-900">{globalUser?.companyName}</p>
+                    </div>
+                 </div>
+                 <div className="text-center space-y-6">
+                    <div className="h-32 border-b-4 border-slate-100 relative">
+                       <p className="absolute -top-10 left-1/2 -translate-x-1/2 text-[8px] font-black text-slate-300 uppercase tracking-widest">{tSafe('inline.signature.space', 'موضع التوقيع', 'Signature Area')}</p>
+                    </div>
+                    <div className="space-y-1">
+                       <p className="text-[10px] font-black text-slate-400 uppercase">{tSafe('subcon.second.party.sign', 'توقيع الطرف الثاني', 'Second Party Signature')}</p>
+                       <p className="text-xs font-black text-slate-900">{contract.subcontractorName}</p>
+                    </div>
+                 </div>
+              </div>
+
+              {/* تذييل الوثيقة السيادي */}
+              <div className="pt-12 flex justify-between items-end opacity-40">
+                 <div className="text-start">
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{tSafe('inline.official.timestamp', 'بصمة النظام الرقمية /', 'Official System Timestamp:')}</p>
+                    <p className="text-[9px] font-mono font-bold">{new Date().toLocaleString()}</p>
+                 </div>
+                 <div className="text-end">
+                    <Landmark className="h-10 w-10 text-primary" />
+                 </div>
               </div>
            </div>
         </PrintWrapper>
@@ -214,3 +256,4 @@ export default function SubConContractViewPage() {
     </div>
   );
 }
+
