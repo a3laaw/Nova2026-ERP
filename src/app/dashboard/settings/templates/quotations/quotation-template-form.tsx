@@ -16,26 +16,23 @@ import {
 } from "@/components/ui/select";
 import { 
   Save, X, Plus, Trash2, Loader2, ArrowRight,
-  Calculator, ShieldCheck, FileText,
-  DollarSign, AlertTriangle, Target, Percent,
-  Workflow, LayoutGrid, Clock, GitBranch, Sparkles,
-  Link as LinkIcon, Info
+  FileText, Calculator, DollarSign, ShieldCheck,
+  AlertTriangle, Target, Percent, Workflow,
+  LayoutGrid, Clock, Link as LinkIcon, Info
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, where, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, where, getDocs, doc } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
-import { QuotationTemplate, QuotationItem, PricingMode, MilestoneTiming, BOQTemplate } from '@/types/templates';
-import { ActivityType, Service, SubService, TechnicalStage, BOQReferenceNode } from '@/types/reference';
+import { QuotationTemplate, QuotationItem, PricingMode, BOQTemplate } from '@/types/templates';
+import { ActivityType, Service, SubService, TechnicalStage } from '@/types/reference';
 import { TemplateService } from '@/services/template-service';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
-import { BOQReferenceSelector } from '@/components/settings/checklists/boq-reference/boq-reference-selector';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 
 interface Props {
   template: QuotationTemplate | null;
@@ -51,11 +48,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
   const companyId = globalUser?.companyId;
 
   const [loading, setLoading] = useState(false);
-  const [pathStages, setPathStages] = useState<TechnicalStage[]>([]);
-  const [loadingStages, setLoadingStages] = useState(false);
-  const [activeSubs, setActiveSubs] = useState<SubService[]>([]);
-  const [isRegistryOpen, setIsRegistryOpen] = useState(false);
-
   const [formData, setFormData] = useState<Partial<QuotationTemplate>>(
     template || {
       name: '',
@@ -68,13 +60,18 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
       boqTemplateName: '',
       introText: '',
       defaultTerms: '',
-      validDays: 30,
       pricingMode: 'itemized',
-      items: [],
+      items: [
+        { label: isRtl ? 'الدفعة الأولى' : '1st Installment', percentage: 10, timing: 'at', technicalStageId: 'SIGNING', unitPrice: 0, quantity: 1, description: '' }
+      ],
       isDefault: false,
       isActive: true
     }
   );
+
+  const [pathStages, setPathStages] = useState<TechnicalStage[]>([]);
+  const [loadingStages, setLoadingStages] = useState(false);
+  const [activeSubs, setActiveSubs] = useState<SubService[]>([]);
 
   const actQuery = useMemo(() => companyId && db ? query(collection(db, paths.activityTypes(companyId)), orderBy('order')) : null, [db, companyId]);
   const srvQuery = useMemo(() => {
@@ -90,6 +87,14 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
   const { data: activities } = useCollection<ActivityType>(actQuery);
   const { data: services, loading: servicesLoading } = useCollection<Service>(srvQuery);
   const { data: boqTemplates } = useCollection<BOQTemplate>(boqTemplatesQuery);
+
+  const getOrdinalLabel = (index: number) => {
+    const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"];
+    const enOrdinals = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
+    const base = isRtl ? "البند" : "Item";
+    const ordinal = isRtl ? (arOrdinals[index] || `#${index + 1}`) : (enOrdinals[index] || `#${index + 1}`);
+    return `${base} ${ordinal}`;
+  };
 
   useEffect(() => {
     if (db && companyId && formData.activityTypeId && formData.serviceId) {
@@ -112,14 +117,6 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
     }
   }, [db, companyId, formData.subServiceId, formData.activityTypeId, formData.serviceId]);
 
-  const getOrdinalLabel = (index: number) => {
-    const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"];
-    const enOrdinals = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
-    const base = isRtl ? "الدفعة" : "Installment";
-    const ordinal = isRtl ? (arOrdinals[index] || `#${index + 1}`) : (enOrdinals[index] || `#${index + 1}`);
-    return `${base} ${ordinal}`;
-  };
-
   const stats = useMemo(() => {
     const items = formData.items || [];
     const totalPercentage = items.reduce((acc, item) => acc + (item.percentage || 0), 0);
@@ -128,11 +125,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
     const isPercentageMode = formData.pricingMode === 'percentage';
     const isValid = isPercentageMode ? Math.abs(totalPercentage - 100) < 0.1 : true;
 
-    return {
-      totalPercentage,
-      totalItemizedAmount,
-      isValid
-    };
+    return { totalPercentage, totalItemizedAmount, isValid };
   }, [formData.items, formData.pricingMode]);
 
   const handleSave = async () => {
@@ -166,41 +159,23 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
     }
   };
 
-  const updateItem = (idx: number, field: string, val: any) => {
+  const updateItem = (idx: number, field: keyof QuotationItem, value: any) => {
     const newItems = [...(formData.items || [])];
-    (newItems[idx] as any)[field] = val;
-    setFormData({ ...formData, items: newItems });
+    (newItems[idx] as any)[field] = value;
+    setFormData({...formData, items: newItems});
   };
 
-  const addItemFromRegistry = (node: BOQReferenceNode) => {
-    const newItem: QuotationItem = {
-      label: node.title,
-      description: node.description || '',
-      boqReferenceNodeId: node.id,
-      unit: node.unitSymbol || 'unit',
-      unitPrice: node.estimatedRate || 0,
-      quantity: 1,
-      percentage: 0,
-      timing: 'at',
-      technicalStageId: node.technicalStageId || ''
-    };
-    setFormData({ ...formData, items: [...(formData.items || []), newItem] });
-    setIsRegistryOpen(false);
-    toast({ title: isRtl ? "تم ربط البند المرجعي" : "Registry Item Linked" });
-  };
-
-  const addItemManual = () => {
+  const addItem = () => {
     const nextIdx = (formData.items || []).length;
     setFormData({
       ...formData, 
       items: [...(formData.items || []), { 
         label: getOrdinalLabel(nextIdx), 
-        description: '',
         percentage: 0, 
         unitPrice: 0, 
-        quantity: 1,
-        timing: 'at',
-        technicalStageId: ''
+        quantity: 1, 
+        timing: 'at', 
+        technicalStageId: '' 
       }]
     });
   };
@@ -217,15 +192,15 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
             <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
           </Button>
           <div className="text-start">
-             <h1 className="text-xl font-black text-slate-900 leading-none">{isRtl ? 'هندسة قوالب عروض الأسعار' : 'Quotation Template Design'}</h1>
+             <h1 className="text-xl font-black text-slate-900 leading-none">{tSafe('inline.quotation.design', 'هندسة قوالب عروض الأسعار', 'Quotation Template Design')}</h1>
              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{formData.name || 'Draft Quotation Template'}</p>
           </div>
         </div>
         <div className="flex items-center gap-4">
            <div className="flex flex-col text-end">
-              <span className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'سلامة التسعير' : 'Pricing Integrity'}</span>
+              <span className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'حالة التوازن' : 'Balance Status'}</span>
               <Badge variant="outline" className={cn("h-6 border-2 font-black text-[9px]", stats.isValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>
-                 {stats.isValid ? 'VALID' : 'MISMATCH'}
+                 {stats.isValid ? `BALANCED` : `MISMATCH`}
               </Badge>
            </div>
            <Button onClick={handleSave} disabled={loading} size="sm" className="h-12 px-10 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 gap-3 border-b-4 border-orange-700 hover:scale-[1.02] transition-all">
@@ -238,7 +213,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
       <div className="max-w-full mx-auto px-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
          <div className="lg:col-span-9 space-y-8">
             
-            <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
+            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
                <CardHeader className="bg-primary/5 p-8 border-b">
                   <CardTitle className="text-lg font-black flex items-center gap-3 text-slate-800">
                      <Target className="h-6 w-6 text-primary" /> {isRtl ? 'السياق التشغيلي والارتباط المسبق' : 'Operational Context & Sovereign Link'}
@@ -315,7 +290,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-10 border-b-4 border-primary/10 pb-10">
                      <div className="space-y-4">
                         <div className="space-y-2">
-                           <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'مسمى عرض السعر' : 'Quotation Template Name'}</Label>
+                           <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'مسمى عرض السعر الرسمي' : 'Official Quotation Name'}</Label>
                            <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-14 rounded-2xl border-2 font-black text-xl bg-slate-50/50 shadow-inner" />
                         </div>
                      </div>
@@ -334,9 +309,9 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                      </div>
                   </div>
 
-                  <div className="space-y-2 text-start">
+                  <div className="space-y-4">
                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                        <FileText className="h-3.5 w-3.5 text-primary" /> {isRtl ? 'النص التعريفي' : 'Intro Text'}
+                        <FileText className="h-4 w-4 text-primary" /> {isRtl ? 'نص عرض السعر' : 'Intro Text'}
                      </h4>
                      <Textarea value={formData.introText || ''} onChange={e => setFormData({...formData, introText: e.target.value})} className="min-h-[120px] rounded-[2rem] border-2 p-8 text-sm font-bold leading-relaxed bg-slate-50/30" />
                   </div>
@@ -344,27 +319,11 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                   <div className="space-y-6">
                      <div className="flex justify-between items-center px-2">
                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                           <LayoutGrid className="h-5 w-5 text-primary" /> {tSafe('inline.pricing.payments', 'جدول بنود التسعير والدفعات', 'Pricing & Payments')}
+                           <LayoutGrid className="h-5 w-5 text-primary" /> {isRtl ? 'جدول بنود التسعير والربط الفني' : 'Pricing Items & Pipeline Link'}
                         </h4>
-                        <div className="flex gap-2">
-                           <Dialog open={isRegistryOpen} onOpenChange={setIsRegistryOpen}>
-                              <DialogTrigger asChild>
-                                 <Button variant="outline" size="sm" className="rounded-xl font-black text-[10px] border-2 h-10 px-8 gap-3 bg-slate-100 text-slate-800 hover:bg-slate-200 transition-all shadow-md">
-                                    <GitBranch className="h-4 w-4 text-primary" /> {isRtl ? 'القاموس الموحد' : 'Registry Link'}
-                                 </Button>
-                              </DialogTrigger>
-                              <DialogContent className="max-w-4xl rounded-3xl p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
-                                 <div className="bg-slate-50 p-8 text-slate-900 text-start border-b">
-                                    <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3"><Sparkles className="h-7 w-7 text-primary" /> {isRtl ? 'ربط بنود العرض بالقاموس الموحد' : 'Link Offer Items to Registry'}</DialogTitle>
-                                 </div>
-                                 <div className="p-8"><BOQReferenceSelector onSelect={addItemFromRegistry} /></div>
-                                 <DialogFooter className="p-4 bg-slate-50"><Button variant="outline" onClick={() => setIsRegistryOpen(false)}>{t('common.close')}</Button></DialogFooter>
-                              </DialogContent>
-                           </Dialog>
-                           <Button onClick={addItemManual} variant="outline" size="sm" className="rounded-xl font-black text-[10px] border-2 h-10 px-8 gap-3 bg-white hover:bg-primary/5 shadow-md">
-                              <Plus className="h-4 w-4 text-primary" /> {isRtl ? 'بند يدوي' : 'Manual Item'}
-                           </Button>
-                        </div>
+                        <Button variant="outline" size="sm" onClick={addItem} className="rounded-xl font-black text-[10px] border-2 h-10 px-8 gap-3 bg-white hover:bg-primary/5 shadow-md">
+                           <Plus className="h-4 w-4 text-primary" /> {isRtl ? 'إضافة بند' : 'Add Item'}
+                        </Button>
                      </div>
 
                      <div className="border-2 border-slate-200 rounded-[2.5rem] overflow-hidden bg-white shadow-2xl ring-1 ring-black/[0.02]">
@@ -372,8 +331,8 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                            <thead className="bg-slate-50 border-b-2 text-slate-600 font-black uppercase text-[10px] tracking-widest">
                               <tr>
                                  <th className="p-6 w-12 text-start">#</th>
-                                 <th className="p-6 text-start">{tSafe('inline.item.label', 'مسمى البند / الدفعة', 'Item Label')}</th>
-                                 {formData.pricingMode === 'percentage' && <th className="p-6 text-center w-24">%</th>}
+                                 <th className="p-6 text-start">{isRtl ? 'مسمى البند' : 'Item Label'}</th>
+                                 <th className="p-6 text-center w-24">%</th>
                                  <th className="p-6 text-center w-32">{isRtl ? 'التوقيت' : 'Timing'}</th>
                                  <th className="p-6 text-start w-48">{isRtl ? 'الارتباط الفني' : 'Technical Link'}</th>
                                  <th className="p-6 text-end pe-12 w-48">{isRtl ? 'المبلغ' : 'Amount'}</th>
@@ -383,7 +342,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                            <tbody className="divide-y divide-slate-100">
                               {(formData.items || []).map((m, idx) => {
                                  const lineAmount = formData.pricingMode === 'percentage' 
-                                   ? ((formData.baseAmount || 0) * (m.percentage || 0)) / 100 
+                                   ? (formData.baseAmount || 0) * (m.percentage || 0) / 100
                                    : (m.unitPrice || 0) * (m.quantity || 1);
                                  
                                  const linkedStageName = pathStages.find(s => s.id === m.technicalStageId)?.name;
@@ -392,27 +351,20 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                                       <td className="p-6 font-black text-slate-300 text-start">{idx + 1}</td>
                                       <td className="p-4">
-                                         <div className="space-y-2">
-                                            <div className="flex items-center gap-2">
-                                               {m.boqReferenceNodeId && <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[8px] h-5 px-3 uppercase font-black">{tSafe('inline.linked', 'مرتبط', 'LINKED')}</Badge>}
-                                               <Input value={m.label} onChange={e => updateItem(idx, 'label', e.target.value)} className="h-10 rounded-xl font-black text-sm bg-white border-2" />
-                                            </div>
-                                            {m.technicalStageId && m.technicalStageId !== 'NONE' && (
-                                              <p className="text-[8px] font-black text-primary/60 italic flex items-center gap-1 mt-1 px-2">
-                                                <Clock className="h-3 w-3" />
-                                                {isRtl ? 'عند' : 'at'} {m.technicalStageId === 'SIGNING' ? (isRtl ? 'توقيع العقد' : 'Contract Signing') : linkedStageName}
-                                              </p>
-                                            )}
+                                         <Input value={m.label} onChange={e => updateItem(idx, 'label', e.target.value)} className="h-10 rounded-xl font-black text-sm bg-white border-2" />
+                                         {m.technicalStageId && m.technicalStageId !== 'NONE' && (
+                                            <p className="text-[8px] font-black text-primary/60 italic flex items-center gap-1 mt-1 px-2">
+                                               <Clock className="h-2.5 w-2.5" />
+                                               {isRtl ? 'عند' : 'at'} {m.technicalStageId === 'SIGNING' ? (isRtl ? 'توقيع العقد' : 'Contract Signing') : linkedStageName}
+                                            </p>
+                                         )}
+                                      </td>
+                                      <td className="p-4">
+                                         <div className="relative w-20 mx-auto">
+                                            <Input type="number" value={m.percentage === 0 ? "" : m.percentage} onChange={e => updateItem(idx, 'percentage', e.target.value === '' ? 0 : Number(e.target.value))} className="h-10 rounded-xl border-2 font-black text-center pe-6 text-sm" />
+                                            <Percent className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
                                          </div>
                                       </td>
-                                      {formData.pricingMode === 'percentage' && (
-                                        <td className="p-4">
-                                           <div className="relative w-20 mx-auto">
-                                              <Input type="number" value={m.percentage === 0 ? "" : m.percentage} onChange={e => updateItem(idx, 'percentage', e.target.value === '' ? 0 : Number(e.target.value))} className="h-10 rounded-xl border-2 font-black text-center pe-6 text-sm" />
-                                              <Percent className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
-                                           </div>
-                                        </td>
-                                      )}
                                       <td className="p-4">
                                          <Select value={m.timing || 'at'} onValueChange={v => updateItem(idx, 'timing', v)}>
                                             <SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs bg-white"><SelectValue /></SelectTrigger>
@@ -427,23 +379,22 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                       <td className="p-4">
                                          <Select value={m.technicalStageId || 'SIGNING'} onValueChange={v => updateItem(idx, 'technicalStageId', v)}>
                                             <SelectTrigger className={cn(
-                                              "h-10 rounded-xl border-2 font-bold text-xs",
+                                              "h-10 rounded-xl border-2 font-black text-xs",
                                               m.technicalStageId ? "bg-primary/5 text-primary border-primary/20" : "bg-white"
                                             )}>
-                                              <SelectValue placeholder={isRtl ? "ربط فني..." : "Link Stage..."} />
+                                              <SelectValue placeholder={isRtl ? "ربط فني..." : "Link..."} />
                                             </SelectTrigger>
                                             <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
                                                <SelectItem value="SIGNING" className="font-black text-[10px] py-3 border-b border-slate-50">
                                                   <span className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-emerald-500" /> {isRtl ? 'توقيع العقد' : 'Contract Signing'}</span>
                                                </SelectItem>
-                                               <SelectItem value="NONE" className="font-bold text-[10px] text-slate-400 italic">--- {isRtl ? 'بدون ربط' : 'No Link'} ---</SelectItem>
                                                {pathStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
                                                   <span className="flex items-center gap-2"><Workflow className="h-3 w-3 text-primary" /> {s.name}</span>
                                                </SelectItem>)}
                                             </SelectContent>
                                          </Select>
                                       </td>
-                                      <td className="p-4 text-end pe-12 w-48">
+                                      <td className="p-4 text-end pe-12">
                                          {formData.pricingMode === 'itemized' ? (
                                             <div className="flex items-center gap-2 justify-end">
                                                <Input type="number" step="1" value={m.quantity || 1} onChange={e => updateItem(idx, 'quantity', e.target.value === '' ? 1 : Number(e.target.value))} className="h-10 w-14 text-center text-xs font-black border-2 rounded-xl" />
@@ -464,12 +415,10 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                            <tfoot className="bg-slate-50 border-t-8 border-primary">
                               <tr>
                                  <td colSpan={formData.pricingMode === 'percentage' ? 5 : 4} className="p-10 text-start">
-                                    <h3 className="text-xl font-black font-headline uppercase tracking-tighter text-slate-800">{isRtl ? 'إجمالي قيمة العرض المقترح' : 'Total Quotation Proposed Value'}</h3>
-                                    {formData.pricingMode === 'percentage' && (
-                                       <Badge className={cn("mt-3 border-0 text-[10px] font-black h-7 px-5 shadow-lg", stats.isValid ? "bg-emerald-600 text-white" : "bg-rose-600 text-white")}>
-                                          {stats.isValid ? `BALANCED: 100%` : `MISMATCH: ${stats.totalPercentage}%`}
-                                       </Badge>
-                                    )}
+                                    <h3 className="text-xl font-black font-headline uppercase tracking-tighter text-slate-800">{isRtl ? 'إجمالي قيمة عرض السعر' : 'Total Quotation Value'}</h3>
+                                    <Badge className={cn("mt-3 border-0 text-[10px] font-black h-7 px-5 shadow-lg", stats.isValid ? "bg-emerald-600 text-white" : "bg-rose-600 text-white")}>
+                                       {stats.isValid ? `BALANCED: 100%` : `MISMATCH: ${stats.totalPercentage}%`}
+                                    </Badge>
                                  </td>
                                  <td colSpan={2} className="p-10 text-end pe-12">
                                     <div className="space-y-1">
@@ -485,9 +434,9 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
 
                   <div className="space-y-4 pt-10 text-start">
                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 border-b-4 border-primary/20 pb-3">
-                        <ShieldCheck className="h-6 w-6 text-primary" /> {t('defaultTerms')}
+                        <ShieldCheck className="h-6 w-6 text-primary" /> {isRtl ? 'الشروط والأحكام المرجعية' : 'Terms & Conditions'}
                      </h4>
-                     <Textarea value={formData.defaultTerms || ''} onChange={e => setFormData({...formData, defaultTerms: e.target.value})} className="min-h-[200px] rounded-[3rem] border-2 p-10 text-base font-bold leading-relaxed bg-slate-50/50 focus:bg-white transition-all shadow-inner" placeholder="..." />
+                     <Textarea value={formData.defaultTerms || ''} onChange={e => setFormData({...formData, defaultTerms: e.target.value})} className="min-h-[300px] rounded-[3rem] border-2 p-10 text-base font-bold leading-relaxed bg-slate-50/50 focus:bg-white transition-all shadow-inner" placeholder="..." />
                   </div>
                </div>
             </PrintWrapper>
