@@ -7,10 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
   Plus, Search, Loader2, ArrowRight, 
-  Handshake, Trash2, Edit3, ShieldCheck, 
-  FileText, History, DollarSign, Building2,
-  Workflow, ArrowUpRight, CheckCircle2, Clock,
-  Hammer, AlertTriangle, Landmark, Sparkles
+  Handshake, ShieldCheck, 
+  Building2, ArrowUpRight, CheckCircle2, Clock,
+  Landmark, Sparkles
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where } from 'firebase/firestore';
@@ -33,6 +32,7 @@ export default function SubConContractsListPage() {
   const { permissions, isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
+  const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -89,7 +89,7 @@ export default function SubConContractsListPage() {
         projectTitle: trans?.subServiceName || ''
       }, user.uid);
 
-      toast({ title: t('common.saved') });
+      toast({ title: tSafe('common.saved', 'تم الحفظ بنجاح', 'Saved Successfully') });
       router.push(`/dashboard/procurement/subcontractors/contracts/${docId}`);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
@@ -99,14 +99,14 @@ export default function SubConContractsListPage() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-20" dir={dir}>
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-slate-100 pb-6 text-start">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-20 text-start" dir={dir}>
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-slate-100 pb-6">
         <div className="text-start space-y-1">
            <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit">
               <ShieldCheck className="h-3 w-3" /> {tSafe('subcon.authorizedPortal', 'بوابة العقود المعتمدة', 'Authorized Contracts Portal')}
            </div>
            <h1 className="text-3xl font-black font-headline text-slate-900">{tSafe('subcon.contracts.title', 'عقود مقاولي الباطن', 'SubCon Contracts')}</h1>
-           <p className="text-muted-foreground text-xs font-bold opacity-70 italic text-start">
+           <p className="text-muted-foreground text-xs font-bold opacity-70 italic">
               {tSafe('subcon.contracts.desc', 'إدارة عقود تنفيذ الباطن والارتباطات المالية للمشاريع.', 'Manage subcontractor awards and project financial links.')}
            </p>
         </div>
@@ -120,7 +120,7 @@ export default function SubConContractsListPage() {
         </Button>
       </header>
 
-      <Card className="rounded-[2rem] border-0 shadow-xl bg-white overflow-hidden ring-1 ring-black/5 text-start">
+      <Card className="rounded-[2rem] border-0 shadow-xl bg-white overflow-hidden ring-1 ring-black/5">
         <CardHeader className="bg-slate-50/50 border-b p-6">
            <div className="relative w-full max-w-md text-start">
               <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
@@ -183,7 +183,7 @@ export default function SubConContractsListPage() {
                    </TableCell>
                    <TableCell className="pe-10 text-end">
                       <Button variant="ghost" size="icon" className="rounded-xl h-10 w-10 text-slate-300 group-hover:text-primary transition-all">
-                         <ArrowUpRight className={cn("h-5 w-5", isRtl && "rotate-180")} />
+                         <ArrowRight className={cn("h-5 w-5", isRtl && "rotate-180")} />
                       </Button>
                    </TableCell>
                 </TableRow>
@@ -194,7 +194,7 @@ export default function SubConContractsListPage() {
       </Card>
 
       <Dialog open={isIssueOpen} onOpenChange={setIsIssueOpen}>
-         <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl text-start" dir={dir}>
+         <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl" dir={dir}>
             <div className="bg-primary p-10 text-white text-start">
                <DialogTitle className="text-3xl font-black font-headline flex items-center gap-3">
                   <Handshake className="h-10 w-10 text-white" />

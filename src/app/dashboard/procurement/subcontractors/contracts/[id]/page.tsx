@@ -75,7 +75,7 @@ export default function SubConContractViewPage() {
         updatedAt: serverTimestamp(),
         updatedBy: user.uid
       });
-      toast({ title: t('common.saved') });
+      toast({ title: tSafe('common.saved', 'تم الحفظ', 'Saved') });
       setIsEditing(false);
     } catch (e) {
       toast({ variant: "destructive", title: t('common.error') });
@@ -107,10 +107,10 @@ export default function SubConContractViewPage() {
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-700 bg-white" dir={dir}>
       <div className="max-w-full mx-auto flex flex-col md:flex-row justify-between items-center gap-4 print:hidden px-8 pt-6 text-start">
-        <div className="flex items-center gap-4">
-           <Button variant="ghost" onClick={() => router.back()} className="h-12 w-12 p-0 rounded-2xl border-2 bg-white text-slate-400 hover:text-slate-900 transition-all shadow-sm shrink-0">
+        <div className="flex items-center gap-4 text-start">
+           <button onClick={() => router.back()} className="h-12 w-12 p-0 rounded-2xl border-2 bg-white text-slate-400 hover:text-slate-900 transition-all shadow-sm shrink-0 flex items-center justify-center">
               <ArrowRight className={cn("h-6 w-6", !isRtl && "rotate-180")} />
-           </Button>
+           </button>
            <div className="text-start">
               <h1 className="text-2xl font-black text-slate-900">{tSafe('subcon.details.official', 'اتفاقية تنفيذ أعمال باطن', 'SubCon Services Agreement')}</h1>
               <Badge className="bg-primary text-white border-0 font-black px-4 py-1.5 rounded-xl uppercase text-[10px] mt-1 shadow-lg">#{contract.id.slice(-8).toUpperCase()}</Badge>

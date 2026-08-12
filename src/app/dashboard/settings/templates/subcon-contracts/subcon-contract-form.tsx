@@ -134,7 +134,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
       if (template?.id) await service.updateTemplate('subcon_contract', template.id, payload, user.uid);
       else await service.addTemplate('subcon_contract', payload, user.uid);
       
-      toast({ title: t('common.saved') });
+      toast({ title: tSafe('common.saved', 'تم الحفظ', 'Saved') });
       onClose();
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
@@ -227,21 +227,21 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                         <Input value={formData.trade || ''} onChange={e => setFormData({...formData, trade: e.target.value})} className="h-11 rounded-xl border-2 font-black text-primary" placeholder="..." />
                      </div>
                      <div className="space-y-1.5 pt-4 border-t">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('activity', 'النشاط', 'Activity')}</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400">النشاط</Label>
                         <Select value={formData.activityTypeId || ''} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
                            <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
                            <SelectContent className="rounded-xl">{activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent>
                         </Select>
                      </div>
                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('service', 'الخدمة', 'Service')}</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400">الخدمة</Label>
                         <Select disabled={!formData.activityTypeId} value={formData.serviceId || ''} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
                            <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
                            <SelectContent className="rounded-xl">{services?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
                         </Select>
                      </div>
                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('path', 'المسار', 'Path')}</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400">المسار</Label>
                         <Select disabled={!formData.serviceId} value={formData.subServiceId || ''} onValueChange={v => {
                            const sub = activeSubs.find(s => s.id === v);
                            setFormData({...formData, subServiceId: v, subServiceName: sub?.name || ''});
@@ -334,10 +334,10 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                                       <Select value={m.timing || 'at'} onValueChange={v => updateMilestone(idx, 'timing', v)}>
                                          <SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs bg-white"><SelectValue /></SelectTrigger>
                                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
-                                            <SelectItem value="at" className="font-bold text-xs">{tSafe('at', 'عند', 'At')}</SelectItem>
-                                            <SelectItem value="before" className="font-bold text-xs">{tSafe('before', 'قبل', 'Before')}</SelectItem>
-                                            <SelectItem value="during" className="font-bold text-xs">{tSafe('during', 'أثناء', 'During')}</SelectItem>
-                                            <SelectItem value="after" className="font-bold text-xs">{tSafe('after', 'بعد', 'After')}</SelectItem>
+                                            <SelectItem value="at" className="font-bold text-xs">عند</SelectItem>
+                                            <SelectItem value="before" className="font-bold text-xs">قبل</SelectItem>
+                                            <SelectItem value="during" className="font-bold text-xs">أثناء</SelectItem>
+                                            <SelectItem value="after" className="font-bold text-xs">بعد</SelectItem>
                                          </SelectContent>
                                       </Select>
                                    </td>
