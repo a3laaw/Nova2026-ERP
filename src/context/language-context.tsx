@@ -66,7 +66,25 @@ const translations: Record<Language, Record<string, string>> = {
     'common.pending': 'معلق',
     'common.getStarted': 'ابدأ الآن',
     'common.records': 'سجلات',
-    // --- مفاتيح البناء والمقاولات (التي كانت مفقودة) ---
+    'common.vendor': 'المقاول / المورد',
+    'common.project': 'المشروع',
+    
+    // --- Subcontractor Contracts (New) ---
+    'subcon.contracts.title': 'عقود مقاولي الباطن',
+    'subcon.contracts.new': 'تعاقد جديد مع مقاول',
+    'subcon.contracts.issue': 'إصدار اتفاقية باطن',
+    'subcon.contracts.search': 'بحث في العقود المبرمة...',
+    'subcon.contracts.list': 'قائمة عقود مقاولي الباطن',
+    'subcon.contracts.empty': 'لا توجد عقود باطن مسجلة حالياً.',
+    'subcon.form.trade': 'التخصص الفني',
+    'subcon.form.targetBudget': 'إجمالي قيمة العقد',
+    'subcon.form.budgetHint': 'المبلغ المتفق عليه مع مقاول الباطن لإنجاز الأعمال.',
+    'subcon.form.pricingMode': 'نمط المحاسبة',
+    'subcon.form.contractName': 'مسمى العقد / الاتفاقية',
+    'subcon.details.official': 'اتفاقية تنفيذ أعمال باطن',
+    'subcon.details.review': 'مراجعة واعتماد بنود التعاقد',
+
+    // --- Others ---
     'construction.radar': 'رادار الميدان',
     'construction.groups': 'فرق العمل',
     'construction.reports': 'تقارير الموقع',
@@ -83,7 +101,6 @@ const translations: Record<Language, Record<string, string>> = {
     'construction.visitCreated': 'تم تسجيل الزيارة بنجاح',
     'construction.reportsDesc': 'أرشيف تقارير الإنجاز الميداني الموثقة بالموارد.',
     'construction': 'المقاولات',
-    // --- مفاتيح المشاريع والمقايسات (التي كانت مفقودة) ---
     'boq.workProgress': 'كميات الإنجاز (BOQ)',
     'boq.study': 'دراسة الكميات',
     'boq.activateTemplate': 'يرجى تفعيل المقايسة المرجعية لهذا المشروع لبدء تتبع الإنجاز الميداني والارتباط المالي.',
@@ -112,8 +129,6 @@ const translations: Record<Language, Record<string, string>> = {
     'projects.voManager.insertAfter': 'تدرج بعد مرحلة',
     'projects.voManager.parallel': 'مرحلة موازية؟',
     'projects.voManager.confirmVO': 'اعتماد الأمر التغييري',
-
-    // --- مفاتيح الموارد البشرية (التي كانت مفقودة) ---
     'hr.type': 'النوع',
     'hr.period': 'الفترة',
     'hr.netSalary': 'صافي الراتب',
@@ -137,7 +152,6 @@ const translations: Record<Language, Record<string, string>> = {
     'status.submitted': 'تم الإرسال',
     'general.progress': 'التقدم العام',
     'inline.general.progress': 'التقدم العام',
-    // --- مفاتيح الإعدادات (التي كانت مفقودة) ---
     'settings.checklists.desc': 'إدارة القواعد المرجعية والمسارات الفنية',
     'settings.profile.desc': 'إعدادات الحساب الشخصي والخصوصية',
     'shiftDetectMsg': 'نظام الفترتين (Shifts) مفعل.',
@@ -174,7 +188,6 @@ const translations: Record<Language, Record<string, string>> = {
     'newGov': 'محافظة جديدة',
     'newPath': 'مسار جديد',
     'saveAllRules': 'حفظ كافة القواعد',
-    // --- Dashboard ---
     'dashboard': 'لوحة التحكم',
     'dashboard.title': 'لوحة التحكم',
     'dashboard.description': 'متابعة شاملة لمؤشرات الأداء والعمليات الجارية.',
@@ -194,8 +207,6 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.recent.quoteApproved': 'تم اعتماد عرض سعر',
     'dashboard.recent.attendanceLogged': 'تم تسجيل الحضور',
     'dashboard.recent.paymentVoucher': 'سند صرف مالي',
-
-    // --- CRM & Clients ---
     'crm': 'العملاء والفرص',
     'crm.description': 'إدارة الفرص البيعية والمتابعة التجارية للعملاء',
     'crm.newLead': 'إضافة فرصة جديدة',
@@ -231,8 +242,6 @@ const translations: Record<Language, Record<string, string>> = {
     'clients.form.house': 'المنزل',
     'clients.finance': 'المالية',
     'clients.newTransaction': 'فتح معاملة',
-
-    // --- Appointments Radar ---
     'appointments': 'المواعيد',
     'appointments.radar': 'رادار المواعيد والزيارات',
     'appointments.radarDesc': 'جدولة اللقاءات مع العملاء والزيارات الميدانية.',
@@ -270,8 +279,6 @@ const translations: Record<Language, Record<string, string>> = {
     'appointments.conflict.past': 'تنبيه: لا يمكن الحجز في وقت سابق.',
     'appointments.client': 'العميل',
     'appointments.noProjectsForSpecialty': 'لا يوجد معاملات لهذا التخصص',
-
-    // --- Meeting Halls Radar ---
     'appointments.halls.schedule': 'فترة الدوام الرسمي 🏛️',
     'appointments.totalMeetings': 'إجمالي اجتماعات اليوم',
     'appointments.roomOccupancy': 'إشغال القاعات',
@@ -288,8 +295,6 @@ const translations: Record<Language, Record<string, string>> = {
     'appointments.department': 'القسم المسؤول',
     'appointments.leadEngineer': 'المهندس المسؤول',
     'appointments.supportingTeam': 'مهندسين مشاركين',
-
-    // --- Projects & Contracting ---
     'projects': 'المشاريع',
     'projects.title': 'المشاريع الجارية',
     'projects.addNew': 'بدء مشروع جديد',
@@ -310,8 +315,6 @@ const translations: Record<Language, Record<string, string>> = {
     'projects.details.finance': 'المستندات والمالية',
     'projects.details.locked': 'المسار الفني مقفل. يرجى اعتماد العقد والمقايسة أولاً.',
     'projects.voManager.title': 'الأوامر التغييرية (VO)',
-
-    // --- Settings & Reference ---
     'settings': 'الإعدادات',
     'settings.checklists': 'قواعد العمل',
     'orgRef': 'الهيكل التنظيمي',
@@ -344,8 +347,6 @@ const translations: Record<Language, Record<string, string>> = {
     'COA': 'شجرة الحسابات',
     'accounting.coa': 'شجرة الحسابات',
     'ref.tree.title': 'شجرة بنود الأعمال المرجعية',
-
-    // --- HR & Payroll ---
     'staffRecords': 'الموظفون',
     'payroll': 'الرواتب',
     'leaveRequests': 'الإجازات',
@@ -390,7 +391,7 @@ const translations: Record<Language, Record<string, string>> = {
     'hr.requestCreated': 'تم إنشاء الطلب',
     'hr.requestDetails': 'تفاصيل الطلب',
     'hr.requestNotFound': 'الطلب غير موجود',
-    'hr.leaveRequestsTitle': 'طلبات الإجازات',
+    'hr.leaveRequestsTitle': 'طلب الإجازة',
     'hr.leaveReasonNotes': 'سبب الإجازة / ملاحظات',
     'hr.leaveTypeRequired': 'نوع الإجازة مطلوب',
     'hr.leaveStatus': 'حالة الإجازة',
@@ -501,8 +502,6 @@ const translations: Record<Language, Record<string, string>> = {
     'hr.reports.payroll.netPaid': 'الصافي المدفوع',
     'hr.reports.payroll.officialStatement': 'كشف رسمي',
     'hr.reports.payroll.paymentMode': 'طريقة الدفع',
-
-    // --- Accounting ---
     'journalEntries': 'قيود اليومية',
     'paymentVouchers': 'سندات الصرف',
     'receiptVouchers': 'سندات القبض',
@@ -544,26 +543,19 @@ const translations: Record<Language, Record<string, string>> = {
     'accounting.aiReconSummary': 'ملخص المطابقة الذكية',
     'accounting.bankStatement': 'كشف الحساب البنكي',
     'accounting.smartRecon': 'مطابقة ذكية',
-    // --- مفاتيح الذكاء الاصطناعي ---
     'ai.hub': 'مركز الذكاء الاصطناعي',
     'ai.desc': 'ذكاء عمليات تنفيذي لدعم قراراتك',
-
-    // --- مفاتيح الإعدادات والقوائم ---
     'category': 'التصنيف',
     'order': 'الترتيب',
     'symbol': 'الرمز',
     'edit': 'تعديل',
     'isActive': 'نشط',
     'common.present': 'حاضر',
-
-    // --- مفاتيح ساعات العمل ---
     'morningShift': 'الفترة الصباحية',
     'eveningShift': 'الفترة المسائية',
     'doubleShift': 'فترتين',
     'checkInTime': 'وقت الدخول',
     'checkOutTime': 'وقت الخروج',
-
-    // --- مفاتيح شجرة المرجع الفنية (BOQ Nodes) ---
     'ref.tree.subtitle': 'السجل المرجعي الموحد للأعمال والمراحل',
     'ref.node.addRoot': 'إضافة قسم رئيسي',
     'ref.node.indexing': 'جاري فهرسة القاموس الديناميكي...',
@@ -592,7 +584,6 @@ const translations: Record<Language, Record<string, string>> = {
     'ref.node.executableDesc': 'يسمح بتسجيل الإنجاز والميزانية',
     'ref.node.activeDesc': 'إتاحة البند للاستخدام الميداني',
     'ref.node.confirmDeleteDesc': 'هل أنت متأكد؟ سيتم إزالة البند المرجعي وكافة ارتباطاته الميدانية بالدراسات والقوالب نهائياً. لا يمكن التراجع عن هذا الإجراء.',
-    // --- Procurement & Suppliers ---
     'procurement': 'المشتريات',
     'suppliers': 'الموردون',
     'suppliers.rating': 'التقييم',
@@ -642,8 +633,6 @@ const translations: Record<Language, Record<string, string>> = {
     'procurement.quoteData': 'بيانات العرض',
     'procurement.totalSpend': 'إجمالي الإنفاق',
     'procurement.viewAllPurchaseHistory': 'عرض كل سجل المشتريات',
-
-    // --- Templates ---
     'boqExplorer': 'جدول الكميات والميزانية',
     'boqexplorer': 'جدول الكميات والميزانية',
     'boqTemplates': 'قوالب المقايسات',
@@ -715,8 +704,6 @@ const translations: Record<Language, Record<string, string>> = {
     'equipment.form.rentalRate': 'تعرفة الإيجار',
     'equipment.form.salvageValue': 'القيمة التخريدية',
     'equipment.form.supplier': 'المورد/الجهة المؤجرة',
-    
-    // --- Navigation ---
     'meetings': 'الاجتماعات',
     'visitsDossier': 'سجل الزيارات',
     'reports': 'التقارير',
@@ -848,8 +835,6 @@ const translations: Record<Language, Record<string, string>> = {
     'inline.update.profile': 'تحديث الملف',
     'inline.work.context...roles': 'سياق العمل والأدوار',
     'projects.description': 'إدارة ومتابعة المشاريع الهندسية والإنشائية',
-
-    // --- المفاتيح الجديدة المضافة من جلسة التنظيف ---
     'inline.not.found': '404 - غير موجود',
     'inline.empty': 'فارغ',
     'inline.intelligence.notifications': 'إشعارات الذكاء الاصطناعي',
@@ -1059,8 +1044,25 @@ const translations: Record<Language, Record<string, string>> = {
     'common.pending': 'Pending',
     'common.getStarted': 'Get Started',
     'common.records': 'Records',
+    'common.vendor': 'Subcontractor / Vendor',
+    'common.project': 'Project',
 
-    // --- Dashboard ---
+    // --- Subcontractor Contracts ---
+    'subcon.contracts.title': 'SubCon Contracts',
+    'subcon.contracts.new': 'New SubCon Award',
+    'subcon.contracts.issue': 'Issue SubCon Agreement',
+    'subcon.contracts.search': 'Search executed contracts...',
+    'subcon.contracts.list': 'Subcontractor Contracts List',
+    'subcon.contracts.empty': 'No subcontractor contracts registered.',
+    'subcon.form.trade': 'Technical Trade',
+    'subcon.form.targetBudget': 'Contract Value',
+    'subcon.form.budgetHint': 'Agreed amount for work execution.',
+    'subcon.form.pricingMode': 'Pricing Mode',
+    'subcon.form.contractName': 'Contract / Agreement Title',
+    'subcon.details.official': 'Subcontractor Services Agreement',
+    'subcon.details.review': 'Review & Approve Agreement Terms',
+
+    // --- Others ---
     'dashboard': 'Dashboard',
     'dashboard.title': 'Dashboard',
     'dashboard.description': 'Comprehensive tracking of performance indicators and ongoing operations.',
@@ -1080,8 +1082,6 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.recent.quoteApproved': 'Quotation Approved',
     'dashboard.recent.attendanceLogged': 'Attendance Logged',
     'dashboard.recent.paymentVoucher': 'Payment Voucher',
-
-    // --- CRM & Clients ---
     'crm': 'CRM',
     'crm.description': 'Sales leads and commercial client management',
     'crm.newLead': 'New Lead',
@@ -1117,8 +1117,6 @@ const translations: Record<Language, Record<string, string>> = {
     'clients.form.house': 'House #',
     'clients.finance': 'Finance',
     'clients.newTransaction': 'New Trans',
-
-    // --- Appointments Radar ---
     'appointments': 'Appointments',
     'appointments.radar': 'Appointments Radar',
     'appointments.radarDesc': 'Schedule client meetings and site visits.',
@@ -1156,8 +1154,6 @@ const translations: Record<Language, Record<string, string>> = {
     'appointments.conflict.past': 'Alert: Cannot book in the past.',
     'appointments.client': 'Client',
     'appointments.noProjectsForSpecialty': 'No projects for this specialty',
-
-    // --- Meeting Halls Radar ---
     'appointments.halls.schedule': 'Halls Schedule 🏛️',
     'appointments.totalMeetings': 'Daily Meetings',
     'appointments.roomOccupancy': 'Room Occupancy',
@@ -1174,8 +1170,6 @@ const translations: Record<Language, Record<string, string>> = {
     'appointments.department': 'Department',
     'appointments.leadEngineer': 'Lead Engineer',
     'appointments.supportingTeam': 'Supporting Team',
-
-    // --- Projects & Contracting ---
     'projects': 'Projects',
     'projects.title': 'Active Projects',
     'projects.addNew': 'Start New Project',
@@ -1196,8 +1190,6 @@ const translations: Record<Language, Record<string, string>> = {
     'projects.details.finance': 'Docs & Finance',
     'projects.details.locked': 'Path locked. Approve contract and BOQ first.',
     'projects.voManager.title': 'Variation Orders (VO)',
-
-    // --- Settings & Reference ---
     'settings': 'Settings',
     'settings.checklists': 'Checklists',
     'orgRef': 'Org Structure',
@@ -1230,8 +1222,6 @@ const translations: Record<Language, Record<string, string>> = {
     'COA': 'Chart of Accounts',
     'accounting.coa': 'Chart of Accounts',
     'ref.tree.title': 'Reference Tree',
-
-    // --- HR & Payroll ---
     'staffRecords': 'Employees',
     'payroll': 'Payroll',
     'leaveRequests': 'Leave Requests',
@@ -1387,8 +1377,6 @@ const translations: Record<Language, Record<string, string>> = {
     'hr.reports.payroll.netPaid': 'Net Paid',
     'hr.reports.payroll.officialStatement': 'Official Statement',
     'hr.reports.payroll.paymentMode': 'Payment Mode',
-
-    // --- Accounting ---
     'journalEntries': 'Journal Entries',
     'paymentVouchers': 'Payment Vouchers',
     'receiptVouchers': 'Receipt Vouchers',
@@ -1430,26 +1418,19 @@ const translations: Record<Language, Record<string, string>> = {
     'accounting.aiReconSummary': 'AI Reconciliation Summary',
     'accounting.bankStatement': 'Bank Statement',
     'accounting.smartRecon': 'Smart Reconciliation',
-    // --- AI Keys ---
     'ai.hub': 'AI Intelligence Hub',
     'ai.desc': 'Executive decision support and automation',
-
-    // --- Settings & Lists Keys ---
     'category': 'Category',
     'order': 'Order',
     'symbol': 'Symbol',
     'edit': 'Edit',
     'isActive': 'Active',
     'common.present': 'Present',
-
-    // --- Work Hours Keys ---
     'morningShift': 'Morning Shift',
     'eveningShift': 'Evening Shift',
     'doubleShift': 'Double Shift',
     'checkInTime': 'Check-In',
     'checkOutTime': 'Check-Out',
-
-    // --- BOQ Nodes Reference Tree Keys ---
     'ref.tree.subtitle': 'Master Work Registry & Multi-Stage Links',
     'ref.node.addRoot': 'Add Root Node',
     'ref.node.indexing': 'Indexing Dynamic Registry...',
@@ -1478,7 +1459,6 @@ const translations: Record<Language, Record<string, string>> = {
     'ref.node.executableDesc': 'Allows progress and budget tracking',
     'ref.node.activeDesc': 'Make item available for field use',
     'ref.node.confirmDeleteDesc': 'Are you sure? This will permanently remove the record and all its field links in templates and studies. This cannot be undone.',
-    // --- Procurement & Suppliers ---
     'procurement': 'Procurement',
     'suppliers': 'Vendors',
     'suppliers.rating': 'Rating',
@@ -1528,8 +1508,6 @@ const translations: Record<Language, Record<string, string>> = {
     'procurement.quoteData': 'Quote Data',
     'procurement.totalSpend': 'Total Spend',
     'procurement.viewAllPurchaseHistory': 'View All Purchase History',
-
-    // --- Templates ---
     'boqExplorer': 'BOQ & Budget',
     'boqexplorer': 'BOQ & Budget',
     'boqTemplates': 'BOQ Templates',
@@ -1604,244 +1582,6 @@ const translations: Record<Language, Record<string, string>> = {
     'status.submitted': 'Submitted',
     'general.progress': 'General Progress',
     'inline.general.progress': 'General Progress',
-    // --- Navigation ---
-    'meetings': 'Meetings',
-    'visitsDossier': 'Visits Dossier',
-    'reports': 'Reports',
-    'inventory.title': 'Inventory',
-    'userProfile': 'My Profile',
-    'activeProjects': 'Active Projects',
-    'fieldRadar': 'Field Radar',
-    'workGroups': 'Work Crews',
-    'equipment': 'Equipment',
-    'fieldLogs': 'Field Logs',
-    'aiAnalysis': 'AI Insights',
-    'payrollBatches': 'Payroll Batches',
-    'financialReports.title': 'Financials',
-    'devConsole': 'Dev Console',
-    'reports.analytics.title': 'Financial Performance Radar',
-    'reports.analytics.description': 'Budget and expenditure analysis.',
-    'reports.executive.description': 'Executive summary of enterprise performance.',
-    'inline.profile.link.failed': 'Profile Link Failed',
-    'inline.account.frozen': 'Account Frozen',
-    'inline.awaiting.activation': 'Awaiting Activation',
-    'inline.subscription.expired': 'Subscription Expired',
-    'inline.personal.workspace': 'Personal Workspace',
-    'inline.tax...reg.no': 'TAX / REG NO:',
-    'inline.generated.on': 'Generated On',
-    'projectId': 'Project ID',
-    'periodStart': 'Period Start',
-    'periodEnd': 'Period End',
-    'transactions.assignEngineer': 'Assign Engineer',
-    'transactions.assignedEngineer': 'Assigned Engineer',
-    'transactions.newTitle': 'New Technical Transaction',
-    'transactions.openFailed': 'Failed to open transaction',
-    'transactions.openNow': 'Open Path Now',
-    'transactions.openSuccess': 'Technical path opened successfully',
-    'transactions.pathAssignment': 'Technical Path & Assignment',
-    'transactions.redirecting': 'Redirecting to tracking radar...',
-    'transactions.searchEngineer': 'Search by name or ID...',
-    'transactions.selectDept': 'Select department first...',
-    'transactions.targetDept': 'Target Department',
-    'reports.charts.budgetVsExpenses': 'Budget vs Expenses',
-    'reports.charts.portfolioByActivity': 'Portfolio by Activity',
-    'reports.executive.title': 'Executive Report',
-    'reports.hub.description': 'Workforce, compliance and field productivity analytics',
-    'reports.hub.title': 'Reports Hub',
-    'reports.integrity.description': 'Data accuracy is verified in real time via direct linkage with field and finance records',
-    'reports.integrity.title': 'Data Integrity Certificate',
-    'reports.stats.activeProjects': 'Active Projects',
-    'reports.stats.attendance': 'Attendance Compliance',
-    'reports.stats.portfolio': 'Total Portfolio',
-    'reports.stats.staff': 'Workforce',
-    'common.active': 'Active',
-    'common.clients': 'Clients',
-    'common.completed': 'Completed',
-    'common.newOrder': 'New Order',
-    'common.noresults': 'No results found',
-    'common.order': 'Order',
-    'common.photos': 'Photos',
-    'common.projects': 'Projects',
-    'common.saveReport': 'Save Report',
-    'common.supplier': 'Supplier',
-    'common.viewall': 'View All',
-    'status.active_paid': 'Active & Paid',
-    'status.approved': 'Approved',
-    'status.completed': 'Completed',
-    'status.paid': 'Paid',
-    'status.pending': 'Pending',
-    'status.rejected': 'Rejected',
-    'status.scheduled': 'Scheduled',
-    'status.contracted': 'Contracted',
-    'status.new': 'New',
-    'status.draft': 'Draft',
-    'status.submitted': 'Submitted',
-    'users.management': 'Users & Access',
-    'usersmanagement': 'Users & Access',
-    'rolespermissions': 'Roles & Permissions',
-    'scopeAll': 'Whole Company',
-    'scopeDept': 'Department Only',
-    'scopeNone': 'No Access',
-    'scopeOwn': 'Own Records Only',
-    'active': 'Active',
-    'checklists': 'Business Rules',
-    'code': 'Code',
-    'confirmDelete': 'Confirm delete?',
-    'deleted': 'Deleted successfully',
-    'details': 'Details',
-    'error': 'An error occurred',
-    'inventory': 'Inventory',
-    'manageLibrary': 'Manage Library',
-    'name': 'Name',
-    'save': 'Save',
-    'saveChanges': 'Save Changes',
-    'saveFailed': 'Save failed',
-    'saved': 'Saved successfully',
-    'search': 'Search',
-    'settings': 'Settings',
-    'status': 'Status',
-    'tab': 'Tab',
-    'transactions': 'Transactions',
-    'username': 'Username',
-    'userprofile': 'My Profile',
-    'visitsdossier': 'Visits Dossier',
-    'workhours': 'Work Hours',
-    'inline.assigning.a.role.enables.system.login.for.this.employee': 'Assigning a role enables system login for this employee',
-    'inline.bank.payroll': 'Bank Transfer (Payroll)',
-    'inline.cash': 'Cash',
-    'inline.check': 'Check',
-    'inline.civil.id': 'Civil ID',
-    'inline.commit.registration': 'Confirm Registration',
-    'inline.daily': 'Daily',
-    'inline.daily.rate': 'Daily Rate',
-    'inline.email': 'Email',
-    'inline.emp': 'Employee',
-    'inline.external.labor': 'External Labor',
-    'inline.financial.terms': 'Financial Terms',
-    'inline.full.name': 'Full Name',
-    'inline.internal.staff': 'Internal Staff',
-    'inline.lead.engineer': 'Lead Engineer',
-    'inline.mobile': 'Mobile',
-    'inline.monthly': 'Monthly',
-    'inline.monthly.rate': 'Monthly Rate',
-    'inline.name..en': 'Name (English)',
-    'inline.no.system.access..field.only': 'No system access, field only',
-    'inline.official.job.title': 'Official Job Title',
-    'inline.payout.method': 'Payout Method',
-    'inline.personal.identity': 'Personal Identity',
-    'inline.security.access.role': 'Security Access Role',
-    'inline.site.petty.cash': 'Site Petty Cash',
-    'inline.start.date': 'Start Date',
-    'inline.this.profile.is.read.only': 'This profile is read-only',
-    'inline.update.profile': 'Update Profile',
-    'inline.work.context...roles': 'Work Context & Roles',
-    'projects.description': 'Manage and track engineering and construction projects',
-    // --- Construction & BOQ Keys ---
-    'construction.radar': 'Field Radar',
-    'construction.groups': 'Work Groups',
-    'construction.reports': 'Field Reports',
-    'construction.context': 'Work Context',
-    'construction.verify': 'Verify for Eligibility',
-    'construction.fieldLog': 'Field Log',
-    'construction.newReport': 'New Report',
-    'construction.logResources': 'Log Resources & Progress',
-    'construction.commitResources': 'Commit Field Log',
-    'construction.siteProgress': 'Site Progress',
-    'construction.technicalProgress': 'Technical Progress Analysis',
-    'construction.fieldProgressStatement': 'Field Progress Statement',
-    'construction.crewLoaded': 'Crew Loaded Successfully',
-    'construction.visitCreated': 'Visit recorded successfully',
-    'construction.reportsDesc': 'Archive of field logs and resources.',
-    'construction': 'Construction',
-    'boq.workProgress': 'BOQ Work Progress',
-    'boq.study': 'BOQ Study',
-    'boq.activateTemplate': 'Please activate a BOQ template for this project to start tracking site progress.',
-    'boq.instantiateStart': 'Instantiate & Start Study',
-    'boq.selectTemplate': 'Select Engineering Template',
-    'projects.boqExplorer.sections': 'Sections',
-    'projects.boqExplorer.rate': 'Rate',
-    'projects.boqExplorer.voSummary': 'Proposed Changes Summary',
-    'projects.boqExplorer.action': 'Action',
-    'projects.executionPipeline': 'Execution Pipeline',
-    'projects.voManager.voTitle': 'VO Title',
-    'projects.voManager.addAdjustment': 'Add Adjustment',
-    'projects.voManager.reason': 'Technical Justification',
-    'projects.voManager.increase': 'Increase Qty',
-    'projects.voManager.decrease': 'Decrease Qty',
-    'projects.voManager.omit': 'Omit Item',
-    'projects.voManager.newItem': 'New Item',
-    'projects.voManager.targetItem': 'Target Item',
-    'projects.voManager.deltaQty': 'Delta Qty',
-    'projects.voManager.financialSection': 'Financial Section',
-    'projects.voManager.executionPath': 'Execution Path',
-    'projects.voManager.linkExisting': 'Link Existing Stage',
-    'projects.voManager.injectNew': 'Inject New Stage',
-    'projects.voManager.stageName': 'Stage Name',
-    'projects.voManager.stageCode': 'Stage Code',
-    'projects.voManager.insertAfter': 'Insert After',
-    'projects.voManager.parallel': 'Parallel Stage?',
-    'projects.voManager.confirmVO': 'Approve Variation',
-
-    // --- HR Keys ---
-    'hr.type': 'Type',
-    'hr.period': 'Period',
-    'hr.netSalary': 'Net Salary',
-    'hr.netTotal': 'Net Total',
-    'hr.netDeduction': 'Net Deduction',
-    'hr.netBalanceDeduction': 'Net Balance Deduction',
-    'hr.totalDeductions': 'Total Deductions',
-    'hr.totalNetPaid': 'Total Net Paid',
-    'hr.deductionDays': 'Deduction Days',
-    'hr.calendarDays': 'Calendar Days',
-    'hr.workDays': 'Work Days',
-    'hr.remainingBalance': 'Remaining Balance',
-    'hr.ineligible': 'Ineligible',
-    'hr.unjustified': 'Unjustified',
-    'hr.internalNotes': 'Internal Notes',
-    'hr.justification': 'Justification',
-    'hr.searchSelectEmployee': 'Search & select employee',
-    'hr.selectEmployee': 'Select Employee',
-    'hr.startDate': 'Start Date',
-    'hr.employeesCount': 'Employees Count',
-
-    // --- Settings Keys ---
-    'settings.checklists.desc': 'Manage operational constitution and unified system references.',
-    'settings.profile.desc': 'Personal account and privacy settings.',
-    'shiftDetectMsg': 'Double shift mode enabled.',
-    'singleShiftMsg': 'Single shift mode enabled.',
-    'singleShiftActiveMsg': 'Evening shift is disabled for this path.',
-    'gracePeriod': 'Grace (min)',
-    'restDuration': 'Rest (min)',
-    'smartDetectHint': 'System will auto-schedule appointments based on these slots.',
-    'architecturalWorkingHours': 'Office Working Hours',
-    'meetingRoomsWorkingHours': 'Meeting Room Availability',
-    'fieldWorkWorkingHours': 'Field Working Hours',
-    'halfDayRule': 'Half-Day Rule',
-    'selectDay': 'Select Day',
-    'halfDayMode': 'Shift Mode',
-    'morningOnly': 'Morning Only',
-    'eveningOnly': 'Evening Only',
-    'customEndTime': 'Custom End Time',
-    'holidays': 'Holidays & Weekends',
-    'weeklyHolidaysStatic': 'Weekly Holidays',
-    'scheduledPublicHolidays': 'Scheduled Public Holidays',
-    'addHolidayManually': 'Add Holiday Manually',
-    'holidayNameAr': 'Holiday Name (Ar)',
-    'holidayNameEn': 'Holiday Name (En)',
-    'addEntry': 'Add Entry',
-    'jobTitles': 'Job Titles & trades',
-    'addJob': 'Add Job',
-    'ref.error.unitRequired': 'Unit type is required for executable items',
-    'ref.error.contextRequired': 'Activity, Service, and Sub-Service must be set',
-    'ref.error.stageRequired': 'At least one technical stage is required for field logs',
-    'newActivity': 'New Activity',
-    'newService': 'New Service',
-    'newTemplate': 'New Template',
-    'newDept': 'New Dept',
-    'newGov': 'New Gov',
-    'newPath': 'New Path',
-    'saveAllRules': 'Save All Rules',
-    // --- New keys added from cleanup session ---
     'inline.not.found': '404 - Not Found',
     'inline.empty': 'Empty',
     'inline.intelligence.notifications': 'Intelligence Notifications',
@@ -2005,7 +1745,6 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Language>('ar');
 
-  // تم الإصلاح: ضبط اللغة واتجاه الصفحة فور فتح التطبيق
   useEffect(() => {
     const savedLang = localStorage.getItem('lang') as Language || 'ar';
     setLangState(savedLang);
@@ -2020,19 +1759,16 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.dir = newLang === 'ar' ? 'rtl' : 'ltr';
   };
 
-  // دالة ترجمة محصنة تبحث عن المفتاح بغض النظر عن حالة الأحرف (Case-Insensitive)
   const t = (key: string) => {
     if (!key) return '';
     const currentDict = translations[lang] || {};
     if (currentDict[key]) return currentDict[key];
     
-    // بحث ذكي (Case-insensitive lookup) لتفادي مشاكل الأحرف الكبيرة والصغيرة
     const lookupKey = key.toLowerCase();
     const foundKey = Object.keys(currentDict).find(k => k.toLowerCase() === lookupKey);
     return foundKey ? currentDict[foundKey] : key;
   };
 
-  // تم الإصلاح: منع إرجاع نص عربي في حالة اللغة الإنجليزية إذا كانت الترجمة مفقودة
   const tSafe = (key: string, fallbackAr: string, fallbackEn?: string) => {
     if (!key) return lang === 'ar' ? fallbackAr : (fallbackEn || key);
     const translated = t(key);

@@ -19,7 +19,7 @@ import {
 } from 'firebase/firestore';
 import { nextSequential } from '@/lib/counters';
 import { paths } from '@/firebase/multi-tenant';
-import { BOQTemplate, BOQTemplateItem, QuotationTemplate, ContractTemplate } from '@/types/templates';
+import { BOQTemplate, BOQTemplateItem, QuotationTemplate, ContractTemplate, SubConContractTemplate } from '@/types/templates';
 import { Quotation, Contract, BOQ, BOQItem } from '@/types/documents';
 import { ensureActionPermission } from '@/lib/permissions';
 import { TransactionService } from './transaction-service';
@@ -53,22 +53,17 @@ export class DocumentService {
 
     const finalStatus = data.status || currentData.status;
     
-    // إذا تم الاعتماد (أو التوقيع)، نفعل الدائرة المالية
     if (['approved', 'paid', 'active', 'signed'].includes(finalStatus)) {
-       // 1. ترقية العميل إلى "متعاقد"
        const clientRef = doc(this.db, paths.clients(this.companyId), currentData.clientId);
        await updateDoc(clientRef, { status: 'contracted', updatedAt: serverTimestamp() });
 
-       // 2. الأتمتة المحاسبية: إنشاء حساب ذمة للعميل
        const accService = new AccountingService(this.db, this.companyId);
        await accService.ensureControlAccount('1202', 'ذمم العملاء', 'Accounts Receivable', 'asset');
        await accService.createAutomaticSubAccount('1202', currentData.clientId, currentData.clientName, 'asset');
 
-       // 3. أتمتة المطالبة المالية: إطلاق دفعة التوقيع (SIGNING) فوراً لضمان عدم نسيانها
        const billing = new BillingService(this.db, this.companyId);
        await billing.triggerMilestoneBilling(currentData.transactionId || '', 'SIGNING', 'at', userId, 'System System');
 
-       // 4. تفعيل المسار الفني المرتبط (فقط للنشاط الاستشاري/التصميم)
        if (currentData.transactionId) {
           const transSnap = await getDoc(doc(this.db, paths.transactions(this.companyId), currentData.transactionId));
           const transData = transSnap.data();
@@ -259,7 +254,6 @@ export class DocumentService {
 
     await setDoc(contractRef, contractData);
 
-    // إذا كان العقد مرتبطاً بمقايسة (Sovereign Link)، نقوم باستنساخها آلياً كمسودة
     if (template.boqTemplateId) {
        try {
          await this.instantiateBoqFromTemplate(template.boqTemplateId, {
@@ -281,6 +275,42 @@ export class DocumentService {
     ensureActionPermission(this.permissions, 'projects:delete');
     const docRef = doc(this.db, paths.contracts(this.companyId), id);
     return deleteDoc(docRef);
+  }
+
+  async instantiateSubConContractFromTemplate(
+    templateId: string,
+    payload: { 
+      transactionId: string, 
+      subcontractorId: string, 
+      subcontractorName: string, 
+      name: string,
+      projectTitle: string
+    },
+    userId: string
+  ) {
+    ensureActionPermission(this.permissions, 'procurement:create');
+    const templateRef = doc(this.db, paths.subconContractTemplates(this.companyId), templateId);
+    const templateSnap = await getDoc(templateRef);
+    if (!templateSnap.exists()) throw new Error('TEMPLATE_NOT_FOUND');
+    const template = templateSnap.data() as SubConContractTemplate;
+
+    const contractRef = doc(collection(this.db, paths.subconContracts(this.companyId)));
+    
+    const contractData = {
+      ...template,
+      ...payload,
+      id: contractRef.id,
+      status: 'draft',
+      totalAmount: template.baseAmount || 0,
+      milestones: template.defaultMilestones || [],
+      companyId: this.companyId,
+      createdBy: userId,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+
+    await setDoc(contractRef, contractData);
+    return contractRef.id;
   }
 
   async instantiateBoqFromTemplate(
