@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -46,7 +45,6 @@ export default function SubConContractsListPage() {
   const [isIssueOpen, setIsIssueOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   
-  // Search states for pickers
   const [subSearch, setSubSearch] = useState("");
   const [transSearch, setTransSearch] = useState("");
   const [tempSearch, setTempSearch] = useState("");
@@ -87,7 +85,7 @@ export default function SubConContractsListPage() {
   const { data: templates } = useCollection<any>(templatesQuery);
 
   const filteredSubs = useMemo(() => {
-    return (subcontractors || []).filter(s => s.name.toLowerCase().includes(subSearch.toLowerCase()) || s.trade.toLowerCase().includes(subSearch.toLowerCase()));
+    return (subcontractors || []).filter(s => s.name.toLowerCase().includes(subSearch.toLowerCase()) || (s.trade && s.trade.toLowerCase().includes(subSearch.toLowerCase())));
   }, [subcontractors, subSearch]);
 
   const filteredTrans = useMemo(() => {
@@ -95,7 +93,7 @@ export default function SubConContractsListPage() {
   }, [transactions, transSearch]);
 
   const filteredTemps = useMemo(() => {
-    return (templates || []).filter(t => t.name.toLowerCase().includes(tempSearch.toLowerCase()) || t.trade.toLowerCase().includes(tempSearch.toLowerCase()));
+    return (templates || []).filter(t => t.name.toLowerCase().includes(tempSearch.toLowerCase()) || (t.trade && t.trade.toLowerCase().includes(tempSearch.toLowerCase())));
   }, [templates, tempSearch]);
 
   const filtered = (contracts || []).filter(c => 
@@ -164,10 +162,10 @@ export default function SubConContractsListPage() {
           <Table>
             <TableHeader className="bg-muted/10 border-b">
               <TableRow>
-                <TableHead className="py-6 ps-10 text-start text-[10px] font-black uppercase tracking-widest">{tSafe('name', 'الاسم', 'Name')}</TableHead>
-                <TableHead className="text-start text-[10px] font-black uppercase tracking-widest">{tSafe('vendor', 'المقاول / المورد', 'Vendor')}</TableHead>
-                <TableHead className="text-end text-[10px] font-black uppercase tracking-widest">{tSafe('amount', 'المبلغ', 'Amount')}</TableHead>
-                <TableHead className="text-center text-[10px] font-black uppercase tracking-widest">{tSafe('status', 'الحالة', 'Status')}</TableHead>
+                <TableHead className="py-6 ps-10 text-start text-[10px] font-black uppercase tracking-widest">{tSafe('common.name', 'الاسم', 'Name')}</TableHead>
+                <TableHead className="text-start text-[10px] font-black uppercase tracking-widest">{tSafe('common.vendor', 'المقاول / المورد', 'Vendor')}</TableHead>
+                <TableHead className="text-end text-[10px] font-black uppercase tracking-widest">{tSafe('common.amount', 'المبلغ', 'Amount')}</TableHead>
+                <TableHead className="text-center text-[10px] font-black uppercase tracking-widest">{tSafe('common.status', 'الحالة', 'Status')}</TableHead>
                 <TableHead className="pe-10 text-end"></TableHead>
               </TableRow>
             </TableHeader>
@@ -232,17 +230,16 @@ export default function SubConContractsListPage() {
 
             <div className="p-10 space-y-6 text-start bg-white">
                
-               {/* 1. Subcontractor Searchable Picker */}
                <div className="space-y-2 text-start">
                   <Label className="text-xs font-black uppercase text-slate-400 tracking-widest">{tSafe('subcon.form.vendor', 'المقاول / المورد', 'Subcontractor Vendor')}</Label>
                   <Popover open={openSubPicker} onOpenChange={setOpenSubPicker}>
                      <PopoverTrigger asChild>
                         <Button variant="outline" className="w-full h-14 rounded-2xl border-2 font-black text-lg bg-slate-50 shadow-inner justify-between px-6">
-                           <span className="truncate">{formData.subcontractorName || tSafe('subcon.selectSub', 'اختيار المقاول...', 'Choose staff...')}</span>
+                           <span className="truncate">{formData.subcontractorName || tSafe('subcon.selectSub', 'اختيار المقاول...', 'Choose contractor...')}</span>
                            <ChevronDown className="h-5 w-5 opacity-40" />
                         </Button>
                      </PopoverTrigger>
-                     <PopoverContent className="w-[450px] p-0 rounded-2xl shadow-3xl border-2 z-[210]" align="start">
+                     <PopoverContent className="w-[450px] p-0 rounded-2xl shadow-3xl border-2" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
                         <div className="p-3 bg-slate-50 border-b">
                            <div className="relative">
                               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -259,7 +256,7 @@ export default function SubConContractsListPage() {
                               {filteredSubs.map(s => (
                                 <div 
                                   key={s.id} 
-                                  onClick={() => { setFormData({...formData, subcontractorId: s.id, subcontractorName: s.name}); setOpenSubPicker(false); setSubSearch(""); }}
+                                  onClick={(e) => { e.stopPropagation(); setFormData({...formData, subcontractorId: s.id, subcontractorName: s.name}); setOpenSubPicker(false); setSubSearch(""); }}
                                   className={cn(
                                     "p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between group",
                                     formData.subcontractorId === s.id ? "bg-primary/5 text-primary border-primary/20" : "hover:bg-slate-50"
@@ -278,7 +275,6 @@ export default function SubConContractsListPage() {
                   </Popover>
                </div>
 
-               {/* 2. Target Project Searchable Picker */}
                <div className="space-y-2 text-start">
                   <Label className="text-xs font-black uppercase text-slate-400 tracking-widest">{tSafe('subcon.form.project', 'المشروع المستهدف', 'Target Project')}</Label>
                   <Popover open={openTransPicker} onOpenChange={setOpenTransPicker}>
@@ -288,7 +284,7 @@ export default function SubConContractsListPage() {
                            <ChevronDown className="h-5 w-5 opacity-40" />
                         </Button>
                      </PopoverTrigger>
-                     <PopoverContent className="w-[450px] p-0 rounded-2xl shadow-3xl border-2 z-[210]" align="start">
+                     <PopoverContent className="w-[450px] p-0 rounded-2xl shadow-3xl border-2" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
                         <div className="p-3 bg-slate-50 border-b">
                            <div className="relative">
                               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -305,7 +301,7 @@ export default function SubConContractsListPage() {
                               {filteredTrans.map(t_item => (
                                 <div 
                                   key={t_item.id} 
-                                  onClick={() => { setFormData({...formData, transactionId: t_item.id, transactionNumber: t_item.transactionNumber, transactionName: t_item.subServiceName}); setOpenTransPicker(false); setTransSearch(""); }}
+                                  onClick={(e) => { e.stopPropagation(); setFormData({...formData, transactionId: t_item.id, transactionNumber: t_item.transactionNumber, transactionName: t_item.subServiceName}); setOpenTransPicker(false); setTransSearch(""); }}
                                   className={cn(
                                     "p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between group",
                                     formData.transactionId === t_item.id ? "bg-primary/5 text-primary border-primary/20" : "hover:bg-slate-50"
@@ -327,7 +323,6 @@ export default function SubConContractsListPage() {
                   </Popover>
                </div>
 
-               {/* 3. Legal Template Searchable Picker */}
                <div className="space-y-2 text-start">
                   <Label className="text-xs font-black uppercase text-slate-400 tracking-widest">{tSafe('subcon.form.template', 'القالب المرجعي', 'Legal Template')}</Label>
                   <Popover open={openTempPicker} onOpenChange={setOpenTempPicker}>
@@ -337,7 +332,7 @@ export default function SubConContractsListPage() {
                            <ChevronDown className="h-5 w-5 opacity-40" />
                         </Button>
                      </PopoverTrigger>
-                     <PopoverContent className="w-[450px] p-0 rounded-2xl shadow-3xl border-2 z-[210]" align="start">
+                     <PopoverContent className="w-[450px] p-0 rounded-2xl shadow-3xl border-2" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
                         <div className="p-3 bg-slate-50 border-b">
                            <div className="relative">
                               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -354,7 +349,7 @@ export default function SubConContractsListPage() {
                               {filteredTemps.map(temp => (
                                 <div 
                                   key={temp.id} 
-                                  onClick={() => { setFormData({...formData, templateId: temp.id, templateName: temp.name}); setOpenTempPicker(false); setTempSearch(""); }}
+                                  onClick={(e) => { e.stopPropagation(); setFormData({...formData, templateId: temp.id, templateName: temp.name}); setOpenTempPicker(false); setTempSearch(""); }}
                                   className={cn(
                                     "p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between group",
                                     formData.templateId === temp.id ? "bg-primary/5 text-primary border-primary/20" : "hover:bg-slate-50"
