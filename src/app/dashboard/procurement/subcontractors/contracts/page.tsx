@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -106,7 +107,7 @@ export default function SubConContractsListPage() {
               <ShieldCheck className="h-3 w-3" /> {tSafe('subcon.authorizedPortal', 'بوابة العقود المعتمدة', 'Authorized Contracts Portal')}
            </div>
            <h1 className="text-3xl font-black font-headline text-slate-900">{tSafe('subcon.contracts.title', 'عقود مقاولي الباطن', 'SubCon Contracts')}</h1>
-           <p className="text-muted-foreground text-xs font-bold opacity-70 italic">
+           <p className="text-muted-foreground text-xs font-bold opacity-70 italic text-start">
               {tSafe('subcon.contracts.desc', 'إدارة عقود تنفيذ الباطن والارتباطات المالية للمشاريع.', 'Manage subcontractor awards and project financial links.')}
            </p>
         </div>
@@ -151,7 +152,7 @@ export default function SubConContractsListPage() {
               ) : filtered.map((contract) => (
                 <TableRow key={contract.id} className="hover:bg-primary/[0.02] transition-colors group border-b-slate-100 cursor-pointer" onClick={() => router.push(`/dashboard/procurement/subcontractors/contracts/${contract.id}`)}>
                    <TableCell className="py-6 ps-10 text-start">
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-4 text-start">
                          <div className={cn(
                             "h-11 w-11 rounded-2xl bg-white shadow-lg flex items-center justify-center text-primary border-2 border-primary/5",
                          )}>
@@ -193,8 +194,8 @@ export default function SubConContractsListPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={isIssueOpen} onOpenChange={setIsIssueOpen}>
-         <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl" dir={dir}>
+      <Dialog open={isIssueOpen} onOpenChange={(v) => { if(!v) setIsIssueOpen(false); }}>
+         <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl text-start" dir={dir}>
             <div className="bg-primary p-10 text-white text-start">
                <DialogTitle className="text-3xl font-black font-headline flex items-center gap-3">
                   <Handshake className="h-10 w-10 text-white" />
@@ -203,7 +204,7 @@ export default function SubConContractsListPage() {
             </div>
 
             <div className="p-10 space-y-6 text-start bg-white">
-               <div className="space-y-2">
+               <div className="space-y-2 text-start">
                   <Label className="text-xs font-black uppercase text-slate-400 tracking-widest">{tSafe('vendor', 'المقاول / المورد', 'Subcontractor Vendor')}</Label>
                   <Select value={formData.subcontractorId} onValueChange={v => setFormData({...formData, subcontractorId: v})}>
                      <SelectTrigger className="h-14 rounded-2xl border-2 font-black text-lg bg-slate-50 shadow-inner">
@@ -215,23 +216,26 @@ export default function SubConContractsListPage() {
                   </Select>
                </div>
 
-               <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase text-slate-400 tracking-widest">{tSafe('project', 'المشروع', 'Target Project')}</Label>
+               <div className="space-y-2 text-start">
+                  <Label className="text-xs font-black uppercase text-slate-400 tracking-widest">{tSafe('project', 'المشروع المستهدف', 'Target Project')}</Label>
                   <Select value={formData.transactionId} onValueChange={v => setFormData({...formData, transactionId: v})}>
-                     <SelectTrigger className="h-14 rounded-2xl border-2 font-black text-lg bg-slate-50 shadow-inner">
+                     <SelectTrigger className="h-14 rounded-2xl border-2 font-black text-lg bg-slate-50 shadow-inner text-start">
                         <SelectValue placeholder="..." />
                      </SelectTrigger>
                      <SelectContent className="rounded-xl border-0 shadow-2xl z-[200]">
                         {transactions?.map(t_item => (
-                          <SelectItem key={t_item.id} value={t_item.id!} className="font-bold py-4">
-                             {t_item.subServiceName} <span className="text-[10px] opacity-40">#{t_item.transactionNumber}</span>
+                          <SelectItem key={t_item.id} value={t_item.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">
+                             <div className="flex flex-col text-start min-w-0">
+                                <span className="truncate text-slate-800 text-sm">{t_item.subServiceName}</span>
+                                <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-tighter" dir="ltr">#{t_item.transactionNumber}</span>
+                             </div>
                           </SelectItem>
                         ))}
                      </SelectContent>
                   </Select>
                </div>
 
-               <div className="space-y-2">
+               <div className="space-y-2 text-start">
                   <Label className="text-xs font-black uppercase text-slate-400 tracking-widest">{tSafe('template', 'القالب المرجعي', 'Legal Template')}</Label>
                   <Select value={formData.templateId} onValueChange={v => setFormData({...formData, templateId: v})}>
                      <SelectTrigger className="h-14 rounded-2xl border-2 font-black text-lg bg-slate-50 shadow-inner">
@@ -253,7 +257,7 @@ export default function SubConContractsListPage() {
                <Button 
                   onClick={handleIssueContract} 
                   disabled={loading || !formData.subcontractorId || !formData.transactionId || !formData.templateId}
-                  className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-4 border-b-8 border-orange-700 mt-6"
+                  className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-4 border-b-8 border-orange-700 mt-6"
                >
                   {loading ? <Loader2 className="animate-spin h-8 w-8" /> : <Sparkles className="h-8 w-8" />}
                   {tSafe('subcon.contracts.issue', 'إصدار الاتفاقية الآن', 'Issue Award Now')}
