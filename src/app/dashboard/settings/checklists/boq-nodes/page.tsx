@@ -55,7 +55,7 @@ import { BOQReferenceService } from '@/services/boq-reference-service';
 
 export default function BOQNodesPage() {
   const { globalUser, user } = useAuthContext();
-  const { t, lang, dir, isRtl } = useLanguage();
+  const { t, lang, dir, isRtl, tSafe } = useLanguage(); // Fixed: Added tSafe
   const { check, permissions } = usePermissions();
   const db = useFirestore();
   const companyId = globalUser?.companyId;
@@ -554,7 +554,7 @@ export default function BOQNodesPage() {
                                                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{stage.code}</span>
                                                 </div>
                                               </div>
-                                              {isChecked && editingNode?.technicalStageId === stage.id && <Badge className="bg-emerald-500 text-white text-[7px] font-black h-4 px-2 border-0">{tSafe('inline.primary', 'رئيسي', 'PRIMARY')}</Badge>}
+                                              {isChecked && editingNode?.technicalStageId === stage.id && <Badge className="bg-emerald-50 text-white text-[7px] font-black h-4 px-2 border-0">{tSafe('inline.primary', 'رئيسي', 'PRIMARY')}</Badge>}
                                             </div>
                                           );
                                         })

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -46,7 +45,7 @@ interface Props {
 
 export function BOQTemplateForm({ template, onClose }: Props) {
   const { globalUser, user } = useAuthContext();
-  const { t, lang, dir, tSafe } = useLanguage();
+  const { t, lang, dir, tSafe } = useLanguage(); // Fixed: Added tSafe
   const { permissions } = usePermissions();
   const db = useFirestore();
   const isRtl = lang === 'ar';
@@ -454,7 +453,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                     <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 space-y-4">
                        <div className="space-y-2">
                           <Label className="text-[9px] font-black text-slate-500 uppercase">{isRtl ? 'النشاط الرئيسي' : 'Activity Type'}</Label>
-                          <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
+                          <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: '', boqTemplateId: ''})}>
                              <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white text-start"><SelectValue placeholder="..." /></SelectTrigger>
                              <SelectContent className="rounded-xl">
                                 {activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}
@@ -463,7 +462,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                        </div>
                        <div className="space-y-2">
                           <Label className="text-[9px] font-black text-slate-500 uppercase">{isRtl ? 'الخدمة الأساسية' : 'Main Service'}</Label>
-                          <Select disabled={!formData.activityTypeId} value={formData.serviceId} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
+                          <Select disabled={!formData.activityTypeId} value={formData.serviceId} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: '', boqTemplateId: ''})}>
                              <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white text-start">
                                 {servicesLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <SelectValue placeholder="..." />}
                              </SelectTrigger>
