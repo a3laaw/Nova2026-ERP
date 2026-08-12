@@ -19,7 +19,7 @@ import {
   Handshake, Calculator, ShieldCheck,
   Target, Percent, Workflow,
   LayoutGrid, Clock, Info, Landmark,
-  Hammer, ListChecks
+  Hammer, ListChecks, CheckCircle2, AlertTriangle, X
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -59,7 +59,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
       serviceId: '',
       subServiceId: '',
       legalText: '',
-      pricingMode: 'itemized',
+      pricingMode: 'percentage',
       defaultMilestones: [],
       isDefault: false,
       isActive: true
@@ -100,15 +100,39 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
     }
   }, [db, companyId, formData.subServiceId, formData.activityTypeId, formData.serviceId]);
 
+  const stats = useMemo(() => {
+    const milestones = formData.defaultMilestones || [];
+    const totalPercentage = milestones.reduce((acc, m) => acc + (Number(m.percentage) || 0), 0);
+    const totalItemizedAmount = milestones.reduce((acc, m) => acc + (Number(m.amount) || 0), 0);
+    
+    const isPercentageMode = formData.pricingMode === 'percentage';
+    const isValid = isPercentageMode ? Math.abs(totalPercentage - 100) < 0.1 : true;
+
+    return { totalPercentage, totalItemizedAmount, isValid };
+  }, [formData.defaultMilestones, formData.pricingMode]);
+
   const handleSave = async () => {
     if (!db || !companyId || !user) return;
     if (!formData.name) return toast({ variant: "destructive", title: tSafe('inline.name.required', 'الاسم مطلوب', 'Name required') });
+    if (formData.pricingMode === 'percentage' && !stats.isValid) {
+      toast({ 
+        variant: "destructive", 
+        title: tSafe('common.error', 'خطأ', 'Error'), 
+        description: isRtl ? `يجب أن يكون مجموع الحصص 100% (الحالي: ${stats.totalPercentage}%)` : `Total percentage must be 100%` 
+      });
+      return;
+    }
 
     setLoading(true);
     try {
       const service = new TemplateService(db, companyId, permissions);
-      if (template?.id) await service.updateTemplate('subcon_contract', template.id, formData, user.uid);
-      else await service.addTemplate('subcon_contract', formData, user.uid);
+      const finalAmount = formData.pricingMode === 'percentage' 
+        ? (formData.baseAmount || 0)
+        : stats.totalItemizedAmount;
+
+      const payload = { ...formData, baseAmount: finalAmount };
+      if (template?.id) await service.updateTemplate('subcon_contract', template.id, payload, user.uid);
+      else await service.addTemplate('subcon_contract', payload, user.uid);
       
       toast({ title: t('common.saved') });
       onClose();
@@ -128,7 +152,19 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
 
   const updateMilestone = (idx: number, field: keyof ContractMilestone, value: any) => {
     const newM = [...(formData.defaultMilestones || [])];
-    newM[idx] = { ...newM[idx], [field]: value };
+    const item = { ...newM[idx], [field]: value };
+    
+    // ربط تفاعلي للنسبة مع المبلغ بناءً على الميزانية المستهدفة
+    if (formData.pricingMode === 'percentage' && (field === 'percentage' || field === 'amount')) {
+      const total = formData.baseAmount || 0;
+      if (field === 'percentage') {
+        item.amount = (total * (Number(value) || 0)) / 100;
+      } else if (field === 'amount' && total > 0) {
+        item.percentage = (Number(value) / total) * 100;
+      }
+    }
+    
+    newM[idx] = item;
     setFormData({...formData, defaultMilestones: newM});
   };
 
@@ -139,25 +175,36 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
       defaultMilestones: [...(formData.defaultMilestones || []), { 
         name: getOrdinalLabel(nextIdx), 
         percentage: 0, 
+        amount: 0,
         timing: 'at', 
         contractualEvent: 'MANUAL' 
       }]
     });
   };
 
+  const currentDisplayAmount = formData.pricingMode === 'percentage' 
+    ? (formData.baseAmount || 0)
+    : stats.totalItemizedAmount;
+
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-500 bg-white min-h-screen" dir={dir}>
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-white/95 backdrop-blur-md px-6 shadow-sm">
         <div className="flex items-center gap-4 text-start">
           <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 border-2 rounded-xl hover:bg-slate-50 transition-all text-slate-400">
-            <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
+            <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
           </Button>
           <div className="text-start">
              <h1 className="text-xl font-black text-slate-900 leading-none">{tSafe('inline.subcon.template.design', 'هندسة قوالب عقود الباطن', 'SubCon Template Design')}</h1>
              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{formData.name || 'Draft SubCon Template'}</p>
           </div>
         </div>
-        <div className="flex gap-4">
+        <div className="flex items-center gap-4">
+           <div className="flex flex-col text-end">
+              <span className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'حالة التوازن' : 'Balance Status'}</span>
+              <Badge variant="outline" className={cn("h-6 border-2 font-black text-[9px]", stats.isValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>
+                 {stats.isValid ? `BALANCED` : `MISMATCH`}
+              </Badge>
+           </div>
            <Button onClick={handleSave} disabled={loading} size="sm" className="h-12 px-10 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 gap-3 border-b-4 border-orange-700 hover:scale-[1.02] transition-all">
               {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
               {t('common.save')}
@@ -207,6 +254,18 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                </CardContent>
             </Card>
 
+            <div className="p-6 rounded-[2rem] bg-slate-50 border-2 border-primary/20 space-y-4 relative overflow-hidden shadow-inner">
+               <div className="absolute top-0 right-0 p-6 opacity-5"><Calculator className="h-24 w-24 text-primary" /></div>
+               <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-2">{isRtl ? 'الميزانية المستهدفة' : 'Target Budget'}</p>
+               <Input 
+                 type="number" 
+                 value={formData.baseAmount === 0 ? "" : (formData.baseAmount || "")} 
+                 onChange={e => setFormData({...formData, baseAmount: e.target.value === '' ? 0 : Number(e.target.value)})} 
+                 className="h-14 rounded-2xl border-2 bg-white text-2xl text-center shadow-inner font-black text-primary" 
+               />
+               <p className="text-[9px] font-bold text-slate-400 text-center italic">{isRtl ? 'تستخدم لحساب مبالغ الدفعات بناءً على النسب المئوية.' : 'Used for calculating amounts from percentages.'}</p>
+            </div>
+
             <div className="p-8 rounded-[2.5rem] bg-blue-50 border-2 border-blue-100 flex items-start gap-4 shadow-inner ring-4 ring-white">
                <Info className="h-6 w-6 text-blue-600 shrink-0 mt-1" />
                <p className="text-[10px] font-bold text-blue-700 leading-relaxed italic text-start">
@@ -224,15 +283,22 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                         <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-12 rounded-xl border-2 font-black text-lg bg-slate-50 shadow-inner" />
                      </div>
                      <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'كود القالب' : 'Template Code'}</Label>
-                        <Input value={formData.code || ''} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} className="h-12 rounded-xl border-2 font-mono font-black text-primary bg-white" />
+                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'نمط التسعير' : 'Pricing Mode'}</Label>
+                        <Select value={formData.pricingMode} onValueChange={(v: PricingMode) => setFormData({...formData, pricingMode: v})}>
+                           <SelectTrigger className="h-12 rounded-xl border-2 font-black bg-white"><SelectValue /></SelectTrigger>
+                           <SelectContent className="rounded-xl">
+                              <SelectItem value="percentage" className="font-bold py-3">{isRtl ? 'نسب مئوية من الإجمالي' : 'Percentage of Total'}</SelectItem>
+                              <SelectItem value="fixed" className="font-bold py-3">{isRtl ? 'مبالغ ثابتة مقطوعة' : 'Fixed Amounts'}</SelectItem>
+                              <SelectItem value="itemized" className="font-bold py-3">{isRtl ? 'بنود منفصلة (تجمع آلياً)' : 'Itemized Grid'}</SelectItem>
+                           </SelectContent>
+                        </Select>
                      </div>
                   </div>
 
                   <div className="space-y-6">
                      <div className="flex justify-between items-center px-4">
                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                           <ListChecks className="h-5 w-5 text-primary" /> {isRtl ? 'جدول دفعات المقاول والربط الفني' : 'Payment Milestones & Execution Links'}
+                           <LayoutGrid className="h-5 w-5 text-primary" /> {isRtl ? 'جدول دفعات المقاول والربط الفني' : 'Payment Milestones & Execution Links'}
                         </h4>
                         <Button variant="outline" size="sm" onClick={addMilestone} className="rounded-xl font-black text-[10px] border-2 h-10 px-8 gap-3 bg-white hover:bg-primary/5 shadow-md">
                            <Plus className="h-4 w-4 text-primary" /> {isRtl ? 'إضافة دفعة' : 'Add Milestone'}
@@ -245,9 +311,10 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                               <tr>
                                  <th className="p-6 w-12 text-start">#</th>
                                  <th className="p-6 text-start">{isRtl ? 'مسمى الدفعة' : 'Milestone Name'}</th>
-                                 <th className="p-6 text-center w-24">%</th>
+                                 {formData.pricingMode === 'percentage' && <th className="p-6 text-center w-24">%</th>}
                                  <th className="p-6 text-center w-32">{isRtl ? 'التوقيت' : 'Timing'}</th>
                                  <th className="p-6 text-start w-48">{isRtl ? 'الارتباط الميداني' : 'Technical Link'}</th>
+                                 <th className="p-6 text-end pe-12 w-48">{tSafe('inline.amount', 'المبلغ', 'Amount')}</th>
                                  <th className="p-6 w-14"></th>
                               </tr>
                            </thead>
@@ -258,12 +325,19 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                                    <td className="p-4">
                                       <Input value={m.name || ''} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-10 rounded-xl font-black text-sm bg-white border-2" />
                                    </td>
-                                   <td className="p-4">
-                                      <div className="relative w-24 mx-auto">
-                                         <Input type="number" value={m.percentage === 0 ? "" : (m.percentage || "")} onChange={e => updateMilestone(idx, 'percentage', e.target.value === '' ? 0 : Number(e.target.value))} className="h-10 rounded-xl border-2 font-black text-center pe-6 text-sm" />
-                                         <span className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300">%</span>
-                                      </div>
-                                   </td>
+                                   {formData.pricingMode === 'percentage' && (
+                                      <td className="p-4">
+                                         <div className="relative w-24 mx-auto">
+                                            <Input 
+                                              type="number" 
+                                              value={m.percentage === 0 ? "" : (m.percentage || "")} 
+                                              onChange={e => updateMilestone(idx, 'percentage', e.target.value)} 
+                                              className="h-10 rounded-xl border-2 font-black text-center pe-6 text-sm" 
+                                            />
+                                            <Percent className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
+                                         </div>
+                                      </td>
+                                   )}
                                    <td className="p-4 text-center">
                                       <Select value={m.timing || 'at'} onValueChange={v => updateMilestone(idx, 'timing', v)}>
                                          <SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs bg-white"><SelectValue /></SelectTrigger>
@@ -285,10 +359,23 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                                          </SelectTrigger>
                                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
                                             {pathStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
-                                               <span className="flex items-center gap-2"><Workflow className="h-3 w-3 text-primary" /> {s.name}</span>
+                                               <span className="flex items-center gap-1"><Workflow className="h-3 w-3 text-primary" /> {s.name}</span>
                                             </SelectItem>)}
                                          </SelectContent>
                                       </Select>
+                                   </td>
+                                   <td className="p-4 text-end pe-12">
+                                      <div className="flex items-center gap-2 justify-end">
+                                         <Input 
+                                           type="number" 
+                                           step="0.001" 
+                                           readOnly={formData.pricingMode === 'percentage'}
+                                           value={m.amount === 0 ? "" : (m.amount || "")} 
+                                           onChange={e => updateMilestone(idx, 'amount', e.target.value)} 
+                                           className="h-10 w-32 text-end font-black text-emerald-600 text-sm bg-slate-50 border-2 rounded-xl" 
+                                         />
+                                         <span className="text-[10px] font-bold text-slate-300">KWD</span>
+                                      </div>
                                    </td>
                                    <td className="p-4 text-center">
                                       <button type="button" onClick={() => setFormData({...formData, defaultMilestones: formData.defaultMilestones?.filter((_, i) => i !== idx)})} className="text-rose-300 hover:text-rose-600 transition-colors"><Trash2 className="h-5 w-5" /></button>
@@ -296,6 +383,22 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                                 </tr>
                               ))}
                            </tbody>
+                           <tfoot className="bg-slate-50 border-t-8 border-primary">
+                              <tr>
+                                 <td colSpan={formData.pricingMode === 'percentage' ? 5 : 4} className="p-10 text-start">
+                                    <h3 className="text-xl font-black font-headline uppercase tracking-tighter text-slate-800">{isRtl ? 'إجمالي قيمة عقد الباطن' : 'Total SubCon Contract Value'}</h3>
+                                    <Badge className={cn("mt-3 border-0 text-[10px] font-black h-7 px-5 shadow-lg", stats.isValid ? "bg-emerald-600 text-white" : "bg-rose-50 text-rose-600 border-rose-100")}>
+                                       {stats.isValid ? `BALANCED: 100%` : `MISMATCH: ${stats.totalPercentage}%`}
+                                    </Badge>
+                                 </td>
+                                 <td colSpan={2} className="p-10 text-end pe-12">
+                                    <div className="space-y-1">
+                                       <h2 className="text-5xl font-black font-headline text-primary">{(currentDisplayAmount || 0).toLocaleString()}</h2>
+                                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em]">{tSafe('inline.kuwaiti.dinars', 'دينار كويتي لا غير', 'KUWAITI DINARS ONLY')}</p>
+                                    </div>
+                                 </td>
+                              </tr>
+                           </tfoot>
                         </table>
                      </div>
                   </div>
