@@ -32,6 +32,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { BOQExecutionService } from '@/services/boq-execution-service';
 import { SmartDateInput } from '@/components/ui/smart-date-input';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 function NewFieldVisitForm() {
   const { globalUser, user } = useAuthContext();
@@ -50,17 +51,19 @@ function NewFieldVisitForm() {
   const [activeStage, setActiveStage] = useState<StageInstance | null>(null);
   const [loadingStage, setLoadingStage] = useState(false);
 
+  // مصفوفات الموارد
   const [staffRows, setStaffRows] = useState<any[]>([{ employeeId: '', position: '', count: 1 }]);
   const [equipRows, setEquipRows] = useState<any[]>([{ equipmentId: '', count: 1, hours: 8 }]);
   const [materialRows, setMaterialRows] = useState<any[]>([{ type: '', unit: '', quantity: 0 }]);
   const [executionRows, setExecutionRows] = useState<any[]>([{ boqItemId: '', quantity: '', notes: '' }]);
 
+  // جلب البيانات الأساسية
   const transQuery = useMemo(() => 
     (companyId && db) ? query(collection(db, paths.transactions(companyId)), where('status', '!=', 'completed')) : null, [db, companyId]);
   const empsQuery = useMemo(() => 
     (companyId && db) ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
   const equipQuery = useMemo(() => 
-    (companyId && db) ? query(collection(db, paths.equipment(companyId)), where('status', '==', 'available')) : null, [db, companyId]);
+    (companyId && db) ? query(collection(db, paths.equipment(companyId)), where('isActive', '==', true)) : null, [db, companyId]);
   const groupsQuery = useMemo(() => 
     (companyId && db) ? query(collection(db, paths.workGroups(companyId)), where('isActive', '==', true)) : null, [db, companyId]);
 
@@ -190,12 +193,16 @@ function NewFieldVisitForm() {
           executionStatus: 'executed'
         })),
         staffDetails: staffRows.filter(s => s.employeeId).map(s => ({
-           ...s,
-           employeeName: employees?.find(e => e.id === s.employeeId)?.fullName || ''
+           employeeId: s.employeeId,
+           employeeName: employees?.find(e => e.id === s.employeeId)?.fullName || '',
+           position: s.position,
+           count: s.count
         })),
         equipmentUsed: equipRows.filter(e => e.equipmentId).map(e => ({
-           ...e,
-           equipmentName: equipmentList?.find(eq => eq.id === e.equipmentId)?.name || ''
+           equipmentId: e.equipmentId,
+           equipmentName: equipmentList?.find(eq => eq.id === e.equipmentId)?.name || '',
+           count: e.count,
+           hours: e.hours
         })),
         materialsDelivered: materialRows.filter(m => m.type),
         engineerId: globalUser?.employeeId || user.uid,
@@ -212,7 +219,7 @@ function NewFieldVisitForm() {
   };
 
   return (
-    <div className="space-y-6 w-full max-w-full pb-20 animate-in fade-in duration-500 text-start bg-slate-50/30" dir={dir}>
+    <div className="space-y-6 w-full max-w-full pb-20 animate-in fade-in duration-500 text-start bg-white" dir={dir}>
       
       <header className="sticky top-0 z-50 flex justify-between items-center gap-6 border-b bg-white/95 backdrop-blur-md px-8 py-5 shadow-sm border-primary/10">
         <div className="flex items-center gap-5 text-start">
@@ -236,7 +243,7 @@ function NewFieldVisitForm() {
         </div>
       </header>
 
-      <div className="px-8 space-y-10">
+      <div className="px-4 md:px-8 space-y-10">
          <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden w-full">
             <CardContent className="p-8 grid grid-cols-1 md:grid-cols-4 gap-10 items-center">
                 <div className="space-y-2">
@@ -335,6 +342,7 @@ function NewFieldVisitForm() {
          </Card>
 
          <div className="grid grid-cols-1 xl:grid-cols-2 gap-10 pb-20">
+            {/* جدول الموظفين */}
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
                <CardHeader className="bg-slate-50/80 border-b p-6 flex flex-col md:flex-row items-center justify-between gap-4">
                   <div className="text-start">
@@ -404,6 +412,7 @@ function NewFieldVisitForm() {
                </CardContent>
             </Card>
 
+            {/* جدول المعدات */}
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
                <CardHeader className="bg-slate-50/80 border-b p-6 flex flex-row items-center justify-between">
                   <div>
@@ -458,6 +467,7 @@ function NewFieldVisitForm() {
                </CardContent>
             </Card>
 
+            {/* جدول المواد */}
             <Card className="xl:col-span-2 border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
                <CardHeader className="bg-slate-50/80 border-b p-6 flex flex-row items-center justify-between">
                   <div>
