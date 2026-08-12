@@ -31,19 +31,19 @@ export function SettlementBreakdown({ result, isRtl }: Props) {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       
-      {/* Hero Result */}
+      {/* Hero Result - Updated to light style */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-         <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-slate-900 text-white p-8 flex flex-col justify-between overflow-hidden relative group">
+         <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white p-8 flex flex-col justify-between overflow-hidden relative group ring-1 ring-black/5 border-b-8 border-b-primary">
             <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform">
-               <Receipt className="h-32 w-32" />
+               <Receipt className="h-32 w-32 text-primary" />
             </div>
             <p className="text-xs font-black text-primary uppercase tracking-[0.2em] mb-4">{t('إجمالي التسوية النهائية', 'Final Settlement Total')}</p>
-            <h3 className="text-5xl font-black font-headline text-emerald-400">
-               {result.total.toLocaleString()} <span className="text-sm font-bold text-white/40">KWD</span>
+            <h3 className="text-5xl font-black font-headline text-slate-900">
+               {result.total.toLocaleString()} <span className="text-sm font-bold text-slate-400">KWD</span>
             </h3>
-            <div className="mt-8 pt-6 border-t border-white/10 flex items-center gap-2">
-               <ShieldCheck className="h-4 w-4 text-primary" />
-               <span className="text-[10px] font-bold text-slate-400 italic">{result.notice}</span>
+            <div className="mt-8 pt-6 border-t border-slate-100 flex items-center gap-2">
+               <ShieldCheck className="h-4 w-4 text-emerald-500" />
+               <span className="text-[10px] font-bold text-slate-500 italic">{result.notice}</span>
             </div>
          </Card>
 
@@ -58,7 +58,7 @@ export function SettlementBreakdown({ result, isRtl }: Props) {
       {/* Detailed Items */}
       <Card className="border-0 shadow-xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
         <CardHeader className="bg-slate-50/50 border-b p-8 text-start">
-           <CardTitle className="text-xl font-black flex items-center gap-3">
+           <CardTitle className="text-xl font-black flex items-center gap-3 text-slate-900">
               <Scale className="h-6 w-6 text-primary" />
               {t('تحليل البنود القانونية للمستحقات', 'Legal Itemized Analysis')}
            </CardTitle>
@@ -131,8 +131,8 @@ export function SettlementBreakdown({ result, isRtl }: Props) {
               </div>
            </div>
 
-           {/* Legal Footer Note */}
-           <div className="p-8 rounded-[2rem] bg-slate-900/5 border-2 border-white shadow-inner flex items-start gap-4">
+           {/* Legal Footer Note - Updated to light style */}
+           <div className="p-8 rounded-[2rem] bg-primary/5 border-2 border-white shadow-inner flex items-start gap-4">
               <Clock className="h-6 w-6 text-primary shrink-0 mt-1" />
               <div className="text-start space-y-2">
                  <h5 className="font-black text-sm text-slate-800 uppercase tracking-widest">{t('تنبيهات حقوق العامل (فترة الإخطار)', 'Notice Period Rights')}</h5>

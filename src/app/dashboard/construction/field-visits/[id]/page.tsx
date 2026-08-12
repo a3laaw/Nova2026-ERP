@@ -11,7 +11,7 @@ import {
   Truck, CheckCircle2, ShieldCheck, Printer,
   LayoutGrid, Save, MessageSquare, ShieldAlert,
   Workflow, History, Landmark, Clock, Camera,
-  Briefcase, ArrowUpRight
+  Briefcase, ArrowUpRight, Hammer
 } from "lucide-react";
 import { useFirestore, useDoc } from '@/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -189,7 +189,7 @@ export default function FieldVisitDetailsPage() {
                                     <div className="flex gap-2 mt-4">
                                        {item.photoUrls.map((url: string, pIdx: number) => (
                                           <div key={pIdx} className="h-12 w-12 rounded-xl border-2 border-white shadow-md overflow-hidden bg-slate-50 flex items-center justify-center">
-                                             <img src={url} alt="Visit" className="w-full h-full object-cover" />
+                                             <img src={url} alt="Visit" className="h-full w-full object-cover" />
                                           </div>
                                        ))}
                                     </div>
