@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -17,6 +16,7 @@ import {
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
 import { usePermissions } from "@/hooks/use-permissions"
+import { useAuthContext } from "@/context/auth-context"
 import { Badge } from "@/components/ui/badge"
 import {
   Sidebar, SidebarHeader, SidebarContent, SidebarGroup,
@@ -34,7 +34,8 @@ export function DashboardSidebar() {
   const pathname = usePathname()
   const { state } = useSidebar()
   const { t, tSafe, isRtl } = useLanguage()
-  const { canAccess, check } = usePermissions()
+  const { globalUser } = useAuthContext()
+  const { canAccess, check, isAdmin } = usePermissions()
   const isCollapsed = state === "collapsed"
 
   const menuItems = React.useMemo(() => {
