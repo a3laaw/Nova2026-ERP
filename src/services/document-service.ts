@@ -300,7 +300,7 @@ export class DocumentService {
       ...template,
       ...payload,
       id: contractRef.id,
-      status: 'draft',
+      status: 'active',
       totalAmount: template.baseAmount || 0,
       milestones: template.defaultMilestones || [],
       companyId: this.companyId,

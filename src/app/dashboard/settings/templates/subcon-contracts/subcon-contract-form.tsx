@@ -42,7 +42,7 @@ interface Props {
 
 export function SubConContractTemplateForm({ template, onClose }: Props) {
   const { globalUser, user } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
+  const { t, lang, dir, tSafe } = useLanguage();
   const { permissions } = usePermissions();
   const db = useFirestore();
   const isRtl = lang === 'ar';
@@ -118,7 +118,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
       toast({ 
         variant: "destructive", 
         title: t('common.error'), 
-        description: isRtl ? `يجب أن يكون مجموع الحصص 100% (الحالي: ${stats.totalPercentage}%)` : `Total percentage must be 100%` 
+        description: tSafe('subcon.percentage.error', 'يجب أن يكون مجموع الحصص 100%', 'Total percentage must be 100%') 
       });
       return;
     }
@@ -144,10 +144,11 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
   };
 
   const getOrdinalLabel = (index: number) => {
-    const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "السابعة", "التاسعة", "العاشرة"];
+    const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"];
     const enOrdinals = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
-    const base = isRtl ? "الدفعة" : "Installment";
-    return isRtl ? `${base} ${arOrdinals[index] || `#${index + 1}`}` : `${base} ${enOrdinals[index] || `#${index + 1}`}`;
+    const base = tSafe('inline.installment', 'الدفعة', 'Installment');
+    const ordinal = isRtl ? (arOrdinals[index] || `#${index + 1}`) : (enOrdinals[index] || `#${index + 1}`);
+    return `${base} ${ordinal}`;
   };
 
   const updateMilestone = (idx: number, field: keyof ContractMilestone, value: any) => {
@@ -193,13 +194,13 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
             <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
           </Button>
           <div className="text-start">
-             <h1 className="text-xl font-black text-slate-900 leading-none">{isRtl ? 'هندسة قوالب عقود الباطن' : 'SubCon Template Design'}</h1>
+             <h1 className="text-xl font-black text-slate-900 leading-none">{tSafe('subcon.template.title', 'هندسة قوالب عقود الباطن', 'SubCon Template Design')}</h1>
              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{formData.name || 'Draft SubCon Template'}</p>
           </div>
         </div>
         <div className="flex items-center gap-4">
            <div className="flex flex-col text-end">
-              <span className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'حالة التوازن' : 'Balance Status'}</span>
+              <span className="text-[9px] font-black text-slate-400 uppercase">{tSafe('pricing.balanceStatus', 'حالة التوازن', 'Balance Status')}</span>
               <Badge variant="outline" className={cn("h-6 border-2 font-black text-[9px]", stats.isValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>
                  {stats.isValid ? `BALANCED` : `MISMATCH`}
               </Badge>
@@ -216,31 +217,31 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
             <Card className="border-0 shadow-xl rounded-[2rem] bg-white ring-1 ring-black/5 overflow-hidden">
                <CardHeader className="bg-primary/5 p-6 border-b">
                   <CardTitle className="text-[10px] font-black flex items-center gap-3 uppercase tracking-widest text-primary">
-                     <Target className="h-4 w-4" /> {isRtl ? 'السياق والمجال' : 'Operational Scope'}
+                     <Target className="h-4 w-4" /> {tSafe('subcon.form.scope', 'السياق والمجال', 'Operational Scope')}
                   </CardTitle>
                </CardHeader>
                <CardContent className="p-6 space-y-6">
                   <div className="space-y-4">
                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{t('subcon.form.trade')}</Label>
-                        <Input value={formData.trade || ''} onChange={e => setFormData({...formData, trade: e.target.value})} className="h-11 rounded-xl border-2 font-black text-primary" placeholder={isRtl ? "مثلاً: حدادة" : "e.g. Steel Works"} />
+                        <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('subcon.form.trade', 'التخصص الفني', 'Technical Trade')}</Label>
+                        <Input value={formData.trade || ''} onChange={e => setFormData({...formData, trade: e.target.value})} className="h-11 rounded-xl border-2 font-black text-primary" placeholder="..." />
                      </div>
                      <div className="space-y-1.5 pt-4 border-t">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">النشاط</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('activity', 'النشاط', 'Activity')}</Label>
                         <Select value={formData.activityTypeId || ''} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
                            <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
                            <SelectContent className="rounded-xl">{activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent>
                         </Select>
                      </div>
                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">الخدمة</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('service', 'الخدمة', 'Service')}</Label>
                         <Select disabled={!formData.activityTypeId} value={formData.serviceId || ''} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
                            <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
                            <SelectContent className="rounded-xl">{services?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
                         </Select>
                      </div>
                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">المسار</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('path', 'المسار', 'Path')}</Label>
                         <Select disabled={!formData.serviceId} value={formData.subServiceId || ''} onValueChange={v => {
                            const sub = activeSubs.find(s => s.id === v);
                            setFormData({...formData, subServiceId: v, subServiceName: sub?.name || ''});
@@ -255,14 +256,14 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
 
             <div className="p-6 rounded-[2rem] bg-slate-50 border-2 border-primary/20 space-y-4 relative overflow-hidden shadow-inner">
                <div className="absolute top-0 right-0 p-6 opacity-5"><Calculator className="h-24 w-24 text-primary" /></div>
-               <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-2">{t('subcon.form.targetBudget')}</p>
+               <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-2">{tSafe('subcon.form.targetBudget', 'إجمالي قيمة العقد', 'Contract Value')}</p>
                <Input 
                  type="number" 
                  value={formData.baseAmount === 0 ? "" : (formData.baseAmount || "")} 
                  onChange={e => setFormData({...formData, baseAmount: e.target.value === '' ? 0 : Number(e.target.value)})} 
                  className="h-14 rounded-2xl border-2 bg-white text-2xl text-center shadow-inner font-black text-primary" 
                />
-               <p className="text-[9px] font-bold text-slate-400 text-center italic">{t('subcon.form.budgetHint')}</p>
+               <p className="text-[9px] font-bold text-slate-400 text-center italic">{tSafe('subcon.form.budgetHint', 'المبلغ المتفق عليه مع مقاول الباطن لإنجاز الأعمال.', 'Agreed amount for work execution.')}</p>
             </div>
          </aside>
 
@@ -271,17 +272,16 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                <div className="space-y-12 text-start">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b-2 pb-8">
                      <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{t('subcon.form.contractName')}</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('subcon.form.contractName', 'مسمى العقد / الاتفاقية', 'Contract / Agreement Title')}</Label>
                         <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-12 rounded-xl border-2 font-black text-lg bg-slate-50 shadow-inner" />
                      </div>
                      <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{t('subcon.form.pricingMode')}</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('subcon.form.pricingMode', 'نمط المحاسبة', 'Pricing Mode')}</Label>
                         <Select value={formData.pricingMode} onValueChange={(v: PricingMode) => setFormData({...formData, pricingMode: v})}>
                            <SelectTrigger className="h-12 rounded-xl border-2 font-black bg-white"><SelectValue /></SelectTrigger>
                            <SelectContent className="rounded-xl">
                               <SelectItem value="percentage" className="font-bold py-3">{isRtl ? 'نسب مئوية من الإجمالي' : 'Percentage of Total'}</SelectItem>
                               <SelectItem value="fixed" className="font-bold py-3">{isRtl ? 'مبالغ ثابتة مقطوعة' : 'Fixed Amounts'}</SelectItem>
-                              <SelectItem value="itemized" className="font-bold py-3">{isRtl ? 'بنود منفصلة (تجمع آلياً)' : 'Itemized Grid'}</SelectItem>
                            </SelectContent>
                         </Select>
                      </div>
@@ -290,10 +290,10 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                   <div className="space-y-6">
                      <div className="flex justify-between items-center px-4">
                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                           <LayoutGrid className="h-5 w-5 text-primary" /> {isRtl ? 'جدول دفعات المقاول والربط الفني' : 'Payment Milestones & Execution Links'}
+                           <LayoutGrid className="h-5 w-5 text-primary" /> {tSafe('pricing.milestones', 'جدول دفعات المقاول والربط الفني', 'Payment Milestones & Execution Links')}
                         </h4>
                         <Button variant="outline" size="sm" onClick={addMilestone} className="rounded-xl font-black text-[10px] border-2 h-10 px-8 gap-3 bg-white hover:bg-primary/5 shadow-md">
-                           <Plus className="h-4 w-4 text-primary" /> {isRtl ? 'إضافة دفعة' : 'Add Milestone'}
+                           <Plus className="h-4 w-4 text-primary" /> {tSafe('common.add', 'إضافة دفعة', 'Add Milestone')}
                         </Button>
                      </div>
 
@@ -302,10 +302,10 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                            <thead className="bg-slate-50 border-b-2 text-slate-600 font-black uppercase text-[10px] tracking-widest">
                               <tr>
                                  <th className="p-6 w-12 text-start">#</th>
-                                 <th className="p-6 text-start">{isRtl ? 'مسمى الدفعة' : 'Milestone Name'}</th>
+                                 <th className="p-6 text-start">{tSafe('name', 'مسمى الدفعة', 'Milestone Name')}</th>
                                  {formData.pricingMode === 'percentage' && <th className="p-6 text-center w-24">%</th>}
-                                 <th className="p-6 text-center w-32">{isRtl ? 'التوقيت' : 'Timing'}</th>
-                                 <th className="p-6 text-start w-48">{isRtl ? 'الارتباط الميداني' : 'Technical Link'}</th>
+                                 <th className="p-6 text-center w-32">{tSafe('timing', 'التوقيت', 'Timing')}</th>
+                                 <th className="p-6 text-start w-48">{tSafe('technicalLink', 'الارتباط الميداني', 'Technical Link')}</th>
                                  <th className="p-6 text-end pe-12 w-48">{t('common.amount')}</th>
                                  <th className="p-6 w-14"></th>
                               </tr>
@@ -334,10 +334,10 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                                       <Select value={m.timing || 'at'} onValueChange={v => updateMilestone(idx, 'timing', v)}>
                                          <SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs bg-white"><SelectValue /></SelectTrigger>
                                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
-                                            <SelectItem value="at" className="font-bold text-xs">{t('at')}</SelectItem>
-                                            <SelectItem value="before" className="font-bold text-xs">{t('before')}</SelectItem>
-                                            <SelectItem value="during" className="font-bold text-xs">{t('during')}</SelectItem>
-                                            <SelectItem value="after" className="font-bold text-xs">{t('after')}</SelectItem>
+                                            <SelectItem value="at" className="font-bold text-xs">{tSafe('at', 'عند', 'At')}</SelectItem>
+                                            <SelectItem value="before" className="font-bold text-xs">{tSafe('before', 'قبل', 'Before')}</SelectItem>
+                                            <SelectItem value="during" className="font-bold text-xs">{tSafe('during', 'أثناء', 'During')}</SelectItem>
+                                            <SelectItem value="after" className="font-bold text-xs">{tSafe('after', 'بعد', 'After')}</SelectItem>
                                          </SelectContent>
                                       </Select>
                                    </td>
@@ -351,7 +351,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                                          </SelectTrigger>
                                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
                                             {pathStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
-                                               <span className="flex items-center gap-1"><Workflow className="h-3 w-3 text-primary" /> {s.name}</span>
+                                               <span className="flex items-center gap-2"><Workflow className="h-3 w-3 text-primary" /> {s.name}</span>
                                             </SelectItem>)}
                                          </SelectContent>
                                       </Select>
@@ -378,7 +378,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                            <tfoot className="bg-slate-50 border-t-8 border-primary">
                               <tr>
                                  <td colSpan={formData.pricingMode === 'percentage' ? 5 : 4} className="p-10 text-start">
-                                    <h3 className="text-xl font-black font-headline uppercase tracking-tighter text-slate-800">{isRtl ? 'إجمالي قيمة عقد الباطن' : 'Total SubCon Contract Value'}</h3>
+                                    <h3 className="text-xl font-black font-headline uppercase tracking-tighter text-slate-800">{tSafe('subcon.totalPayable', 'إجمالي قيمة عقد الباطن', 'Total SubCon Contract Value')}</h3>
                                     <Badge className={cn("mt-3 border-0 text-[10px] font-black h-7 px-5 shadow-lg", stats.isValid ? "bg-emerald-600 text-white" : "bg-rose-600 text-white")}>
                                        {stats.isValid ? `BALANCED: 100%` : `MISMATCH: ${stats.totalPercentage}%`}
                                     </Badge>
@@ -386,7 +386,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                                  <td colSpan={2} className="p-10 text-end pe-12">
                                     <div className="space-y-1">
                                        <h2 className="text-5xl font-black font-headline text-primary">{currentDisplayAmount.toLocaleString()}</h2>
-                                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em]">{isRtl ? 'دينار كويتي لا غير' : 'KUWAITI DINARS ONLY'}</p>
+                                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em]">{tSafe('currency.kwdOnly', 'دينار كويتي لا غير', 'KUWAITI DINARS ONLY')}</p>
                                     </div>
                                  </td>
                               </tr>
@@ -397,7 +397,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
 
                   <div className="space-y-4 pt-10 text-start">
                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 border-b-4 border-primary/20 pb-3">
-                        <ShieldCheck className="h-6 w-6 text-primary" /> {isRtl ? 'البنود والشروط القانونية (عقد الباطن)' : 'SubCon Legal Terms & Clauses'}
+                        <ShieldCheck className="h-6 w-6 text-primary" /> {tSafe('subcon.legalTerms', 'البنود والشروط القانونية (عقد الباطن)', 'SubCon Legal Terms & Clauses')}
                      </h4>
                      <Textarea value={formData.legalText || ''} onChange={e => setFormData({...formData, legalText: e.target.value})} className="min-h-[400px] rounded-[3rem] border-2 p-10 text-base font-bold leading-relaxed bg-slate-50 focus:bg-white transition-all shadow-inner" placeholder="..." />
                   </div>
