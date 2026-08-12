@@ -9,7 +9,8 @@ import {
   Plus, Search, Loader2, ArrowRight, 
   Handshake, Trash2, Edit3, ShieldCheck, 
   FileText, History, DollarSign, Building2,
-  Workflow, ArrowUpRight, CheckCircle2, Clock
+  Workflow, ArrowUpRight, CheckCircle2, Clock,
+  Hammer, AlertTriangle
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where } from 'firebase/firestore';
@@ -44,7 +45,6 @@ export default function SubConContractsListPage() {
     templateId: ''
   });
 
-  // Queries
   const contractsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.subconContracts(companyId)), orderBy('createdAt', 'desc')) : null, 
   [db, companyId]);
@@ -99,34 +99,34 @@ export default function SubConContractsListPage() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-20" dir={dir}>
+    <div className="space-y-6 animate-in fade-in duration-500 pb-20" dir={dir}>
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-slate-100 pb-6 text-start">
-        <div className="text-start space-y-2">
-           <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit border border-primary/5 shadow-sm">
+        <div className="text-start space-y-1">
+           <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit">
               <ShieldCheck className="h-3 w-3" /> {t('hr.officialAuthorization')}
            </div>
-           <h1 className="text-4xl font-black font-headline text-slate-900">{t('subcon.contracts.title')}</h1>
-           <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
-              {t('subcon.contracts.list')}
+           <h1 className="text-3xl font-black font-headline text-slate-900">{t('subcon.contracts.title')}</h1>
+           <p className="text-muted-foreground text-xs font-bold opacity-70 italic">
+              {isRtl ? 'إدارة عقود تنفيذ الباطن والارتباطات المالية للمشاريع.' : 'Manage subcontractor awards and project financial links.'}
            </p>
         </div>
 
         <Button 
           onClick={() => setIsIssueOpen(true)}
-          className="bg-primary text-white font-black rounded-2xl h-14 px-10 py-8 text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-8 border-orange-700"
+          className="h-11 px-8 rounded-xl bg-primary text-white font-black shadow-lg shadow-primary/20 hover:scale-[1.02] transition-all gap-2 border-b-4 border-orange-700"
         >
-          <Plus className="h-7 w-7" />
+          <Plus className="h-4 w-4" />
           {t('subcon.contracts.issue')}
         </Button>
       </header>
 
-      <Card className="rounded-[3rem] border-0 shadow-2xl bg-white overflow-hidden ring-1 ring-black/5 text-start">
-        <CardHeader className="bg-slate-50/50 border-b p-8">
+      <Card className="rounded-[2rem] border-0 shadow-xl bg-white overflow-hidden ring-1 ring-black/5 text-start">
+        <CardHeader className="bg-slate-50/50 border-b p-6">
            <div className="relative w-full max-w-md text-start">
               <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <Input 
                 placeholder={t('subcon.contracts.search')} 
-                className="ps-12 rounded-2xl h-14 bg-white border-2 border-slate-100 font-bold text-lg shadow-inner" 
+                className="ps-12 rounded-2xl h-11 bg-white border-2 border-slate-100 font-bold" 
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
@@ -136,27 +136,27 @@ export default function SubConContractsListPage() {
           <Table>
             <TableHeader className="bg-muted/10 border-b">
               <TableRow>
-                <TableHead className="py-8 ps-12 text-start text-xs font-black uppercase tracking-widest">{t('common.name')}</TableHead>
-                <TableHead className="text-start text-xs font-black uppercase tracking-widest">{t('common.vendor')}</TableHead>
-                <TableHead className="text-end text-xs font-black uppercase tracking-widest">{t('common.amount')}</TableHead>
-                <TableHead className="text-center text-xs font-black uppercase tracking-widest">{t('common.status')}</TableHead>
-                <TableHead className="pe-12 text-end"></TableHead>
+                <TableHead className="py-6 ps-10 text-start text-[10px] font-black uppercase tracking-widest">{t('common.name')}</TableHead>
+                <TableHead className="text-start text-[10px] font-black uppercase tracking-widest">{t('common.vendor')}</TableHead>
+                <TableHead className="text-end text-[10px] font-black uppercase tracking-widest">{t('common.amount')}</TableHead>
+                <TableHead className="text-center text-[10px] font-black uppercase tracking-widest">{t('common.status')}</TableHead>
+                <TableHead className="pe-10 text-end"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {contractsLoading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-40"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/20" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/20" /></TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-40 italic text-slate-300 font-black text-xl">{t('subcon.contracts.empty')}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-24 text-slate-300 font-black italic">{t('subcon.contracts.empty')}</TableCell></TableRow>
               ) : filtered.map((contract) => (
-                <TableRow key={contract.id} className="hover:bg-primary/[0.02] transition-colors group border-b-slate-50 cursor-pointer" onClick={() => router.push(`/dashboard/procurement/subcontractors/contracts/${contract.id}`)}>
-                   <TableCell className="py-8 ps-12 text-start">
-                      <div className="flex items-center gap-5">
-                         <div className="h-12 w-12 rounded-2xl bg-white shadow-lg flex items-center justify-center text-primary border-2 border-primary/5">
+                <TableRow key={contract.id} className="hover:bg-primary/[0.02] transition-colors group border-b-slate-100 cursor-pointer" onClick={() => router.push(`/dashboard/procurement/subcontractors/contracts/${contract.id}`)}>
+                   <TableCell className="py-6 ps-10 text-start">
+                      <div className="flex items-center gap-4">
+                         <div className="h-11 w-11 rounded-2xl bg-white shadow-lg flex items-center justify-center text-primary border-2 border-primary/5">
                             <Handshake className="h-6 w-6" />
                          </div>
                          <div className="text-start">
-                            <p className="font-black text-lg text-slate-800 leading-tight">{contract.name}</p>
+                            <p className="font-black text-slate-800 text-sm leading-tight">{contract.name}</p>
                             <p className="text-[10px] font-mono text-slate-400 mt-1 uppercase tracking-widest">{contract.projectTitle}</p>
                          </div>
                       </div>
@@ -167,7 +167,7 @@ export default function SubConContractsListPage() {
                       </div>
                    </TableCell>
                    <TableCell className="text-end">
-                      <span className="font-mono font-black text-lg text-emerald-600">
+                      <span className="font-mono font-black text-emerald-600">
                          {contract.totalAmount?.toLocaleString()} <span className="text-[10px] opacity-40">KWD</span>
                       </span>
                    </TableCell>
@@ -179,8 +179,8 @@ export default function SubConContractsListPage() {
                          {contract.status}
                       </Badge>
                    </TableCell>
-                   <TableCell className="pe-12 text-end">
-                      <Button variant="ghost" size="icon" className="rounded-2xl h-10 w-10 text-slate-300 group-hover:text-primary transition-all">
+                   <TableCell className="pe-10 text-end">
+                      <Button variant="ghost" size="icon" className="rounded-xl h-10 w-10 text-slate-300 group-hover:text-primary transition-all">
                          <ArrowUpRight className={cn("h-5 w-5", isRtl && "rotate-180")} />
                       </Button>
                    </TableCell>
@@ -192,7 +192,7 @@ export default function SubConContractsListPage() {
       </Card>
 
       <Dialog open={isIssueOpen} onOpenChange={setIsIssueOpen}>
-         <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl text-start" dir={dir}>
+         <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl text-start" dir={dir}>
             <div className="bg-primary p-10 text-white text-start">
                <DialogTitle className="text-3xl font-black font-headline flex items-center gap-3">
                   <Handshake className="h-10 w-10 text-white" />
@@ -200,7 +200,7 @@ export default function SubConContractsListPage() {
                </DialogTitle>
             </div>
 
-            <div className="p-10 space-y-6 text-start">
+            <div className="p-10 space-y-6 text-start bg-white">
                <div className="space-y-2">
                   <Label className="text-xs font-black uppercase text-slate-400 tracking-widest">{t('common.vendor')}</Label>
                   <Select value={formData.subcontractorId} onValueChange={v => setFormData({...formData, subcontractorId: v})}>
@@ -208,7 +208,7 @@ export default function SubConContractsListPage() {
                         <SelectValue placeholder="..." />
                      </SelectTrigger>
                      <SelectContent className="rounded-xl border-0 shadow-2xl z-[200]">
-                        {subcontractors?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold py-4">{s.name}</SelectItem>)}
+                        {subcontractors?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold py-4 border-b last:border-0">{s.name}</SelectItem>)}
                      </SelectContent>
                   </Select>
                </div>
@@ -230,7 +230,7 @@ export default function SubConContractsListPage() {
                </div>
 
                <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase text-slate-400 tracking-widest">{t('inline.choose.template')}</Label>
+                  <Label className="text-xs font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'اختر القالب' : 'Choose Template'}</Label>
                   <Select value={formData.templateId} onValueChange={v => setFormData({...formData, templateId: v})}>
                      <SelectTrigger className="h-14 rounded-2xl border-2 font-black text-lg bg-slate-50 shadow-inner">
                         <SelectValue placeholder="..." />
@@ -251,7 +251,7 @@ export default function SubConContractsListPage() {
                <Button 
                   onClick={handleIssueContract} 
                   disabled={loading || !formData.subcontractorId || !formData.transactionId || !formData.templateId}
-                  className="w-full h-20 rounded-[2.5rem] bg-primary text-white font-black text-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-4 border-b-8 border-orange-700 mt-6"
+                  className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-4 border-b-8 border-orange-700 mt-6"
                >
                   {loading ? <Loader2 className="animate-spin h-8 w-8" /> : <Sparkles className="h-8 w-8" />}
                   {t('subcon.contracts.issue')}

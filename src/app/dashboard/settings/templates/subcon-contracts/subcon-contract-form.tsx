@@ -42,7 +42,7 @@ interface Props {
 
 export function SubConContractTemplateForm({ template, onClose }: Props) {
   const { globalUser, user } = useAuthContext();
-  const { t, lang, dir, tSafe } = useLanguage();
+  const { t, lang, dir } = useLanguage();
   const { permissions } = usePermissions();
   const db = useFirestore();
   const isRtl = lang === 'ar';
@@ -113,11 +113,11 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
 
   const handleSave = async () => {
     if (!db || !companyId || !user) return;
-    if (!formData.name) return toast({ variant: "destructive", title: tSafe('inline.name.required', 'الاسم مطلوب', 'Name required') });
+    if (!formData.name) return toast({ variant: "destructive", title: "Name required" });
     if (formData.pricingMode === 'percentage' && !stats.isValid) {
       toast({ 
         variant: "destructive", 
-        title: tSafe('common.error', 'خطأ', 'Error'), 
+        title: t('common.error'), 
         description: isRtl ? `يجب أن يكون مجموع الحصص 100% (الحالي: ${stats.totalPercentage}%)` : `Total percentage must be 100%` 
       });
       return;
@@ -144,9 +144,9 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
   };
 
   const getOrdinalLabel = (index: number) => {
-    const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"];
+    const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "السابعة", "التاسعة", "العاشرة"];
     const enOrdinals = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
-    const base = tSafe('inline.installment', 'الدفعة', 'Installment');
+    const base = isRtl ? "الدفعة" : "Installment";
     return isRtl ? `${base} ${arOrdinals[index] || `#${index + 1}`}` : `${base} ${enOrdinals[index] || `#${index + 1}`}`;
   };
 
@@ -154,7 +154,6 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
     const newM = [...(formData.defaultMilestones || [])];
     const item = { ...newM[idx], [field]: value };
     
-    // ربط تفاعلي للنسبة مع المبلغ بناءً على الميزانية المستهدفة
     if (formData.pricingMode === 'percentage' && (field === 'percentage' || field === 'amount')) {
       const total = formData.baseAmount || 0;
       if (field === 'percentage') {
@@ -194,7 +193,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
             <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
           </Button>
           <div className="text-start">
-             <h1 className="text-xl font-black text-slate-900 leading-none">{tSafe('inline.subcon.template.design', 'هندسة قوالب عقود الباطن', 'SubCon Template Design')}</h1>
+             <h1 className="text-xl font-black text-slate-900 leading-none">{isRtl ? 'هندسة قوالب عقود الباطن' : 'SubCon Template Design'}</h1>
              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{formData.name || 'Draft SubCon Template'}</p>
           </div>
         </div>
@@ -223,7 +222,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                <CardContent className="p-6 space-y-6">
                   <div className="space-y-4">
                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'التخصص الفني' : 'Specialization'}</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400">{t('subcon.form.trade')}</Label>
                         <Input value={formData.trade || ''} onChange={e => setFormData({...formData, trade: e.target.value})} className="h-11 rounded-xl border-2 font-black text-primary" placeholder={isRtl ? "مثلاً: حدادة" : "e.g. Steel Works"} />
                      </div>
                      <div className="space-y-1.5 pt-4 border-t">
@@ -256,21 +255,14 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
 
             <div className="p-6 rounded-[2rem] bg-slate-50 border-2 border-primary/20 space-y-4 relative overflow-hidden shadow-inner">
                <div className="absolute top-0 right-0 p-6 opacity-5"><Calculator className="h-24 w-24 text-primary" /></div>
-               <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-2">{isRtl ? 'الميزانية المستهدفة' : 'Target Budget'}</p>
+               <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-2">{t('subcon.form.targetBudget')}</p>
                <Input 
                  type="number" 
                  value={formData.baseAmount === 0 ? "" : (formData.baseAmount || "")} 
                  onChange={e => setFormData({...formData, baseAmount: e.target.value === '' ? 0 : Number(e.target.value)})} 
                  className="h-14 rounded-2xl border-2 bg-white text-2xl text-center shadow-inner font-black text-primary" 
                />
-               <p className="text-[9px] font-bold text-slate-400 text-center italic">{isRtl ? 'تستخدم لحساب مبالغ الدفعات بناءً على النسب المئوية.' : 'Used for calculating amounts from percentages.'}</p>
-            </div>
-
-            <div className="p-8 rounded-[2.5rem] bg-blue-50 border-2 border-blue-100 flex items-start gap-4 shadow-inner ring-4 ring-white">
-               <Info className="h-6 w-6 text-blue-600 shrink-0 mt-1" />
-               <p className="text-[10px] font-bold text-blue-700 leading-relaxed italic text-start">
-                  {isRtl ? 'قوالب عقود الباطن تستخدم لتوحيد شروط الدفع والارتباط الفني للمراحل المنفذة بواسطة عمالة خارجية.' : 'SubCon templates unify payment terms and technical links for outsourced labor.'}
-               </p>
+               <p className="text-[9px] font-bold text-slate-400 text-center italic">{t('subcon.form.budgetHint')}</p>
             </div>
          </aside>
 
@@ -279,11 +271,11 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                <div className="space-y-12 text-start">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b-2 pb-8">
                      <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'مسمى القالب' : 'Template Name'}</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400">{t('subcon.form.contractName')}</Label>
                         <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-12 rounded-xl border-2 font-black text-lg bg-slate-50 shadow-inner" />
                      </div>
                      <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'نمط التسعير' : 'Pricing Mode'}</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400">{t('subcon.form.pricingMode')}</Label>
                         <Select value={formData.pricingMode} onValueChange={(v: PricingMode) => setFormData({...formData, pricingMode: v})}>
                            <SelectTrigger className="h-12 rounded-xl border-2 font-black bg-white"><SelectValue /></SelectTrigger>
                            <SelectContent className="rounded-xl">
@@ -314,7 +306,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                                  {formData.pricingMode === 'percentage' && <th className="p-6 text-center w-24">%</th>}
                                  <th className="p-6 text-center w-32">{isRtl ? 'التوقيت' : 'Timing'}</th>
                                  <th className="p-6 text-start w-48">{isRtl ? 'الارتباط الميداني' : 'Technical Link'}</th>
-                                 <th className="p-6 text-end pe-12 w-48">{tSafe('inline.amount', 'المبلغ', 'Amount')}</th>
+                                 <th className="p-6 text-end pe-12 w-48">{t('common.amount')}</th>
                                  <th className="p-6 w-14"></th>
                               </tr>
                            </thead>
@@ -326,7 +318,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                                       <Input value={m.name || ''} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-10 rounded-xl font-black text-sm bg-white border-2" />
                                    </td>
                                    {formData.pricingMode === 'percentage' && (
-                                      <td className="p-4">
+                                      <td className="p-4 text-center">
                                          <div className="relative w-24 mx-auto">
                                             <Input 
                                               type="number" 
@@ -387,14 +379,14 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                               <tr>
                                  <td colSpan={formData.pricingMode === 'percentage' ? 5 : 4} className="p-10 text-start">
                                     <h3 className="text-xl font-black font-headline uppercase tracking-tighter text-slate-800">{isRtl ? 'إجمالي قيمة عقد الباطن' : 'Total SubCon Contract Value'}</h3>
-                                    <Badge className={cn("mt-3 border-0 text-[10px] font-black h-7 px-5 shadow-lg", stats.isValid ? "bg-emerald-600 text-white" : "bg-rose-50 text-rose-600 border-rose-100")}>
+                                    <Badge className={cn("mt-3 border-0 text-[10px] font-black h-7 px-5 shadow-lg", stats.isValid ? "bg-emerald-600 text-white" : "bg-rose-600 text-white")}>
                                        {stats.isValid ? `BALANCED: 100%` : `MISMATCH: ${stats.totalPercentage}%`}
                                     </Badge>
                                  </td>
                                  <td colSpan={2} className="p-10 text-end pe-12">
                                     <div className="space-y-1">
-                                       <h2 className="text-5xl font-black font-headline text-primary">{(currentDisplayAmount || 0).toLocaleString()}</h2>
-                                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em]">{tSafe('inline.kuwaiti.dinars', 'دينار كويتي لا غير', 'KUWAITI DINARS ONLY')}</p>
+                                       <h2 className="text-5xl font-black font-headline text-primary">{currentDisplayAmount.toLocaleString()}</h2>
+                                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em]">{isRtl ? 'دينار كويتي لا غير' : 'KUWAITI DINARS ONLY'}</p>
                                     </div>
                                  </td>
                               </tr>
