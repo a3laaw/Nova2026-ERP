@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -8,8 +9,15 @@ import {
   ArrowRight, Landmark, Wallet,
   User, Calendar, FileText, Briefcase,
   CheckCircle2, Sparkles, LayoutGrid, DatabaseZap, Gavel, Info,
-  History, Percent, Calculator
+  History, Percent, Calculator, ChevronDown, Search, Check,
+  Workflow, Hash
 } from "lucide-react";
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
@@ -42,6 +50,12 @@ export default function ReceiptVouchersPage() {
   const [milestonesLoading, setMilestonesLoading] = useState(false);
   const [milestonesStatus, setMilestonesStatus] = useState<MilestonePaymentStatus[]>([]);
 
+  // Search states for pickers
+  const [clientSearch, setClientSearch] = useState("");
+  const [transSearch, setTransSearch] = useState("");
+  const [openClientPicker, setOpenClientPicker] = useState(false);
+  const [openTransPicker, setOpenTransPicker] = useState(false);
+
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
     amount: 0,
@@ -53,6 +67,7 @@ export default function ReceiptVouchersPage() {
     cashAccountId: '',
     projectId: '', 
     transactionId: '',
+    transactionName: '',
     contractId: '',
     notes: '',
     appliedMilestoneName: ''
@@ -83,6 +98,14 @@ export default function ReceiptVouchersPage() {
   const { data: clients } = useCollection<any>(clientsQuery);
   const { data: allTransactions } = useCollection<Transaction>(projectsQuery);
   const { data: paymentMethods } = useCollection<any>(pmQuery);
+
+  const filteredClients = useMemo(() => {
+    return (clients || []).filter(c => c.nameAr.toLowerCase().includes(clientSearch.toLowerCase()) || c.mobile?.includes(clientSearch) || c.fileNumber?.includes(clientSearch));
+  }, [clients, clientSearch]);
+
+  const filteredTrans = useMemo(() => {
+    return (allTransactions || []).filter(t_item => t_item.clientName === form.personName && (t_item.subServiceName.toLowerCase().includes(transSearch.toLowerCase()) || t_item.transactionNumber.toLowerCase().includes(transSearch.toLowerCase())));
+  }, [allTransactions, transSearch, form.personName]);
 
   const [contracts, setContracts] = useState<Contract[]>([]);
 
@@ -189,28 +212,91 @@ export default function ReceiptVouchersPage() {
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('inline.received.from', 'المقبوض من السيد (العميل)', 'Received From')}</Label>
-                       <Select value={form.personName} onValueChange={v => setForm({ ...form, personName: v, transactionId: '', contractId: '', notes: '' })}>
-                          <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
-                          <SelectContent className="rounded-xl border shadow-2xl z-[160]">
-                             {clients?.map(c => <SelectItem key={c.id} value={c.nameAr} className="font-bold py-3 border-b last:border-0 border-slate-50">{c.nameAr}</SelectItem>)}
-                          </SelectContent>
-                       </Select>
+                       <Popover open={openClientPicker} onOpenChange={setOpenClientPicker}>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" className="w-full h-12 rounded-xl border-2 font-bold justify-between bg-white px-4">
+                               <span className="truncate">{form.personName || tSafe('common.search', 'بحث...', 'Search...')}</span>
+                               <ChevronDown className="h-4 w-4 opacity-40" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[400px] p-0 rounded-2xl shadow-3xl border-2 z-[200]" align="start">
+                             <div className="p-3 bg-slate-50 border-b">
+                                <div className="relative">
+                                   <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                                   <Input 
+                                     placeholder={tSafe('common.search', 'بحث...', 'Search...')}
+                                     value={clientSearch}
+                                     onChange={e => setClientSearch(e.target.value)}
+                                     className="h-9 ps-9 rounded-lg border-2 bg-white text-xs font-bold"
+                                   />
+                                </div>
+                             </div>
+                             <ScrollArea className="h-64">
+                                <div className="p-2 space-y-1">
+                                   {filteredClients.map(c => (
+                                     <div 
+                                       key={c.id} 
+                                       onClick={() => { setForm({ ...form, personName: c.nameAr, transactionId: '', transactionName: '', contractId: '', notes: '' }); setOpenClientPicker(false); setClientSearch(""); }}
+                                       className={cn(
+                                         "p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between",
+                                         form.personName === c.nameAr ? "bg-primary/5 text-primary border-primary/20" : "hover:bg-slate-50"
+                                       )}
+                                     >
+                                        <div className="flex flex-col text-start">
+                                           <span className="text-xs font-black">{c.nameAr}</span>
+                                           <span className="text-[8px] font-mono text-slate-400 uppercase tracking-widest">{c.fileNumber}</span>
+                                        </div>
+                                        {form.personName === c.nameAr && <Check className="h-3.5 w-3.5" />}
+                                     </div>
+                                   ))}
+                                </div>
+                             </ScrollArea>
+                          </PopoverContent>
+                       </Popover>
                     </div>
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('inline.related.transaction', 'المعاملة الفنية المرتبطة', 'Related Transaction')}</Label>
-                       <Select disabled={!form.personName} value={form.transactionId} onValueChange={v => setForm({ ...form, transactionId: v, contractId: '', notes: '' })}>
-                          <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
-                          <SelectContent className="rounded-xl border shadow-2xl z-[160]">
-                             {allTransactions?.filter(t_item => t_item.clientName === form.personName).map(t_row => (
-                               <SelectItem key={t_row.id} value={t_row.id} className="font-bold py-3">
-                                  <div className="flex flex-col text-start">
-                                     <span>{t_row.subServiceName}</span>
-                                     <span className="text-[8px] text-slate-400 uppercase">#{t_row.transactionNumber}</span>
-                                  </div>
-                               </SelectItem>
-                             ))}
-                          </SelectContent>
-                       </Select>
+                       <Popover open={openTransPicker} onOpenChange={setOpenTransPicker}>
+                          <PopoverTrigger asChild>
+                            <Button disabled={!form.personName} variant="outline" className="w-full h-12 rounded-xl border-2 font-bold justify-between bg-white px-4">
+                               <span className="truncate">{form.transactionName || tSafe('common.search', 'بحث...', 'Search...')}</span>
+                               <ChevronDown className="h-4 w-4 opacity-40" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[450px] p-0 rounded-2xl shadow-3xl border-2 z-[200]" align="start">
+                             <div className="p-3 bg-slate-50 border-b">
+                                <div className="relative">
+                                   <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                                   <Input 
+                                     placeholder={tSafe('common.search', 'بحث...', 'Search...')}
+                                     value={transSearch}
+                                     onChange={e => setTransSearch(e.target.value)}
+                                     className="h-9 ps-9 rounded-lg border-2 bg-white text-xs font-bold"
+                                   />
+                                </div>
+                             </div>
+                             <ScrollArea className="h-64">
+                                <div className="p-2 space-y-1">
+                                   {filteredTrans.map(t_row => (
+                                     <div 
+                                       key={t_row.id} 
+                                       onClick={() => { setForm({ ...form, transactionId: t_row.id, transactionName: t_row.subServiceName, transactionNumber: t_row.transactionNumber, contractId: '', notes: '' }); setOpenTransPicker(false); setTransSearch(""); }}
+                                       className={cn(
+                                         "p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between group",
+                                         form.transactionId === t_row.id ? "bg-primary/5 text-primary border-primary/20" : "hover:bg-slate-50"
+                                       )}
+                                     >
+                                        <div className="flex flex-col text-start min-w-0">
+                                           <span className="font-black text-sm text-slate-800 truncate">{t_row.subServiceName}</span>
+                                           <Badge variant="outline" className="h-4 px-2 bg-white text-[8px] font-mono font-black uppercase mt-1 w-fit" dir="ltr">#{t_row.transactionNumber}</Badge>
+                                        </div>
+                                        {form.transactionId === t_row.id && <Check className="h-4 w-4" />}
+                                     </div>
+                                   ))}
+                                </div>
+                             </ScrollArea>
+                          </PopoverContent>
+                       </Popover>
                     </div>
                  </div>
 
@@ -308,7 +394,7 @@ export default function ReceiptVouchersPage() {
                          {milestonesStatus.map((m, i) => (
                            <div key={i} className="flex justify-between items-center text-[10px]">
                               <span className="text-slate-500 font-bold truncate max-w-[140px]">{m.milestone.name}</span>
-                              <Badge className={cn("text-[8px] font-black h-4 px-1.5 border-0 shadow-sm", m.remaining === 0 ? "bg-emerald-500 text-white" : "bg-primary/10 text-primary")}>{m.remaining === 0 ? 'PAID' : `${m.paidToDate}/${m.milestoneAmount}`}</Badge>
+                              <Badge className={cn("text-[8px] font-black h-4 px-1.5 border-0 shadow-sm", m.remaining === 0 ? "bg-emerald-50 text-white" : "bg-primary/10 text-primary")}>{m.remaining === 0 ? 'PAID' : `${m.paidToDate}/${m.milestoneAmount}`}</Badge>
                            </div>
                          ))}
                       </div>
