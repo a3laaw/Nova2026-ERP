@@ -15,7 +15,8 @@ import {
   Save, Loader2, Plus, CheckCircle2, Trash2, 
   Truck, LayoutGrid, Hammer, Users, 
   Package, MapPin, Workflow, ShieldAlert,
-  CalendarDays, PlusCircle, X
+  PlusCircle, X, UserCircle, HardHat,
+  Search
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, where, getDocs, orderBy, doc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -24,17 +25,13 @@ import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Employee } from '@/types/hr';
+import { Employee, WorkGroup } from '@/types/hr';
 import { Transaction, StageInstance } from '@/types/transaction';
 import { BOQ, BOQItem } from '@/types/documents';
 import { usePermissions } from '@/hooks/use-permissions';
 import { BOQExecutionService } from '@/services/boq-execution-service';
 import { SmartDateInput } from '@/components/ui/smart-date-input';
 
-/**
- * شاشة تسجيل تقرير ميداني جديد - نسخة المساحة الكاملة (Full Width).
- * تم تصميمها لاستيعاب بيانات كثيفة (15+ صنف) دون الحاجة للسحب الجانبي.
- */
 function NewFieldVisitForm() {
   const { globalUser, user } = useAuthContext();
   const { lang, dir, t, tSafe } = useLanguage();
@@ -52,18 +49,28 @@ function NewFieldVisitForm() {
   const [activeStage, setActiveStage] = useState<StageInstance | null>(null);
   const [loadingStage, setLoadingStage] = useState(false);
 
-  // جداول الموارد (The 2x2 Sovereign Grid Data)
-  const [staffRows, setStaffDetails] = useState<any[]>([{ position: '', count: 1 }]);
-  const [laborRows, setLaborDetails] = useState<any[]>([{ trade: '', area: '', count: 1 }]);
-  const [equipRows, setEquipmentUsed] = useState<any[]>([{ type: '', count: 1, hours: 8 }]);
+  // جداول الموارد المربوطة (The 2x2 Sovereign Grid Data)
+  const [staffRows, setStaffRows] = useState<any[]>([{ employeeId: '', position: '', count: 1 }]);
+  const [equipRows, setEquipRows] = useState<any[]>([{ equipmentId: '', count: 1, hours: 8 }]);
   const [materialRows, setMaterialRows] = useState<any[]>([{ type: '', unit: '', quantity: 0 }]);
 
-  // بنود التنفيذ المرتبطة بالمرحلة (The Execution DNA)
+  // بنود التنفيذ المرتبطة بالمرحلة
   const [executionRows, setExecutionRows] = useState<any[]>([{ boqItemId: '', quantity: '', notes: '' }]);
 
+  // جلب البيانات المرجعية
   const transQuery = useMemo(() => 
     (companyId && db) ? query(collection(db, paths.transactions(companyId)), where('status', '!=', 'completed')) : null, [db, companyId]);
+  const empsQuery = useMemo(() => 
+    (companyId && db) ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
+  const equipQuery = useMemo(() => 
+    (companyId && db) ? query(collection(db, paths.equipment(companyId)), where('status', '==', 'available')) : null, [db, companyId]);
+  const groupsQuery = useMemo(() => 
+    (companyId && db) ? query(collection(db, paths.workGroups(companyId)), where('isActive', '==', true)) : null, [db, companyId]);
+
   const { data: allTransactions } = useCollection<Transaction>(transQuery);
+  const { data: employees } = useCollection<Employee>(empsQuery);
+  const { data: equipmentList } = useCollection<any>(equipQuery);
+  const { data: workGroups } = useCollection<WorkGroup>(groupsQuery);
 
   const fieldProjects = useMemo(() => {
     return (allTransactions || []).filter(t => {
@@ -123,12 +130,12 @@ function NewFieldVisitForm() {
       const project = allTransactions?.find(t => t.id === selectedProjectId);
       const officialName = globalUser?.fullName || user.displayName || 'Engineer';
 
-      // 1. تسجيل الحركات الفنية في المقايسة والتايملاين
+      // 1. تسجيل الحركات الفنية في المقايسة
       for (const row of executionRows.filter(r => r.boqItemId && Number(r.quantity) > 0)) {
          await execService.recordBOQItemExecution(
            activeBoq.id, row.boqItemId, activeStage.technicalStageId, Number(row.quantity),
            user.uid, officialName, row.notes || '', activeStage.id!, false, '', 
-           { laborDetails: laborRows.filter(l => l.trade), equipmentUsed: [] }
+           { laborDetails: [], equipmentUsed: [] }
          );
       }
 
@@ -149,9 +156,14 @@ function NewFieldVisitForm() {
           unit: allBoqItems?.find(i => i.id === r.boqItemId)?.unitSymbol || '',
           executionStatus: 'executed'
         })),
-        staffDetails: staffRows.filter(s => s.position),
-        laborDetails: laborRows.filter(l => l.trade),
-        equipmentUsed: equipRows.filter(e => e.type),
+        staffDetails: staffRows.filter(s => s.employeeId).map(s => ({
+           ...s,
+           employeeName: employees?.find(e => e.id === s.employeeId)?.fullName || ''
+        })),
+        equipmentUsed: equipRows.filter(e => e.equipmentId).map(e => ({
+           ...e,
+           equipmentName: equipmentList?.find(eq => eq.id === e.equipmentId)?.name || ''
+        })),
         materialsDelivered: materialRows.filter(m => m.type),
         engineerId: globalUser?.employeeId || user.uid,
         engineerName: officialName,
@@ -166,55 +178,8 @@ function NewFieldVisitForm() {
     } finally { setLoading(false); }
   };
 
-  const ResourceTable = ({ title, columns, data, setData, addRow }: any) => (
-    <Card className="border-2 shadow-sm rounded-2xl overflow-hidden bg-white h-full transition-all hover:border-primary/20">
-      <CardHeader className="bg-slate-50 border-b py-3 px-6 flex flex-row items-center justify-between">
-        <CardTitle className="text-[11px] font-black uppercase text-slate-500 tracking-widest">{title}</CardTitle>
-        <button type="button" onClick={addRow} className="text-primary hover:scale-125 transition-transform p-1 rounded-full hover:bg-primary/5">
-           <PlusCircle className="h-5 w-5" />
-        </button>
-      </CardHeader>
-      <CardContent className="p-0">
-        <Table className="w-full">
-          <TableHeader className="bg-white">
-            <TableRow className="hover:bg-transparent border-b-2">
-              {columns.map((col: string, i: number) => (
-                <TableHead key={i} className="h-10 text-[10px] font-black text-slate-400 uppercase text-center border-e last:border-0">{col}</TableHead>
-              ))}
-              <TableHead className="w-10"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.map((row: any, idx: number) => (
-              <TableRow key={idx} className="border-b last:border-0 hover:bg-slate-50/50">
-                {Object.keys(row).map((key, i) => (
-                  <TableCell key={i} className="p-1.5 border-e last:border-0">
-                    <Input 
-                      value={row[key]} 
-                      onChange={e => {
-                        const newData = [...data];
-                        newData[idx][key] = e.target.value;
-                        setData(newData);
-                      }}
-                      className="h-9 border-0 shadow-none text-center font-bold text-xs focus-visible:ring-0 bg-transparent"
-                    />
-                  </TableCell>
-                ))}
-                <TableCell className="p-0 text-center">
-                   <button onClick={() => setData(data.filter((_:any, i:number) => i !== idx))} className="text-slate-300 hover:text-rose-500 transition-colors p-2">
-                      <X className="h-4 w-4" />
-                   </button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
-  );
-
   return (
-    <div className="space-y-6 w-full max-w-full pb-20 animate-in fade-in duration-500 text-start" dir={dir}>
+    <div className="space-y-6 w-full max-w-full pb-20 animate-in fade-in duration-500 text-start bg-[#fdfaf3]" dir={dir}>
       
       <header className="sticky top-0 z-50 flex justify-between items-center gap-6 border-b bg-white/95 backdrop-blur-md px-8 py-5 shadow-sm border-primary/10">
         <div className="flex items-center gap-5 text-start">
@@ -223,7 +188,7 @@ function NewFieldVisitForm() {
           </div>
           <div className="text-start">
             <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">{isRtl ? 'تسجيل تقرير ميداني جديد' : 'New Field Report'}</h1>
-            <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 text-[9px] font-black uppercase mt-1 tracking-widest px-3">Standard Wide Grid</Badge>
+            <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 text-[9px] font-black uppercase mt-1 tracking-widest px-3">Sovereign Center of Ops</Badge>
           </div>
         </div>
 
@@ -243,14 +208,14 @@ function NewFieldVisitForm() {
                 <div className="space-y-2">
                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.clients')}</Label>
                    <Select value={selectedClientId} onValueChange={v => { setSelectedClientId(v); setSelectedProjectId(''); }}>
-                      <SelectTrigger className="h-14 rounded-2xl border-2 font-black text-lg bg-slate-50/50 hover:bg-white transition-all shadow-inner"><SelectValue placeholder="..." /></SelectTrigger>
+                      <SelectTrigger className="h-14 rounded-2xl border-2 font-black text-lg bg-slate-50/50 shadow-inner"><SelectValue placeholder="..." /></SelectTrigger>
                       <SelectContent className="rounded-2xl z-[150] shadow-3xl border-0">{contractedClients.map(c => <SelectItem key={c.id} value={c.id} className="font-bold py-4 border-b last:border-0">{c.name}</SelectItem>)}</SelectContent>
                    </Select>
                 </div>
                 <div className="space-y-2">
                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.projects')}</Label>
                    <Select disabled={!selectedClientId} value={selectedProjectId} onValueChange={setSelectedProjectId}>
-                      <SelectTrigger className="h-14 rounded-2xl border-2 font-black text-lg bg-slate-50/50 hover:bg-white transition-all shadow-inner"><SelectValue placeholder="..." /></SelectTrigger>
+                      <SelectTrigger className="h-14 rounded-2xl border-2 font-black text-lg bg-slate-50/50 shadow-inner"><SelectValue placeholder="..." /></SelectTrigger>
                       <SelectContent className="rounded-2xl z-[150] shadow-3xl border-0">{clientProjects.map(p => <SelectItem key={p.id} value={p.id} className="font-bold py-4 border-b last:border-0">{p.subServiceName}</SelectItem>)}</SelectContent>
                    </Select>
                 </div>
@@ -335,43 +300,149 @@ function NewFieldVisitForm() {
             </CardContent>
          </Card>
 
-         {/* The Ultra-Wide 2x2 Resource Grid */}
+         {/* Resources Grid - STAFF | EQUIPMENT | MATERIALS */}
          <div className="grid grid-cols-1 xl:grid-cols-2 gap-10 pb-20">
-            {/* Table 1: Staff */}
-            <ResourceTable 
-               title="I. STAFF RESOURCES" 
-               columns={[isRtl ? 'الوظيفة الإدارية' : 'ADMIN POSITION', isRtl ? 'العدد' : 'NO']} 
-               data={staffRows}
-               setData={setStaffDetails}
-               addRow={() => setStaffDetails([...staffRows, { position: '', count: 1 }])}
-            />
+            {/* Table 1: I. STAFF RESOURCES (Linked to Employees & Groups) */}
+            <Card className="border-2 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
+               <CardHeader className="bg-slate-50/80 border-b p-6 flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-sm font-black uppercase text-slate-700 tracking-widest flex items-center gap-2"><UserCircle className="h-4 w-4" /> I. STAFF RESOURCES</CardTitle>
+                    <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase">Official Employee & Management Assignment</p>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => setStaffRows([...staffRows, { employeeId: '', position: '', count: 1 }])} className="text-primary hover:bg-primary/5 rounded-full"><PlusCircle className="h-6 w-6" /></Button>
+               </CardHeader>
+               <CardContent className="p-0">
+                  <Table>
+                     <TableHeader className="bg-white border-b-2">
+                        <TableRow>
+                           <TableHead className="ps-6 text-start text-[10px] font-black text-slate-400 uppercase">Employee / Position</TableHead>
+                           <TableHead className="text-center w-24 text-[10px] font-black text-slate-400 uppercase">Count</TableHead>
+                           <TableHead className="w-12"></TableHead>
+                        </TableRow>
+                     </TableHeader>
+                     <TableBody>
+                        {staffRows.map((row, idx) => (
+                           <TableRow key={idx} className="border-b last:border-0 hover:bg-slate-50/50">
+                              <TableCell className="ps-6 py-3">
+                                 <Select value={row.employeeId} onValueChange={v => {
+                                    const emp = employees?.find(e => e.id === v);
+                                    const nr = [...staffRows];
+                                    nr[idx] = { ...nr[idx], employeeId: v, position: emp?.jobTitle || '' };
+                                    setStaffRows(nr);
+                                 }}>
+                                    <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs bg-white"><SelectValue placeholder="..." /></SelectTrigger>
+                                    <SelectContent className="rounded-xl z-[160] shadow-3xl">
+                                       {employees?.map(e => (
+                                         <SelectItem key={e.id} value={e.id!} className="font-bold py-3">
+                                            {e.fullName} <Badge variant="outline" className="ms-2 text-[8px] h-4 border-0 bg-slate-100">{e.jobTitle}</Badge>
+                                         </SelectItem>
+                                       ))}
+                                    </SelectContent>
+                                 </Select>
+                              </TableCell>
+                              <TableCell className="py-3">
+                                 <Input type="number" value={row.count} onChange={e => { const nr = [...staffRows]; nr[idx].count = e.target.value; setStaffRows(nr); }} className="h-10 text-center font-black border-2 rounded-xl" />
+                              </TableCell>
+                              <TableCell className="pe-4 text-center">
+                                 <button onClick={() => setStaffRows(staffRows.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-rose-500 p-1"><X className="h-4 w-4" /></button>
+                              </TableCell>
+                           </TableRow>
+                        ))}
+                     </TableBody>
+                  </Table>
+               </CardContent>
+            </Card>
 
-            {/* Table 2: Labour */}
-            <ResourceTable 
-               title="II. LABOUR RESOURCES" 
-               columns={[isRtl ? 'التخصص الفني' : 'TECHNICAL TRADE', isRtl ? 'المنطقة' : 'AREA / ZONE', isRtl ? 'العدد' : 'NO']} 
-               data={laborRows}
-               setData={setLaborDetails}
-               addRow={() => setLaborDetails([...laborRows, { trade: '', area: '', count: 1 }])}
-            />
+            {/* Table 2: III. EQUIPMENT (Linked to Reference List) */}
+            <Card className="border-2 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
+               <CardHeader className="bg-slate-50/80 border-b p-6 flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-sm font-black uppercase text-slate-700 tracking-widest flex items-center gap-2"><Truck className="h-4 w-4" /> III. EQUIPMENT (STATIONARY & MOBILE)</CardTitle>
+                    <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase">Assets Tracked via Sovereign Inventory</p>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => setEquipRows([...equipRows, { equipmentId: '', count: 1, hours: 8 }])} className="text-primary hover:bg-primary/5 rounded-full"><PlusCircle className="h-6 w-6" /></Button>
+               </CardHeader>
+               <CardContent className="p-0">
+                  <Table>
+                     <TableHeader className="bg-white border-b-2">
+                        <TableRow>
+                           <TableHead className="ps-6 text-start text-[10px] font-black text-slate-400 uppercase">Type / Name</TableHead>
+                           <TableHead className="text-center w-24 text-[10px] font-black text-slate-400 uppercase">Qty</TableHead>
+                           <TableHead className="text-center w-24 text-[10px] font-black text-slate-400 uppercase">Hours</TableHead>
+                           <TableHead className="w-12"></TableHead>
+                        </TableRow>
+                     </TableHeader>
+                     <TableBody>
+                        {equipRows.map((row, idx) => (
+                           <TableRow key={idx} className="border-b last:border-0 hover:bg-slate-50/50">
+                              <TableCell className="ps-6 py-3">
+                                 <Select value={row.equipmentId} onValueChange={v => { const nr = [...equipRows]; nr[idx].equipmentId = v; setEquipRows(nr); }}>
+                                    <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs bg-white"><SelectValue placeholder="..." /></SelectTrigger>
+                                    <SelectContent className="rounded-xl z-[160] shadow-3xl">
+                                       {equipmentList?.map(eq => (
+                                         <SelectItem key={eq.id} value={eq.id!} className="font-bold py-3">
+                                            {eq.name} <span className="text-[8px] text-slate-400">({eq.code})</span>
+                                         </SelectItem>
+                                       ))}
+                                    </SelectContent>
+                                 </Select>
+                              </TableCell>
+                              <TableCell className="py-3">
+                                 <Input type="number" value={row.count} onChange={e => { const nr = [...equipRows]; nr[idx].count = e.target.value; setEquipRows(nr); }} className="h-10 text-center font-black border-2 rounded-xl" />
+                              </TableCell>
+                              <TableCell className="py-3">
+                                 <Input type="number" value={row.hours} onChange={e => { const nr = [...equipRows]; nr[idx].hours = e.target.value; setEquipRows(nr); }} className="h-10 text-center font-black border-2 rounded-xl" />
+                              </TableCell>
+                              <TableCell className="pe-4 text-center">
+                                 <button onClick={() => setEquipRows(equipRows.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-rose-500 p-1"><X className="h-4 w-4" /></button>
+                              </TableCell>
+                           </TableRow>
+                        ))}
+                     </TableBody>
+                  </Table>
+               </CardContent>
+            </Card>
 
-            {/* Table 3: Equipment */}
-            <ResourceTable 
-               title="III. EQUIPMENT (STATIONARY & MOBILE)" 
-               columns={[isRtl ? 'نوع المعدة' : 'EQUIPMENT TYPE', isRtl ? 'العدد' : 'NO', isRtl ? 'ساعات العمل' : 'HOURS']} 
-               data={equipRows}
-               setData={setEquipmentUsed}
-               addRow={() => setEquipmentUsed([...equipRows, { type: '', count: 1, hours: 8 }])}
-            />
-
-            {/* Table 4: Material */}
-            <ResourceTable 
-               title="IV. MATERIALS (DELIVERED TO SITE)" 
-               columns={[isRtl ? 'نوع المادة' : 'MATERIAL TYPE', isRtl ? 'الوحدة' : 'UOM', isRtl ? 'الكمية' : 'QTY']} 
-               data={materialRows}
-               setData={setMaterialRows}
-               addRow={() => setMaterialRows([...materialRows, { type: '', unit: '', quantity: 0 }])}
-            />
+            {/* Table 3: IV. MATERIALS (Free Text/Project Based) */}
+            <Card className="xl:col-span-2 border-2 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
+               <CardHeader className="bg-slate-50/80 border-b p-6 flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-sm font-black uppercase text-slate-700 tracking-widest flex items-center gap-2"><Package className="h-4 w-4" /> IV. MATERIALS (DELIVERED TO SITE)</CardTitle>
+                    <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase">Field Logistics & Material Receipts</p>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => setMaterialRows([...materialRows, { type: '', unit: '', quantity: 0 }])} className="text-primary hover:bg-primary/5 rounded-full"><PlusCircle className="h-6 w-6" /></Button>
+               </CardHeader>
+               <CardContent className="p-0">
+                  <Table>
+                     <TableHeader className="bg-white border-b-2">
+                        <TableRow>
+                           <TableHead className="ps-10 text-start text-[10px] font-black text-slate-400 uppercase">Material Description</TableHead>
+                           <TableHead className="text-center w-32 text-[10px] font-black text-slate-400 uppercase">Unit</TableHead>
+                           <TableHead className="text-center w-40 text-[10px] font-black text-primary uppercase">Quantity Delivered</TableHead>
+                           <TableHead className="w-16"></TableHead>
+                        </TableRow>
+                     </TableHeader>
+                     <TableBody>
+                        {materialRows.map((row, idx) => (
+                           <TableRow key={idx} className="border-b last:border-0 hover:bg-slate-50/50 transition-colors">
+                              <TableCell className="ps-10 py-4">
+                                 <Input value={row.type} onChange={e => { const nr = [...materialRows]; nr[idx].type = e.target.value; setMaterialRows(nr); }} className="h-11 border-2 font-bold bg-white rounded-xl shadow-inner" placeholder="Cement, Steel, etc..." />
+                              </TableCell>
+                              <TableCell className="py-4">
+                                 <Input value={row.unit} onChange={e => { const nr = [...materialRows]; nr[idx].unit = e.target.value; setMaterialRows(nr); }} className="h-11 text-center border-2 font-bold uppercase text-[10px] rounded-xl" placeholder="UOM" />
+                              </TableCell>
+                              <TableCell className="py-4">
+                                 <Input type="number" value={row.quantity} onChange={e => { const nr = [...materialRows]; nr[idx].quantity = e.target.value; setMaterialRows(nr); }} className="h-11 text-center border-2 font-black text-xl text-primary rounded-xl bg-primary/5" />
+                              </TableCell>
+                              <TableCell className="pe-8 text-center">
+                                 <button onClick={() => setMaterialRows(materialRows.filter((_, i) => i !== idx))} className="text-rose-200 hover:text-rose-600 transition-colors p-2"><Trash2 className="h-5 w-5" /></button>
+                              </TableCell>
+                           </TableRow>
+                        ))}
+                     </TableBody>
+                  </Table>
+               </CardContent>
+            </Card>
          </div>
       </div>
     </div>

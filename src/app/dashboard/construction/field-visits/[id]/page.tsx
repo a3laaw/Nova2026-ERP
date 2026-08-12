@@ -20,10 +20,6 @@ import { cn } from '@/lib/utils';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
-/**
- * شاشة تفاصيل التقرير الميداني - نسخة المساحة الكاملة والطباعة الموحدة.
- * تم إلغاء التبويبات لضمان ظهور كافة الجداول عند الطباعة.
- */
 export default function FieldVisitDetailsPage() {
   const visitId = useParams().id as string;
   const { globalUser } = useAuthContext();
@@ -74,7 +70,6 @@ export default function FieldVisitDetailsPage() {
   return (
     <div className="space-y-6 w-full max-w-full pb-20 animate-in fade-in duration-500 text-start" dir={dir}>
       
-      {/* Header - No Max Width */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-slate-200 pb-6 print:hidden px-8 pt-6 bg-white shadow-sm">
         <div className="flex items-center gap-6 text-start">
            <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-12 w-12 rounded-2xl border-2 bg-white text-slate-400 shadow-sm hover:text-primary transition-all">
@@ -97,7 +92,6 @@ export default function FieldVisitDetailsPage() {
         <PrintWrapper title={t('construction.fieldProgressStatement')}>
            <div className="space-y-12 text-start">
               
-              {/* Context Hero Card */}
               <div className="p-12 rounded-[3.5rem] bg-white border-2 border-primary/10 flex flex-col md:flex-row justify-between items-center gap-12 relative overflow-hidden shadow-2xl ring-1 ring-black/[0.03]">
                  <div className="absolute top-0 right-0 p-12 opacity-5"><Landmark className="h-60 w-60 text-primary" /></div>
                  <div className="space-y-5 relative z-10 text-start">
@@ -120,7 +114,6 @@ export default function FieldVisitDetailsPage() {
                  </div>
               </div>
 
-              {/* BOQ Work Progress Grid - Full Width */}
               <div className="space-y-8">
                  <h3 className="text-2xl font-black font-headline text-slate-900 flex items-center gap-4 border-b-4 pb-4 border-primary/10">
                     <Hammer className="h-8 w-8 text-primary" /> {isRtl ? 'إنجاز بنود المقايسة الموثق' : 'Certified BOQ Work Execution'}
@@ -159,31 +152,26 @@ export default function FieldVisitDetailsPage() {
                  </div>
               </div>
 
-              {/* The Wide 2x2 Resource Grid for Details */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10 pt-10">
                   <DetailTable 
                     title="I. STAFF RESOURCES" 
-                    columns={[isRtl ? 'الوظيفة' : 'POSITION', isRtl ? 'العدد' : 'COUNT']} 
+                    columns={[isRtl ? 'الموظف' : 'EMPLOYEE', isRtl ? 'المسمى' : 'POSITION', isRtl ? 'العدد' : 'COUNT']} 
                     data={visit.staffDetails} 
                   />
                   <DetailTable 
-                    title="II. LABOUR RESOURCES" 
-                    columns={[isRtl ? 'التخصص الفني' : 'TECHNICAL TRADE', isRtl ? 'المنطقة' : 'AREA / ZONE', isRtl ? 'العدد' : 'COUNT']} 
-                    data={visit.laborDetails} 
-                  />
-                  <DetailTable 
                     title="III. EQUIPMENT DEPLOYED" 
-                    columns={[isRtl ? 'نوع المعدة' : 'EQUIPMENT TYPE', isRtl ? 'العدد' : 'COUNT', isRtl ? 'ساعات' : 'HOURS']} 
+                    columns={[isRtl ? 'اسم المعدة' : 'EQUIPMENT', isRtl ? 'العدد' : 'COUNT', isRtl ? 'ساعات' : 'HOURS']} 
                     data={visit.equipmentUsed} 
                   />
-                  <DetailTable 
-                    title="IV. MATERIAL RECEIPTS" 
-                    columns={[isRtl ? 'نوع المادة' : 'MATERIAL TYPE', isRtl ? 'الوحدة' : 'UNIT', isRtl ? 'الكمية' : 'QTY']} 
-                    data={visit.materialsDelivered} 
-                  />
+                  <div className="md:col-span-2">
+                    <DetailTable 
+                        title="IV. MATERIAL RECEIPTS" 
+                        columns={[isRtl ? 'نوع المادة' : 'MATERIAL TYPE', isRtl ? 'الوحدة' : 'UNIT', isRtl ? 'الكمية' : 'QTY']} 
+                        data={visit.materialsDelivered} 
+                    />
+                  </div>
               </div>
 
-              {/* Official Document Security Footer */}
               <div className="p-12 bg-white border-2 border-slate-100 rounded-[3.5rem] shadow-2xl flex flex-col md:flex-row items-center justify-between gap-12 border-t-8 border-primary text-start ring-1 ring-black/[0.02]">
                  <div className="flex items-center gap-8 text-start relative group">
                     <Avatar className="h-24 w-24 rounded-[2rem] border-4 border-white shadow-2xl transition-transform group-hover:scale-105">
