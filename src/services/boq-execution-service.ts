@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -16,7 +15,6 @@ import {
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { BOQItem, BOQItemExecutionEntry, LaborDetail, EquipmentUsed } from '@/types/documents';
-import { ensureActionPermission } from '@/lib/permissions/engine';
 
 export interface StageProgressResult {
   progressPercent: number;
@@ -50,7 +48,6 @@ export class BOQExecutionService {
   ) {
     const executionRef = doc(collection(this.db, paths.executions(this.companyId)));
     
-    // حساب تكاليف العمالة والمعدات وقت التسجيل (Snapshot)
     let processedLabor: LaborDetail[] = [];
     let processedEquip: EquipmentUsed[] = [];
 
@@ -70,7 +67,7 @@ export class BOQExecutionService {
       companyId: this.companyId,
       boqId,
       boqItemId: itemId,
-      transactionId: '', // ستُملأ لاحقاً
+      transactionId: '', 
       appointmentId: appointmentId || null,
       stageInstanceId: stageInstanceId,
       technicalStageId,
@@ -93,17 +90,25 @@ export class BOQExecutionService {
     const itemData = itemSnap.data() as BOQItem;
 
     executionData.transactionId = itemData.transactionId;
-    executionData.clientId = itemData.clientId || (itemData as any).clientId || ''; // لضمان الظهور في الـ Dossier
+    executionData.clientId = itemData.clientId || (itemData as any).clientId || '';
     executionData.unitSymbol = itemData.unitSymbol || '';
 
     batch.set(executionRef, executionData);
     
+    // 1. تحديث المقايسة لأغراض المالية والكمية الكلية
     batch.update(itemRef, {
       executedQuantity: increment(Number(quantity) || 0),
       updatedAt: serverTimestamp()
     });
 
-    // توثيق في التايملاين
+    // 2. تحديث المرحلة النشطة فنياً (لتغيير نسبة إنجاز المرحلة)
+    const stageRef = doc(this.db, paths.transactionStages(this.companyId, itemData.transactionId || ''), stageInstanceId);
+    batch.update(stageRef, {
+      currentCount: increment(Number(quantity) || 0),
+      updatedAt: serverTimestamp()
+    });
+
+    // 3. توثيق في التايملاين
     if (itemData.transactionId) {
       const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, itemData.transactionId)));
       batch.set(timelineRef, {
@@ -112,7 +117,7 @@ export class BOQExecutionService {
         technicalStageId,
         appointmentId: appointmentId || null,
         type: 'numeric_update',
-        content: `[إنجاز متكامل] تم تسجيل تنفيذ ${quantity} ${itemData.unitSymbol || ''} مع توثيق الموارد المستخدمة.`,
+        content: `[إنجاز تقني] تم تنفيذ كمية ${quantity} ${itemData.unitSymbol || ''} ضمن مرحلة "${technicalStageId}". تم تحديث المسار الفني والمقايسة آلياً.`,
         userId,
         userName,
         companyId: this.companyId,
@@ -122,31 +127,6 @@ export class BOQExecutionService {
 
     await batch.commit();
     return executionRef.id;
-  }
-
-  async verifyExecutionForBilling(executionId: string, userId: string, userName: string) {
-    const execRef = doc(this.db, paths.executions(this.companyId), executionId);
-    const snap = await getDoc(execRef);
-    if (!snap.exists()) return;
-    const data = snap.data() as any;
-
-    const batch = writeBatch(this.db);
-    batch.update(execRef, {
-      status: 'verified',
-      verifiedQuantity: data.quantity,
-      verifiedBy: userId,
-      verifiedByName: userName,
-      verifiedAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-
-    const itemRef = doc(this.db, paths.boqItems(this.companyId, data.boqId), data.boqItemId);
-    batch.update(itemRef, {
-      verifiedQuantity: increment(data.quantity),
-      updatedAt: serverTimestamp()
-    });
-
-    await batch.commit();
   }
 
   async getTechnicalStageProgress(transactionId: string, technicalStageId: string): Promise<StageProgressResult> {
@@ -172,21 +152,5 @@ export class BOQExecutionService {
       canComplete: totalExecuted >= totalPlanned,
       linkedItemsCount: linkedItems.length
     };
-  }
-
-  async archiveStageExecutions(transactionId: string, technicalStageId: string, isArchived: boolean) {
-    const q = query(
-      collection(this.db, paths.executions(this.companyId)),
-      where('transactionId', '==', transactionId),
-      where('technicalStageId', '==', technicalStageId)
-    );
-    const snap = await getDocs(q);
-    if (snap.empty) return;
-
-    const batch = writeBatch(this.db);
-    snap.docs.forEach(d => {
-       batch.update(d.ref, { isArchived, updatedAt: serverTimestamp() });
-    });
-    return batch.commit();
   }
 }

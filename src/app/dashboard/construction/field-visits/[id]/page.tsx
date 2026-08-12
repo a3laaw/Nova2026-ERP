@@ -40,7 +40,6 @@ export default function FieldVisitDetailsPage() {
   return (
     <div className="space-y-6 w-full max-w-full pb-20 animate-in fade-in duration-500 text-start bg-white" dir={dir}>
       
-      {/* Header الثابت في الأعلى */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-slate-200 pb-6 print:hidden px-8 pt-6 bg-white shadow-sm">
         <div className="flex items-center gap-6 text-start">
            <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-12 w-12 rounded-2xl border-2 bg-white text-slate-400 shadow-sm hover:text-primary transition-all">
@@ -63,7 +62,6 @@ export default function FieldVisitDetailsPage() {
         <PrintWrapper title={t('construction.fieldProgressStatement')} fullWidth={true}>
            <div className="space-y-12 text-start">
               
-              {/* بطاقة معلومات المشروع */}
               <div className="p-10 rounded-[3rem] bg-white border-2 border-primary/10 flex flex-col md:flex-row justify-between items-center gap-10 relative overflow-hidden shadow-xl ring-1 ring-black/[0.02]">
                  <div className="absolute top-0 right-0 p-12 opacity-5"><Landmark className="h-60 w-60 text-primary" /></div>
                  <div className="space-y-4 relative z-10 text-start">
@@ -86,7 +84,6 @@ export default function FieldVisitDetailsPage() {
                  </div>
               </div>
 
-              {/* قسم إنجاز بنود المقايسة */}
               <div className="space-y-6">
                  <h3 className="text-xl font-black font-headline text-slate-900 flex items-center gap-4 border-b-2 pb-4 border-primary/10">
                     <Hammer className="h-6 w-6 text-primary" /> 
@@ -126,10 +123,7 @@ export default function FieldVisitDetailsPage() {
                  </div>
               </div>
 
-              {/* شبكة الموارد الرباعية (الموظفون، المعدات، المواد) */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  
-                  {/* جدول الموظفين */}
                   <Card className="border-2 shadow-none rounded-[2rem] overflow-hidden bg-white">
                      <CardHeader className="bg-slate-50 border-b py-4 px-6 text-start">
                         <CardTitle className="text-[10px] font-black uppercase text-slate-600 tracking-[0.2em] flex items-center gap-2">
@@ -158,7 +152,6 @@ export default function FieldVisitDetailsPage() {
                      </CardContent>
                   </Card>
 
-                  {/* جدول المعدات */}
                   <Card className="border-2 shadow-none rounded-[2rem] overflow-hidden bg-white">
                      <CardHeader className="bg-slate-50 border-b py-4 px-6 text-start">
                         <CardTitle className="text-[10px] font-black uppercase text-slate-600 tracking-[0.2em] flex items-center gap-2">
@@ -187,7 +180,6 @@ export default function FieldVisitDetailsPage() {
                      </CardContent>
                   </Card>
 
-                  {/* جدول المواد */}
                   <Card className="lg:col-span-2 border-2 shadow-none rounded-[2rem] overflow-hidden bg-white">
                      <CardHeader className="bg-slate-50 border-b py-4 px-6 text-start">
                         <CardTitle className="text-[10px] font-black uppercase text-slate-600 tracking-[0.2em] flex items-center gap-2">
@@ -217,7 +209,6 @@ export default function FieldVisitDetailsPage() {
                   </Card>
               </div>
 
-              {/* التوقيع والاعتماد الفني */}
               <div className="p-10 bg-white border-2 border-slate-100 rounded-[3rem] shadow-xl flex flex-col md:flex-row items-center justify-between gap-10 border-t-8 border-primary text-start ring-1 ring-black/[0.02]">
                  <div className="flex items-center gap-8 text-start">
                     <Avatar className="h-20 w-20 rounded-[1.5rem] border-4 border-white shadow-xl">

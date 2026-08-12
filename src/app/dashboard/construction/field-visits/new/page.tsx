@@ -16,7 +16,7 @@ import {
   Truck, LayoutGrid, Hammer, Users, 
   Package, MapPin, Workflow, ShieldAlert,
   PlusCircle, X, UserCircle, HardHat,
-  Search, Handshake, ChevronDown
+  Search, Handshake, ChevronDown, Sparkles
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, where, getDocs, orderBy, doc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -32,7 +32,6 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { BOQExecutionService } from '@/services/boq-execution-service';
 import { SmartDateInput } from '@/components/ui/smart-date-input';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 function NewFieldVisitForm() {
   const { globalUser, user } = useAuthContext();
@@ -51,19 +50,17 @@ function NewFieldVisitForm() {
   const [activeStage, setActiveStage] = useState<StageInstance | null>(null);
   const [loadingStage, setLoadingStage] = useState(false);
 
-  // مصفوفات الموارد
   const [staffRows, setStaffRows] = useState<any[]>([{ employeeId: '', position: '', count: 1 }]);
   const [equipRows, setEquipRows] = useState<any[]>([{ equipmentId: '', count: 1, hours: 8 }]);
   const [materialRows, setMaterialRows] = useState<any[]>([{ type: '', unit: '', quantity: 0 }]);
   const [executionRows, setExecutionRows] = useState<any[]>([{ boqItemId: '', quantity: '', notes: '' }]);
 
-  // جلب البيانات الأساسية
   const transQuery = useMemo(() => 
     (companyId && db) ? query(collection(db, paths.transactions(companyId)), where('status', '!=', 'completed')) : null, [db, companyId]);
   const empsQuery = useMemo(() => 
     (companyId && db) ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
   const equipQuery = useMemo(() => 
-    (companyId && db) ? query(collection(db, paths.equipment(companyId)), where('isActive', '==', true)) : null, [db, companyId]);
+    (companyId && db) ? query(collection(db, paths.equipment(companyId)), where('status', '==', 'available')) : null, [db, companyId]);
   const groupsQuery = useMemo(() => 
     (companyId && db) ? query(collection(db, paths.workGroups(companyId)), where('isActive', '==', true)) : null, [db, companyId]);
 
@@ -72,21 +69,15 @@ function NewFieldVisitForm() {
   const { data: equipmentList } = useCollection<any>(equipQuery);
   const { data: workGroups } = useCollection<WorkGroup>(groupsQuery);
 
-  const fieldProjects = useMemo(() => {
-    return (allTransactions || []).filter(t => {
-      const isField = t.activityTypeName?.includes('مقاولات') || t.activityTypeName?.includes('Construction') || t.activityTypeName?.includes('Design & Build');
-      if (!isAdmin && globalUser?.employeeId) return isField && t.assignedEngineerId === globalUser.employeeId;
-      return isField;
-    });
-  }, [allTransactions, isAdmin, globalUser]);
-
   const contractedClients = useMemo(() => {
     const clientsMap = new Map();
-    fieldProjects.forEach(p => clientsMap.set(p.clientId, p.clientName));
+    (allTransactions || []).forEach(p => clientsMap.set(p.clientId, p.clientName));
     return Array.from(clientsMap.entries()).map(([id, name]) => ({ id, name }));
-  }, [fieldProjects]);
+  }, [allTransactions]);
 
-  const clientProjects = useMemo(() => selectedClientId ? fieldProjects.filter(p => p.clientId === selectedClientId) : [], [fieldProjects, selectedClientId]);
+  const clientProjects = useMemo(() => 
+    selectedClientId ? (allTransactions || []).filter(p => p.clientId === selectedClientId) : [], 
+  [allTransactions, selectedClientId]);
 
   useEffect(() => {
     async function fetchProjectContext() {
@@ -96,8 +87,7 @@ function NewFieldVisitForm() {
       }
       setLoadingStage(true);
       try {
-        const stagesPath = paths.transactionStages(companyId, selectedProjectId);
-        const stagesSnap = await getDocs(query(collection(db, stagesPath)));
+        const stagesSnap = await getDocs(query(collection(db, paths.transactionStages(companyId, selectedProjectId))));
         const allStages = stagesSnap.docs.map(d => ({ id: d.id, ...d.data() } as StageInstance));
         const current = allStages.find(s => s.status === 'in-progress');
         setActiveStage(current || null);
@@ -120,26 +110,21 @@ function NewFieldVisitForm() {
     return allBoqItems.filter(i => (i.technicalStageIds?.includes(activeStage.technicalStageId) || i.technicalStageId === activeStage.technicalStageId));
   }, [activeStage, allBoqItems]);
 
-  // منع تكرار الموظفين
   const getAvailableEmployees = (currentRowIdx: number) => {
     const selectedIds = staffRows.map((r, i) => i !== currentRowIdx ? r.employeeId : null).filter(Boolean);
     return (employees || []).filter(e => !selectedIds.includes(e.id));
   };
 
-  // منع تكرار المعدات
   const getAvailableEquipment = (currentRowIdx: number) => {
     const selectedIds = equipRows.map((r, i) => i !== currentRowIdx ? r.equipmentId : null).filter(Boolean);
     return (equipmentList || []).filter(e => !selectedIds.includes(e.id));
   };
 
-  // تحميل من فريق عمل
   const handleLoadGroup = (groupId: string) => {
     const group = workGroups?.find(g => g.id === groupId);
     if (!group || !employees) return;
-
     const currentStaffIds = new Set(staffRows.map(r => r.employeeId).filter(Boolean));
     const newRows = [...staffRows.filter(r => r.employeeId)];
-
     group.memberIds.forEach(mid => {
       if (!currentStaffIds.has(mid)) {
         const emp = employees.find(e => e.id === mid);
@@ -149,18 +134,12 @@ function NewFieldVisitForm() {
         }
       }
     });
-
-    if (newRows.length === 0) {
-      toast({ variant: "destructive", title: isRtl ? "الموظفون مضافون مسبقاً" : "Employees already added" });
-    } else {
-      setStaffRows(newRows);
-      toast({ title: isRtl ? "تم تحميل الطاقم" : "Group Loaded" });
-    }
+    setStaffRows(newRows);
+    toast({ title: t('construction.crewLoaded') });
   };
 
   const handleSave = async () => {
     if (!db || !companyId || !user || !selectedProjectId || !activeBoq || !activeStage) return;
-    
     setLoading(true);
     try {
       const execService = new BOQExecutionService(db, companyId, permissions);
@@ -193,16 +172,12 @@ function NewFieldVisitForm() {
           executionStatus: 'executed'
         })),
         staffDetails: staffRows.filter(s => s.employeeId).map(s => ({
-           employeeId: s.employeeId,
-           employeeName: employees?.find(e => e.id === s.employeeId)?.fullName || '',
-           position: s.position,
-           count: s.count
+           ...s,
+           employeeName: employees?.find(e => e.id === s.employeeId)?.fullName || ''
         })),
         equipmentUsed: equipRows.filter(e => e.equipmentId).map(e => ({
-           equipmentId: e.equipmentId,
-           equipmentName: equipmentList?.find(eq => eq.id === e.equipmentId)?.name || '',
-           count: e.count,
-           hours: e.hours
+           ...e,
+           equipmentName: equipmentList?.find(eq => eq.id === e.equipmentId)?.name || ''
         })),
         materialsDelivered: materialRows.filter(m => m.type),
         engineerId: globalUser?.employeeId || user.uid,
@@ -219,7 +194,7 @@ function NewFieldVisitForm() {
   };
 
   return (
-    <div className="space-y-6 w-full max-w-full pb-20 animate-in fade-in duration-500 text-start bg-white" dir={dir}>
+    <div className="space-y-6 w-full max-w-full pb-20 animate-in fade-in duration-500 text-start bg-slate-50/30" dir={dir}>
       
       <header className="sticky top-0 z-50 flex justify-between items-center gap-6 border-b bg-white/95 backdrop-blur-md px-8 py-5 shadow-sm border-primary/10">
         <div className="flex items-center gap-5 text-start">
@@ -230,7 +205,9 @@ function NewFieldVisitForm() {
             <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">
                {tSafe('inline.new.field.report', 'تسجيل تقرير ميداني جديد', 'New Field Report')}
             </h1>
-            <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 text-[9px] font-black uppercase mt-1 tracking-widest px-3">Center of Site Operations</Badge>
+            <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 text-[9px] font-black uppercase mt-1 tracking-widest px-3">
+              {tSafe('inline.site.ops.center', 'مركز عمليات الموقع', 'Center of Site Operations')}
+            </Badge>
           </div>
         </div>
 
@@ -243,7 +220,7 @@ function NewFieldVisitForm() {
         </div>
       </header>
 
-      <div className="px-4 md:px-8 space-y-10">
+      <div className="px-8 space-y-10">
          <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden w-full">
             <CardContent className="p-8 grid grid-cols-1 md:grid-cols-4 gap-10 items-center">
                 <div className="space-y-2">
@@ -270,7 +247,7 @@ function NewFieldVisitForm() {
                    ) : selectedProjectId && (
                      <div className="h-14 rounded-2xl bg-rose-50 border-2 border-dashed border-rose-200 flex items-center px-6 text-rose-500">
                         <ShieldAlert className="h-4 w-4 me-3" />
-                        <span className="text-[11px] font-bold italic">{isRtl ? 'لا توجد مرحلة نشطة.' : 'No active stage found.'}</span>
+                        <span className="text-[11px] font-bold italic">{tSafe('inline.no.active.stage', 'لا توجد مرحلة نشطة.', 'No active stage found.')}</span>
                      </div>
                    )}
                 </div>
@@ -286,7 +263,7 @@ function NewFieldVisitForm() {
                <div className="text-start">
                   <CardTitle className="text-xl font-black font-headline flex items-center gap-4 text-slate-800">
                      <Hammer className="h-7 w-7 text-primary" /> 
-                     {tSafe('inline.work.items.execution.grid', 'إنجاز بنود المقايسة (BOQ)', 'Work Items Execution Grid')}
+                     {tSafe('inline.work.items.execution.grid', 'إنجاز بنود المقايسة في المرحلة الجارية', 'Execution of BOQ Items in Current Stage')}
                   </CardTitle>
                </div>
                <Button variant="outline" onClick={() => setExecutionRows([...executionRows, { boqItemId: '', quantity: '', notes: '' }])} className="rounded-xl h-11 px-8 font-black border-2 gap-3 bg-white hover:bg-primary/5 transition-all">
@@ -297,8 +274,8 @@ function NewFieldVisitForm() {
                <Table className="w-full">
                   <TableHeader>
                      <TableRow className="bg-white hover:bg-transparent border-b-2 border-slate-100">
-                        <TableHead className="ps-10 text-start text-xs font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'بند العمل المرجعي' : 'Reference Work Item'}</TableHead>
-                        <TableHead className="text-center w-[180px] text-xs font-black uppercase text-primary tracking-widest">{t('common.quantity')}</TableHead>
+                        <TableHead className="ps-10 text-start text-xs font-black uppercase text-slate-400 tracking-widest">{tSafe('inline.ref.work.item', 'بند العمل المرجعي', 'Reference Work Item')}</TableHead>
+                        <TableHead className="text-center w-[180px] text-xs font-black uppercase text-primary tracking-widest">{tSafe('inline.quantity.for.stage', 'الكمية لهذه المرحلة', 'Qty for Stage')}</TableHead>
                         <TableHead className="text-start text-xs font-black uppercase text-slate-400 tracking-widest">{t('common.notes')}</TableHead>
                         <TableHead className="w-16"></TableHead>
                      </TableRow>
@@ -314,7 +291,7 @@ function NewFieldVisitForm() {
                                        <SelectItem key={i.id} value={i.id!} className="font-bold py-4 border-b last:border-0 border-slate-50">
                                           <div className="flex flex-col text-start">
                                              <span className="text-slate-800 text-sm">{i.referenceTitle}</span>
-                                             <span className="text-[10px] text-slate-400 font-mono uppercase tracking-widest">CODE: {i.referenceCode}</span>
+                                             <span className="text-[10px] text-slate-400 font-mono uppercase tracking-widest">{tSafe('inline.code', 'كود', 'CODE')}: {i.referenceCode}</span>
                                           </div>
                                        </SelectItem>
                                     ))}
@@ -342,7 +319,6 @@ function NewFieldVisitForm() {
          </Card>
 
          <div className="grid grid-cols-1 xl:grid-cols-2 gap-10 pb-20">
-            {/* جدول الموظفين */}
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
                <CardHeader className="bg-slate-50/80 border-b p-6 flex flex-col md:flex-row items-center justify-between gap-4">
                   <div className="text-start">
@@ -354,7 +330,7 @@ function NewFieldVisitForm() {
                   <div className="flex gap-2">
                      <Select onValueChange={handleLoadGroup}>
                         <SelectTrigger className="h-10 w-48 rounded-xl border-2 font-black text-[10px] bg-white">
-                           <SelectValue placeholder={isRtl ? 'تحميل من طاقم...' : 'Load from Group...'} />
+                           <SelectValue placeholder={tSafe('inline.load.from.group', 'تحميل من طاقم...', 'Load from Group...')} />
                         </SelectTrigger>
                         <SelectContent className="z-[160] shadow-3xl rounded-xl">
                            {workGroups?.map(g => (
@@ -371,8 +347,8 @@ function NewFieldVisitForm() {
                   <Table>
                      <TableHeader className="bg-white border-b-2">
                         <TableRow>
-                           <TableHead className="ps-6 text-start text-[10px] font-black text-slate-400 uppercase">Employee / Position</TableHead>
-                           <TableHead className="text-center w-24 text-[10px] font-black text-slate-400 uppercase">Count</TableHead>
+                           <TableHead className="ps-6 text-start text-[10px] font-black text-slate-400 uppercase">{tSafe('inline.employee.position', 'الموظف / المساعد', 'Employee / Position')}</TableHead>
+                           <TableHead className="text-center w-24 text-[10px] font-black text-slate-400 uppercase">{tSafe('inline.count', 'العدد', 'Count')}</TableHead>
                            <TableHead className="w-12"></TableHead>
                         </TableRow>
                      </TableHeader>
@@ -412,7 +388,6 @@ function NewFieldVisitForm() {
                </CardContent>
             </Card>
 
-            {/* جدول المعدات */}
             <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
                <CardHeader className="bg-slate-50/80 border-b p-6 flex flex-row items-center justify-between">
                   <div>
@@ -427,9 +402,9 @@ function NewFieldVisitForm() {
                   <Table>
                      <TableHeader className="bg-white border-b-2">
                         <TableRow>
-                           <TableHead className="ps-6 text-start text-[10px] font-black text-slate-400 uppercase">Type / Name</TableHead>
-                           <TableHead className="text-center w-24 text-[10px] font-black text-slate-400 uppercase">Qty</TableHead>
-                           <TableHead className="text-center w-24 text-[10px] font-black text-slate-400 uppercase">Hours</TableHead>
+                           <TableHead className="ps-6 text-start text-[10px] font-black text-slate-400 uppercase">{tSafe('inline.type.name', 'النوع / الاسم', 'Type / Name')}</TableHead>
+                           <TableHead className="text-center w-24 text-[10px] font-black text-slate-400 uppercase">{tSafe('inline.qty', 'الكمية', 'Qty')}</TableHead>
+                           <TableHead className="text-center w-24 text-[10px] font-black text-slate-400 uppercase">{tSafe('inline.hours', 'الساعات', 'Hours')}</TableHead>
                            <TableHead className="w-12"></TableHead>
                         </TableRow>
                      </TableHeader>
@@ -467,7 +442,6 @@ function NewFieldVisitForm() {
                </CardContent>
             </Card>
 
-            {/* جدول المواد */}
             <Card className="xl:col-span-2 border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
                <CardHeader className="bg-slate-50/80 border-b p-6 flex flex-row items-center justify-between">
                   <div>
@@ -482,9 +456,9 @@ function NewFieldVisitForm() {
                   <Table>
                      <TableHeader className="bg-white border-b-2">
                         <TableRow>
-                           <TableHead className="ps-10 text-start text-[10px] font-black text-slate-400 uppercase">Material Description</TableHead>
-                           <TableHead className="text-center w-32 text-[10px] font-black text-slate-400 uppercase">Unit</TableHead>
-                           <TableHead className="text-center w-40 text-[10px] font-black text-primary uppercase">Quantity Delivered</TableHead>
+                           <TableHead className="ps-10 text-start text-[10px] font-black text-slate-400 uppercase">{tSafe('inline.material.desc', 'وصف المادة', 'Material Description')}</TableHead>
+                           <TableHead className="text-center w-32 text-[10px] font-black text-slate-400 uppercase">{t('common.unit')}</TableHead>
+                           <TableHead className="text-center w-40 text-[10px] font-black text-primary uppercase">{tSafe('inline.qty.delivered', 'الكمية المسلمة', 'Quantity Delivered')}</TableHead>
                            <TableHead className="w-16"></TableHead>
                         </TableRow>
                      </TableHeader>
