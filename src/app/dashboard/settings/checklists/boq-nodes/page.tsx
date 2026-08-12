@@ -393,7 +393,15 @@ export default function BOQNodesPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                         <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('common.code', 'الكود المرجعي', 'Reference Code')}</Label>
-                        <Input value={editingNode?.code || ''} onChange={e => setEditingNode({...editingNode!, code: e.target.value.toUpperCase()})} className="h-11 rounded-xl border-2 font-mono font-black text-primary" />
+                        <div className="relative">
+                           <Input 
+                             value={editingNode?.code || ''} 
+                             onChange={e => setEditingNode({...editingNode!, code: e.target.value.toUpperCase()})} 
+                             className="h-11 rounded-xl border-2 font-mono font-black text-primary bg-white" 
+                             placeholder={tSafe('ref.node.autoCodeHint', 'سيتم التوليد آلياً إذا ترك فارغاً', 'Auto-generated if empty')}
+                           />
+                           {!editingNode?.code && <Sparkles className="absolute end-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-primary/30" />}
+                        </div>
                     </div>
                     <div className="space-y-1.5">
                         <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('ref.node.displayOrder', 'ترتيب العرض', 'Display Order')}</Label>

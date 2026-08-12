@@ -23,7 +23,7 @@ import { ensureActionPermission } from '@/lib/permissions';
 
 /**
  * خدمة إدارة المرجع الشجري الديناميكي لبنود BOQ (Dynamic Tree Service).
- * تدعم الوراثة التشغيلية (Activity/Service/SubService) وحماية البيانات.
+ * تدعم الوراثة التشغيلية وتوليد الأكواد الهرمية تلقائياً.
  */
 export class BOQReferenceService {
   constructor(
@@ -33,7 +33,7 @@ export class BOQReferenceService {
   ) {}
 
   /**
-   * إنشاء عقدة جديدة في الشجرة الديناميكية مع معالجة الوراثة التشغيلية
+   * إنشاء عقدة جديدة مع توليد كود مرجعي تلقائي بناءً على التسلسل الهرمي
    */
   async createBOQReferenceNode(data: Partial<BOQReferenceNode>, userId: string) {
     ensureActionPermission(this.userPermissions, 'ref:create');
@@ -44,16 +44,17 @@ export class BOQReferenceService {
     let depth = 0;
     let ancestorIds: string[] = [];
     let inheritedContext: Partial<BOQReferenceNode> = {};
+    let parentCode = 'BOQ';
 
-    // 1. معالجة الوراثة من الأب
+    // 1. معالجة الوراثة والأكواد من الأب
     if (data.parentId) {
       const parentSnap = await getDoc(doc(this.db, paths.boqReferenceNodes(this.companyId), data.parentId));
       if (parentSnap.exists()) {
         const parentData = parentSnap.data() as BOQReferenceNode;
         depth = (parentData.depth || 0) + 1;
         ancestorIds = [...(parentData.ancestorIds || []), parentSnap.id];
+        parentCode = parentData.code || 'BOQ';
 
-        // وراثة السياق التشغيلي إذا لم يتم تعريفه في الطلب الحالي وكان مسموحاً بالوراثة
         if (data.inheritServices !== false) {
           inheritedContext = {
             activityTypeId: parentData.activityTypeId,
@@ -67,9 +68,20 @@ export class BOQReferenceService {
       }
     }
 
+    // 2. محرك التوليد التلقائي للكود (Auto-Coding Engine)
+    // إذا لم يدخل المستخدم كوداً، نقوم بتوليد واحد: [كود الأب].[التسلسل]
+    if (!data.code) {
+      const siblingsSnap = await getDocs(query(
+        collectionRef, 
+        where('parentId', '==', data.parentId || null)
+      ));
+      const nextIndex = siblingsSnap.size + 1;
+      data.code = `${parentCode}.${String(nextIndex).padStart(2, '0')}`;
+    }
+
     const nodeData: BOQReferenceNode = {
-      ...inheritedContext, // القيم الموروثة أولاً
-      ...data,            // القيم المدخلة يدوياً تطغى على الموروثة
+      ...inheritedContext,
+      ...data,
       id: nodeRef.id,
       companyId: this.companyId,
       depth,
@@ -87,7 +99,6 @@ export class BOQReferenceService {
     const batch = writeBatch(this.db);
     batch.set(nodeRef, nodeData);
 
-    // 2. تحديث عداد الأبناء في الأب
     if (data.parentId) {
       const parentRef = doc(this.db, paths.boqReferenceNodes(this.companyId), data.parentId);
       batch.update(parentRef, { 
@@ -108,9 +119,6 @@ export class BOQReferenceService {
     return nodeRef.id;
   }
 
-  /**
-   * تحديث بيانات العقدة
-   */
   async updateBOQReferenceNode(id: string, data: Partial<BOQReferenceNode>, userId: string) {
     ensureActionPermission(this.userPermissions, 'ref:edit');
     const nodeRef = doc(this.db, paths.boqReferenceNodes(this.companyId), id);
@@ -121,7 +129,6 @@ export class BOQReferenceService {
       updatedAt: serverTimestamp()
     };
 
-    // منع تعديل الحقول الهيكلية الحساسة عبر التحديث العادي لضمان سلامة الشجرة
     delete (updateData as any).parentId;
     delete (updateData as any).ancestorIds;
     delete (updateData as any).depth;
