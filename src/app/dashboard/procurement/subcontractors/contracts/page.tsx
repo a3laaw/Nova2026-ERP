@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -9,7 +10,7 @@ import {
   Plus, Search, Loader2, ArrowRight, 
   Handshake, ShieldCheck, 
   Building2, ArrowUpRight, CheckCircle2, Clock,
-  Filter
+  Filter, Info
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';

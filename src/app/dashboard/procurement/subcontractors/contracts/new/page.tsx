@@ -11,7 +11,8 @@ import {
   Handshake, Building2, Workflow, Target,
   Search, Check, ChevronDown, Calculator,
   Plus, Trash2, Gavel, Landmark, ShieldCheck,
-  Percent, FileText, Info, UserCircle, X
+  Percent, FileText, Info, UserCircle, X,
+  Clock
 } from "lucide-react";
 import { 
   Popover,
@@ -31,12 +32,11 @@ import { paths } from '@/firebase/multi-tenant';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
-import { ContractMilestone, SubConContractTemplate } from '@/types/templates';
+import { ContractMilestone, SubConContractTemplate, PricingMode } from '@/types/templates';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 /**
- * مكون البحث الذكي المستقر (Stable Searchable Picker).
- * تم إصلاح مشكلة الإغلاق بعد الاختيار ومشكلة الكتابة.
+ * مكون البحث الذكي المستقر.
  */
 function SearchablePicker({ value, onSelect, items, search, onSearchChange, icon: Icon, placeholder, type, disabled = false, isRtl }: any) {
   const [open, setOpen] = useState(false);
@@ -59,7 +59,6 @@ function SearchablePicker({ value, onSelect, items, search, onSearchChange, icon
         className="w-[400px] p-0 rounded-2xl shadow-3xl border-2 z-[100]" 
         align="start" 
         onOpenAutoFocus={e => e.preventDefault()}
-        onInteractOutside={e => e.preventDefault()}
       >
          <div className="p-4 bg-slate-50 border-b">
             <div className="relative">
@@ -86,7 +85,7 @@ function SearchablePicker({ value, onSelect, items, search, onSearchChange, icon
                      onClick={(e) => { 
                        e.stopPropagation(); 
                        onSelect(item); 
-                       setOpen(false); // إغلاق القائمة فور الاختيار
+                       setOpen(false); 
                      }}
                      className={cn(
                        "p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between border-2 border-transparent",
@@ -113,15 +112,12 @@ function SearchablePicker({ value, onSelect, items, search, onSearchChange, icon
 function NewSubConContractContent() {
   const { globalUser, user } = useAuthContext();
   const { lang, dir, t, tSafe } = useLanguage();
-  const { permissions, isAdmin } = usePermissions();
+  const { permissions } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const searchParams = useSearchParams();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
-
-  const preTransactionId = searchParams.get('transactionId');
-  const preTemplateId = searchParams.get('templateId');
 
   const [loading, setLoading] = useState(false);
   const [subSearch, setSubSearch] = useState("");
@@ -134,10 +130,10 @@ function NewSubConContractContent() {
     subcontractorName: '',
     clientId: '',
     clientName: '',
-    transactionId: preTransactionId || '',
+    transactionId: searchParams.get('transactionId') || '',
     transactionNumber: '',
     transactionName: '',
-    templateId: preTemplateId || '',
+    templateId: searchParams.get('templateId') || '',
     templateName: '',
     name: '',
     totalAmount: 0,
@@ -170,19 +166,8 @@ function NewSubConContractContent() {
   const { data: templates } = useCollection<SubConContractTemplate>(templatesQuery);
 
   const filteredSubs = useMemo(() => (subcontractors || []).filter(s => s.name.toLowerCase().includes(subSearch.toLowerCase())), [subcontractors, subSearch]);
-  
-  const filteredClients = useMemo(() => (clients || []).filter(c => 
-    c.nameAr.toLowerCase().includes(clientSearch.toLowerCase()) || 
-    c.fileNumber.toLowerCase().includes(clientSearch.toLowerCase())
-  ), [clients, clientSearch]);
-
-  const filteredTrans = useMemo(() => (transactions || []).filter(t_item => {
-    const matchClient = !form.clientId || t_item.clientId === form.clientId;
-    const matchSearch = t_item.subServiceName.toLowerCase().includes(transSearch.toLowerCase()) || 
-                        t_item.transactionNumber.toLowerCase().includes(transSearch.toLowerCase());
-    return matchClient && matchSearch;
-  }), [transactions, transSearch, form.clientId]);
-
+  const filteredClients = useMemo(() => (clients || []).filter(c => c.nameAr.toLowerCase().includes(clientSearch.toLowerCase()) || c.fileNumber.toLowerCase().includes(clientSearch.toLowerCase())), [clients, clientSearch]);
+  const filteredTrans = useMemo(() => (transactions || []).filter(t_item => (!form.clientId || t_item.clientId === form.clientId) && (t_item.subServiceName.toLowerCase().includes(transSearch.toLowerCase()) || t_item.transactionNumber.toLowerCase().includes(transSearch.toLowerCase()))), [transactions, transSearch, form.clientId]);
   const filteredTemps = useMemo(() => (templates || []).filter(t => t.name.toLowerCase().includes(tempSearch.toLowerCase())), [templates, tempSearch]);
 
   useEffect(() => {
@@ -205,19 +190,11 @@ function NewSubConContractContent() {
     if (db && companyId && form.transactionId) {
        const trans = transactions?.find(t => t.id === form.transactionId);
        if (trans) {
-          setForm(prev => ({ 
-            ...prev, 
-            transactionName: trans.subServiceName, 
-            transactionNumber: trans.transactionNumber,
-            clientName: trans.clientName,
-            clientId: trans.clientId
-          }));
+          setForm(prev => ({ ...prev, transactionName: trans.subServiceName, transactionNumber: trans.transactionNumber, clientName: trans.clientName, clientId: trans.clientId }));
           getDocs(query(collection(db, paths.transactionStages(companyId, trans.id)), orderBy('order')))
             .then(snap => setPathStages(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
             .catch(() => setPathStages([]));
        }
-    } else {
-       setPathStages([]);
     }
   }, [form.transactionId, transactions, db, companyId]);
 
@@ -231,16 +208,11 @@ function NewSubConContractContent() {
   const updateMilestone = (idx: number, field: keyof ContractMilestone, value: any) => {
     const newM = [...form.milestones];
     const item = { ...newM[idx], [field]: value };
-    
     if (form.pricingMode === 'percentage' && (field === 'percentage' || field === 'amount')) {
       const total = form.totalAmount || 0;
-      if (field === 'percentage') {
-        item.amount = (total * (Number(value) || 0)) / 100;
-      } else if (field === 'amount' && total > 0) {
-        item.percentage = (Number(value) / total) * 100;
-      }
+      if (field === 'percentage') item.amount = (total * (Number(value) || 0)) / 100;
+      else if (field === 'amount' && total > 0) item.percentage = (Number(value) / total) * 100;
     }
-    
     newM[idx] = item;
     setForm({...form, milestones: newM});
   };
@@ -250,46 +222,23 @@ function NewSubConContractContent() {
     setLoading(true);
     try {
       const contractRef = doc(collection(db, paths.subconContracts(companyId)));
-      const contractData = {
-        ...form,
-        id: contractRef.id,
-        status: 'active',
-        projectTitle: `${form.clientName} - ${form.transactionName}`,
-        companyId,
-        createdBy: user.uid,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      };
-      await setDoc(contractRef, contractData);
-      toast({ title: tSafe('common.saved', 'تم حفظ العقد بنجاح', 'Saved Successfully') });
+      await setDoc(contractRef, { ...form, id: contractRef.id, status: 'active', projectTitle: `${form.clientName} - ${form.transactionName}`, companyId, createdBy: user.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      toast({ title: tSafe('common.saved', 'تم الحفظ بنجاح', 'Saved Successfully') });
       router.push(`/dashboard/procurement/subcontractors/contracts/${contractRef.id}`);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getOrdinalLabel = (index: number) => {
-    const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"];
-    const enOrdinals = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
-    const base = tSafe('inline.installment', 'الدفعة', 'Installment');
-    const ordinal = isRtl ? (arOrdinals[index] || `#${index + 1}`) : (enOrdinals[index] || `#${index + 1}`);
-    return `${base} ${ordinal}`;
+    } finally { setLoading(false); }
   };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 bg-white" dir={dir}>
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-white/95 backdrop-blur-md px-8 shadow-sm">
         <div className="flex items-center gap-4 text-start">
-           <button onClick={() => router.back()} className="h-10 w-10 border-2 rounded-xl flex items-center justify-center hover:bg-slate-50 transition-colors text-slate-400 shadow-sm">
-              <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
-           </button>
+           <button onClick={() => router.back()} className="h-10 w-10 border-2 rounded-xl flex items-center justify-center hover:bg-slate-50 transition-colors text-slate-400 shadow-sm"><ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} /></button>
            <h1 className="text-xl font-black font-headline text-slate-900">{tSafe('subcon.contracts.new', 'تأسيس اتفاقية باطن جديدة', 'New SubCon Award')}</h1>
         </div>
         <Button onClick={handleSave} disabled={loading || !form.subcontractorId || !form.transactionId} className="h-12 px-10 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-4 border-orange-700">
-           {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
-           {tSafe('subcon.contracts.issueNow', 'إصدار الاتفاقية الآن', 'Issue Award Now')}
+           {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />} {tSafe('subcon.contracts.issueNow', 'إصدار الاتفاقية الآن', 'Issue Award Now')}
         </Button>
       </header>
 
@@ -306,16 +255,7 @@ function NewSubConContractContent() {
                      </div>
                      <div className="p-8 rounded-[2.5rem] bg-primary/5 border-2 border-primary/10 shadow-sm space-y-4">
                         <Label className="text-[10px] font-black text-primary uppercase">{tSafe('subcon.second.party', 'الطرف الثاني (مقاول الباطن)', 'Second Party')}</Label>
-                        <SearchablePicker 
-                          value={form.subcontractorName} 
-                          onSelect={(s: any) => setForm({...form, subcontractorId: s.id, subcontractorName: s.name})}
-                          items={filteredSubs}
-                          search={subSearch}
-                          onSearchChange={setSubSearch}
-                          icon={Handshake}
-                          placeholder={tSafe('subcon.form.vendor', 'اختر المقاول...', 'Choose Contractor')}
-                          isRtl={isRtl}
-                        />
+                        <SearchablePicker value={form.subcontractorName} onSelect={(s: any) => setForm({...form, subcontractorId: s.id, subcontractorName: s.name})} items={filteredSubs} search={subSearch} onSearchChange={setSubSearch} icon={Handshake} placeholder={tSafe('subcon.form.vendor', 'اختر المقاول...', 'Choose Contractor')} isRtl={isRtl} />
                      </div>
                   </div>
                </div>
@@ -327,59 +267,23 @@ function NewSubConContractContent() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                            <div className="space-y-2">
                               <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('common.targetClient', 'العميل المستهدف (المالك)', 'Target Client')}</Label>
-                              <SearchablePicker 
-                                type="client"
-                                value={form.clientName} 
-                                onSelect={(c: any) => setForm({...form, clientId: c.id, clientName: c.nameAr, transactionId: '', transactionName: '', transactionNumber: ''})}
-                                items={filteredClients}
-                                search={clientSearch}
-                                onSearchChange={setClientSearch}
-                                icon={UserCircle}
-                                placeholder={tSafe('subcon.form.client', 'اختر العميل...', 'Choose Client')}
-                                isRtl={isRtl}
-                              />
+                              <SearchablePicker type="client" value={form.clientName} onSelect={(c: any) => setForm({...form, clientId: c.id, clientName: c.nameAr, transactionId: '', transactionName: '', transactionNumber: ''})} items={filteredClients} search={clientSearch} onSearchChange={setClientSearch} icon={UserCircle} placeholder={tSafe('subcon.form.client', 'اختر العميل...', 'Choose Client')} isRtl={isRtl} />
                            </div>
                            <div className="space-y-2">
                               <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('common.targetTransaction', 'المشروع / المعاملة', 'Target Project')}</Label>
-                              <SearchablePicker 
-                                type="transaction"
-                                disabled={!form.clientId}
-                                value={form.transactionName} 
-                                onSelect={(t_item: any) => setForm({...form, transactionId: t_item.id, transactionNumber: t_item.transactionNumber, transactionName: t_item.subServiceName})}
-                                items={filteredTrans}
-                                search={transSearch}
-                                onSearchChange={setTransSearch}
-                                icon={Target}
-                                placeholder={tSafe('subcon.form.project', 'اختر المشروع...', 'Choose Project')}
-                                isRtl={isRtl}
-                              />
+                              <SearchablePicker type="transaction" disabled={!form.clientId} value={form.transactionName} onSelect={(t_item: any) => setForm({...form, transactionId: t_item.id, transactionNumber: t_item.transactionNumber, transactionName: t_item.subServiceName})} items={filteredTrans} search={transSearch} onSearchChange={setTransSearch} icon={Target} placeholder={tSafe('subcon.form.project', 'اختر المشروع...', 'Choose Project')} isRtl={isRtl} />
                            </div>
                         </div>
                         <div className="space-y-2">
                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('subcon.form.template', 'القالب القانوني لتعاقد الباطن', 'Legal SubCon Template')}</Label>
-                           <SearchablePicker 
-                             type="template"
-                             value={form.templateName} 
-                             onSelect={(temp: any) => setForm({...form, templateId: temp.id, templateName: temp.name})}
-                             items={filteredTemps}
-                             search={tempSearch}
-                             onSearchChange={setTempSearch}
-                             icon={FileText}
-                             placeholder={tSafe('subcon.form.template', 'اختر القالب...', 'Choose Template')}
-                             isRtl={isRtl}
-                           />
+                           <SearchablePicker type="template" value={form.templateName} onSelect={(temp: any) => setForm({...form, templateId: temp.id, templateName: temp.name})} items={filteredTemps} search={tempSearch} onSearchChange={setTempSearch} icon={FileText} placeholder={tSafe('subcon.form.template', 'اختر القالب...', 'Choose Template')} isRtl={isRtl} />
                         </div>
                      </div>
                      <div className="lg:col-span-4 p-8 rounded-[3rem] bg-emerald-600 text-white shadow-2xl relative overflow-hidden flex flex-col justify-center">
                         <div className="absolute top-0 right-0 p-8 opacity-10"><Calculator className="h-32 w-32" /></div>
                         <div className="relative z-10 space-y-2 text-start">
                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-200">{tSafe('subcon.form.targetBudget', 'إجمالي قيمة العقد', 'Contract Value')}</p>
-                           <Input 
-                             type="number" 
-                             value={form.totalAmount === 0 ? "" : form.totalAmount} 
-                             onChange={e => setForm({...form, totalAmount: Number(e.target.value)})}
-                             className="h-16 bg-white/20 border-0 rounded-2xl text-4xl font-black text-center text-white shadow-inner focus:bg-white/30" 
-                           />
+                           <Input type="number" value={form.totalAmount === 0 ? "" : form.totalAmount} onChange={e => setForm({...form, totalAmount: Number(e.target.value)})} className="h-16 bg-white/20 border-0 rounded-2xl text-4xl font-black text-center text-white shadow-inner focus:bg-white/30" />
                         </div>
                      </div>
                   </div>
@@ -388,64 +292,59 @@ function NewSubConContractContent() {
                <div className="space-y-6">
                   <div className="flex justify-between items-center border-b-2 border-primary/10 pb-2">
                      <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em]">{tSafe('subcon.legal.milestones', 'ثالثاً: جدول استحقاق الدفعات', 'Payment Milestones')}</h3>
-                     <Button variant="outline" size="sm" onClick={() => setForm({...form, milestones: [...form.milestones, { name: getOrdinalLabel(form.milestones.length), percentage: 0, amount: 0, timing: 'at' }]})} className="rounded-xl h-9 px-6 font-black border-2 gap-2 bg-white hover:bg-primary/5 shadow-sm">
-                        <Plus className="h-4 w-4" /> {tSafe('common.add', 'إضافة دفعة', 'Add')}
-                     </Button>
                   </div>
                   
                   <div className="border-2 border-slate-100 rounded-[2.5rem] overflow-hidden bg-white shadow-xl ring-1 ring-black/[0.02]">
                      <table className="w-full text-xs text-start">
                         <thead className="bg-slate-50 border-b-2 text-slate-600 font-black uppercase text-[10px] tracking-widest">
                            <tr>
-                              <th className="p-6 w-12 text-start">#</th>
-                              <th className="p-6 text-start">{tSafe('name', 'الوصف', 'Description')}</th>
-                              <th className="p-6 text-center w-24">%</th>
-                              <th className="p-6 text-start w-48">{tSafe('technicalLink', 'الارتباط الميداني', 'Execution Link')}</th>
-                              <th className="p-6 text-end pe-12 w-48">{t('common.amount')}</th>
-                              <th className="p-6 w-14"></th>
+                              <th className="p-8 w-14 text-start">#</th>
+                              <th className="p-8 text-start">{tSafe('name', 'الوصف', 'Description')}</th>
+                              {form.pricingMode === 'percentage' && <th className="p-8 text-center w-24">%</th>}
+                              <th className="p-8 text-start w-48">{tSafe('technicalLink', 'الارتباط الميداني', 'Execution Link')}</th>
+                              <th className="p-8 text-end pe-12 w-48">{t('common.amount')}</th>
                            </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                           {form.milestones.map((m: any, idx: number) => (
-                             <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                                <td className="p-6 font-black text-slate-300">{idx + 1}</td>
-                                <td className="p-4">
-                                   <Input value={m.name} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-10 border-2 rounded-xl font-bold bg-white" />
-                                </td>
-                                <td className="p-4">
-                                   <div className="relative w-24 mx-auto">
-                                      <Input type="number" value={m.percentage === 0 ? "" : m.percentage} onChange={e => updateMilestone(idx, 'percentage', e.target.value)} className="h-10 rounded-xl border-2 font-black text-center pe-8" />
-                                      <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
-                                   </div>
-                                </td>
-                                <td className="p-4">
-                                   <Select value={m.technicalStageId || ''} onValueChange={v => updateMilestone(idx, 'technicalStageId', v)}>
-                                      <SelectTrigger className="h-10 rounded-xl border-2 font-black text-[10px] bg-slate-50/50">
-                                         <SelectValue placeholder="..." />
-                                      </SelectTrigger>
-                                      <SelectContent className="rounded-xl z-[160] shadow-3xl">
-                                         {pathStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50 text-start">
-                                            <div className="flex items-center gap-2"><Workflow className="h-3 w-3 text-primary" /> {s.name}</div>
-                                         </SelectItem>)}
-                                      </SelectContent>
-                                   </Select>
-                                </td>
-                                <td className="p-4 text-end pe-12">
-                                   <div className="flex items-center gap-2 justify-end">
-                                      <span className="font-mono font-black text-emerald-600 text-xl">{m.amount?.toLocaleString()}</span>
-                                      <span className="text-[9px] font-bold text-slate-300">KWD</span>
-                                   </div>
-                                </td>
-                                <td className="p-4 text-center">
-                                   <button type="button" onClick={() => setForm({...form, milestones: form.milestones.filter((_:any, i:number) => i !== idx)})} className="text-rose-200 hover:text-rose-600"><Trash2 className="h-5 w-5" /></button>
-                                </td>
-                             </tr>
-                           ))}
+                           {form.milestones.map((m: any, idx: number) => {
+                             const linkedStageName = pathStages.find(s => s.technicalStageId === m.technicalStageId)?.name;
+                             return (
+                               <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                                  <td className="p-8 font-black text-slate-300">{idx + 1}</td>
+                                  <td className="p-4">
+                                     <Input value={m.name} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-10 border-2 rounded-xl font-bold bg-white" />
+                                  </td>
+                                  {form.pricingMode === 'percentage' && (
+                                    <td className="p-4">
+                                       <div className="relative w-24 mx-auto">
+                                          <Input type="number" value={m.percentage === 0 ? "" : (m.percentage || "")} onChange={e => updateMilestone(idx, 'percentage', e.target.value)} className="h-10 rounded-xl border-2 font-black text-center pe-8" />
+                                          <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
+                                       </div>
+                                    </td>
+                                  )}
+                                  <td className="p-4">
+                                     <Badge variant="outline" className={cn(
+                                       "font-black text-[10px] border-0 px-4 h-8 rounded-xl shadow-sm",
+                                       m.technicalStageId ? "bg-primary/5 text-primary" : "bg-slate-50 text-slate-300"
+                                     )}>
+                                        <Workflow className="h-3.5 w-3.5 me-2" />
+                                        {linkedStageName || tSafe('inline.link.pending', 'غير مربوط', 'Unlinked')}
+                                     </Badge>
+                                  </td>
+                                  <td className="p-4 text-end pe-12">
+                                     <div className="flex items-center gap-2 justify-end">
+                                        <span className="font-mono font-black text-emerald-600 text-xl">{m.amount?.toLocaleString()}</span>
+                                        <span className="text-[9px] font-bold text-slate-300">KWD</span>
+                                     </div>
+                                  </td>
+                               </tr>
+                             );
+                           })}
                         </tbody>
                         <tfoot className="bg-slate-50 border-t-8 border-primary">
                            <tr>
-                              <td colSpan={3} className="p-10 text-start">
-                                 <h3 className="text-xl font-black font-headline uppercase tracking-tighter text-slate-800">{tSafe('subcon.totalPayable', 'إجمالي قيمة عقد الباطن', 'Total SubCon Contract Value')}</h3>
+                              <td colSpan={form.pricingMode === 'percentage' ? 3 : 2} className="p-10 text-start">
+                                 <h3 className="text-xl font-black font-headline uppercase tracking-tighter text-slate-800">{tSafe('subcon.totalPayable', 'إجمالي قيمة عقد الباطن', 'Total SubCon Value')}</h3>
                                  <Badge className={cn("mt-3 border-0 text-[10px] font-black h-7 px-5 shadow-lg", stats.isValid ? "bg-emerald-600 text-white" : "bg-rose-600 text-white")}>
                                     {stats.isValid ? `BALANCED: 100%` : `MISMATCH: ${stats.totalPercentage}%`}
                                  </Badge>
@@ -456,7 +355,6 @@ function NewSubConContractContent() {
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em]">{tSafe('currency.kwdOnly', 'دينار كويتي لا غير', 'KUWAITI DINARS ONLY')}</p>
                                  </div>
                               </td>
-                              <td></td>
                            </tr>
                         </tfoot>
                      </table>
