@@ -37,6 +37,7 @@ import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 
 interface Props {
   template: BOQTemplate | null;
@@ -135,7 +136,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     try {
       const sanitizedItems = items.map(item => ({
         ...item,
-        technicalStageId: item.technicalStageId || '',
+        technicalStageId: item.technicalStageId || (item.technicalStageIds?.length ? item.technicalStageIds[0] : ''),
         technicalStageIds: item.technicalStageIds || [],
         unitSymbol: item.unitSymbol || ""
       }));
@@ -161,7 +162,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
        return parent?.title || '---';
     }) || [];
 
-    // جلب الروابط المتعددة من القاموس السيادي
     const normalizedStageIds = node.technicalStageIds || (node.technicalStageId ? [node.technicalStageId] : []);
     const normalizedDefaultStageId = node.technicalStageId || (normalizedStageIds.length > 0 ? normalizedStageIds[0] : '');
 
@@ -178,7 +178,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       unitName: node.unitName || '',
       unitSymbol: node.unitSymbol || '',
       technicalStageId: normalizedDefaultStageId,
-      technicalStageIds: normalizedStageIds, // حمل المظلة المالية للمرحلة
+      technicalStageIds: normalizedStageIds, 
       plannedQuantity: 1,
       executedQuantity: 0,
       estimatedRate: node.estimatedRate || 0,
@@ -236,7 +236,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                 <div className="flex items-center gap-2">
                    <span className="text-[10px] font-mono font-black text-slate-400">#{node.code}</span>
                    <span className="text-xs font-bold text-slate-800">{node.title}</span>
-                   {node.technicalStageIds?.length > 0 && <Badge className="bg-primary/10 text-primary border-0 text-[7px] font-black h-4">LINKS: {node.technicalStageIds.length}</Badge>}
+                   {node.technicalStageIds?.length > 0 && <Badge className="bg-primary/10 text-primary border-0 text-[7px] font-black h-4">UMBRELLA: {node.technicalStageIds.length}</Badge>}
                 </div>
              </div>
           </div>
@@ -277,12 +277,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
           const itemPrefix = `${prefix}.${iIdx + 1}`; 
           const subtotal = (item.plannedQuantity || 0) * (item.estimatedRate || 0);
 
-          // تحديد القائمة المنسدلة للمراحل بناءً على الروابط المسموحة في القاموس
-          const isMultiLinked = item.technicalStageIds && item.technicalStageIds.length > 0;
-          const selectableStages = isMultiLinked 
-            ? pathStages.filter(s => item.technicalStageIds?.includes(s.id!))
-            : pathStages;
-          
           return (
             <TableRow key={`${item.boqReferenceNodeId}-${originalIdx}`} className="hover:bg-primary/[0.02] transition-colors border-b-slate-50 group/item">
               <TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8 text-start">{itemPrefix}</TableCell>
@@ -290,7 +284,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
               <TableCell className="text-xs font-bold text-slate-700 text-start" style={{ paddingInlineStart: `${(node.depth + 1) * 20 + 16}px` }}>
                 {item.referenceTitle}
               </TableCell>
-              <TableCell className="p-1 min-w-[150px] text-start">
+              <TableCell className="p-1 min-w-[120px] text-start">
                 <Input 
                   value={item.referenceDescription || ''} 
                   onChange={e => updateItem(originalIdx, 'referenceDescription', e.target.value)}
@@ -298,32 +292,15 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                   placeholder={isRtl ? "المواصفة..." : "Spec..."}
                 />
               </TableCell>
-              <TableCell className="p-1 min-w-[180px] text-start">
-                 <div className="space-y-1">
-                    <Select 
-                      value={item.technicalStageId || 'NONE'} 
-                      onValueChange={(v) => {
-                        const finalVal = v === 'NONE' ? '' : v;
-                        updateItem(originalIdx, 'technicalStageId', finalVal);
-                      }}
-                    >
-                        <SelectTrigger className={cn(
-                          "h-8 rounded-lg text-[9px] font-black border-transparent hover:border-primary/30 transition-all text-start",
-                          item.technicalStageId ? "bg-primary/5 text-primary" : "bg-slate-50 text-slate-400"
-                        )}>
-                          <SelectValue placeholder={loadingStages ? "..." : (isRtl ? "اختيار المرحلة المالية" : "Financial Link")} />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl border-2 shadow-2xl">
-                          <SelectItem value="NONE" className="font-bold text-[10px] text-slate-400 italic">
-                             {isRtl ? '--- بدون تعيين مالي ---' : '--- Unassigned (Technical Only) ---'}
-                          </SelectItem>
-                          {selectableStages.map(s => (
-                            <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px] py-2 border-b last:border-0 border-slate-50">
-                                <span className="flex items-center gap-1"><Workflow className="h-2.5 w-2.5 text-primary" /> {s.name}</span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                    </Select>
+              <TableCell className="p-1 min-w-[200px] text-start">
+                 <div className="relative z-[50]">
+                    <SearchableDropdown
+                      multiple
+                      options={pathStages.map(s => ({ id: s.id!, name: s.name }))}
+                      value={item.technicalStageIds || []}
+                      onChange={(val) => updateItem(originalIdx, 'technicalStageIds', val)}
+                      placeholder={isRtl ? "الارتباط المظلي..." : "Umbrella Link..."}
+                    />
                  </div>
               </TableCell>
               <TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || item.unitName || '-'}</TableCell>
@@ -370,13 +347,13 @@ export function BOQTemplateForm({ template, onClose }: Props) {
 
   return (
     <div className="flex flex-col h-full bg-[#fdfaf3]" dir={dir}>
-      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-white/80 backdrop-blur-md px-6 shadow-sm">
+      <header className="sticky top-0 z-[100] flex h-16 items-center justify-between border-b bg-white/80 backdrop-blur-md px-6 shadow-sm">
         <div className="flex items-center gap-4 text-start">
           <button onClick={onClose} className="h-10 w-10 border-2 rounded-xl flex items-center justify-center hover:bg-slate-50 transition-colors text-slate-400">
              <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
           </button>
           <div className="text-start">
-             <h1 className="text-lg font-black text-slate-900 leading-none">{isRtl ? 'هندسة القوالب الشجرية' : 'BOQ Template Engineering'}</h1>
+             <h1 className="text-lg font-black text-slate-900 leading-none">{isRtl ? 'هندسة القوالب المظلية' : 'Umbrella BOQ Engineering'}</h1>
              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{formData.name || 'Draft Template'}</p>
           </div>
         </div>
@@ -436,12 +413,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                        <p className={cn("text-[8px] font-black uppercase", isMathValid ? "text-white/60" : "text-slate-400")}>{isRtl ? 'إجمالي البنود الحالية' : 'Current Sum'}</p>
                        <p className="text-xl font-black">{totalItemsValue.toLocaleString()} <span className="text-[10px] opacity-40">KWD</span></p>
                     </div>
-                    <div className={cn(
-                      "h-10 w-10 rounded-2xl flex items-center justify-center shadow-lg transition-transform",
-                      isMathValid ? "bg-white text-emerald-600 rotate-12" : "bg-white text-orange-50"
-                    )}>
-                       {isMathValid ? <CheckCircle2 className="h-6 w-6" /> : <AlertTriangle className="h-6 w-6" />}
-                    </div>
                  </div>
               </div>
 
@@ -496,7 +467,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                     <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
                        <LayoutGrid className="h-4 w-4" />
                     </div>
-                    <h3 className="font-black text-sm text-slate-700">{isRtl ? 'بنود وجداول الأعمال المعتمدة' : 'BOQ Work Items Grid'}</h3>
+                    <h3 className="font-black text-sm text-slate-700">{isRtl ? 'هيكل المقايسة والارتباطات المظلية' : 'BOQ Structure & Umbrella Links'}</h3>
                  </div>
 
                  <div className="flex items-center gap-3">
@@ -504,7 +475,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                         <DialogTrigger asChild>
                           <button type="button" className="h-9 px-5 rounded-xl bg-slate-900 text-white font-black text-[10px] gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all group flex items-center">
                               <FolderTree className="h-3.5 w-3.5 text-primary group-hover:rotate-12 transition-transform" />
-                              {isRtl ? 'مستكشف القاموس السيادي' : 'Registry Explorer'}
+                              {isRtl ? 'استدعاء بنود من القاموس' : 'Import Registry Items'}
                           </button>
                         </DialogTrigger>
                         <DialogContent className="max-w-4xl rounded-[2.5rem] p-0 overflow-hidden bg-white border-0 shadow-3xl" dir={dir}>
@@ -531,21 +502,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                           </DialogFooter>
                         </DialogContent>
                     </Dialog>
-                    
-                    {items.length > 0 && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => {
-                          toast({ title: isRtl ? "جاري تحديث الروابط..." : "Syncing links...", icon: <RefreshCcw className="h-4 w-4 animate-spin" /> });
-                          setTimeout(() => toast({ title: isRtl ? "تمت المزامنة" : "Sync complete" }), 800);
-                        }}
-                        className="h-9 px-4 rounded-xl text-slate-400 hover:text-primary gap-2"
-                      >
-                         <RefreshCcw className="h-3.5 w-3.5" />
-                         {isRtl ? 'مزامنة' : 'Sync'}
-                      </Button>
-                    )}
                  </div>
               </div>
 
@@ -555,11 +511,11 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                     <TableHead className="ps-6 w-[80px] text-slate-400 font-mono text-[10px] text-start">#</TableHead>
                     <TableHead className="w-[100px] text-slate-400 font-mono text-[10px] text-start">{t('common.code')}</TableHead>
                     <TableHead className="text-slate-900 font-black text-xs text-start">{isRtl ? 'وصف بند العمل' : 'Work Item Description'}</TableHead>
-                    <TableHead className="text-slate-900 font-black text-xs text-start">{isRtl ? 'المواصفة الفنية' : 'Technical Specification'}</TableHead>
-                    <TableHead className="text-slate-900 font-black text-xs text-start">{isRtl ? 'الارتباط المالي' : 'Financial Trigger'}</TableHead>
+                    <TableHead className="text-slate-900 font-black text-xs text-start">{isRtl ? 'المواصفة' : 'Spec'}</TableHead>
+                    <TableHead className="text-slate-900 font-black text-xs text-start">{isRtl ? 'الارتباط المظلي' : 'Umbrella Stages'}</TableHead>
                     <TableHead className="text-center w-[60px] text-slate-900 font-black text-xs">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
                     <TableHead className="text-center w-[80px] text-slate-900 font-black text-xs">{isRtl ? 'الكمية' : 'Qty'}</TableHead>
-                    <TableHead className="text-center w-[100px] text-slate-900 font-black text-xs">{isRtl ? 'الفئة (د.ك)' : 'Rate (KWD)'}</TableHead>
+                    <TableHead className="text-center w-[100px] text-slate-900 font-black text-xs">{isRtl ? 'الفئة' : 'Rate'}</TableHead>
                     <TableHead className="text-end pe-8 w-[120px] text-slate-900 font-black text-xs">{isRtl ? 'الإجمالي' : 'Subtotal'}</TableHead>
                     <TableHead className="w-[60px]"></TableHead>
                   </TableRow>
