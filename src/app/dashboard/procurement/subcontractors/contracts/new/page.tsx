@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, Suspense } from 'react';
@@ -9,20 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { 
   ArrowRight, Loader2, Save, Sparkles, 
   Handshake, Building2, Workflow, Target,
-  Search, Check, ChevronDown, Calculator,
-  Plus, Trash2, Gavel, Landmark, ShieldCheck,
-  Percent, FileText, Info, UserCircle, X,
-  Clock
+  Calculator, Plus, Trash2, Gavel, Landmark, ShieldCheck,
+  Percent, FileText, Info, UserCircle, X, Clock
 } from "lucide-react";
-import { 
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, getDocs, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
@@ -34,80 +25,7 @@ import { toast } from '@/hooks/use-toast';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
 import { ContractMilestone, SubConContractTemplate, PricingMode } from '@/types/templates';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-/**
- * مكون البحث الذكي المستقر.
- */
-function SearchablePicker({ value, onSelect, items, search, onSearchChange, icon: Icon, placeholder, type, disabled = false, isRtl }: any) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild disabled={disabled}>
-        <button type="button" className={cn(
-          "h-14 w-full rounded-2xl border-2 font-black flex items-center justify-between px-6 shadow-sm transition-all",
-          disabled ? "bg-slate-50 border-slate-100 cursor-not-allowed text-slate-300" : "bg-white hover:border-primary/40 text-slate-900"
-        )}>
-          <div className="flex items-center gap-3">
-             <Icon className={cn("h-5 w-5 opacity-40", !disabled && "text-primary")} />
-             <span className="truncate text-sm">{value || placeholder}</span>
-          </div>
-          <ChevronDown className="h-4 w-4 opacity-20" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent 
-        className="w-[400px] p-0 rounded-2xl shadow-3xl border-2 z-[100]" 
-        align="start" 
-        onOpenAutoFocus={e => e.preventDefault()}
-      >
-         <div className="p-4 bg-slate-50 border-b">
-            <div className="relative">
-               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
-               <Input 
-                 placeholder="بحث..." 
-                 className="h-10 ps-10 rounded-xl border-2 font-bold bg-white"
-                 value={search}
-                 onChange={e => onSearchChange(e.target.value)}
-               />
-            </div>
-         </div>
-         <ScrollArea className="h-64">
-            <div className="p-2 space-y-1">
-               {items.map((item: any) => {
-                 const isTransaction = type === 'transaction';
-                 const isClient = type === 'client';
-                 const mainTitle = isClient ? item.nameAr : (isTransaction ? item.subServiceName : item.name);
-                 const subTitle = isClient ? item.fileNumber : (isTransaction ? item.transactionNumber : null);
-                 
-                 return (
-                   <div 
-                     key={item.id} 
-                     onClick={(e) => { 
-                       e.stopPropagation(); 
-                       onSelect(item); 
-                       setOpen(false); 
-                     }}
-                     className={cn(
-                       "p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between border-2 border-transparent",
-                       (value === mainTitle) ? "bg-primary/5 border-primary/20 text-primary" : "hover:bg-slate-50"
-                     )}
-                   >
-                      <div className="text-start min-w-0 flex-1">
-                         <p className="font-black text-xs text-slate-900 truncate">{mainTitle}</p>
-                         {subTitle && (
-                           <p className="text-[8px] font-mono text-slate-400 mt-1 uppercase" dir="ltr">#{subTitle}</p>
-                         )}
-                      </div>
-                      {(value === mainTitle) && <Check className="h-4 w-4 shrink-0" />}
-                   </div>
-                 );
-               })}
-            </div>
-         </ScrollArea>
-      </PopoverContent>
-    </Popover>
-  );
-}
+import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 
 function NewSubConContractContent() {
   const { globalUser, user } = useAuthContext();
@@ -120,10 +38,6 @@ function NewSubConContractContent() {
   const companyId = globalUser?.companyId;
 
   const [loading, setLoading] = useState(false);
-  const [subSearch, setSubSearch] = useState("");
-  const [clientSearch, setClientSearch] = useState("");
-  const [transSearch, setTransSearch] = useState("");
-  const [tempSearch, setTempSearch] = useState("");
 
   const [form, setForm] = useState<any>({
     subcontractorId: '',
@@ -164,11 +78,6 @@ function NewSubConContractContent() {
   const { data: clients } = useCollection<any>(clientsQuery);
   const { data: transactions } = useCollection<any>(transQuery);
   const { data: templates } = useCollection<SubConContractTemplate>(templatesQuery);
-
-  const filteredSubs = useMemo(() => (subcontractors || []).filter(s => s.name.toLowerCase().includes(subSearch.toLowerCase())), [subcontractors, subSearch]);
-  const filteredClients = useMemo(() => (clients || []).filter(c => c.nameAr.toLowerCase().includes(clientSearch.toLowerCase()) || c.fileNumber.toLowerCase().includes(clientSearch.toLowerCase())), [clients, clientSearch]);
-  const filteredTrans = useMemo(() => (transactions || []).filter(t_item => (!form.clientId || t_item.clientId === form.clientId) && (t_item.subServiceName.toLowerCase().includes(transSearch.toLowerCase()) || t_item.transactionNumber.toLowerCase().includes(transSearch.toLowerCase()))), [transactions, transSearch, form.clientId]);
-  const filteredTemps = useMemo(() => (templates || []).filter(t => t.name.toLowerCase().includes(tempSearch.toLowerCase())), [templates, tempSearch]);
 
   useEffect(() => {
     if (db && companyId && form.templateId) {
@@ -217,20 +126,6 @@ function NewSubConContractContent() {
     setForm({...form, milestones: newM});
   };
 
-  const addMilestone = () => {
-    const nextIdx = (form.milestones || []).length;
-    setForm({
-      ...form, 
-      milestones: [...(form.milestones || []), { 
-        name: getOrdinalLabel(nextIdx), 
-        percentage: 0, 
-        amount: 0,
-        timing: 'at', 
-        contractualEvent: 'MANUAL' 
-      }]
-    });
-  };
-
   const handleSave = async () => {
     if (!db || !companyId || !user || !form.subcontractorId || !form.transactionId) return;
     setLoading(true);
@@ -251,25 +146,34 @@ function NewSubConContractContent() {
            <button onClick={() => router.back()} className="h-10 w-10 border-2 rounded-xl flex items-center justify-center hover:bg-slate-50 transition-colors text-slate-400 shadow-sm"><ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} /></button>
            <h1 className="text-xl font-black font-headline text-slate-900">{tSafe('subcon.contracts.new', 'تأسيس اتفاقية باطن جديدة', 'New SubCon Award')}</h1>
         </div>
-        <Button onClick={handleSave} disabled={loading || !form.subcontractorId || !form.transactionId} className="h-12 px-10 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-4 border-orange-700">
-           {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />} {tSafe('subcon.contracts.issueNow', 'إصدار الاتفاقية الآن', 'Issue Award Now')}
-        </Button>
+        <div className="flex items-center gap-4">
+           <Button onClick={handleSave} disabled={loading || !form.subcontractorId || !form.transactionId} className="h-12 px-10 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-4 border-orange-700">
+              {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />} {tSafe('subcon.contracts.issueNow', 'إصدار الاتفاقية الآن', 'Issue Award Now')}
+           </Button>
+        </div>
       </header>
 
       <div className="px-8 pb-20">
          <PrintWrapper title={tSafe('subcon.details.official', 'اتفاقية تنفيذ أعمال باطن', 'SubCon Services Agreement')} fullWidth={true}>
             <div className="space-y-12 text-start">
-               
                <div className="space-y-6">
                   <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em] border-b-2 border-primary/10 pb-2">{tSafe('subcon.legal.parties', 'أولاً: أطراف التعاقد', 'Parties of the Agreement')}</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                      <div className="p-8 rounded-[2.5rem] bg-slate-50 border-2 border-white shadow-inner text-start space-y-4">
-                        <p className="text-[10px] font-black text-slate-400 uppercase">{tSafe('subcon.first.party', 'الطرف الأول (المقاول الرئيسي)', 'First Party')}</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{tSafe('subcon.first.party', 'الطرف الأول (المقاول الرئيسي)', 'First Party')}</p>
                         <h4 className="text-xl font-black text-slate-900">{globalUser?.companyName || 'NovaFlow ERP'}</h4>
                      </div>
                      <div className="p-8 rounded-[2.5rem] bg-primary/5 border-2 border-primary/10 shadow-sm space-y-4">
                         <Label className="text-[10px] font-black text-primary uppercase">{tSafe('subcon.second.party', 'الطرف الثاني (مقاول الباطن)', 'Second Party')}</Label>
-                        <SearchablePicker value={form.subcontractorName} onSelect={(s: any) => setForm({...form, subcontractorId: s.id, subcontractorName: s.name})} items={filteredSubs} search={subSearch} onSearchChange={setSubSearch} icon={Handshake} placeholder={tSafe('subcon.form.vendor', 'اختر المقاول...', 'Choose Contractor')} isRtl={isRtl} />
+                        <SearchableDropdown
+                          options={(subcontractors || []).map(s => ({ id: s.id, name: s.name }))}
+                          value={form.subcontractorId}
+                          onChange={(val) => {
+                            const selected = subcontractors?.find(s => s.id === val);
+                            setForm({...form, subcontractorId: val as string, subcontractorName: selected?.name || ''});
+                          }}
+                          placeholder={tSafe('subcon.form.vendor', 'اختر المقاول...', 'Choose Contractor')}
+                        />
                      </div>
                   </div>
                </div>
@@ -281,16 +185,40 @@ function NewSubConContractContent() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                            <div className="space-y-2">
                               <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('common.targetClient', 'العميل المستهدف (المالك)', 'Target Client')}</Label>
-                              <SearchablePicker type="client" value={form.clientName} onSelect={(c: any) => setForm({...form, clientId: c.id, clientName: c.nameAr, transactionId: '', transactionName: '', transactionNumber: ''})} items={filteredClients} search={clientSearch} onSearchChange={setClientSearch} icon={UserCircle} placeholder={tSafe('subcon.form.client', 'اختر العميل...', 'Choose Client')} isRtl={isRtl} />
+                              <SearchableDropdown
+                                options={(clients || []).map(c => ({ id: c.id, name: c.nameAr, subText: c.fileNumber }))}
+                                value={form.clientId}
+                                onChange={(val) => {
+                                  const selected = clients?.find(c => c.id === val);
+                                  setForm({...form, clientId: val as string, clientName: selected?.nameAr || '', transactionId: '', transactionName: '', transactionNumber: ''});
+                                }}
+                                placeholder={tSafe('subcon.form.client', 'اختر العميل...', 'Choose Client')}
+                              />
                            </div>
                            <div className="space-y-2">
                               <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('common.targetTransaction', 'المشروع / المعاملة', 'Target Project')}</Label>
-                              <SearchablePicker type="transaction" disabled={!form.clientId} value={form.transactionName} onSelect={(t_item: any) => setForm({...form, transactionId: t_item.id, transactionNumber: t_item.transactionNumber, transactionName: t_item.subServiceName})} items={filteredTrans} search={transSearch} onSearchChange={setTransSearch} icon={Target} placeholder={tSafe('subcon.form.project', 'اختر المشروع...', 'Choose Project')} isRtl={isRtl} />
+                              <SearchableDropdown
+                                options={(transactions || []).filter(t_item => !form.clientId || t_item.clientId === form.clientId).map(t_item => ({ id: t_item.id, name: t_item.subServiceName, subText: `#${t_item.transactionNumber}` }))}
+                                value={form.transactionId}
+                                onChange={(val) => {
+                                  const selected = transactions?.find(t_item => t_item.id === val);
+                                  setForm({...form, transactionId: val as string, transactionNumber: selected?.transactionNumber || '', transactionName: selected?.subServiceName || ''});
+                                }}
+                                placeholder={tSafe('subcon.form.project', 'اختر المشروع...', 'Choose Project')}
+                              />
                            </div>
                         </div>
                         <div className="space-y-2">
                            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('subcon.form.template', 'القالب القانوني لتعاقد الباطن', 'Legal SubCon Template')}</Label>
-                           <SearchablePicker type="template" value={form.templateName} onSelect={(temp: any) => setForm({...form, templateId: temp.id, templateName: temp.name})} items={filteredTemps} search={tempSearch} onSearchChange={setTempSearch} icon={FileText} placeholder={tSafe('subcon.form.template', 'اختر القالب...', 'Choose Template')} isRtl={isRtl} />
+                           <SearchableDropdown
+                             options={(templates || []).map(temp => ({ id: temp.id, name: temp.name }))}
+                             value={form.templateId}
+                             onChange={(val) => {
+                               const selected = templates?.find(temp => temp.id === val);
+                               setForm({...form, templateId: val as string, templateName: selected?.name || ''});
+                             }}
+                             placeholder={tSafe('subcon.form.template', 'اختر القالب...', 'Choose Template')}
+                           />
                         </div>
                      </div>
                      <div className="lg:col-span-4 p-8 rounded-[3rem] bg-slate-50 border-2 border-primary/20 shadow-2xl relative overflow-hidden flex flex-col justify-center">
@@ -323,7 +251,7 @@ function NewSubConContractContent() {
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                            {form.milestones.map((m: any, idx: number) => {
-                             const linkedStageName = pathStages.find(s => s.technicalStageId === m.technicalStageId)?.name;
+                             const linkedStageName = pathStages.find(s => s.technicalStageId === m.technicalStageId || s.id === m.technicalStageId)?.name;
                              return (
                                <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                                   <td className="p-8 font-black text-slate-300">{idx + 1}</td>
@@ -331,16 +259,16 @@ function NewSubConContractContent() {
                                      <Input value={m.name} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-10 border-2 rounded-xl font-bold bg-white" />
                                   </td>
                                   {form.pricingMode === 'percentage' && (
-                                    <td className="p-4">
+                                    <td className="p-4 text-center">
                                        <div className="relative w-24 mx-auto">
                                           <Input type="number" value={m.percentage === 0 ? "" : (m.percentage || "")} onChange={e => updateMilestone(idx, 'percentage', e.target.value)} className="h-10 rounded-xl border-2 font-black text-center pe-8" />
                                           <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
                                        </div>
                                     </td>
                                   )}
-                                  <td className="p-4">
+                                  <td className="p-4 text-center">
                                       <Select value={m.timing || 'at'} onValueChange={v => updateMilestone(idx, 'timing', v)}>
-                                         <SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs bg-white"><SelectValue /></SelectTrigger>
+                                         <SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs bg-white"><SelectValue placeholder="..." /></SelectTrigger>
                                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
                                             <SelectItem value="at" className="font-bold text-xs">{isRtl ? 'عند' : 'At'}</SelectItem>
                                             <SelectItem value="before" className="font-bold text-xs">{isRtl ? 'قبل' : 'Before'}</SelectItem>
@@ -361,7 +289,7 @@ function NewSubConContractContent() {
                                             <SelectItem value="SIGNING" className="font-black text-[10px] py-3 border-b border-slate-50">
                                                <span className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-emerald-500" /> {t('contractSigning')}</span>
                                             </SelectItem>
-                                            {pathStages.map(s => <SelectItem key={s.id} value={s.technicalStageId} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
+                                            {pathStages.map(s => <SelectItem key={s.id} value={s.technicalStageId || s.id} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
                                                <span className="flex items-center gap-2"><Workflow className="h-3.5 w-3.5 text-primary" /> {s.name}</span>
                                             </SelectItem>)}
                                          </SelectContent>
@@ -381,7 +309,7 @@ function NewSubConContractContent() {
                                      </div>
                                   </td>
                                   <td className="p-4 text-center">
-                                      <button type="button" onClick={() => setForm({...form, milestones: form.milestones?.filter((_, i) => i !== idx)})} className="text-rose-300 hover:text-rose-600 transition-colors"><Trash2 className="h-5 w-5" /></button>
+                                      <button type="button" onClick={() => setForm({...form, milestones: form.milestones?.filter((_, i: number) => i !== idx)})} className="text-rose-300 hover:text-rose-600 transition-colors"><Trash2 className="h-5 w-5" /></button>
                                   </td>
                                </tr>
                              );

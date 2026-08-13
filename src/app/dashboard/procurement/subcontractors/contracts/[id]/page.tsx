@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useEffect, useState } from 'react';
@@ -17,7 +16,8 @@ import {
   Gavel,
   Percent,
   History,
-  Info
+  Info,
+  Clock
 } from "lucide-react";
 import { useFirestore, useDoc } from '@/firebase';
 import { doc, updateDoc, serverTimestamp, getDocs, collection, query, orderBy } from 'firebase/firestore';
@@ -169,7 +169,7 @@ export default function SubConContractViewPage() {
 
               <div className="space-y-6">
                  <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em] border-b-2 border-primary/10 pb-2">{tSafe('subcon.legal.milestones', 'ثالثاً: جدول استحقاق الدفعات', 'Payment Milestones')}</h3>
-                 <div className="border-2 border-slate-100 rounded-[3rem] overflow-hidden bg-white shadow-xl ring-1 ring-black/[0.02]">
+                 <div className="border-2 border-slate-100 rounded-[2.5rem] overflow-hidden bg-white shadow-xl ring-1 ring-black/[0.02]">
                     <table className="w-full text-xs text-start">
                        <thead className="bg-slate-50 border-b-2 text-slate-600 font-black uppercase text-[10px] tracking-widest">
                           <tr>
@@ -183,7 +183,7 @@ export default function SubConContractViewPage() {
                        </thead>
                        <tbody className="divide-y divide-slate-100">
                           {(editData.milestones || []).map((m: any, idx: number) => {
-                             const linkedStageName = pathStages.find(s => s.technicalStageId === m.technicalStageId)?.name;
+                             const linkedStageName = pathStages.find(s => s.technicalStageId === m.technicalStageId || s.id === m.technicalStageId)?.name;
                              return (
                                <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                                   <td className="p-8 font-black text-slate-300">{idx + 1}</td>
@@ -192,7 +192,7 @@ export default function SubConContractViewPage() {
                                   <td className="p-6 text-center">
                                       {isEditing ? (
                                         <Select value={m.timing || 'at'} onValueChange={v => updateMilestone(idx, 'timing', v)}>
-                                           <SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs bg-white"><SelectValue /></SelectTrigger>
+                                           <SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs bg-white"><SelectValue placeholder="..." /></SelectTrigger>
                                            <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
                                               <SelectItem value="at" className="font-bold text-xs">{isRtl ? 'عند' : 'At'}</SelectItem>
                                               <SelectItem value="before" className="font-bold text-xs">{isRtl ? 'قبل' : 'Before'}</SelectItem>
@@ -212,7 +212,7 @@ export default function SubConContractViewPage() {
                                               <SelectItem value="SIGNING" className="font-black text-[10px] py-3 border-b border-slate-50">
                                                  <span className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-emerald-500" /> {t('contractSigning')}</span>
                                               </SelectItem>
-                                              {pathStages.map(s => <SelectItem key={s.id} value={s.technicalStageId} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
+                                              {pathStages.map(s => <SelectItem key={s.id} value={s.technicalStageId || s.id} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
                                                  <span className="flex items-center gap-2"><Workflow className="h-3.5 w-3.5 text-primary" /> {s.name}</span>
                                               </SelectItem>)}
                                            </SelectContent>
@@ -254,7 +254,7 @@ export default function SubConContractViewPage() {
               </div>
 
               <div className="pt-24 grid grid-cols-2 gap-32">
-                 <div className="text-center space-y-8"><div className="h-32 border-b-4 border-slate-100 relative"><div className="absolute inset-0 flex items-center justify-center opacity-5"><Landmark className="h-24 w-24" /></div></div><div className="space-y-2"><p className="text-[10px] font-black text-slate-400 uppercase">{tSafe('subcon.first.party.sign', 'توقيع الطرف الأول', 'First Party Signature')}</p><p className="text-sm font-black text-slate-900">{globalUser?.companyName}</p></div></div>
+                 <div className="text-center space-y-8"><div className="h-32 border-b-4 border-slate-100 relative"><div className="absolute inset-0 flex items-center justify-center opacity-5"><Landmark className="h-24 w-24" /></div></div><div className="space-y-2"><p className="text-[10px] font-black text-slate-400 uppercase">{tSafe('subcon.first.party.sign', 'توقيع الطرف الأول', 'First Party Signature')}</p><p className="text-sm font-black text-slate-900">{globalUser?.companyName || 'NovaFlow ERP'}</p></div></div>
                  <div className="text-center space-y-8"><div className="h-32 border-b-4 border-slate-100 relative"><div className="absolute inset-0 flex items-center justify-center opacity-5"><Handshake className="h-24 w-24" /></div></div><div className="space-y-2"><p className="text-[10px] font-black text-slate-400 uppercase">{tSafe('subcon.second.party.sign', 'توقيع الطرف الثاني', 'Second Party Signature')}</p><p className="text-sm font-black text-slate-900">{contract.subcontractorName}</p></div></div>
               </div>
            </div>

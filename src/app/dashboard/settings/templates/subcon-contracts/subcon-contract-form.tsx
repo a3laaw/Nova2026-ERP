@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -178,7 +177,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
         percentage: 0, 
         amount: 0,
         timing: 'at', 
-        contractualEvent: 'MANUAL' 
+        technicalStageId: '' 
       }]
     });
   };
@@ -189,7 +188,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-500 bg-white min-h-screen" dir={dir}>
-      <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-white/95 backdrop-blur-md px-6 shadow-sm">
+      <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-white/95 backdrop-blur-md px-8 shadow-sm">
         <div className="flex items-center gap-4 text-start">
           <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 border-2 rounded-xl hover:bg-slate-50 transition-all text-slate-400">
             <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
@@ -306,7 +305,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                                  <th className="p-8 text-start">{tSafe('name', 'مسمى الدفعة', 'Milestone Name')}</th>
                                  {formData.pricingMode === 'percentage' && <th className="p-8 text-center w-32">%</th>}
                                  <th className="p-8 text-center w-32">{tSafe('timing', 'التوقيت', 'Timing')}</th>
-                                 <th className="p-8 text-start w-48">{tSafe('technicalLink', 'الارتباط الميداني', 'Technical Link')}</th>
+                                 <th className="p-8 text-start w-48">{tSafe('technicalLink', 'الارتباط الميداني', 'Execution Link')}</th>
                                  <th className="p-8 text-end pe-12 w-48">{t('common.amount')}</th>
                                  <th className="p-6 w-14"></th>
                               </tr>
@@ -351,7 +350,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                                            <SelectValue placeholder="..." />
                                          </SelectTrigger>
                                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
-                                            {pathStages.map(s => <SelectItem key={s.id} value={s.technicalStageId} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
+                                            {pathStages.map(s => <SelectItem key={s.id} value={s.technicalStageId || s.id} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
                                                <span className="flex items-center gap-2"><Workflow className="h-3.5 w-3.5 text-primary" /> {s.name}</span>
                                             </SelectItem>)}
                                          </SelectContent>
