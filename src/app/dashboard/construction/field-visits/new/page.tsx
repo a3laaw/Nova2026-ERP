@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -16,7 +15,7 @@ import {
   ArrowRight, CheckCircle2, Workflow,
   Search, Check, ChevronDown, Landmark,
   AlertTriangle, Handshake, CalendarDays,
-  LayoutGrid, UserCircle
+  LayoutGrid, UserCircle, ShieldCheck
 } from "lucide-react";
 import { 
   Popover,
@@ -146,6 +145,12 @@ export default function NewStructuredFieldVisitPage() {
   const filteredTrans = useMemo(() => (allTransactions || []).filter(t => t.subServiceName.toLowerCase().includes(transSearch.toLowerCase()) || t.transactionNumber?.includes(transSearch)), [allTransactions, transSearch]);
 
   const [stages, setStages] = useState<any[]>([]);
+
+  const getAvailableEquipment = (currentIndex: number) => {
+    const selectedIds = equipRows.filter((_, i) => i !== currentIndex).map(r => r.equipmentId);
+    return (allEquipment || []).filter(e => !selectedIds.includes(e.id));
+  };
+
   useEffect(() => {
     if (db && companyId && formData.transactionId) {
       getDocs(query(collection(db, paths.transactionStages(companyId, formData.transactionId)), where('status', '==', 'in-progress')))
@@ -175,11 +180,6 @@ export default function NewStructuredFieldVisitPage() {
 
   const addStaffRow = () => setStaffRows([...staffRows, { employeeId: '', employeeName: '', subcontractorId: '', subcontractorName: '', count: 1 }]);
   const addEquipRow = () => setEquipRows([...equipRows, { equipmentId: '', equipmentName: '', count: 1, hours: 8 }]);
-
-  const getAvailableEquipment = (currentIndex: number) => {
-    const selectedIds = equipRows.filter((_, i) => i !== currentIndex).map(r => r.equipmentId);
-    return (allEquipment || []).filter(e => !selectedIds.includes(e.id));
-  };
 
   const updateBoqQty = (idx: number, val: string) => {
      const newItems = [...boqItems];
@@ -460,7 +460,7 @@ export default function NewStructuredFieldVisitPage() {
                                    <Input type="number" defaultValue={8} className="h-10 rounded-xl border-2 text-center font-black bg-primary/5 text-primary" />
                                 </TableCell>
                                 <TableCell className="pe-8">
-                                   <Button variant="ghost" size="icon" onClick={() => setEquipRows(equipRows.filter((_: any, i: number) => i !== idx))} className="h-10 w-10 text-rose-300 hover:text-rose-600"><Trash2 className="h-4 w-4" /></Button>
+                                   <Button variant="ghost" size="icon" onClick={() => setEquipRows(equipRows.filter((_: any, i: number) => i !== idx))} className="h-10 w-10 text-rose-300 hover:text-rose-600 transition-colors"><Trash2 className="h-4 w-4" /></Button>
                                 </TableCell>
                              </TableRow>
                            );
