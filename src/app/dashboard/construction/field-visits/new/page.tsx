@@ -127,14 +127,13 @@ export default function NewStructuredFieldVisitPage() {
     notes: ''
   });
 
-  const [staffRows, setStaffRows] = useState<any[]>([{ employeeId: '', employeeName: '', subcontractorId: '', subcontractorName: '', count: 1 }]);
+  const [staffRows, setStaffRows] = useState<any[]>([{ subcontractorId: '', subcontractorName: '', count: 1 }]);
   const [equipRows, setEquipRows] = useState<any[]>([{ equipmentId: '', equipmentName: '', count: 1, hours: 8 }]);
   const [boqItems, setBoqItems] = useState<any[]>([]);
 
   // استعلامات البيانات المرجعية
   const clientsQuery = useMemo(() => companyId && db ? query(collection(db, paths.clients(companyId)), orderBy('nameAr')) : null, [db, companyId]);
   
-  // تبسيط الاستعلام لتجنب مشاكل الفهرس المركب مع (!=)
   const transQuery = useMemo(() => 
     companyId && db && formData.clientId 
       ? query(collection(db, paths.transactions(companyId)), where('clientId', '==', formData.clientId)) 
@@ -153,7 +152,6 @@ export default function NewStructuredFieldVisitPage() {
 
   const filteredClients = useMemo(() => (allClients || []).filter(c => c.nameAr?.toLowerCase().includes(clientSearch.toLowerCase()) || c.fileNumber?.includes(clientSearch)), [allClients, clientSearch]);
   
-  // فلترة برمجية للمشاريع المكتملة والبحث
   const filteredTrans = useMemo(() => {
     return (allTransactionsRaw || [])
       .filter(t => t.status !== 'completed')
@@ -199,7 +197,7 @@ export default function NewStructuredFieldVisitPage() {
     }
   }, [db, companyId, formData.transactionId, formData.activeStageId, stages]);
 
-  const addStaffRow = () => setStaffRows([...staffRows, { employeeId: '', employeeName: '', subcontractorId: '', subcontractorName: '', count: 1 }]);
+  const addStaffRow = () => setStaffRows([...staffRows, { subcontractorId: '', subcontractorName: '', count: 1 }]);
   const addEquipRow = () => setEquipRows([...equipRows, { equipmentId: '', equipmentName: '', count: 1, hours: 8 }]);
 
   const updateBoqQty = (idx: number, val: string) => {
@@ -216,7 +214,7 @@ export default function NewStructuredFieldVisitPage() {
       const visitData = {
         ...formData,
         items: boqItems.filter(i => i.quantity > 0),
-        staffDetails: staffRows.filter(r => r.employeeId || r.subcontractorId),
+        staffDetails: staffRows.filter(r => r.subcontractorId),
         equipmentUsed: equipRows.filter(r => r.equipmentId),
         engineerId: user.uid,
         engineerName: globalUser?.fullName || 'Engineer'
@@ -371,23 +369,22 @@ export default function NewStructuredFieldVisitPage() {
                </Card>
             </div>
 
-            {/* 2. الموارد البشرية والعمالة */}
+            {/* 2. الموارد البشرية والعمالة (Simplified) */}
             <div className="space-y-4 text-start">
                <div className="flex justify-between items-center px-1">
                   <h3 className="text-xl font-black font-headline text-slate-900 flex items-center gap-3">
-                     <Users className="h-6 w-6 text-primary" /> {tSafe('inline.resource.staffing', 'الموارد البشرية وعمالة الباطن', 'Staffing & SubCon Labor')}
+                     <Users className="h-6 w-6 text-primary" /> {isRtl ? 'عمالة الموقع (باطن / شركة)' : 'Site Labor (SubCon / Internal)'}
                   </h3>
                   <Button onClick={addStaffRow} variant="outline" size="sm" className="rounded-xl border-2 font-black text-[10px] h-9 gap-2 shadow-sm">
-                     <Plus className="h-3.5 w-3.5" /> {isRtl ? 'إضافة موظف/عامل' : 'Add Staff'}
+                     <Plus className="h-3.5 w-3.5" /> {isRtl ? 'إضافة سجل عمالة' : 'Add Labor Row'}
                   </Button>
                </div>
                <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
                   <Table>
                      <TableHeader className="bg-slate-50/50">
                         <TableRow className="border-0">
-                           <TableHead className="py-5 ps-8 text-slate-500 font-black uppercase text-[10px] tracking-widest">{tSafe('inline.worker.name', 'الموظف / العامل / المشرف', 'Name / Trade')}</TableHead>
-                           <TableHead className="text-primary font-black uppercase text-[10px] tracking-widest">{tSafe('inline.affiliation', 'جهة التبعية', 'Affiliation')}</TableHead>
-                           <TableHead className="text-center text-slate-900 font-black uppercase text-[10px] tracking-widest w-[100px]">{tSafe('common.count', 'العدد', 'Count')}</TableHead>
+                           <TableHead className="py-5 ps-8 text-slate-500 font-black uppercase text-[10px] tracking-widest">{isRtl ? 'المقاول / الجهة المنفذة' : 'Subcontractor / Entity'}</TableHead>
+                           <TableHead className="text-center text-slate-900 font-black uppercase text-[10px] tracking-widest w-[120px]">{isRtl ? 'عدد العمالة' : 'No. of Workers'}</TableHead>
                            <TableHead className="pe-8 w-[60px]"></TableHead>
                         </TableRow>
                      </TableHeader>
@@ -395,38 +392,34 @@ export default function NewStructuredFieldVisitPage() {
                         {staffRows.map((row: any, idx: number) => (
                            <TableRow key={idx} className="border-b last:border-0 hover:bg-slate-50/30 transition-colors">
                               <TableCell className="ps-8 py-4">
-                                 <Select onValueChange={v => {
-                                    const emp = allEmployees?.find((e:any) => e.id === v);
-                                    const nr = [...staffRows];
-                                    nr[idx] = { ...nr[idx], employeeId: v, employeeName: emp?.fullName || '' };
-                                    setStaffRows(nr);
-                                 }}>
-                                    <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs bg-white shadow-sm"><SelectValue placeholder="..." /></SelectTrigger>
-                                    <SelectContent className="rounded-xl border shadow-2xl z-[160]">
-                                       {allEmployees?.map((e: any) => <SelectItem key={e.id} value={e.id!} className="font-bold py-3 text-xs border-b last:border-0">{e.fullName}</SelectItem>)}
-                                    </SelectContent>
-                                 </Select>
-                              </TableCell>
-                              <TableCell>
-                                 <Select onValueChange={v => {
-                                    const sub = subcontractors?.find((s:any) => s.id === v);
+                                 <Select value={row.subcontractorId} onValueChange={v => {
+                                    const sub = v === 'INTERNAL' ? { name: isRtl ? 'عمالة المنشأة (الشركة)' : 'Company Crew' } : subcontractors?.find((s:any) => s.id === v);
                                     const nr = [...staffRows];
                                     nr[idx] = { ...nr[idx], subcontractorId: v, subcontractorName: sub?.name || '' };
                                     setStaffRows(nr);
                                  }}>
-                                    <SelectTrigger className="h-10 rounded-xl border-2 font-black text-[9px] bg-slate-50/50">
-                                       <SelectValue placeholder={isRtl ? 'عمالة المنشأة (INTERNAL)' : 'INTERNAL'} />
+                                    <SelectTrigger className={cn("h-11 rounded-xl border-2 font-black text-sm", row.subcontractorId === 'INTERNAL' ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-white")}>
+                                       <SelectValue placeholder={isRtl ? 'اختر المقاول المسؤول...' : 'Select Contractor...'} />
                                     </SelectTrigger>
                                     <SelectContent className="rounded-xl border shadow-2xl z-[160]">
-                                       <SelectItem value="INTERNAL" className="font-black text-[10px] py-2">{isRtl ? 'عمالة الشركة' : 'Company Staff'}</SelectItem>
-                                       {subcontractors?.map((s: any) => <SelectItem key={s.id} value={s.id!} className="font-bold py-2 text-[10px]">
-                                          <span className="flex items-center gap-1"><Handshake className="h-3 w-3 text-primary" /> {s.name}</span>
-                                       </SelectItem>)}
+                                       <SelectItem value="INTERNAL" className="font-black text-xs py-3 border-b text-blue-600">
+                                          <span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4" /> {isRtl ? 'عمالة المنشأة (الشركة)' : 'Internal Company Crew'}</span>
+                                       </SelectItem>
+                                       {subcontractors?.map((s: any) => (
+                                          <SelectItem key={s.id} value={s.id!} className="font-bold py-3 text-xs border-b last:border-0 border-slate-50">
+                                             <span className="flex items-center gap-2"><Handshake className="h-4 w-4 text-primary" /> {s.name}</span>
+                                          </SelectItem>
+                                       ))}
                                     </SelectContent>
                                  </Select>
                               </TableCell>
                               <TableCell className="py-4">
-                                 <Input type="number" defaultValue={1} className="h-10 rounded-xl border-2 text-center font-black text-lg bg-slate-50 shadow-inner" />
+                                 <Input 
+                                   type="number" 
+                                   value={row.count} 
+                                   onChange={e => { const nr = [...staffRows]; nr[idx].count = Number(e.target.value); setStaffRows(nr); }} 
+                                   className="h-11 rounded-xl border-2 text-center font-black text-xl bg-slate-50 shadow-inner" 
+                                 />
                               </TableCell>
                               <TableCell className="pe-8">
                                  <Button variant="ghost" size="icon" onClick={() => setStaffRows(staffRows.filter((_: any, i: number) => i !== idx))} className="h-10 w-10 text-rose-300 hover:text-rose-600 transition-colors"><Trash2 className="h-4 w-4" /></Button>
