@@ -21,16 +21,11 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 import { BillingService } from './billing-service';
 
 /**
- * @fileOverview محرك السجلات الميدانية السيادي المطور (V3).
- * يقوم هذا المحرك بربط الميدان بالمركز المالي والهندسي ذرياً.
+ * خدمة السجلات الميدانية السيادية - محرك المطابقة المزدوجة.
  */
 export class FieldVisitService {
   constructor(private db: Firestore, private companyId: string) {}
 
-  /**
-   * إرسال تقرير إنجاز ميداني مع معالجة الأثر المالي والهندسي الموحد.
-   * يضمن هذا التحديث انعكاس الكميات في المقايسة والمسار الفني فوراً.
-   */
   async submitFieldLog(data: Partial<FieldVisit>, userId: string) {
     if (!this.db || !this.companyId || !data.transactionId) {
        throw new Error("MISSING_CONTEXT: بيانات المعاملة غير مكتملة.");
@@ -50,10 +45,9 @@ export class FieldVisitService {
       updatedAt: serverTimestamp()
     };
 
-    // 1. حفظ سجل الزيارة الرئيسي (The Master Log)
     batch.set(logRef, finalData);
 
-    // 2. محرك التحديث المتوازي (BOQ & Technical Path Sync)
+    // 1. محرك تحديث المقايسة والمسار الفني (The Technical Core Update)
     if (data.items && data.items.length > 0) {
       for (const item of data.items) {
         if (!item.boqId || !item.boqItemId) continue;
@@ -74,12 +68,12 @@ export class FieldVisitService {
       }
     }
 
-    // 3. توثيق الحدث في تايملاين العمليات (Sovereign Timeline)
+    // 2. توثيق الحدث في تايملاين المعاملة
     const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, data.transactionId)));
     batch.set(timelineRef, {
       transactionId: data.transactionId,
       type: 'numeric_update',
-      content: `[إنجاز موثق] قام ${data.engineerName} بتسجيل إنجاز ميداني لـ ${data.items?.length || 0} بند. تم تحديث المقايسة والمسار الفني آلياً.`,
+      content: `[إنجاز ميداني] تم تسجيل كميات جديدة لـ ${data.items?.length || 0} بند. تم تحديث المقايسة المعتمدة آلياً.`,
       userId,
       userName: data.engineerName,
       companyId: this.companyId,
@@ -89,13 +83,13 @@ export class FieldVisitService {
     try {
       await batch.commit();
       
-      // 4. إطلاق محرك الفوترة الذكي (Billing Trigger)
-      // فحص المطالبات المعتمدة على "أثناء التنفيذ" (DURING)
+      // 3. المحرك المالي: فحص المطالبات المرتبطة بـ "أثناء التنفيذ"
       if (data.activeStageId) {
         const stageInstanceSnap = await getDoc(doc(this.db, paths.transactionStages(this.companyId, data.transactionId), data.activeStageId));
         if (stageInstanceSnap.exists()) {
            const techStageId = stageInstanceSnap.data().technicalStageId;
            const billing = new BillingService(this.db, this.companyId);
+           // تفعيل زناد المطالبة المالية (أثناء التنفيذ)
            await billing.triggerMilestoneBilling(data.transactionId, techStageId, 'during', userId, data.engineerName || 'System');
         }
       }

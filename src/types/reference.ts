@@ -20,10 +20,8 @@ export interface BaseReferenceList extends BaseReference {
   order: number;
   createdBy?: string;
   updatedBy?: string;
-  
-  // حقول عمولات البنوك المضافة
-  feePercentage?: number;   // نسبة العمولة (مثلاً 0.005 للـ كي نت)
-  feeFixedAmount?: number;  // مبلغ ثابت (مثلاً 0.100 د.ك)
+  feePercentage?: number;
+  feeFixedAmount?: number;
 }
 
 export interface UnitType extends BaseReferenceList {
@@ -154,8 +152,8 @@ export interface BOQReferenceNode extends BaseReference {
   unitTypeId?: string;
   unitName?: string;
   unitSymbol?: string;
-  technicalStageId?: string; // المرحلة الافتراضية
-  technicalStageIds?: string[]; // قائمة المراحل المرتبطة (لدعم التجميع المالي)
+  technicalStageId?: string; // معرف المرحلة الرئيسية المظلية (The Umbrella Link)
+  technicalStageIds?: string[]; // دعم الارتباط المتعدد للمراحل
   estimatedRate?: number;
   billingTriggerGroup?: string;
   allowedItemCategoryIds?: string[];

@@ -21,7 +21,7 @@ import { nextSequential } from '@/lib/counters';
 
 /**
  * محرك الفوترة السيادي المطور (Sovereign Billing Engine V3).
- * يقوم بربط الأحداث الفنية (بدء، تعديل، إتمام) بالمطالبات المالية آلياً.
+ * تم تحديثه ليدعم "الارتباط المظلي"؛ حيث تطلق الكميات الميدانية المطالبات المالية آلياً.
  */
 export class BillingService {
   constructor(private db: Firestore, private companyId: string) {}
@@ -29,7 +29,6 @@ export class BillingService {
   /**
    * إطلاق مطالبة مالية بناءً على شرط دفع (Milestone Trigger)
    * يطبق القواعد: AT (عند)، DURING (أثناء)، AFTER (بعد)
-   * تم تحسينه لدعم "التجميع"؛ بحيث أي بند تفصيلي يتبع مرحلة فنية يمكنه تحريك الدفعة.
    */
   async triggerMilestoneBilling(
     transactionId: string, 
@@ -58,18 +57,14 @@ export class BillingService {
     const contractDoc = contractsSnap.docs[0];
     const contract = { id: contractDoc.id, ...contractDoc.data() } as Contract;
 
-    // 2. البحث عن الدفعات المطابقة للشرط (المرحلة الفنية المرجعية + التوقيت)
-    // لاحظ أننا نستخدم technicalStageId كـ "مفتاح الربط السيادي"
+    // 2. البحث عن الدفعات المطابقة للمرحلة المظلية (Umbrella Stage)
     const targetMilestones = (contract.milestones || []).filter(m => 
       String(m.technicalStageId) === String(technicalStageId) && m.timing === timing
     );
 
-    if (targetMilestones.length === 0) {
-      console.log(`[Billing Engine] No milestones found for Stage: ${technicalStageId} with Timing: ${timing}`);
-      return null;
-    }
+    if (targetMilestones.length === 0) return null;
 
-    // 3. حماية من التكرار: فحص المطالبات السابقة (Prevent Duplicate Billing)
+    // 3. حماية من تكرار المطالبة لنفس الدفعة
     const existingIpcsSnap = await getDocs(query(
       collection(this.db, paths.ipcs(this.companyId)),
       where('transactionId', '==', transactionId),
@@ -80,19 +75,14 @@ export class BillingService {
       existingIpcsSnap.docs.flatMap(d => d.data().milestonesTriggered || [])
     );
 
-    // تصفية الدفعات التي لم تُطلب من قبل فقط
     const newMilestones = targetMilestones.filter(m => !alreadyBilledMilestones.has(m.name));
 
-    if (newMilestones.length === 0) {
-      console.log(`[Billing Engine] All matching milestones for this trigger are already billed.`);
-      return null;
-    }
+    if (newMilestones.length === 0) return null;
 
     const batch = writeBatch(this.db);
     const ipcRef = doc(collection(this.db, paths.ipcs(this.companyId)));
     const ipcNumber = await nextSequential(this.db, this.companyId, `ipc_owner_${transactionId}`, 'IPC-', 4);
 
-    // حساب المبلغ الإجمالي للدفعات المكتشفة في هذا الزناد
     const totalAmount = newMilestones.reduce((acc, m) => {
        const mAmt = m.amount || (contract.totalAmount * (m.percentage || 0)) / 100;
        return acc + (Number(mAmt) || 0);
@@ -121,12 +111,11 @@ export class BillingService {
 
     batch.set(ipcRef, ipcData);
 
-    // توثيق الحدث في تايملاين المعاملة للشفافية المطلقة
     const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
     batch.set(timelineRef, {
       transactionId,
       type: 'billing_triggered',
-      content: `[أتمتة مالية] تم توليد مسودة مستخلص المالك رقم ${ipcNumber} بقيمة ${totalAmount.toLocaleString()} د.ك بناءً على إنجاز ${timingLabel} المرحلة.`,
+      content: `[أتمتة مالية] تم توليد مطالبة (IPC) رقم ${ipcNumber} بقيمة ${totalAmount.toLocaleString()} د.ك بناءً على مطابقة الكميات الميدانية مع مرحلة "${timingLabel}" المعرفة في العقد.`,
       userId,
       userName: 'NovaFlow Finance',
       companyId: this.companyId,
@@ -134,12 +123,11 @@ export class BillingService {
     });
 
     await batch.commit();
-    console.log(`[Billing Engine] IPC ${ipcNumber} generated successfully.`);
     return ipcRef.id;
   }
 
   /**
-   * توليد مسودة مستخلص لمقاول باطن بناءً على إنجاز مرحلة (SubCon Settlement)
+   * توليد مستخلص مقاول الباطن بناءً على الكميات الميدانية الموثقة (SIP)
    */
   async generateSubcontractorIPC(
     transactionId: string,
