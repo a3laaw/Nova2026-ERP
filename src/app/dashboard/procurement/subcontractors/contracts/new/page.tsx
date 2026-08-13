@@ -11,7 +11,7 @@ import {
   Handshake, Building2, Workflow, Target,
   Search, Check, ChevronDown, Calculator,
   Plus, Trash2, Gavel, Landmark, ShieldCheck,
-  Percent, FileText, Info
+  Percent, FileText, Info, UserCircle
 } from "lucide-react";
 import { 
   Popover,
@@ -49,16 +49,18 @@ function NewSubConContractContent() {
 
   const [loading, setLoading] = useState(false);
   const [subSearch, setSubSearch] = useState("");
+  const [clientSearch, setClientSearch] = useState("");
   const [transSearch, setTransSearch] = useState("");
   const [tempSearch, setTempSearch] = useState("");
 
   const [form, setForm] = useState<any>({
     subcontractorId: '',
     subcontractorName: '',
+    clientId: '',
+    clientName: '',
     transactionId: preTransactionId || '',
     transactionNumber: '',
     transactionName: '',
-    clientName: '',
     templateId: preTemplateId || '',
     templateName: '',
     name: '',
@@ -75,6 +77,10 @@ function NewSubConContractContent() {
     companyId && db ? query(collection(db, paths.subcontractors(companyId)), where('status', '==', 'active')) : null, 
   [db, companyId]);
 
+  const clientsQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.clients(companyId)), orderBy('nameAr')) : null, 
+  [db, companyId]);
+
   const transQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.transactions(companyId)), where('status', '!=', 'completed')) : null, 
   [db, companyId]);
@@ -84,15 +90,24 @@ function NewSubConContractContent() {
   [db, companyId]);
 
   const { data: subcontractors } = useCollection<any>(subsQuery);
+  const { data: clients } = useCollection<any>(clientsQuery);
   const { data: transactions } = useCollection<any>(transQuery);
   const { data: templates } = useCollection<SubConContractTemplate>(templatesQuery);
 
   const filteredSubs = (subcontractors || []).filter(s => s.name.toLowerCase().includes(subSearch.toLowerCase()));
-  const filteredTrans = (transactions || []).filter(t => 
-    t.subServiceName.toLowerCase().includes(transSearch.toLowerCase()) || 
-    t.clientName.toLowerCase().includes(transSearch.toLowerCase()) ||
-    t.transactionNumber.toLowerCase().includes(transSearch.toLowerCase())
+  
+  const filteredClients = (clients || []).filter(c => 
+    c.nameAr.toLowerCase().includes(clientSearch.toLowerCase()) || 
+    c.fileNumber.toLowerCase().includes(clientSearch.toLowerCase())
   );
+
+  const filteredTrans = (transactions || []).filter(t_item => {
+    const matchClient = !form.clientId || t_item.clientId === form.clientId;
+    const matchSearch = t_item.subServiceName.toLowerCase().includes(transSearch.toLowerCase()) || 
+                        t_item.transactionNumber.toLowerCase().includes(transSearch.toLowerCase());
+    return matchClient && matchSearch;
+  });
+
   const filteredTemps = (templates || []).filter(t => t.name.toLowerCase().includes(tempSearch.toLowerCase()));
 
   useEffect(() => {
@@ -119,7 +134,8 @@ function NewSubConContractContent() {
             ...prev, 
             transactionName: trans.subServiceName, 
             transactionNumber: trans.transactionNumber,
-            clientName: trans.clientName
+            clientName: trans.clientName,
+            clientId: trans.clientId
           }));
           getDocs(query(collection(db, paths.transactionStages(companyId, trans.id)), orderBy('order')))
             .then(snap => setPathStages(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
@@ -187,12 +203,15 @@ function NewSubConContractContent() {
     return `${base} ${ordinal}`;
   };
 
-  const Picker = ({ label, value, onSelect, items, search, setSearch, icon: Icon, placeholder, type }: any) => (
+  const Picker = ({ label, value, onSelect, items, search, setSearch, icon: Icon, placeholder, type, disabled = false }: any) => (
     <Popover>
-      <PopoverTrigger asChild>
-        <button type="button" className="h-14 w-full rounded-2xl border-2 font-black flex items-center justify-between bg-white px-6 shadow-sm hover:border-primary/40 transition-all">
+      <PopoverTrigger asChild disabled={disabled}>
+        <button type="button" className={cn(
+          "h-14 w-full rounded-2xl border-2 font-black flex items-center justify-between px-6 shadow-sm transition-all",
+          disabled ? "bg-slate-50 border-slate-100 cursor-not-allowed text-slate-300" : "bg-white hover:border-primary/40 text-slate-900"
+        )}>
           <div className="flex items-center gap-3">
-             <Icon className="h-5 w-5 text-primary opacity-40" />
+             <Icon className={cn("h-5 w-5 opacity-40", !disabled && "text-primary")} />
              <span className="truncate text-sm">{value || placeholder}</span>
           </div>
           <ChevronDown className="h-4 w-4 opacity-20" />
@@ -214,9 +233,9 @@ function NewSubConContractContent() {
             <div className="p-2 space-y-1">
                {items.map((item: any) => {
                  const isTransaction = type === 'transaction';
-                 const mainTitle = isTransaction ? item.clientName : (item.name || item.subServiceName);
-                 const subTitle = isTransaction ? item.subServiceName : null;
-                 const code = item.code || item.transactionNumber;
+                 const isClient = type === 'client';
+                 const mainTitle = isClient ? item.nameAr : (isTransaction ? item.subServiceName : item.name);
+                 const subTitle = isClient ? item.fileNumber : (isTransaction ? item.transactionNumber : null);
                  
                  return (
                    <div 
@@ -224,15 +243,16 @@ function NewSubConContractContent() {
                      onClick={(e) => { e.stopPropagation(); onSelect(item); }}
                      className={cn(
                        "p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between border-2 border-transparent",
-                       value === mainTitle ? "bg-primary/5 border-primary/20 text-primary" : "hover:bg-slate-50"
+                       (value === mainTitle || form.clientId === item.id) ? "bg-primary/5 border-primary/20 text-primary" : "hover:bg-slate-50"
                      )}
                    >
                       <div className="text-start min-w-0 flex-1">
                          <p className="font-black text-xs text-slate-900 truncate">{mainTitle}</p>
-                         {subTitle && <p className="text-[10px] font-bold text-primary mt-0.5 truncate">{subTitle}</p>}
-                         <p className="text-[8px] font-mono text-slate-400 mt-1 uppercase" dir="ltr">#{code}</p>
+                         {subTitle && (
+                           <p className="text-[8px] font-mono text-slate-400 mt-1 uppercase" dir="ltr">#{subTitle}</p>
+                         )}
                       </div>
-                      {value === mainTitle && <Check className="h-4 w-4 shrink-0" />}
+                      {(value === mainTitle || form.clientId === item.id) && <Check className="h-4 w-4 shrink-0" />}
                    </div>
                  );
                })}
@@ -286,23 +306,39 @@ function NewSubConContractContent() {
 
                <div className="space-y-6">
                   <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em] border-b-2 border-primary/10 pb-2">{tSafe('subcon.legal.subject', 'ثانياً: موضوع التعاقد والميزانية', 'Contract Subject & Budget')}</h3>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                     <div className="space-y-4">
-                        <div className="space-y-2">
-                           <Label className="text-[10px] font-black text-slate-400 uppercase">{tSafe('common.project', 'المشروع المستهدف (العميل)', 'Target Project')}</Label>
-                           <Picker 
-                             type="transaction"
-                             value={form.clientName ? `${form.clientName} - ${form.transactionName}` : ''} 
-                             onSelect={(t: any) => setForm({...form, transactionId: t.id, transactionNumber: t.transactionNumber, transactionName: t.subServiceName, clientName: t.clientName})}
-                             items={filteredTrans}
-                             search={transSearch}
-                             setSearch={setTransSearch}
-                             icon={Target}
-                             placeholder={tSafe('subcon.form.project', 'اختر المشروع...', 'Choose Project')}
-                           />
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                     <div className="lg:col-span-8 space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <div className="space-y-2">
+                              <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{tSafe('common.targetClient', 'العميل المستهدف (المالك)', 'Target Client')}</Label>
+                              <Picker 
+                                type="client"
+                                value={form.clientName} 
+                                onSelect={(c: any) => setForm({...form, clientId: c.id, clientName: c.nameAr, transactionId: '', transactionName: '', transactionNumber: ''})}
+                                items={filteredClients}
+                                search={clientSearch}
+                                setSearch={setClientSearch}
+                                icon={UserCircle}
+                                placeholder={tSafe('subcon.form.client', 'اختر العميل...', 'Choose Client')}
+                              />
+                           </div>
+                           <div className="space-y-2">
+                              <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{tSafe('common.targetTransaction', 'المشروع / المعاملة', 'Target Project')}</Label>
+                              <Picker 
+                                type="transaction"
+                                disabled={!form.clientId}
+                                value={form.transactionName} 
+                                onSelect={(t_item: any) => setForm({...form, transactionId: t_item.id, transactionNumber: t_item.transactionNumber, transactionName: t_item.subServiceName})}
+                                items={filteredTrans}
+                                search={transSearch}
+                                setSearch={setTransSearch}
+                                icon={Target}
+                                placeholder={tSafe('subcon.form.project', 'اختر المشروع...', 'Choose Project')}
+                              />
+                           </div>
                         </div>
                         <div className="space-y-2">
-                           <Label className="text-[10px] font-black text-slate-400 uppercase">{tSafe('subcon.form.template', 'القالب القانوني', 'Legal Template')}</Label>
+                           <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{tSafe('subcon.form.template', 'القالب القانوني لتعاقد الباطن', 'Legal SubCon Template')}</Label>
                            <Picker 
                              type="template"
                              value={form.templateName} 
@@ -315,7 +351,7 @@ function NewSubConContractContent() {
                            />
                         </div>
                      </div>
-                     <div className="p-8 rounded-[3rem] bg-emerald-600 text-white shadow-2xl relative overflow-hidden flex flex-col justify-center">
+                     <div className="lg:col-span-4 p-8 rounded-[3rem] bg-emerald-600 text-white shadow-2xl relative overflow-hidden flex flex-col justify-center">
                         <div className="absolute top-0 right-0 p-8 opacity-10"><Calculator className="h-32 w-32" /></div>
                         <div className="relative z-10 space-y-2 text-start">
                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-200">{tSafe('subcon.form.targetBudget', 'إجمالي قيمة التعاقد', 'Contract Value')}</p>
@@ -325,7 +361,6 @@ function NewSubConContractContent() {
                              onChange={e => setForm({...form, totalAmount: Number(e.target.value)})}
                              className="h-16 bg-white/20 border-0 rounded-2xl text-4xl font-black text-center text-white shadow-inner focus:bg-white/30" 
                            />
-                           <p className="text-[9px] font-bold text-emerald-100 text-center italic">{tSafe('subcon.form.budgetHint', 'المبلغ الصافي المتفق عليه لإنجاز بنود الأعمال المحددة.', 'Agreed amount for work execution.')}</p>
                         </div>
                      </div>
                   </div>
