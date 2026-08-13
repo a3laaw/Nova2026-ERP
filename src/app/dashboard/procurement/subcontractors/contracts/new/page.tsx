@@ -58,6 +58,7 @@ function NewSubConContractContent() {
     transactionId: preTransactionId || '',
     transactionNumber: '',
     transactionName: '',
+    clientName: '',
     templateId: preTemplateId || '',
     templateName: '',
     name: '',
@@ -87,7 +88,11 @@ function NewSubConContractContent() {
   const { data: templates } = useCollection<SubConContractTemplate>(templatesQuery);
 
   const filteredSubs = (subcontractors || []).filter(s => s.name.toLowerCase().includes(subSearch.toLowerCase()));
-  const filteredTrans = (transactions || []).filter(t => t.subServiceName.toLowerCase().includes(transSearch.toLowerCase()));
+  const filteredTrans = (transactions || []).filter(t => 
+    t.subServiceName.toLowerCase().includes(transSearch.toLowerCase()) || 
+    t.clientName.toLowerCase().includes(transSearch.toLowerCase()) ||
+    t.transactionNumber.toLowerCase().includes(transSearch.toLowerCase())
+  );
   const filteredTemps = (templates || []).filter(t => t.name.toLowerCase().includes(tempSearch.toLowerCase()));
 
   useEffect(() => {
@@ -110,7 +115,12 @@ function NewSubConContractContent() {
     if (db && companyId && form.transactionId) {
        const trans = transactions?.find(t => t.id === form.transactionId);
        if (trans) {
-          setForm(prev => ({ ...prev, transactionName: trans.subServiceName, transactionNumber: trans.transactionNumber }));
+          setForm(prev => ({ 
+            ...prev, 
+            transactionName: trans.subServiceName, 
+            transactionNumber: trans.transactionNumber,
+            clientName: trans.clientName
+          }));
           getDocs(query(collection(db, paths.transactionStages(companyId, trans.id)), orderBy('order')))
             .then(snap => setPathStages(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
             .catch(() => setPathStages([]));
@@ -153,6 +163,7 @@ function NewSubConContractContent() {
         ...form,
         id: contractRef.id,
         status: 'active',
+        projectTitle: `${form.clientName} - ${form.transactionName}`,
         companyId,
         createdBy: user.uid,
         createdAt: serverTimestamp(),
@@ -176,13 +187,13 @@ function NewSubConContractContent() {
     return `${base} ${ordinal}`;
   };
 
-  const Picker = ({ label, value, onSelect, items, search, setSearch, icon: Icon, placeholder }: any) => (
+  const Picker = ({ label, value, onSelect, items, search, setSearch, icon: Icon, placeholder, type }: any) => (
     <Popover>
       <PopoverTrigger asChild>
         <button type="button" className="h-14 w-full rounded-2xl border-2 font-black flex items-center justify-between bg-white px-6 shadow-sm hover:border-primary/40 transition-all">
           <div className="flex items-center gap-3">
              <Icon className="h-5 w-5 text-primary opacity-40" />
-             <span className="truncate">{value || placeholder}</span>
+             <span className="truncate text-sm">{value || placeholder}</span>
           </div>
           <ChevronDown className="h-4 w-4 opacity-20" />
         </button>
@@ -201,22 +212,30 @@ function NewSubConContractContent() {
          </div>
          <ScrollArea className="h-64">
             <div className="p-2 space-y-1">
-               {items.map((item: any) => (
-                 <div 
-                   key={item.id} 
-                   onClick={(e) => { e.stopPropagation(); onSelect(item); }}
-                   className={cn(
-                     "p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between border-2 border-transparent",
-                     value === (item.name || item.subServiceName) ? "bg-primary/5 border-primary/20 text-primary" : "hover:bg-slate-50"
-                   )}
-                 >
-                    <div className="text-start">
-                       <p className="font-black text-xs">{item.name || item.subServiceName}</p>
-                       <p className="text-[8px] font-mono text-slate-400 mt-1 uppercase">#{item.code || item.transactionNumber}</p>
-                    </div>
-                    {value === (item.name || item.subServiceName) && <Check className="h-4 w-4" />}
-                 </div>
-               ))}
+               {items.map((item: any) => {
+                 const isTransaction = type === 'transaction';
+                 const mainTitle = isTransaction ? item.clientName : (item.name || item.subServiceName);
+                 const subTitle = isTransaction ? item.subServiceName : null;
+                 const code = item.code || item.transactionNumber;
+                 
+                 return (
+                   <div 
+                     key={item.id} 
+                     onClick={(e) => { e.stopPropagation(); onSelect(item); }}
+                     className={cn(
+                       "p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between border-2 border-transparent",
+                       value === mainTitle ? "bg-primary/5 border-primary/20 text-primary" : "hover:bg-slate-50"
+                     )}
+                   >
+                      <div className="text-start min-w-0 flex-1">
+                         <p className="font-black text-xs text-slate-900 truncate">{mainTitle}</p>
+                         {subTitle && <p className="text-[10px] font-bold text-primary mt-0.5 truncate">{subTitle}</p>}
+                         <p className="text-[8px] font-mono text-slate-400 mt-1 uppercase" dir="ltr">#{code}</p>
+                      </div>
+                      {value === mainTitle && <Check className="h-4 w-4 shrink-0" />}
+                   </div>
+                 );
+               })}
             </div>
          </ScrollArea>
       </PopoverContent>
@@ -252,6 +271,7 @@ function NewSubConContractContent() {
                      <div className="p-8 rounded-[2.5rem] bg-primary/5 border-2 border-primary/10 shadow-sm space-y-4">
                         <Label className="text-[10px] font-black text-primary uppercase">{tSafe('subcon.second.party', 'الطرف الثاني (مقاول الباطن)', 'Second Party')}</Label>
                         <Picker 
+                          type="subcontractor"
                           value={form.subcontractorName} 
                           onSelect={(s: any) => setForm({...form, subcontractorId: s.id, subcontractorName: s.name})}
                           items={filteredSubs}
@@ -269,10 +289,11 @@ function NewSubConContractContent() {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                      <div className="space-y-4">
                         <div className="space-y-2">
-                           <Label className="text-[10px] font-black text-slate-400 uppercase">{tSafe('common.project', 'المشروع المستهدف', 'Target Project')}</Label>
+                           <Label className="text-[10px] font-black text-slate-400 uppercase">{tSafe('common.project', 'المشروع المستهدف (العميل)', 'Target Project')}</Label>
                            <Picker 
-                             value={form.transactionName} 
-                             onSelect={(t: any) => setForm({...form, transactionId: t.id, transactionNumber: t.transactionNumber, transactionName: t.subServiceName})}
+                             type="transaction"
+                             value={form.clientName ? `${form.clientName} - ${form.transactionName}` : ''} 
+                             onSelect={(t: any) => setForm({...form, transactionId: t.id, transactionNumber: t.transactionNumber, transactionName: t.subServiceName, clientName: t.clientName})}
                              items={filteredTrans}
                              search={transSearch}
                              setSearch={setTransSearch}
@@ -283,6 +304,7 @@ function NewSubConContractContent() {
                         <div className="space-y-2">
                            <Label className="text-[10px] font-black text-slate-400 uppercase">{tSafe('subcon.form.template', 'القالب القانوني', 'Legal Template')}</Label>
                            <Picker 
+                             type="template"
                              value={form.templateName} 
                              onSelect={(temp: any) => setForm({...form, templateId: temp.id, templateName: temp.name})}
                              items={filteredTemps}
@@ -348,7 +370,7 @@ function NewSubConContractContent() {
                                          <SelectValue placeholder="..." />
                                       </SelectTrigger>
                                       <SelectContent className="rounded-xl z-[160] shadow-3xl">
-                                         {pathStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
+                                         {pathStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50 text-start">
                                             <div className="flex items-center gap-2"><Workflow className="h-3 w-3 text-primary" /> {s.name}</div>
                                          </SelectItem>)}
                                       </SelectContent>
@@ -369,7 +391,7 @@ function NewSubConContractContent() {
                         <tfoot className="bg-slate-50 border-t-8 border-primary">
                            <tr>
                               <td colSpan={3} className="p-10 text-start">
-                                 <h3 className="text-xl font-black font-headline uppercase tracking-tighter text-slate-800">{tSafe('subcon.totalPayable', 'إجمالي قيمة عقد الباطن', 'Total Contract Value')}</h3>
+                                 <h3 className="text-xl font-black font-headline uppercase tracking-tighter text-slate-800">{tSafe('subcon.totalPayable', 'إجمالي قيمة عقد الباطن', 'Total SubCon Contract Value')}</h3>
                                  <Badge className={cn("mt-3 border-0 text-[10px] font-black h-7 px-5 shadow-lg", stats.isValid ? "bg-emerald-600 text-white" : "bg-rose-600 text-white")}>
                                     {stats.isValid ? `BALANCED: 100%` : `MISMATCH: ${stats.totalPercentage}%`}
                                  </Badge>
@@ -412,4 +434,3 @@ function NewSubConContractContent() {
 export default function NewSubConContractPage() {
    return <Suspense fallback={<div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>}><NewSubConContractContent /></Suspense>;
 }
-
