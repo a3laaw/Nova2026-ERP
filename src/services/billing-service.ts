@@ -29,6 +29,7 @@ export class BillingService {
   /**
    * إطلاق مطالبة مالية بناءً على شرط دفع (Milestone Trigger)
    * يطبق القواعد: AT (عند)، DURING (أثناء)، AFTER (بعد)
+   * تم تحسينه لدعم "التجميع"؛ بحيث أي بند تفصيلي يتبع مرحلة فنية يمكنه تحريك الدفعة.
    */
   async triggerMilestoneBilling(
     transactionId: string, 
@@ -58,6 +59,7 @@ export class BillingService {
     const contract = { id: contractDoc.id, ...contractDoc.data() } as Contract;
 
     // 2. البحث عن الدفعات المطابقة للشرط (المرحلة الفنية المرجعية + التوقيت)
+    // لاحظ أننا نستخدم technicalStageId كـ "مفتاح الربط السيادي"
     const targetMilestones = (contract.milestones || []).filter(m => 
       String(m.technicalStageId) === String(technicalStageId) && m.timing === timing
     );

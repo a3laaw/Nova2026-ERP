@@ -475,13 +475,13 @@ export default function BOQNodesPage() {
                     <div className="pt-6 border-t border-slate-200 animate-in slide-in-from-top-2">
                        <div className="space-y-3">
                           <Label className="text-[11px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
-                             <MapPin className="h-3.5 w-3.5" /> {tSafe('ref.node.fieldLinks', 'ربط مراحل التنفيذ الميداني', 'Field Links')}
+                             <MapPin className="h-3.5 w-3.5" /> {tSafe('ref.node.fieldLinks', 'ربط مراحل التنفيذ الميداني (متعدد)', 'Field Links (Multi)')}
                           </Label>
 
                           <div className="bg-blue-50 p-5 rounded-2xl border-2 border-blue-100 flex items-start gap-4 mb-4">
                              <ShieldAlert className="h-6 w-6 text-blue-600 shrink-0 mt-1" />
                              <div className="text-start space-y-1">
-                                <h5 className="font-black text-xs text-blue-900 uppercase">{tSafe('ref.node.fieldRule', 'قاعدة الظهور الميداني', 'Field Rule')}</h5>
+                                <h5 className="font-black text-xs text-blue-900 uppercase">{tSafe('ref.node.fieldRule', 'قاعدة الظهور الميداني', 'Field Visibility Rule')}</h5>
                                 <p className="text-[10px] text-blue-700/80 font-bold leading-relaxed">{tSafe('ref.node.fieldRuleDesc', 'هام: المهندس في الموقع لن يرى هذا البند إلا إذا قمت بربطه بالمراحل التي يُسمح فيها بتنفيذه. الربط يضمن دقة التتبع ومنع تسجيل كميات في مراحل خاطئة.', 'Links ensure accuracy.')}</p>
                              </div>
                           </div>
@@ -577,7 +577,7 @@ export default function BOQNodesPage() {
                                       onClick={() => setEditingNode(prev => prev ? { ...prev, technicalStageIds: [], technicalStageId: '' } : prev)}
                                       className="text-rose-600 hover:bg-rose-50 text-[10px] font-black h-9 px-4"
                                     >
-                                      {tSafe('ref.node.clearLinks', 'إلغاء كافة الروابط', 'Clear')}
+                                      {tSafe('ref.node.clearLinks', 'إلغاء كافة الروابط', 'Clear All Links')}
                                     </Button>
                                     <Button type="button" variant="default" onClick={() => setShowStagePicker(false)} className="rounded-xl h-10 px-8 text-xs font-black shadow-lg">{t('common.confirm')}</Button>
                                   </div>
@@ -588,8 +588,8 @@ export default function BOQNodesPage() {
                                  <div className="p-6 bg-slate-50 rounded-[2rem] border-2 border-white shadow-inner animate-in zoom-in-95">
                                     <div className="flex items-center justify-between mb-4">
                                        <div className="space-y-1 text-start">
-                                          <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{tSafe('ref.node.defaultStage', 'مرحلة الربط الافتراضية', 'Default Stage')}</Label>
-                                          <p className="text-[8px] text-slate-400 font-bold">{tSafe('ref.node.defaultStageDesc', 'سيتم استخدامها كخيار أول في سجلات المهندس', 'First choice in field logs')}</p>
+                                          <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{tSafe('ref.node.defaultStage', 'مرحلة الربط الافتراضية', 'Default Target Stage')}</Label>
+                                          <p className="text-[8px] text-slate-400 font-bold">{tSafe('ref.node.defaultStageDesc', 'سيتم استخدامها كخيار أول في سجلات المهندس', 'Used as primary choice in field logs')}</p>
                                        </div>
                                        <Badge variant="outline" className="text-[8px] font-black border-primary/20 bg-white px-3 py-1">AUTO-ASSIGN PRIORITY</Badge>
                                     </div>
@@ -632,7 +632,7 @@ export default function BOQNodesPage() {
                {editingNode?.isExecutable && (
                  <div className="grid grid-cols-2 gap-6 animate-in fade-in">
                     <div className="space-y-1.5 text-start">
-                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('ref.node.unitType', 'وحدة القياس الموحدة', 'Unit')}</Label>
+                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('ref.node.unitType', 'وحدة القياس الموحدة', 'Standard Unit')}</Label>
                        <Select value={editingNode.unitTypeId} onValueChange={v => {
                             const u = unitTypes?.find(x => x.id === v);
                             setEditingNode({...editingNode!, unitTypeId: v, unitName: u?.name, unitSymbol: u?.symbol});
@@ -644,7 +644,7 @@ export default function BOQNodesPage() {
                        </Select>
                     </div>
                     <div className="space-y-1.5 text-start">
-                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('ref.node.refPrice', 'سعر الوحدة المرجعي (KWD)', 'Ref Price')}</Label>
+                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('ref.node.refPrice', 'سعر الوحدة المرجعي (KWD)', 'Reference Unit Price (KWD)')}</Label>
                        <div className="relative">
                           <Input type="number" step="0.001" value={editingNode.estimatedRate || ''} onChange={e => setEditingNode({...editingNode!, estimatedRate: e.target.value === '' ? '' : Number(e.target.value)} as any)} className="h-12 rounded-xl border-2 font-black text-emerald-600 text-xl text-center" placeholder="..." />
                           <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-300">KWD</div>
@@ -654,14 +654,14 @@ export default function BOQNodesPage() {
                )}
 
                <div className="space-y-2 text-start">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('ref.node.techSpec', 'المواصفة الفنية القياسية', 'Tech Spec')}</Label>
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('ref.node.techSpec', 'المواصفة الفنية القياسية', 'Standard Technical Specification')}</Label>
                   <Textarea value={editingNode?.description || ''} onChange={e => setEditingNode({...editingNode!, description: e.target.value})} className="min-h-[120px] rounded-2xl border-2 p-5 text-xs font-bold leading-relaxed resize-none bg-slate-50/50 focus:bg-white transition-all shadow-inner" placeholder="..." />
                </div>
 
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-slate-900 text-white rounded-[2rem] shadow-2xl ring-4 ring-slate-100">
                   <div className="flex items-center justify-between">
                      <div className="space-y-0.5 text-start">
-                        <Label className="font-black text-xs uppercase tracking-tighter text-primary">{tSafe('ref.node.executable', 'بند تنفيذي (Item)', 'Executable')}</Label>
+                        <Label className="font-black text-xs uppercase tracking-tighter text-primary">{tSafe('ref.node.executable', 'بند تنفيذي (Item)', 'Executable Item')}</Label>
                         <p className="text-[8px] text-slate-400 font-bold">{tSafe('ref.node.executableDesc', 'يسمح بتسجيل الإنجاز والميزانية', 'Allows tracking')}</p>
                      </div>
                      <Switch checked={editingNode?.isExecutable || false} onCheckedChange={v => setEditingNode({...editingNode!, isExecutable: v, nodeRole: v ? 'work_item' : 'group'})} />

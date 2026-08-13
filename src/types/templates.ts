@@ -105,8 +105,8 @@ export interface BOQTemplateItem {
   unitTypeId?: string;
   unitName?: string;
   unitSymbol?: string;
-  technicalStageId?: string;
-  technicalStageIds?: string[]; // دعم الارتباط المتعدد
+  technicalStageId?: string;    // الربط الفني الافتراضي
+  technicalStageIds?: string[]; // قائمة بكافة المراحل التي يؤثر فيها هذا البند مالياً
   billingTriggerGroup?: string;
   allowedItemCategoryIds?: string[];
 

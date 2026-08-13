@@ -154,8 +154,8 @@ export interface BOQReferenceNode extends BaseReference {
   unitTypeId?: string;
   unitName?: string;
   unitSymbol?: string;
-  technicalStageId?: string;
-  technicalStageIds?: string[];
+  technicalStageId?: string; // المرحلة الافتراضية
+  technicalStageIds?: string[]; // قائمة المراحل المرتبطة (لدعم التجميع المالي)
   estimatedRate?: number;
   billingTriggerGroup?: string;
   allowedItemCategoryIds?: string[];

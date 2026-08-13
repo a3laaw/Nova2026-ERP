@@ -45,7 +45,7 @@ interface Props {
 
 export function BOQTemplateForm({ template, onClose }: Props) {
   const { globalUser, user } = useAuthContext();
-  const { t, lang, dir, tSafe } = useLanguage(); // Fixed: Added tSafe
+  const { t, lang, dir, tSafe } = useLanguage();
   const { permissions } = usePermissions();
   const db = useFirestore();
   const isRtl = lang === 'ar';
@@ -141,10 +141,10 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       }));
       
       await service.saveBOQTemplateWithItems(template?.id || null, formData as any, sanitizedItems as any, user.uid);
-      toast({ title: t('saved') });
+      toast({ title: t('common.saved') });
       onClose();
     } catch (e: any) {
-      toast({ variant: "destructive", title: t('error'), description: e.message });
+      toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
       setLoading(false);
     }
@@ -161,6 +161,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
        return parent?.title || '---';
     }) || [];
 
+    // جلب الروابط المتعددة من القاموس السيادي
     const normalizedStageIds = node.technicalStageIds || (node.technicalStageId ? [node.technicalStageId] : []);
     const normalizedDefaultStageId = node.technicalStageId || (normalizedStageIds.length > 0 ? normalizedStageIds[0] : '');
 
@@ -177,7 +178,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       unitName: node.unitName || '',
       unitSymbol: node.unitSymbol || '',
       technicalStageId: normalizedDefaultStageId,
-      technicalStageIds: normalizedStageIds,
+      technicalStageIds: normalizedStageIds, // حمل المظلة المالية للمرحلة
       plannedQuantity: 1,
       executedQuantity: 0,
       estimatedRate: node.estimatedRate || 0,
@@ -276,6 +277,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
           const itemPrefix = `${prefix}.${iIdx + 1}`; 
           const subtotal = (item.plannedQuantity || 0) * (item.estimatedRate || 0);
 
+          // تحديد القائمة المنسدلة للمراحل بناءً على الروابط المسموحة في القاموس
           const isMultiLinked = item.technicalStageIds && item.technicalStageIds.length > 0;
           const selectableStages = isMultiLinked 
             ? pathStages.filter(s => item.technicalStageIds?.includes(s.id!))
@@ -365,8 +367,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       </React.Fragment>
     );
   };
-
-  if (templateLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   return (
     <div className="flex flex-col h-full bg-[#fdfaf3]" dir={dir}>
