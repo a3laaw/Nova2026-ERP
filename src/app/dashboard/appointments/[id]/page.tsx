@@ -12,7 +12,7 @@ import {
   Target, X, RotateCcw, Lock, Info, Play,
   Users, Truck, Plus, Trash2, Link as LinkIcon,
   ShieldAlert, ShieldX, Sparkles, DollarSign, Building2, Briefcase, Clock, Camera, LayoutGrid,
-  Handshake, AlertCircle, User, UsersRound, Zap
+  Handshake, AlertCircle, User, UsersRound, Zap, ListChecks
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where, orderBy, limit, updateDoc, serverTimestamp, getDocs, collectionGroup } from 'firebase/firestore';
@@ -127,6 +127,9 @@ export default function AppointmentDetailPage() {
     
     setLaborDetails(newRows);
   };
+
+  const addStaffRow = () => setLaborDetails([...laborDetails, { resourceType: 'work_group', resourceId: '', resourceName: '', count: 1, hours: 8, hourlyCostRef: 0 }]);
+  const addEquipRow = () => setEquipmentUsed([...equipmentUsed, { equipmentId: '', hoursUsed: 4, hourlyRateRef: 0 }]);
 
   const handleRecordProgress = async () => {
     if (!db || !companyId || !user || !activeBoq || loggedItems.length === 0) return;
@@ -279,7 +282,7 @@ export default function AppointmentDetailPage() {
                   <div className="space-y-6">
                      <div className="flex justify-between items-center px-1">
                         <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{isRtl ? 'الموارد البشرية والعمالة' : 'Site Labor'}</Label>
-                        <Button variant="outline" size="sm" onClick={() => setLaborDetails([...laborDetails, { resourceType: 'work_group', resourceId: '', resourceName: '', count: 1, hours: 8, hourlyCostRef: 0 }])} className="h-8 rounded-xl border-2 font-black"><Plus className="h-3.5 w-3.5" /></Button>
+                        <Button variant="outline" size="sm" onClick={addStaffRow} className="h-8 rounded-xl border-2 font-black"><Plus className="h-3.5 w-3.5" /></Button>
                      </div>
                      <div className="space-y-3">
                         {laborDetails.map((l, i) => (
@@ -326,7 +329,7 @@ export default function AppointmentDetailPage() {
                   <div className="space-y-6">
                      <div className="flex justify-between items-center text-start">
                         <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{t('common.equipment')}</Label>
-                        <Button variant="outline" size="sm" onClick={() => setEquipmentUsed([...equipmentUsed, { equipmentId: '', hoursUsed: 4, hourlyRateRef: 0 }])} className="h-8 rounded-xl border-2 font-black"><Plus className="h-3.5 w-3.5" /></Button>
+                        <Button variant="outline" size="sm" onClick={addEquipRow} className="h-8 rounded-xl border-2 font-black"><Plus className="h-3.5 w-3.5" /></Button>
                      </div>
                      <div className="space-y-3">
                         {equipmentUsed.map((e, i) => (

@@ -222,6 +222,9 @@ export default function NewStructuredFieldVisitPage() {
     setStaffRows(newRows);
   };
 
+  const addStaffRow = () => setStaffRows([...staffRows, { resourceType: 'work_group', resourceId: '', resourceName: '', count: 1 }]);
+  const addEquipRow = () => setEquipRows([...equipRows, { equipmentId: '', equipmentName: '', count: 1, hours: 8 }]);
+
   const handleSave = async () => {
     if (!db || !companyId || !user || !formData.transactionId || !formData.activeStageId) return;
     setLoading(true);
@@ -393,7 +396,7 @@ export default function NewStructuredFieldVisitPage() {
                   <h3 className="text-xl font-black font-headline text-slate-900 flex items-center gap-3">
                      <Users className="h-6 w-6 text-primary" /> {isRtl ? 'الموارد البشرية والعمالة الميدانية' : 'Field Human Resources'}
                   </h3>
-                  <Button onClick={() => setStaffRows([...staffRows, { resourceType: 'work_group', resourceId: '', resourceName: '', count: 1 }])} variant="outline" size="sm" className="rounded-xl border-2 font-black text-[10px] h-9 gap-2 shadow-sm">
+                  <Button onClick={addStaffRow} variant="outline" size="sm" className="rounded-xl border-2 font-black text-[10px] h-9 gap-2 shadow-sm">
                      <Plus className="h-3.5 w-3.5" /> {isRtl ? 'إضافة مورد' : 'Add Resource'}
                   </Button>
                </div>
