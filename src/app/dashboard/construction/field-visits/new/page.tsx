@@ -1,365 +1,476 @@
-"use client"
 
-import * as React from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import {
-  LayoutDashboard, Users, HardHat, Calculator, UserCircle,
-  ShoppingCart, Sparkles, Clock, ShieldCheck,
-  Calendar, FileText, Package,
-  Layers, FileSearch, Truck,
-  Building2, Settings2, ChevronDown,
-  Database, FileSpreadsheet, CalendarDays, Gavel,
-  MapPinned, Hammer, MapPin, Landmark, Receipt,
-  GitBranch, BarChart3, Wallet, Handshake, UserPlus, TrendingUp
-} from "lucide-react"
-import { cn } from "@/lib/utils"
-import { useLanguage } from "@/context/language-context"
-import { usePermissions } from "@/hooks/use-permissions"
-import { useAuthContext } from "@/context/auth-context"
-import { Badge } from "@/components/ui/badge"
-import {
-  Sidebar, SidebarHeader, SidebarContent, SidebarGroup,
-  SidebarGroupContent, SidebarFooter, SidebarMenu, SidebarMenuItem,
-  useSidebar,
-} from "@/components/ui/sidebar"
-import {
-  Collapsible, CollapsibleContent, CollapsibleTrigger,
-} from "@/components/ui/collapsible"
-import {
-  Tooltip, TooltipProvider, TooltipTrigger, TooltipContent,
-} from "@/components/ui/tooltip"
+'use client';
 
-export function DashboardSidebar() {
-  const pathname = usePathname()
-  const { state } = useSidebar()
-  const { t, tSafe, isRtl } = useLanguage()
-  const { globalUser } = useAuthContext()
-  const { canAccess, check, isAdmin } = usePermissions()
-  const isCollapsed = state === "collapsed"
+import { useState, useMemo, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { 
+  Plus, Trash2, Loader2, Save, Hammer, 
+  Users, Truck, HardHat, Camera,
+  ArrowRight, CheckCircle2, Workflow,
+  Search, Check, ChevronDown, Landmark,
+  AlertTriangle, Handshake, CalendarDays,
+  LayoutGrid
+} from "lucide-react";
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { useFirestore, useCollection, useDoc } from '@/firebase';
+import { collection, query, orderBy, where, getDocs, doc } from 'firebase/firestore';
+import { useAuthContext } from '@/context/auth-context';
+import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
+import { paths } from '@/firebase/multi-tenant';
+import { FieldVisitService } from '@/services/field-visit-service';
+import { BOQExecutionService } from '@/services/boq-execution-service';
+import { toast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+import { SmartDateInput } from '@/components/ui/smart-date-input';
+import { BOQItem } from '@/types/documents';
+import { WorkGroup } from '@/types/hr';
 
-  const menuItems = React.useMemo(() => {
-    const hrAccess = check('hr', 'view');
-    const isHrManager = hrAccess.can && hrAccess.scope !== 'own';
-
-    return [
-      { title: t('dashboard'), icon: LayoutDashboard, url: "/dashboard", resource: 'dashboard' },
-      
-      // 1. CRM والمبيعات
-      { 
-        title: t('crm'), 
-        icon: Users, 
-        url: "/dashboard/crm", 
-        resource: 'crm',
-        subItems: [
-          { title: t('leads'), url: "/dashboard/crm", icon: Users },
-          { title: t('clients'), url: "/dashboard/clients", icon: UserCircle },
-          { title: t('appointments'), url: "/dashboard/appointments", icon: CalendarDays },
-          { title: t('meetings'), url: "/dashboard/meetings", icon: Landmark },
-          { title: t('visitsDossier'), url: "/dashboard/projects/reports/client-visits", icon: MapPinned },
-        ]
-      },
-      
-      // 2. المشاريع والمقايسات
-      { 
-        title: t('projects'), 
-        icon: HardHat, 
-        url: "/dashboard/projects", 
-        resource: 'projects',
-        subItems: [
-          { title: t('activeProjects'), url: "/dashboard/projects", icon: Layers },
-          { title: t('boqExplorer'), url: "/dashboard/projects/boqs", icon: FileSpreadsheet },
-          { title: t('reports'), url: "/dashboard/reports", icon: FileText },
-        ]
-      },
-      
-      // 3. المقاولات والميدان
-      { 
-        title: t('construction'), 
-        icon: Hammer, 
-        url: "/dashboard/construction/bookings", 
-        resource: 'projects',
-        subItems: [
-          { title: t('fieldRadar'), url: "/dashboard/construction/bookings", icon: MapPin },
-          { title: t('workGroups'), url: "/dashboard/construction/groups", icon: Users },
-          { title: t('equipment'), url: "/dashboard/equipment", icon: Truck },
-          { title: t('fieldLogs'), url: "/dashboard/construction/field-visits", icon: FileText },
-        ]
-      },
-      
-      // 4. المشتريات ومقاولو الباطن (مجموعة في مكان واحد)
-      { 
-        title: t('procurement'), 
-        icon: ShoppingCart, 
-        url: "/dashboard/procurement", 
-        resource: 'procurement',
-        subItems: [
-          { title: t('suppliers'), url: "/dashboard/procurement/suppliers", icon: Truck },
-          { title: tSafe('procurement.orders', 'أوامر الشراء', 'Purchase Orders'), url: "/dashboard/procurement/orders", icon: ShoppingCart },
-          { title: t('subcontractors'), url: "/dashboard/procurement/subcontractors", icon: HardHat },
-          { title: tSafe('subcon.contracts.title', 'عقود الباطن', 'SubCon Contracts'), url: "/dashboard/procurement/subcontractors/contracts", icon: Handshake },
-          { title: tSafe('procurement.subClaims', 'مطالبات الباطن', 'SubCon Claims'), url: "/dashboard/procurement/sub-claims", icon: Receipt },
-          { title: t('contracts'), url: "/dashboard/procurement/contracts", icon: Gavel },
-          { title: t('aiAnalysis'), url: "/dashboard/ai", icon: FileSearch },
-        ]
-      },
-      
-      // 5. المحاسبة المالية
-      { 
-        title: t('accounting'), 
-        icon: Calculator, 
-        url: "/dashboard/accounting", 
-        resource: 'accounting',
-        subItems: [
-          { title: t('chartOfAccounts'), url: "/dashboard/accounting/coa", icon: GitBranch },
-          { title: tSafe('accounting.ownerClaims', 'مطالبات الشركة (IPC)', 'Owner Claims'), url: "/dashboard/accounting/claims", icon: Receipt },
-          { title: t('receiptVouchers'), url: "/dashboard/accounting/vouchers/receipt", icon: Receipt },
-          { title: t('paymentVouchers'), icon: Wallet, url: "/dashboard/accounting/vouchers/payment" },
-          { title: t('journalEntries'), url: "/dashboard/accounting/journals", icon: FileText },
-          { title: t('financialReports'), url: "/dashboard/accounting/reports", icon: BarChart3 },
-        ]
-      },
-      
-      // 6. الموارد البشرية
-      { 
-        title: isHrManager ? t('hr') : t('userProfile'), 
-        icon: UserCircle, 
-        url: "/dashboard/hr", 
-        resource: 'hr',
-        subItems: [
-          { title: t('staffRecords'), url: "/dashboard/hr/employees", icon: Users, hideIfOwnScope: true },
-          { title: tSafe('hr.recruitment', 'التوظيف', 'Recruitment'), url: "/dashboard/hr/recruitment", icon: UserPlus, hideIfOwnScope: true },
-          { title: t('leaveRequests'), url: "/dashboard/hr/leaves", icon: Calendar },
-          { title: t('payroll'), url: "/dashboard/hr/payroll", icon: Calculator, requiredAction: 'approve', hideIfOwnScope: true },
-          { title: tSafe('hr.legalGuide', 'الدليل القانوني', 'Legal Guide'), url: "/dashboard/hr/legal-guide", icon: ShieldCheck, hideIfOwnScope: true },
-        ]
-      },
-      
-      // 7. المخزون
-      { 
-        title: t('inventory'), 
-        icon: Package, 
-        url: "/dashboard/inventory", 
-        resource: 'inventory',
-        subItems: [
-          { title: t('inventory'), url: "/dashboard/inventory", icon: Building2 },
-        ]
-      },
-      
-      // 8. الإعدادات
-      { 
-        title: t('settings'), 
-        icon: Settings2, 
-        url: "/dashboard/settings", 
-        resource: 'settings',
-        subItems: [
-          { title: t('usersManagement'), url: "/dashboard/settings/users", icon: Users },
-          { title: t('rolesPermissions'), url: "/dashboard/settings/roles", icon: ShieldCheck },
-          { title: t('companyIdentity'), url: "/dashboard/settings/company", icon: Building2 },
-          { title: t('workHours'), url: "/dashboard/settings/work-hours", icon: Clock },
-          { title: tSafe('settings.costCenters', 'مراكز التكلفة', 'Cost Centers'), url: "/dashboard/settings/cost-centers", icon: Calculator },
-          { title: tSafe('settings.profitCenters', 'مراكز الربحية', 'Profit Centers'), url: "/dashboard/settings/profit-centers", icon: TrendingUp },
-          { title: t('settings.checklists'), url: "/dashboard/settings/checklists", icon: Database },
-          { title: t('userProfile'), url: "/dashboard/settings/profile", icon: UserCircle },
-        ]
-      }
-    ];
-  }, [t, tSafe, check, isAdmin, globalUser?.employeeId, globalUser?.departmentId]);
-
-  const visibleItems = React.useMemo(() => {
-    const finalItems: any[] = [];
-    menuItems.forEach(item => {
-      if (!canAccess(item.resource)) return;
-      if (item.subItems) {
-        const filteredSubs = item.subItems.filter(sub => {
-          const action = (sub as any).requiredAction || 'view';
-          const access = check(item.resource, action);
-          if (!access.can) return false;
-          if ((sub as any).hideIfOwnScope && access.scope === 'own') return false;
-          return true;
-        });
-        if (filteredSubs.length > 0) {
-          finalItems.push({ ...item, subItems: filteredSubs });
-        } else if (item.url === "/dashboard") {
-          finalItems.push(item);
-        }
-      } else {
-        finalItems.push(item);
-      }
-    });
-    return finalItems;
-  }, [menuItems, canAccess, check]);
+/**
+ * مكون البحث الذكي للعملاء والمشاريع
+ */
+function SearchablePicker({ value, onSelect, items, search, onSearchChange, icon: Icon, placeholder, isRtl }: any) {
+  const [open, setOpen] = useState(false);
 
   return (
-    <Sidebar collapsible="icon" side={isRtl ? "right" : "left"} className="border-none bg-[#F8F9FA]">
-      <SidebarHeader className="p-4 pt-6">
-        {!isCollapsed ? (
-          <div className="flex flex-col text-start px-2 border-b-2 border-orange-50 pb-4">
-            <span className="font-headline font-black text-2xl text-slate-900 tracking-tighter leading-none">NovaFlow</span>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-[8px] uppercase font-black tracking-[0.3em] text-[#e87c24]">ERP SYSTEM</span>
-              <div className="h-[1.5px] w-8 bg-[#e87c24] rounded-full" />
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className="w-full h-12 rounded-xl border-2 font-bold justify-between bg-white px-4 shadow-sm">
+          <div className="flex items-center gap-3 overflow-hidden text-start">
+             <Icon className="h-4 w-4 text-primary opacity-40" />
+             <span className="truncate">{value || placeholder}</span>
+          </div>
+          <ChevronDown className="h-4 w-4 opacity-20" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[350px] p-0 rounded-2xl shadow-3xl border-2 z-[200]" align="start">
+         <div className="p-3 bg-slate-50 border-b">
+            <div className="relative">
+               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+               <Input 
+                 placeholder="بحث..." 
+                 className="h-9 ps-9 rounded-lg border-2 bg-white text-xs font-bold"
+                 value={search}
+                 onChange={e => onSearchChange(e.target.value)}
+               />
             </div>
-          </div>
-        ) : (
-          <div className="mx-auto h-9 w-9 rounded-lg bg-gradient-to-br from-[#FFB000] to-[#e87c24] flex items-center justify-center text-white shadow-sm transition-all">
-             <Sparkles className="h-4 w-4" />
-          </div>
-        )}
-      </SidebarHeader>
-      
-      <SidebarContent className="px-3 py-4 overflow-y-auto scrollbar-hide">
-        <SidebarGroup className="p-0">
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-4">
-              {visibleItems.map((item) => (
-                <NavItemRenderer key={item.url} item={item} isCollapsed={isCollapsed} isRtl={isRtl} pathname={pathname} t={t} />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-      
-      <SidebarFooter className="p-4 mt-auto">
-        {!isCollapsed && (
-          <div className="p-4 rounded-3xl bg-white border border-orange-100 shadow-xl ring-1 ring-black/[0.02] flex justify-between items-center">
-             <Badge className="bg-[#e87c24] text-white text-[8px] font-black uppercase h-5 px-2 rounded-full">V2.8</Badge>
-             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{t('common.status')}</span>
-          </div>
-        )}
-      </SidebarFooter>
-    </Sidebar>
-  )
+         </div>
+         <ScrollArea className="h-64">
+            <div className="p-2 space-y-1">
+               {items.map((item: any) => (
+                 <div 
+                   key={item.id} 
+                   onClick={() => { onSelect(item); setOpen(false); }}
+                   className={cn(
+                     "p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between group",
+                     (value === (item.nameAr || item.subServiceName)) ? "bg-primary/5 text-primary" : "hover:bg-slate-50"
+                   )}
+                 >
+                    <div className="text-start">
+                       <p className="font-black text-xs text-slate-900">{item.nameAr || item.subServiceName}</p>
+                       <p className="text-[8px] font-mono text-slate-400 mt-1 uppercase">#{item.fileNumber || item.transactionNumber}</p>
+                    </div>
+                    {(value === (item.nameAr || item.subServiceName)) && <Check className="h-3.5 w-3.5" />}
+                 </div>
+               ))}
+            </div>
+         </ScrollArea>
+      </PopoverContent>
+    </Popover>
+  );
 }
 
-function NavItemRenderer({ item, isCollapsed, isRtl, pathname, t }: any) {
-  const isGroupActive = item.subItems?.some((sub: any) => pathname === sub.url)
-  const isSelfActive = pathname === item.url
-  const isActive = isSelfActive || isGroupActive
-  
-  const [isExpanded, setIsExpanded] = React.useState(isActive)
-  const commonStyle = "flex items-center w-full h-11 px-5 transition-all duration-300 rounded-full shadow-md hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98] border-0"
-  
-  const expandedStyle = cn(
-    commonStyle,
-    isActive 
-      ? "bg-white text-[#e87c24] border-2 border-orange-100 shadow-orange-500/10 font-black" 
-      : "bg-gradient-to-r from-[#FFB000] to-[#e87c24] text-white"
-  )
+export default function NewStructuredFieldVisitPage() {
+  const { globalUser, user } = useAuthContext();
+  const { t, lang, dir, tSafe } = useLanguage();
+  const { permissions } = usePermissions();
+  const db = useFirestore();
+  const router = useRouter();
+  const isRtl = lang === 'ar';
+  const companyId = globalUser?.companyId;
 
-  if (isCollapsed) {
-    const collapsedStyle = cn(
-      "flex h-9 w-9 items-center justify-center transition-all duration-300 rounded-lg shadow-sm",
-      isActive 
-        ? "bg-white text-[#e87c24] border-2 border-orange-100 scale-110 z-10" 
-        : "bg-[#FFA000] text-white hover:scale-105"
-    )
-    return (
-      <SidebarMenuItem className="flex justify-center">
-        {item.subItems ? (
-          <TooltipProvider delayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="relative group">
-                  <button className={collapsedStyle}>
-                    <item.icon className="h-4 w-4" />
-                  </button>
-                  <div className={cn(
-                    "absolute top-0 z-[999] hidden group-hover:block animate-in fade-in zoom-in-95 duration-200",
-                    isRtl ? "right-full mr-3" : "left-full ml-3"
-                  )}>
-                    <div className="bg-white border-2 border-slate-100 shadow-3xl rounded-[1.5rem] min-w-[220px] overflow-hidden ring-4 ring-black/[0.02]">
-                      <div className="px-5 py-4 bg-slate-50 border-b flex items-center justify-between">
-                        <p className="text-sm font-black text-slate-800 uppercase tracking-widest">{item.title}</p>
-                        <div className="h-6 w-6 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <item.icon className="h-3.5 w-3.5 text-primary" />
-                        </div>
-                      </div>
-                      <div className="p-3 space-y-1.5 bg-white max-h-[60vh] overflow-y-auto scrollbar-hide">
-                        {item.subItems.map((sub: any) => (
-                          <Link 
-                            key={sub.url} 
-                            href={sub.url}
-                            className={cn(
-                              "flex items-center justify-between h-11 px-4 rounded-xl text-[11px] font-black transition-all shadow-sm border border-slate-100 bg-white group/sub",
-                              pathname === sub.url 
-                                ? "bg-primary text-white border-primary shadow-primary/20" 
-                                : "text-slate-700 hover:bg-primary/5 hover:text-primary hover:border-primary/20 hover:-translate-y-0.5"
-                            )}
-                          >
-                            <span className="truncate">{sub.title}</span>
-                            <sub.icon className={cn("h-3.5 w-3.5 transition-all", pathname === sub.url ? "text-white" : "opacity-30 group-hover/sub:opacity-100 group-hover/sub:scale-110")} />
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side={isRtl ? "left" : "right"} className="bg-white text-slate-900 font-black text-[10px] rounded-lg border-2 shadow-2xl py-2 px-4">
-                {item.title}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        ) : (
-          <TooltipProvider delayDuration={0}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link href={item.url} className={collapsedStyle}>
-                  <item.icon className="h-4 w-4" />
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent side={isRtl ? "left" : "right"} className="bg-white text-slate-900 font-black text-[10px] rounded-lg border-2 shadow-2xl py-2 px-4">
-                {item.title}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-      </SidebarMenuItem>
-    )
-  }
+  const [loading, setLoading] = useState(false);
+  const [clientSearch, setClientSearch] = useState("");
+  const [transSearch, setTransSearch] = useState("");
+
+  const [formData, setFormData] = useState({
+    clientId: '',
+    clientName: '',
+    transactionId: '',
+    transactionNumber: '',
+    activeStageId: '',
+    activeStageName: '',
+    visitDate: new Date().toISOString().split('T')[0],
+    notes: ''
+  });
+
+  // جداول الموارد
+  const [staffRows, setStaffRows] = useState<any[]>([{ employeeId: '', employeeName: '', subcontractorId: '', subcontractorName: '', count: 1 }]);
+  const [equipRows, setEquipRows] = useState<any[]>([{ equipmentId: '', equipmentName: '', count: 1, hours: 8 }]);
+  const [boqItems, setBoqItems] = useState<any[]>([]);
+
+  // استعلامات البيانات المرجعية
+  const clientsQuery = useMemo(() => companyId && db ? query(collection(db, paths.clients(companyId)), orderBy('nameAr')) : null, [db, companyId]);
+  const transQuery = useMemo(() => companyId && db && formData.clientId ? query(collection(db, paths.transactions(companyId)), where('clientId', '==', formData.clientId), where('status', '!=', 'completed')) : null, [db, companyId, formData.clientId]);
+  const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
+  const equipQuery = useMemo(() => companyId && db ? query(collection(db, paths.equipment(companyId)), where('status', '==', 'available')) : null, [db, companyId]);
+  const subsQuery = useMemo(() => companyId && db ? query(collection(db, paths.subcontractors(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
+
+  const { data: allClients } = useCollection<any>(clientsQuery);
+  const { data: allTransactions } = useCollection<any>(transQuery);
+  const { data: allEmployees } = useCollection<any>(empsQuery);
+  const { data: allEquipment } = useCollection<any>(equipQuery);
+  const { data: subcontractors } = useCollection<any>(subsQuery);
+
+  const filteredClients = useMemo(() => (allClients || []).filter(c => c.nameAr.toLowerCase().includes(clientSearch.toLowerCase()) || c.fileNumber?.includes(clientSearch)), [allClients, clientSearch]);
+  const filteredTrans = useMemo(() => (allTransactions || []).filter(t => t.subServiceName.toLowerCase().includes(transSearch.toLowerCase()) || t.transactionNumber?.includes(transSearch)), [allTransactions, transSearch]);
+
+  const [stages, setStages] = useState<any[]>([]);
+  useEffect(() => {
+    if (db && companyId && formData.transactionId) {
+      getDocs(query(collection(db, paths.transactionStages(companyId, formData.transactionId)), where('status', '==', 'in-progress')))
+        .then(snap => setStages(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+        .catch(() => setStages([]));
+    }
+  }, [db, companyId, formData.transactionId]);
+
+  useEffect(() => {
+    if (db && companyId && formData.transactionId && formData.activeStageId) {
+      const stage = stages.find(s => s.id === formData.activeStageId);
+      if (stage) {
+        getDocs(query(collection(db, paths.boqs(companyId)), where('transactionId', '==', formData.transactionId)))
+          .then(async boqSnap => {
+             if (boqSnap.empty) return;
+             const boqId = boqSnap.docs[0].id;
+             const itemsSnap = await getDocs(collection(db, paths.boqItems(companyId, boqId)));
+             const items = itemsSnap.docs
+                .map(d => ({ id: d.id, ...d.data() } as BOQItem))
+                .filter(i => (i.technicalStageIds?.includes(stage.technicalStageId) || i.technicalStageId === stage.technicalStageId))
+                .map(i => ({ boqItemId: i.id, itemName: i.referenceTitle, quantity: 0, unit: i.unitSymbol || 'unit', notes: '' }));
+             setBoqItems(items);
+          });
+      }
+    }
+  }, [db, companyId, formData.transactionId, formData.activeStageId, stages]);
+
+  const addStaffRow = () => setStaffRows([...staffRows, { employeeId: '', employeeName: '', subcontractorId: '', subcontractorName: '', count: 1 }]);
+  const addEquipRow = () => setEquipRows([...equipRows, { equipmentId: '', equipmentName: '', count: 1, hours: 8 }]);
+
+  const updateBoqQty = (idx: number, val: string) => {
+     const newItems = [...boqItems];
+     newItems[idx].quantity = Number(val) || 0;
+     setBoqItems(newItems);
+  };
+
+  const handleSave = async () => {
+    if (!db || !companyId || !user || !formData.transactionId || !formData.activeStageId) return;
+    setLoading(true);
+    try {
+      const service = new FieldVisitService(db, companyId);
+      const visitData = {
+        ...formData,
+        items: boqItems.filter(i => i.quantity > 0),
+        staffDetails: staffRows.filter(r => r.employeeId || r.subcontractorId),
+        equipmentUsed: equipRows.filter(r => r.equipmentId),
+        engineerId: user.uid,
+        engineerName: globalUser?.fullName || 'Engineer'
+      };
+      
+      await service.submitFieldLog(visitData, user.uid);
+      toast({ title: tSafe('inline.visit.recorded', 'تم حفظ السجل الميداني بنجاح', 'Visit Recorded Successfully') });
+      router.push('/dashboard/construction/field-visits');
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('common.error'), description: e.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getAvailableEquipment = (currentIndex: number) => {
+    const selectedIds = equipRows.filter((_, i) => i !== currentIndex).map(r => r.equipmentId);
+    return (allEquipment || []).filter(e => !selectedIds.includes(e.id));
+  };
 
   return (
-    <SidebarMenuItem className="px-1">
-      {item.subItems ? (
-        <Collapsible open={isExpanded || isActive} onOpenChange={setIsExpanded}>
-          <CollapsibleTrigger asChild>
-            <button className={cn(expandedStyle)}>
-              <div className={cn("flex items-center gap-3 w-full", isRtl ? "flex-row-reverse" : "flex-row")}>
-                <item.icon className="h-5 w-5 shrink-0" />
-                <span className="flex-1 text-start text-xs font-black tracking-tight">{item.title}</span>
-                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-300", isExpanded && "rotate-180")} />
-              </div>
-            </button>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="mt-3 space-y-3 px-1 animate-in slide-in-from-top-2 duration-300">
-              {item.subItems.map((sub: any) => (
-                <Link 
-                  key={sub.url} 
-                  href={sub.url}
-                  className={cn(
-                    "flex items-center justify-between h-11 px-5 transition-all duration-300 text-[11px] font-black rounded-2xl border border-orange-100/30 shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98]",
-                    pathname === sub.url 
-                      ? "bg-white text-[#e87c24] border-primary/40 shadow-primary/5 ring-1 ring-primary/5" 
-                      : "bg-white text-slate-700 hover:bg-gradient-to-r hover:from-[#FFF3E0] hover:to-[#FFFDE7] hover:text-[#e87c24]"
-                  )}
-                >
-                  <span className="truncate text-start flex-1">{sub.title}</span>
-                  <sub.icon className={cn("h-3.5 w-3.5 ml-2 transition-all", pathname === sub.url ? "opacity-100 text-[#e87c24] scale-110" : "opacity-30")} />
-                </Link>
-              ))}
+    <div className="space-y-8 max-w-full mx-auto pb-20 animate-in fade-in duration-500 text-start bg-white" dir={dir}>
+      
+      <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-white/95 backdrop-blur-md px-8 shadow-sm">
+        <div className="flex items-center gap-4 text-start">
+           <button onClick={() => router.back()} className="h-10 w-10 border-2 rounded-xl flex items-center justify-center hover:bg-slate-50 transition-colors text-slate-400 shadow-sm shrink-0">
+             <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
+           </button>
+           <div className="text-start">
+              <h1 className="text-xl font-black font-headline text-slate-900">{isRtl ? 'توثيق سجل ميداني سيادي' : 'Sovereign Field Documentation'}</h1>
+              <Badge className="bg-primary/10 text-primary border-0 text-[8px] font-black uppercase px-2 h-4">Quality & Integrity Control</Badge>
+           </div>
+        </div>
+        <Button onClick={handleSave} disabled={loading || !formData.transactionId || !formData.activeStageId} className="h-12 px-10 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-4 border-orange-700">
+           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+           {tSafe('inline.commit.log', 'اعتماد السجل الميداني', 'Commit Field Log')}
+        </Button>
+      </header>
+
+      <div className="max-w-full px-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+         
+         <div className="lg:col-span-4 space-y-6">
+            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
+               <CardHeader className="bg-slate-50 p-6 border-b text-start">
+                  <div className="flex items-center gap-4">
+                     <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm border border-primary/10"><LayoutGrid className="h-5 w-5" /></div>
+                     <CardTitle className="text-base font-black uppercase tracking-tight">{tSafe('inline.site.context', 'سياق المعاملة والموقع', 'Site Context')}</CardTitle>
+                  </div>
+               </CardHeader>
+               <CardContent className="p-8 space-y-6 text-start">
+                  <div className="space-y-4">
+                     <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('common.client', 'العميل', 'Client')}</Label>
+                        <SearchablePicker 
+                          value={formData.clientName}
+                          onSelect={(c: any) => setFormData({...formData, clientName: c.nameAr, clientId: c.id, transactionId: '', transactionNumber: '', activeStageId: '', activeStageName: ''})}
+                          items={filteredClients}
+                          search={clientSearch}
+                          onSearchChange={setClientSearch}
+                          icon={UserCircle}
+                          placeholder={tSafe('inline.choose.client', 'اختر العميل...', 'Select Client')}
+                          isRtl={isRtl}
+                        />
+                     </div>
+                     <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('common.transaction', 'المشروع / المعاملة', 'Transaction')}</Label>
+                        <SearchablePicker 
+                          disabled={!formData.clientId}
+                          value={formData.transactionName}
+                          onSelect={(t_row: any) => setFormData({...formData, transactionName: t_row.subServiceName, transactionId: t_row.id, transactionNumber: t_row.transactionNumber, activeStageId: '', activeStageName: ''})}
+                          items={filteredTrans}
+                          search={transSearch}
+                          onSearchChange={setTransSearch}
+                          icon={Workflow}
+                          placeholder={tSafe('inline.choose.project', 'اختر المشروع...', 'Select Project')}
+                          isRtl={isRtl}
+                        />
+                     </div>
+                     <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{tSafe('inline.target.stage', 'المرحلة الجارية المستهدفة', 'Target Active Stage')}</Label>
+                        <Select disabled={!formData.transactionId} value={formData.activeStageId} onValueChange={v => {
+                           const s = stages.find(x => x.id === v);
+                           setFormData({...formData, activeStageId: v, activeStageName: s?.name || ''});
+                        }}>
+                           <SelectTrigger className="h-12 rounded-xl border-2 font-black bg-primary/5 border-primary/20 text-primary">
+                              <SelectValue placeholder="..." />
+                           </SelectTrigger>
+                           <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
+                              {stages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">{s.name}</SelectItem>)}
+                              {stages.length === 0 && formData.transactionId && <div className="p-4 text-center text-xs font-bold text-slate-400 italic">لا توجد مراحل نشطة للمباشرة.</div>}
+                           </SelectContent>
+                        </Select>
+                     </div>
+                  </div>
+                  
+                  <div className="space-y-1.5 pt-4 border-t">
+                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.date')}</Label>
+                     <SmartDateInput value={formData.visitDate} onChange={v => setFormData({...formData, visitDate: v})} />
+                  </div>
+               </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-xl rounded-[2rem] bg-slate-900 text-white relative overflow-hidden">
+               <div className="absolute top-0 right-0 p-8 opacity-5"><Landmark className="h-40 w-40" /></div>
+               <CardContent className="p-8 space-y-4 relative z-10 text-start">
+                  <div className="flex items-center gap-3 text-primary mb-2">
+                     <ShieldCheck className="h-6 w-6" />
+                     <h4 className="font-black text-lg uppercase tracking-tight">{tSafe('inline.field.integrity', 'بروتوكول النزاهة الميدانية', 'Field Integrity')}</h4>
+                  </div>
+                  <p className="text-[10px] font-bold text-slate-400 leading-relaxed italic">
+                     {tSafe('inline.field.integrity.desc', 'عند حفظ هذا السجل، سيتم تحديث نسب إنجاز المقايسة آلياً، وستظهر المطالبات المالية المستحقة للمقاولين في المركز المالي بناءً على توثيقك.', 'System will auto-update BOQ progress and trigger payables based on your log.')}
+                  </p>
+               </CardContent>
+            </Card>
+         </div>
+
+         <div className="lg:col-span-8 space-y-8">
+            
+            {/* 1. إنجاز بنود المقايسة */}
+            <div className="space-y-4 text-start">
+               <h3 className="text-xl font-black font-headline text-slate-900 flex items-center gap-3 border-b-2 pb-3 border-primary/10">
+                  <Hammer className="h-6 w-6 text-primary" /> {tSafe('inline.boq.execution', 'إنجاز بنود المقايسة (BOQ)', 'BOQ Work Execution')}
+               </h3>
+               <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
+                  <Table>
+                     <TableHeader className="bg-slate-50/50">
+                        <TableRow className="border-0">
+                           <TableHead className="py-5 ps-8 text-slate-500 font-black uppercase text-[10px] tracking-widest">{tSafe('inline.item.desc', 'وصف بند العمل', 'Work Item')}</TableHead>
+                           <TableHead className="text-center text-primary font-black uppercase text-[10px] tracking-widest w-[140px]">{tSafe('common.quantity', 'الكمية المنفذة', 'Executed Qty')}</TableHead>
+                           <TableHead className="pe-8 text-slate-500 font-black uppercase text-[10px] tracking-widest">{t('common.notes')}</TableHead>
+                        </TableRow>
+                     </TableHeader>
+                     <TableBody>
+                        {boqItems.length === 0 ? (
+                          <TableRow><TableCell colSpan={3} className="py-20 text-center text-slate-300 font-bold italic">{tSafe('inline.select.stage.first', 'يرجى اختيار المرحلة أولاً لعرض البنود.', 'Select stage to see work items.')}</TableCell></TableRow>
+                        ) : boqItems.map((item, idx) => (
+                           <TableRow key={idx} className="border-b-slate-50 hover:bg-slate-50/30 transition-colors">
+                              <td className="py-6 ps-8 font-black text-slate-800 text-sm">{item.itemName}</td>
+                              <td className="py-4">
+                                 <div className="relative">
+                                    <Input 
+                                      type="number" 
+                                      step="0.01"
+                                      className="h-12 rounded-xl border-2 text-center font-black text-primary text-xl bg-white shadow-inner" 
+                                      onChange={e => updateBoqQty(idx, e.target.value)}
+                                    />
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-300 uppercase">{item.unit}</span>
+                                 </div>
+                              </td>
+                              <td className="pe-8"><Input className="h-10 border-2 rounded-xl bg-slate-50/30 text-xs font-bold" placeholder="..." /></td>
+                           </TableRow>
+                        ))}
+                     </TableBody>
+                  </Table>
+               </Card>
             </div>
-          </CollapsibleContent>
-        </Collapsible>
-      ) : (
-        <Link href={item.url} className={cn(expandedStyle)}>
-          <div className={cn("flex items-center gap-3 w-full", isRtl ? "flex-row-reverse" : "flex-row")}>
-            <item.icon className="h-5 w-5 shrink-0" />
-            <span className="flex-1 text-start text-xs font-black tracking-tight">{item.title}</span>
-          </div>
-        </Link>
-      )}
-    </SidebarMenuItem>
-  )
+
+            {/* 2. الموارد البشرية والعمالة */}
+            <div className="space-y-4 text-start">
+               <div className="flex justify-between items-center px-1">
+                  <h3 className="text-xl font-black font-headline text-slate-900 flex items-center gap-3">
+                     <Users className="h-6 w-6 text-primary" /> {tSafe('inline.resource.staffing', 'الموارد البشرية وعمالة الباطن', 'Staffing & SubCon Labor')}
+                  </h3>
+                  <Button onClick={addStaffRow} variant="outline" size="sm" className="rounded-xl border-2 font-black text-[10px] h-9 gap-2 shadow-sm">
+                     <Plus className="h-3.5 w-3.5" /> {isRtl ? 'إضافة موظف/عامل' : 'Add Staff'}
+                  </Button>
+               </div>
+               <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
+                  <Table>
+                     <TableHeader className="bg-slate-50/50">
+                        <TableRow className="border-0">
+                           <TableHead className="py-5 ps-8 text-slate-500 font-black uppercase text-[10px] tracking-widest">{tSafe('inline.worker.name', 'الموظف / العامل / المشرف', 'Name / Trade')}</TableHead>
+                           <TableHead className="text-primary font-black uppercase text-[10px] tracking-widest">{tSafe('inline.affiliation', 'جهة التبعية', 'Affiliation')}</TableHead>
+                           <TableHead className="text-center text-slate-900 font-black uppercase text-[10px] tracking-widest w-[100px]">{tSafe('common.count', 'العدد', 'Count')}</TableHead>
+                           <TableHead className="pe-8 w-[60px]"></TableHead>
+                        </TableRow>
+                     </TableHeader>
+                     <TableBody>
+                        {staffRows.map((row, idx) => (
+                           <TableRow key={idx} className="border-b last:border-0 hover:bg-slate-50/30 transition-colors">
+                              <TableCell className="ps-8 py-4">
+                                 <Select onValueChange={v => {
+                                    const emp = allEmployees?.find((e:any) => e.id === v);
+                                    const nr = [...staffRows];
+                                    nr[idx] = { ...nr[idx], employeeId: v, employeeName: emp?.fullName || '' };
+                                    setStaffRows(nr);
+                                 }}>
+                                    <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs bg-white shadow-sm"><SelectValue placeholder="..." /></SelectTrigger>
+                                    <SelectContent className="rounded-xl border shadow-2xl z-[160]">
+                                       {allEmployees?.map((e: any) => <SelectItem key={e.id} value={e.id!} className="font-bold py-3 text-xs border-b last:border-0">{e.fullName}</SelectItem>)}
+                                    </SelectContent>
+                                 </Select>
+                              </TableCell>
+                              <TableCell>
+                                 <Select onValueChange={v => {
+                                    const sub = subcontractors?.find((s:any) => s.id === v);
+                                    const nr = [...staffRows];
+                                    nr[idx] = { ...nr[idx], subcontractorId: v, subcontractorName: sub?.name || '' };
+                                    setStaffRows(nr);
+                                 }}>
+                                    <SelectTrigger className="h-10 rounded-xl border-2 font-black text-[9px] bg-slate-50/50">
+                                       <SelectValue placeholder={isRtl ? 'عمالة المنشأة (INTERNAL)' : 'INTERNAL'} />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border shadow-2xl z-[160]">
+                                       <SelectItem value="INTERNAL" className="font-black text-[10px] py-2">{isRtl ? 'عمالة الشركة' : 'Company Staff'}</SelectItem>
+                                       {subcontractors?.map((s: any) => <SelectItem key={s.id} value={s.id!} className="font-bold py-2 text-[10px]">
+                                          <span className="flex items-center gap-1"><Handshake className="h-3 w-3 text-primary" /> {s.name}</span>
+                                       </SelectItem>)}
+                                    </SelectContent>
+                                 </Select>
+                              </TableCell>
+                              <TableCell className="py-4">
+                                 <Input type="number" defaultValue={1} className="h-10 rounded-xl border-2 text-center font-black text-lg bg-slate-50 shadow-inner" />
+                              </TableCell>
+                              <TableCell className="pe-8">
+                                 <Button variant="ghost" size="icon" onClick={() => setStaffRows(staffRows.filter((_, i) => i !== idx))} className="h-10 w-10 text-rose-300 hover:text-rose-600 transition-colors"><Trash2 className="h-5 w-5" /></Button>
+                              </TableCell>
+                           </TableRow>
+                        ))}
+                     </TableBody>
+                  </Table>
+               </Card>
+            </div>
+
+            {/* 3. المعدات والآليات */}
+            <div className="space-y-4 text-start">
+               <div className="flex justify-between items-center px-1">
+                  <h3 className="text-xl font-black font-headline text-slate-900 flex items-center gap-3">
+                     <Truck className="h-6 w-6 text-primary" /> {tSafe('inline.equipment.usage', 'المعدات والآليات الميدانية', 'Equipment Usage')}
+                  </h3>
+                  <Button onClick={addEquipRow} variant="outline" size="sm" className="rounded-xl border-2 font-black text-[10px] h-9 gap-2 shadow-sm">
+                     <Plus className="h-3.5 w-3.5" /> {isRtl ? 'إضافة معدة' : 'Add Equipment'}
+                  </Button>
+               </div>
+               <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
+                  <Table>
+                     <TableHeader className="bg-slate-50/50">
+                        <TableRow className="border-0">
+                           <TableHead className="py-5 ps-8 text-slate-500 font-black uppercase text-[10px] tracking-widest">{tSafe('inline.machine.type', 'المعدة / الآلية', 'Machine')}</TableHead>
+                           <TableHead className="text-center text-primary font-black uppercase text-[10px] tracking-widest w-[100px]">{tSafe('common.count', 'العدد', 'Qty')}</TableHead>
+                           <TableHead className="text-center text-primary font-black uppercase text-[10px] tracking-widest w-[100px]">{tSafe('inline.hours', 'ساعات التشغيل', 'Hours')}</TableHead>
+                           <TableHead className="pe-8 w-[60px]"></TableHead>
+                        </TableRow>
+                     </TableHeader>
+                     <TableBody>
+                        {equipRows.map((row, idx) => {
+                           const availableEquip = getAvailableEquipment(idx);
+                           return (
+                             <TableRow key={idx} className="border-b last:border-0 hover:bg-slate-50/50 transition-colors">
+                                <TableCell className="ps-6 py-3 text-start">
+                                   <Select onValueChange={v => {
+                                      const eq = allEquipment?.find((x:any) => x.id === v);
+                                      const nr = [...equipRows];
+                                      nr[idx] = { ...nr[idx], equipmentId: v, equipmentName: eq?.name || '' };
+                                      setEquipRows(nr);
+                                   }}>
+                                      <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs bg-white shadow-sm"><SelectValue placeholder="..." /></SelectTrigger>
+                                      <SelectContent className="rounded-xl border shadow-2xl z-[160]">
+                                         {availableEquip.map((e: any) => <SelectItem key={e.id} value={e.id!} className="font-bold py-3 text-xs border-b last:border-0">{e.name} ({e.code})</SelectItem>)}
+                                      </SelectContent>
+                                   </Select>
+                                </TableCell>
+                                <TableCell className="py-3">
+                                   <Input type="number" defaultValue={1} className="h-10 rounded-xl border-2 text-center font-black bg-slate-50 shadow-inner" />
+                                </TableCell>
+                                <TableCell className="py-3">
+                                   <Input type="number" defaultValue={8} className="h-10 rounded-xl border-2 text-center font-black bg-primary/5 text-primary" />
+                                </TableCell>
+                                <TableCell className="pe-8">
+                                   <Button variant="ghost" size="icon" onClick={() => setEquipRows(equipRows.filter((_, i) => i !== idx))} className="h-10 w-10 text-rose-300 hover:text-rose-600"><Trash2 className="h-5 w-5" /></Button>
+                                </TableCell>
+                             </TableRow>
+                           );
+                        })}
+                     </TableBody>
+                  </Table>
+               </Card>
+            </div>
+
+         </div>
+      </div>
+    </div>
+  );
 }
