@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -16,7 +17,7 @@ import {
   Search, Check, ChevronDown, Landmark,
   AlertTriangle, Handshake, CalendarDays,
   LayoutGrid, UserCircle, ShieldCheck,
-  User, UsersRound, Zap
+  User, UsersRound, Zap, ListChecks
 } from "lucide-react";
 import { 
   Popover,
@@ -34,7 +35,7 @@ import {
   SelectLabel
 } from "@/components/ui/select";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, where, getDocs, doc } from 'firebase/firestore';
+import { collection, query, orderBy, where, getDocs, doc, setDoc } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -127,9 +128,9 @@ export default function NewStructuredFieldVisitPage() {
   });
 
   const [staffRows, setStaffRows] = useState<any[]>([{ 
-    resourceType: 'internal_group', 
-    resourceId: 'INTERNAL_CREW',
-    resourceName: isRtl ? 'عمالة الشركة العامة' : 'Internal General Crew',
+    resourceType: 'work_group', 
+    resourceId: '',
+    resourceName: '',
     count: 1 
   }]);
   const [equipRows, setEquipRows] = useState<any[]>([{ equipmentId: '', equipmentName: '', count: 1, hours: 8 }]);
@@ -137,15 +138,17 @@ export default function NewStructuredFieldVisitPage() {
 
   const clientsQuery = useMemo(() => companyId && db ? query(collection(db, paths.clients(companyId)), orderBy('nameAr')) : null, [db, companyId]);
   const transQuery = useMemo(() => companyId && db && formData.clientId ? query(collection(db, paths.transactions(companyId)), where('clientId', '==', formData.clientId)) : null, [db, companyId, formData.clientId]);
-  const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
+  const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active'), orderBy('fullName')) : null, [db, companyId]);
   const equipQuery = useMemo(() => companyId && db ? query(collection(db, paths.equipment(companyId)), where('status', '==', 'available')) : null, [db, companyId]);
   const subsQuery = useMemo(() => companyId && db ? query(collection(db, paths.subcontractors(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
+  const groupsQuery = useMemo(() => companyId && db ? query(collection(db, paths.workGroups(companyId)), where('isActive', '==', true)) : null, [db, companyId]);
 
   const { data: allClients, loading: clientsLoading } = useCollection<any>(clientsQuery);
   const { data: allTransactionsRaw, loading: transLoading } = useCollection<any>(transQuery);
   const { data: allEmployees } = useCollection<any>(empsQuery);
   const { data: allEquipment } = useCollection<any>(equipQuery);
   const { data: subcontractors } = useCollection<any>(subsQuery);
+  const { data: workGroups } = useCollection<any>(groupsQuery);
 
   const filteredClients = useMemo(() => (allClients || []).filter(c => c.nameAr?.toLowerCase().includes(clientSearch.toLowerCase()) || c.fileNumber?.includes(clientSearch)), [allClients, clientSearch]);
   const filteredTrans = useMemo(() => (allTransactionsRaw || []).filter(t => t.status !== 'completed').filter(t => (t.subServiceName || "").toLowerCase().includes(transSearch.toLowerCase()) || (t.transactionNumber || "").toLowerCase().includes(transSearch.toLowerCase())), [allTransactionsRaw, transSearch]);
@@ -184,22 +187,36 @@ export default function NewStructuredFieldVisitPage() {
     }
   }, [db, companyId, formData.transactionId, formData.activeStageId, stages]);
 
-  const addStaffRow = () => setStaffRows([...staffRows, { resourceType: 'internal_group', resourceId: 'INTERNAL_CREW', resourceName: isRtl ? 'عمالة الشركة العامة' : 'Internal General Crew', count: 1 }]);
-  const addEquipRow = () => setEquipRows([...equipRows, { equipmentId: '', equipmentName: '', count: 1, hours: 8 }]);
-
   const updateStaffRow = (idx: number, selectionId: string) => {
     const newRows = [...staffRows];
     
-    if (selectionId === 'INTERNAL_CREW') {
-      newRows[idx] = { resourceType: 'internal_group', resourceId: selectionId, resourceName: isRtl ? 'عمالة الشركة العامة' : 'Internal Crew', count: 1 };
+    if (selectionId.startsWith('GROUP_')) {
+      const groupId = selectionId.replace('GROUP_', '');
+      const group = workGroups?.find((g: any) => g.id === groupId);
+      newRows[idx] = { 
+        resourceType: 'work_group', 
+        resourceId: groupId, 
+        resourceName: group?.name || '', 
+        count: group?.memberCount || 1 
+      };
     } else if (selectionId.startsWith('EMP_')) {
       const empId = selectionId.replace('EMP_', '');
       const emp = allEmployees?.find((e: any) => e.id === empId);
-      newRows[idx] = { resourceType: 'employee', resourceId: empId, resourceName: emp?.fullName || '', count: 1 };
+      newRows[idx] = { 
+        resourceType: 'employee', 
+        resourceId: empId, 
+        resourceName: emp?.fullName || '', 
+        count: 1 
+      };
     } else if (selectionId.startsWith('SUB_')) {
       const subId = selectionId.replace('SUB_', '');
       const sub = subcontractors?.find((s: any) => s.id === subId);
-      newRows[idx] = { resourceType: 'subcontractor', resourceId: subId, resourceName: sub?.name || '', count: 1 };
+      newRows[idx] = { 
+        resourceType: 'subcontractor', 
+        resourceId: subId, 
+        resourceName: sub?.name || '', 
+        count: 1 
+      };
     }
     
     setStaffRows(newRows);
@@ -376,7 +393,7 @@ export default function NewStructuredFieldVisitPage() {
                   <h3 className="text-xl font-black font-headline text-slate-900 flex items-center gap-3">
                      <Users className="h-6 w-6 text-primary" /> {isRtl ? 'الموارد البشرية والعمالة الميدانية' : 'Field Human Resources'}
                   </h3>
-                  <Button onClick={addStaffRow} variant="outline" size="sm" className="rounded-xl border-2 font-black text-[10px] h-9 gap-2 shadow-sm">
+                  <Button onClick={() => setStaffRows([...staffRows, { resourceType: 'work_group', resourceId: '', resourceName: '', count: 1 }])} variant="outline" size="sm" className="rounded-xl border-2 font-black text-[10px] h-9 gap-2 shadow-sm">
                      <Plus className="h-3.5 w-3.5" /> {isRtl ? 'إضافة مورد' : 'Add Resource'}
                   </Button>
                </div>
@@ -384,7 +401,7 @@ export default function NewStructuredFieldVisitPage() {
                   <Table>
                      <TableHeader className="bg-slate-50/50">
                         <TableRow className="border-0">
-                           <TableHead className="py-5 ps-8 text-slate-500 font-black uppercase text-[10px] tracking-widest">{isRtl ? 'الموظف / المجموعة / المقاول' : 'Employee / Group / Contractor'}</TableHead>
+                           <TableHead className="py-5 ps-8 text-slate-500 font-black uppercase text-[10px] tracking-widest">{isRtl ? 'المورد المسؤول' : 'Resource Provider'}</TableHead>
                            <TableHead className="text-center text-slate-900 font-black uppercase text-[10px] tracking-widest w-[120px]">{isRtl ? 'العدد' : 'Count'}</TableHead>
                            <TableHead className="pe-8 w-[60px]"></TableHead>
                         </TableRow>
@@ -393,23 +410,25 @@ export default function NewStructuredFieldVisitPage() {
                         {staffRows.map((row, idx) => (
                            <TableRow key={idx} className="border-b last:border-0 hover:bg-slate-50/30 transition-colors">
                               <TableCell className="ps-8 py-4">
-                                 <Select value={row.resourceId || (row.resourceType === 'internal_group' ? 'INTERNAL_CREW' : '')} onValueChange={v => updateStaffRow(idx, v)}>
+                                 <Select value={`${row.resourceType === 'work_group' ? 'GROUP_' : row.resourceType === 'employee' ? 'EMP_' : 'SUB_'}${row.resourceId}`} onValueChange={v => updateStaffRow(idx, v)}>
                                     <SelectTrigger className={cn(
                                       "h-11 rounded-xl border-2 font-black text-sm",
                                       row.resourceType === 'employee' ? "bg-blue-50 text-blue-600 border-blue-100" : (row.resourceType === 'subcontractor' ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-white")
                                     )}>
-                                       <SelectValue placeholder={isRtl ? 'اختر المورد المسؤول...' : 'Select Resource...'} />
+                                       <SelectValue placeholder={isRtl ? 'اختر المورد...' : 'Select...'} />
                                     </SelectTrigger>
                                     <SelectContent className="rounded-xl border shadow-2xl z-[160] max-h-80">
                                        <SelectGroup>
-                                          <SelectLabel className="font-black text-[10px] text-slate-400 uppercase bg-slate-50 py-2">{isRtl ? 'عمالة الشركة العامة' : 'Internal Crew'}</SelectLabel>
-                                          <SelectItem value="INTERNAL_CREW" className="font-black text-xs py-3">
-                                             <span className="flex items-center gap-2"><UsersRound className="h-4 w-4" /> {isRtl ? 'عمالة الشركة (مجموعة)' : 'Internal Company Crew'}</span>
-                                          </SelectItem>
+                                          <SelectLabel className="font-black text-[10px] text-slate-400 uppercase bg-slate-50 py-2">{isRtl ? 'فرق العمل المعتمدة' : 'Authorized Crews'}</SelectLabel>
+                                          {workGroups?.map((g: any) => (
+                                             <SelectItem key={g.id} value={`GROUP_${g.id}`} className="font-black text-xs py-3 border-b border-slate-50">
+                                                <span className="flex items-center gap-2"><UsersRound className="h-4 w-4" /> {g.name} ({g.memberCount} عمال)</span>
+                                             </SelectItem>
+                                          ))}
                                        </SelectGroup>
                                        
                                        <SelectGroup>
-                                          <SelectLabel className="font-black text-[10px] text-slate-400 uppercase bg-slate-50 py-2 mt-2">{isRtl ? 'موظفون محددون' : 'Named Employees'}</SelectLabel>
+                                          <SelectLabel className="font-black text-[10px] text-slate-400 uppercase bg-slate-50 py-2 mt-2">{isRtl ? 'موظفون أفراد' : 'Individual Staff'}</SelectLabel>
                                           {allEmployees?.map((e: any) => (
                                              <SelectItem key={e.id} value={`EMP_${e.id}`} className="font-bold py-3 text-xs border-b last:border-0 border-slate-50">
                                                 <span className="flex items-center gap-2"><User className="h-4 w-4" /> {e.fullName}</span>

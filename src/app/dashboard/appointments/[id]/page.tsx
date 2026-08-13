@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -54,7 +55,7 @@ export default function AppointmentDetailPage() {
 
   const [selectedStageId, setSelectedStageId] = useState("");
   const [loggedItems, setLoggedItems] = useState<any[]>([]);
-  const [laborDetails, setLaborDetails] = useState<any[]>([{ resourceType: 'internal_group', resourceId: 'INTERNAL_CREW', resourceName: isRtl ? 'عمالة الشركة العامة' : 'Internal General Crew', count: 1, hours: 8, hourlyCostRef: 0 }]);
+  const [laborDetails, setLaborDetails] = useState<any[]>([{ resourceType: 'work_group', resourceId: '', resourceName: '', count: 1, hours: 8, hourlyCostRef: 0 }]);
   const [equipmentUsed, setEquipmentUsed] = useState<any[]>([{ equipmentId: '', hoursUsed: 4, hourlyRateRef: 0 }]);
 
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
@@ -79,10 +80,12 @@ export default function AppointmentDetailPage() {
   const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
   const equipQuery = useMemo(() => companyId && db ? query(collection(db, paths.equipment(companyId)), where('status', '==', 'available')) : null, [db, companyId]);
   const subsQuery = useMemo(() => companyId && db ? query(collection(db, paths.subcontractors(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
+  const groupsQuery = useMemo(() => companyId && db ? query(collection(db, paths.workGroups(companyId)), where('isActive', '==', true)) : null, [db, companyId]);
 
   const { data: allEmployees } = useCollection<any>(empsQuery);
   const { data: equipmentItems } = useCollection<any>(equipQuery);
   const { data: subcontractors } = useCollection<any>(subsQuery);
+  const { data: workGroups } = useCollection<any>(groupsQuery);
 
   useEffect(() => {
      if (selectedStageId && boqItems) {
@@ -108,8 +111,10 @@ export default function AppointmentDetailPage() {
   const updateLaborRow = (idx: number, selectionId: string) => {
     const newRows = [...laborDetails];
     
-    if (selectionId === 'INTERNAL_CREW') {
-      newRows[idx] = { ...newRows[idx], resourceType: 'internal_group', resourceId: selectionId, resourceName: isRtl ? 'عمالة الشركة العامة' : 'Internal Crew', count: 1 };
+    if (selectionId.startsWith('GROUP_')) {
+      const groupId = selectionId.replace('GROUP_', '');
+      const group = workGroups?.find((g: any) => g.id === groupId);
+      newRows[idx] = { ...newRows[idx], resourceType: 'work_group', resourceId: groupId, resourceName: group?.name || '', count: group?.memberCount || 1 };
     } else if (selectionId.startsWith('EMP_')) {
       const empId = selectionId.replace('EMP_', '');
       const emp = allEmployees?.find((e: any) => e.id === empId);
@@ -274,24 +279,26 @@ export default function AppointmentDetailPage() {
                   <div className="space-y-6">
                      <div className="flex justify-between items-center px-1">
                         <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{isRtl ? 'الموارد البشرية والعمالة' : 'Site Labor'}</Label>
-                        <Button variant="outline" size="sm" onClick={() => setLaborDetails([...laborDetails, { resourceType: 'internal_group', resourceId: 'INTERNAL_CREW', resourceName: isRtl ? 'عمالة الشركة العامة' : 'Internal Crew', count: 1, hours: 8, hourlyCostRef: 0 }])} className="h-8 rounded-xl border-2 font-black"><Plus className="h-3.5 w-3.5" /></Button>
+                        <Button variant="outline" size="sm" onClick={() => setLaborDetails([...laborDetails, { resourceType: 'work_group', resourceId: '', resourceName: '', count: 1, hours: 8, hourlyCostRef: 0 }])} className="h-8 rounded-xl border-2 font-black"><Plus className="h-3.5 w-3.5" /></Button>
                      </div>
                      <div className="space-y-3">
                         {laborDetails.map((l, i) => (
                           <div key={i} className="flex gap-2 items-center group p-4 rounded-2xl bg-slate-50/50 border-2 border-white shadow-inner">
-                             <Select value={l.resourceId || (l.resourceType === 'internal_group' ? 'INTERNAL_CREW' : '')} onValueChange={v => updateLaborRow(i, v)}>
+                             <Select value={`${l.resourceType === 'work_group' ? 'GROUP_' : l.resourceType === 'employee' ? 'EMP_' : 'SUB_'}${l.resourceId}`} onValueChange={v => updateLaborRow(i, v)}>
                                 <SelectTrigger className={cn("h-11 rounded-xl border-2 font-bold text-xs bg-white flex-1", l.resourceType === 'employee' ? "text-blue-600" : (l.resourceType === 'subcontractor' ? "text-amber-600" : ""))}>
                                    <SelectValue placeholder={isRtl ? 'اختر المورد...' : 'Select...'} />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl z-[160] max-h-80">
                                    <SelectGroup>
-                                      <SelectLabel className="text-[10px] font-black uppercase bg-slate-50 py-2">{isRtl ? 'مجموعات الشركة' : 'Internal Crew'}</SelectLabel>
-                                      <SelectItem value="INTERNAL_CREW" className="font-black text-xs py-3 border-b">
-                                         <span className="flex items-center gap-2"><UsersRound className="h-4 w-4" /> {isRtl ? 'عمالة الشركة (مجموعة)' : 'Internal Crew'}</span>
-                                      </SelectItem>
+                                      <SelectLabel className="text-[10px] font-black uppercase bg-slate-50 py-2">{isRtl ? 'فرق العمل المعتمدة' : 'Authorized Crews'}</SelectLabel>
+                                      {workGroups?.map((g: any) => (
+                                         <SelectItem key={g.id} value={`GROUP_${g.id}`} className="font-black text-xs py-3 border-b border-slate-50">
+                                            <span className="flex items-center gap-2"><UsersRound className="h-4 w-4" /> {g.name} ({g.memberCount} عمال)</span>
+                                         </SelectItem>
+                                      ))}
                                    </SelectGroup>
                                    <SelectGroup>
-                                      <SelectLabel className="text-[10px] font-black uppercase bg-slate-50 py-2 mt-2">{isRtl ? 'موظفو الشركة' : 'Employees'}</SelectLabel>
+                                      <SelectLabel className="text-[10px] font-black uppercase bg-slate-50 py-2 mt-2">{isRtl ? 'موظفون أفراد' : 'Individual Staff'}</SelectLabel>
                                       {allEmployees?.map((e: any) => <SelectItem key={e.id} value={`EMP_${e.id}`} className="font-bold text-xs py-3"><div className="flex items-center gap-2"><User className="h-4 w-4" /> {e.fullName}</div></SelectItem>)}
                                    </SelectGroup>
                                    <SelectGroup>
