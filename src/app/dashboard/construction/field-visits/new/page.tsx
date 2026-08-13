@@ -118,6 +118,11 @@ function NewFieldVisitForm() {
     return (employees || []).filter(e => !selectedIds.includes(e.id));
   };
 
+  const getAvailableEquipment = (currentRowIdx: number) => {
+    const selectedIds = equipRows.map((r, i) => i !== currentRowIdx ? r.equipmentId : null).filter(Boolean);
+    return (equipmentList || []).filter(e => !selectedIds.includes(e.id));
+  };
+
   const handleLoadGroup = (groupId: string) => {
     const group = workGroups?.find(g => g.id === groupId);
     if (!group || !employees) return;
@@ -194,7 +199,7 @@ function NewFieldVisitForm() {
   return (
     <div className="space-y-6 w-full max-w-full pb-20 animate-in fade-in duration-500 text-start bg-slate-50/30" dir={dir}>
       
-      <header className="sticky top-0 z-50 flex justify-between items-center gap-6 border-b bg-white/95 backdrop-blur-md px-8 py-5 shadow-sm border-primary/10">
+      <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-white/95 backdrop-blur-md px-8 shadow-sm border-primary/10">
         <div className="flex items-center gap-5 text-start">
           <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border-2 border-primary/5 shadow-inner">
             <PlusCircle className="h-8 w-8" />
