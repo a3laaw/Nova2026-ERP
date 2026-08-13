@@ -46,12 +46,12 @@ import { cn } from '@/lib/utils';
 import { SmartDateInput } from '@/components/ui/smart-date-input';
 import { BOQItem } from '@/types/documents';
 
-function SearchablePicker({ value, onSelect, items, search, onSearchChange, icon: Icon, placeholder, isRtl, isLoading = false }: any) {
+function SearchablePicker({ value, onSelect, items, search, onSearchChange, icon: Icon, placeholder, isRtl, isLoading = false, disabled = false }: any) {
   const [open, setOpen] = useState(false);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
+      <PopoverTrigger asChild disabled={disabled}>
         <Button variant="outline" className="w-full h-12 rounded-xl border-2 font-bold justify-between bg-white px-4 shadow-sm text-start">
           <div className="flex items-center gap-3 overflow-hidden text-start">
              <Icon className="h-4 w-4 text-primary opacity-40" />
@@ -132,27 +132,46 @@ export default function NewStructuredFieldVisitPage() {
   const [boqItems, setBoqItems] = useState<any[]>([]);
   const [linkedSubcontractors, setLinkedSubcontractors] = useState<any[]>([]);
 
-  // جلب كافة الموظفين والمجموعات والمعدات للشركة
+  // 1. جلب البيانات الأساسية
   const clientsQuery = useMemo(() => companyId && db ? query(collection(db, paths.clients(companyId)), orderBy('nameAr')) : null, [db, companyId]);
-  const transQuery = useMemo(() => companyId && db && formData.clientId ? query(collection(db, paths.transactions(companyId)), where('clientId', '==', formData.clientId)) : null, [db, companyId, formData.clientId]);
-  const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active'), orderBy('fullName')) : null, [db, companyId]);
+  const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
   const equipQuery = useMemo(() => companyId && db ? query(collection(db, paths.equipment(companyId)), where('status', '==', 'available')) : null, [db, companyId]);
   const groupsQuery = useMemo(() => companyId && db ? query(collection(db, paths.workGroups(companyId)), where('isActive', '==', true)) : null, [db, companyId]);
 
   const { data: allClients, loading: clientsLoading } = useCollection<any>(clientsQuery);
-  const { data: allTransactionsRaw, loading: transLoading } = useCollection<any>(transQuery);
   const { data: allEmployees } = useCollection<any>(empsQuery);
   const { data: allEquipment } = useCollection<any>(equipQuery);
   const { data: workGroups } = useCollection<any>(groupsQuery);
 
+  // 2. جلب المشاريع (حل مشكلة القائمة الفارغة عبر تبسيط الاستعلام وفلترته برمجياً)
+  const [clientTransactions, setClientTransactions] = useState<any[]>([]);
+  const [transLoadingLocal, setTransLoadingLocal] = useState(false);
+
+  useEffect(() => {
+    async function fetchTrans() {
+      if (!db || !companyId || !formData.clientId) {
+        setClientTransactions([]);
+        return;
+      }
+      setTransLoadingLocal(true);
+      try {
+        const q = query(collection(db, paths.transactions(companyId)), where('clientId', '==', formData.clientId));
+        const snap = await getDocs(q);
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // فلترة المشاريع غير المكتملة برمجياً لضمان العمل دون فهارس مركبة معقدة
+        setClientTransactions(list.filter(t => t.status !== 'completed'));
+      } finally {
+        setTransLoadingLocal(false);
+      }
+    }
+    fetchTrans();
+  }, [db, companyId, formData.clientId]);
+
   const filteredClients = useMemo(() => (allClients || []).filter(c => c.nameAr?.toLowerCase().includes(clientSearch.toLowerCase()) || c.fileNumber?.includes(clientSearch)), [allClients, clientSearch]);
   
-  // فلترة المعاملات برمجياً لتجنب مشاكل الفهرس السحابي
   const filteredTrans = useMemo(() => {
-    return (allTransactionsRaw || [])
-      .filter(t => t.status !== 'completed')
-      .filter(t => (t.subServiceName || "").toLowerCase().includes(transSearch.toLowerCase()) || (t.transactionNumber || "").toLowerCase().includes(transSearch.toLowerCase()));
-  }, [allTransactionsRaw, transSearch]);
+    return (clientTransactions || []).filter(t => (t.subServiceName || "").toLowerCase().includes(transSearch.toLowerCase()) || (t.transactionNumber || "").toLowerCase().includes(transSearch.toLowerCase()));
+  }, [clientTransactions, transSearch]);
 
   const [stages, setStages] = useState<any[]>([]);
 
@@ -194,8 +213,7 @@ export default function NewStructuredFieldVisitPage() {
     }
   }, [db, companyId, formData.transactionId, formData.activeStageId, stages]);
 
-  // حارس الازدواج المالي: فحص إذا كان المورد مختاراً مسبقاً
-  const isResourceAlreadyAdded = (id: string, type: 'work_group' | 'employee' | 'subcontractor') => {
+  const isResourceAlreadyAdded = (id: string, type: string) => {
     return staffRows.some(row => row.resourceId === id && row.resourceType === type);
   };
 
@@ -295,7 +313,7 @@ export default function NewStructuredFieldVisitPage() {
                           search={transSearch}
                           onSearchChange={setTransSearch}
                           icon={Workflow}
-                          isLoading={transLoading}
+                          isLoading={transLoadingLocal}
                           placeholder={tSafe('inline.choose.project', 'اختر المشروع...', 'Select Project')}
                           isRtl={isRtl}
                         />
@@ -449,7 +467,7 @@ export default function NewStructuredFieldVisitPage() {
                                                 })}
                                              </SelectGroup>
                                              <SelectGroup>
-                                                <SelectLabel className="font-black text-[10px] text-slate-400 uppercase bg-slate-50 py-2 mt-2">موظفون أفراد (Individual)</SelectLabel>
+                                                <SelectLabel className="font-black text-[10px] text-slate-400 uppercase bg-slate-50 py-2 mt-2">موظفون من كافة الأقسام (Individual)</SelectLabel>
                                                 {allEmployees?.map((e: any) => {
                                                    const isDuplicate = isResourceAlreadyAdded(e.id, 'employee');
                                                    return (
