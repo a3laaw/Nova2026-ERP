@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -32,6 +33,7 @@ export class BOQExecutionService {
 
   /**
    * تسجيل إنجاز ميداني متكامل مع الموارد والتكاليف (Cost Snapping)
+   * تم التحديث لدعم ربط الإنجاز بمقاول باطن محدد (SubCon Tracking)
    */
   async recordBOQItemExecution(
     boqId: string,
@@ -48,6 +50,12 @@ export class BOQExecutionService {
   ) {
     const executionRef = doc(collection(this.db, paths.executions(this.companyId)));
     
+    // 1. جلب بيانات البند المرجعية
+    const itemRef = doc(this.db, paths.boqItems(this.companyId, boqId), itemId);
+    const itemSnap = await getDoc(itemRef);
+    if (!itemSnap.exists()) throw new Error("BOQ Item missing");
+    const itemData = itemSnap.data() as BOQItem;
+
     let processedLabor: LaborDetail[] = [];
     let processedEquip: EquipmentUsed[] = [];
 
@@ -67,13 +75,18 @@ export class BOQExecutionService {
       companyId: this.companyId,
       boqId,
       boqItemId: itemId,
-      transactionId: '', 
+      transactionId: itemData.transactionId || '', 
       appointmentId: appointmentId || null,
       stageInstanceId: stageInstanceId,
       technicalStageId,
       quantity: Number(quantity) || 0,
       status: 'executed',
       notes,
+      
+      // توثيق المقاول المسؤول عن البند (The SubCon Audit Trail)
+      subcontractorId: itemData.subcontractorId || '',
+      subcontractorName: itemData.subcontractorName || '',
+      
       laborDetails: processedLabor,
       equipmentUsed: processedEquip,
       recordedBy: userId,
@@ -84,40 +97,36 @@ export class BOQExecutionService {
 
     const batch = writeBatch(this.db);
     
-    const itemRef = doc(this.db, paths.boqItems(this.companyId, boqId), itemId);
-    const itemSnap = await getDoc(itemRef);
-    if (!itemSnap.exists()) throw new Error("BOQ Item missing");
-    const itemData = itemSnap.data() as BOQItem;
-
-    executionData.transactionId = itemData.transactionId;
     executionData.clientId = itemData.clientId || (itemData as any).clientId || '';
     executionData.unitSymbol = itemData.unitSymbol || '';
 
     batch.set(executionRef, executionData);
     
-    // 1. تحديث المقايسة لأغراض المالية والكمية الكلية
+    // 2. تحديث المقايسة لأغراض المالية والكمية الكلية
     batch.update(itemRef, {
       executedQuantity: increment(Number(quantity) || 0),
       updatedAt: serverTimestamp()
     });
 
-    // 2. تحديث المرحلة النشطة فنياً (لتغيير نسبة إنجاز المرحلة)
+    // 3. تحديث المرحلة النشطة فنياً
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, itemData.transactionId || ''), stageInstanceId);
     batch.update(stageRef, {
       currentCount: increment(Number(quantity) || 0),
       updatedAt: serverTimestamp()
     });
 
-    // 3. توثيق في التايملاين
+    // 4. توثيق في التايملاين مع ذكر المقاول إن وجد لتعزيز الشفافية
     if (itemData.transactionId) {
       const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, itemData.transactionId)));
+      const subConPart = itemData.subcontractorName ? ` بواسطة (${itemData.subcontractorName})` : "";
+      
       batch.set(timelineRef, {
         transactionId: itemData.transactionId,
         stageId: stageInstanceId,
         technicalStageId,
         appointmentId: appointmentId || null,
         type: 'numeric_update',
-        content: `[إنجاز تقني] تم تنفيذ كمية ${quantity} ${itemData.unitSymbol || ''} ضمن مرحلة "${technicalStageId}". تم تحديث المسار الفني والمقايسة آلياً.`,
+        content: `[إنجاز تقني] تم تنفيذ كمية ${quantity} ${itemData.unitSymbol || ''} من بند "${itemData.referenceTitle}"${subConPart}. تم تحديث المسار الفني والمقايسة آلياً.`,
         userId,
         userName,
         companyId: this.companyId,
@@ -154,3 +163,4 @@ export class BOQExecutionService {
     };
   }
 }
+

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -9,7 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   Loader2, ArrowRight, Hammer, Users, 
   Truck, CheckCircle2, ShieldCheck, Printer,
-  LayoutGrid, Package, Landmark, History
+  LayoutGrid, Package, Landmark, History,
+  Handshake
 } from "lucide-react";
 import { useFirestore, useDoc } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -95,7 +97,8 @@ export default function FieldVisitDetailsPage() {
                           <TableRow className="border-0">
                              <TableHead className="py-6 ps-8 text-slate-500 font-black uppercase text-[10px] tracking-widest w-[60px]">#</TableHead>
                              <TableHead className="text-slate-500 font-black uppercase text-[10px] tracking-widest">{tSafe('inline.work.item.desc', 'وصف بند العمل', 'Work Item Description')}</TableHead>
-                             <TableHead className="text-center text-primary font-black uppercase text-[10px] tracking-widest w-[150px]">{t('common.quantity')}</TableHead>
+                             <TableHead className="text-start text-xs font-black uppercase text-primary tracking-widest w-[160px]">{isRtl ? 'جهة التنفيذ' : 'Executed By'}</TableHead>
+                             <TableHead className="text-center text-primary font-black uppercase text-[10px] tracking-widest w-[120px]">{t('common.quantity')}</TableHead>
                              <TableHead className="pe-8 text-slate-500 font-black uppercase text-[10px] tracking-widest">{t('common.notes')}</TableHead>
                           </TableRow>
                        </TableHeader>
@@ -106,6 +109,15 @@ export default function FieldVisitDetailsPage() {
                                 <td className="py-6 text-start">
                                    <p className="font-black text-slate-800 text-sm leading-tight">{item.itemName}</p>
                                    <Badge variant="outline" className="mt-1 h-5 px-2 border-slate-200 text-[9px] font-black text-slate-400 uppercase bg-white">ID: {item.boqItemId?.slice(-6)}</Badge>
+                                </td>
+                                <td className="py-6 text-start">
+                                   {item.subcontractorName ? (
+                                     <Badge className="bg-orange-50 text-orange-600 border-orange-100 font-black text-[9px] gap-2 px-3 py-1 rounded-lg">
+                                       <Handshake className="h-3 w-3" /> {item.subcontractorName}
+                                     </Badge>
+                                   ) : (
+                                     <Badge className="bg-blue-50 text-blue-600 border-blue-100 font-black text-[9px] px-3 py-1 rounded-lg">{isRtl ? 'عمالة المنشأة' : 'Internal'}</Badge>
+                                   )}
                                 </td>
                                 <td className="py-6 text-center">
                                    <div className="inline-flex flex-col items-center">
@@ -127,15 +139,15 @@ export default function FieldVisitDetailsPage() {
                   <Card className="border-2 shadow-none rounded-[2rem] overflow-hidden bg-white">
                      <CardHeader className="bg-slate-50 border-b py-4 px-6 text-start">
                         <CardTitle className="text-[10px] font-black uppercase text-slate-600 tracking-[0.2em] flex items-center gap-2">
-                           <Users className="h-3.5 w-3.5" /> {tSafe('inline.staff.resources', 'الموارد البشرية', 'Staff Resources')}
+                           <Users className="h-3.5 w-3.5" /> {tSafe('inline.staff.resources', 'الموارد البشرية والعمالة', 'Staff Resources')}
                         </CardTitle>
                      </CardHeader>
                      <CardContent className="p-0">
                         <Table>
                            <TableHeader className="bg-white border-b">
                               <TableRow>
-                                 <TableHead className="text-[9px] font-black text-slate-400 uppercase text-start ps-6">{isRtl ? 'الموظف' : 'EMPLOYEE'}</TableHead>
-                                 <TableHead className="text-[9px] font-black text-slate-400 uppercase text-start">{isRtl ? 'المسمى' : 'POSITION'}</TableHead>
+                                 <TableHead className="text-[9px] font-black text-slate-400 uppercase text-start ps-6">{isRtl ? 'الموظف / العامل' : 'EMPLOYEE'}</TableHead>
+                                 <TableHead className="text-[9px] font-black text-slate-400 uppercase text-start">{isRtl ? 'جهة التبعية' : 'AFFILIATION'}</TableHead>
                                  <TableHead className="text-[9px] font-black text-slate-400 uppercase text-center">{isRtl ? 'العدد' : 'COUNT'}</TableHead>
                               </TableRow>
                            </TableHeader>
@@ -143,7 +155,13 @@ export default function FieldVisitDetailsPage() {
                               {visit.staffDetails?.map((row: any, idx: number) => (
                                 <TableRow key={idx} className="border-b last:border-0">
                                    <TableCell className="ps-6 py-4 font-black text-xs text-slate-800">{row.employeeName}</TableCell>
-                                   <TableCell className="py-4 text-xs font-bold text-slate-500">{row.position}</TableCell>
+                                   <TableCell className="py-4">
+                                      {row.subcontractorName ? (
+                                         <span className="text-[9px] font-black text-orange-600 uppercase flex items-center gap-1"><Handshake className="h-2.5 w-2.5" /> {row.subcontractorName}</span>
+                                      ) : (
+                                         <span className="text-[9px] font-black text-blue-500 uppercase">{isRtl ? 'الشركة' : 'INTERNAL'}</span>
+                                      )}
+                                   </TableCell>
                                    <TableCell className="py-4 text-center font-black text-sm">{row.count}</TableCell>
                                 </TableRow>
                               ))}
@@ -179,34 +197,6 @@ export default function FieldVisitDetailsPage() {
                         </Table>
                      </CardContent>
                   </Card>
-
-                  <Card className="lg:col-span-2 border-2 shadow-none rounded-[2rem] overflow-hidden bg-white">
-                     <CardHeader className="bg-slate-50 border-b py-4 px-6 text-start">
-                        <CardTitle className="text-[10px] font-black uppercase text-slate-600 tracking-[0.2em] flex items-center gap-2">
-                           <Package className="h-3.5 w-3.5" /> {tSafe('inline.materials', 'المواد الموردة للموقع', 'Materials')}
-                        </CardTitle>
-                     </CardHeader>
-                     <CardContent className="p-0">
-                        <Table>
-                           <TableHeader className="bg-white border-b">
-                              <TableRow>
-                                 <TableHead className="text-[9px] font-black text-slate-400 uppercase text-start ps-6">{isRtl ? 'نوع المادة' : 'MATERIAL TYPE'}</TableHead>
-                                 <TableHead className="text-[9px] font-black text-slate-400 uppercase text-center">{isRtl ? 'الوحدة' : 'UNIT'}</TableHead>
-                                 <TableHead className="text-[9px] font-black text-slate-400 uppercase text-center">{isRtl ? 'الكمية' : 'QTY'}</TableHead>
-                              </TableRow>
-                           </TableHeader>
-                           <TableBody>
-                              {visit.materialsDelivered?.map((row: any, idx: number) => (
-                                <TableRow key={idx} className="border-b last:border-0">
-                                   <TableCell className="ps-6 py-4 font-black text-xs text-slate-800">{row.type}</TableCell>
-                                   <TableCell className="py-4 text-center font-bold text-xs uppercase text-slate-400">{row.unit}</TableCell>
-                                   <TableCell className="py-4 text-center font-black text-sm text-emerald-600">{row.quantity}</TableCell>
-                                </TableRow>
-                              ))}
-                           </TableBody>
-                        </Table>
-                     </CardContent>
-                  </Card>
               </div>
 
               <div className="p-10 bg-white border-2 border-slate-100 rounded-[3rem] shadow-xl flex flex-col md:flex-row items-center justify-between gap-10 border-t-8 border-primary text-start ring-1 ring-black/[0.02]">
@@ -218,7 +208,7 @@ export default function FieldVisitDetailsPage() {
                        <p className="text-[9px] font-black text-primary uppercase tracking-[0.3em]">{tSafe('inline.authorized.engineer', 'المهندس الموثق', 'Authorized Engineer')}</p>
                        <h4 className="text-2xl font-black font-headline text-slate-900">{visit.engineerName}</h4>
                        <div className="flex items-center gap-2 text-slate-400 font-bold text-[10px]">
-                          <ShieldCheck className="h-4 w-4 text-emerald-500" /> {tSafe('inline.verified.record', 'سجل ميداني موثق', 'Verified Field Record')}
+                          <ShieldCheck className="h-4 w-4 text-emerald-500" /> {tSafe('inline.verified.record', 'سجل ميداني موثق سيادياً', 'Verified Sovereign Field Record')}
                        </div>
                     </div>
                  </div>

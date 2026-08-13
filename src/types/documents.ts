@@ -1,3 +1,4 @@
+
 'use client';
 /**
  * @fileOverview تعريف واجهات البيانات للمستندات الحية (Instantiated Documents).
@@ -58,7 +59,9 @@ export interface BOQItem extends BaseReference {
   id: string;
   boqId: string;
   transactionId?: string;
+  clientId?: string;
   contractQty: number;
+  plannedQuantity: number; // الكمية المخططة في الدراسة
   approvedVariationQty: number;
   executedQuantity: number;
   verifiedQuantity: number;
@@ -67,28 +70,35 @@ export interface BOQItem extends BaseReference {
   referenceTitle: string;
   referenceDescription?: string;
   unitSymbol?: string;
+  unitName?: string;
   estimatedRate: number;
   order: number;
   technicalStageId?: string;
   technicalStageIds?: string[];
   ancestorIds?: string[];
   ancestorTitles?: string[];
+  
+  // الربط السيادي بالمقاول (The SubCon Link)
+  subcontractorId?: string;
+  subcontractorName?: string;
 }
 
 export interface LaborDetail {
   trade: string;
   count: number;
   hours: number;
-  hourlyCostRef: number;    // التكلفة منسوخة من CostRateCard وقت التسجيل
-  totalCost: number;        // count × hours × hourlyCostRef
+  hourlyCostRef: number;    
+  totalCost: number;        
+  subcontractorId?: string; // ربط العمالة بمقاول محدد
+  subcontractorName?: string;
 }
 
 export interface EquipmentUsed {
   equipmentId: string;
   name: string;
   hoursUsed: number;
-  hourlyRateRef: number;    // التعرفة منسوخة من Equipment وقت التسجيل
-  totalCost: number;        // hoursUsed × hourlyRateRef
+  hourlyRateRef: number;    
+  totalCost: number;        
 }
 
 export interface BOQItemExecutionEntry extends BaseReference {
@@ -109,10 +119,14 @@ export interface BOQItemExecutionEntry extends BaseReference {
   recordedBy: string;
   recordedByName: string;
   createdAt: any;
+  
+  // توثيق الجهة المنفذة للبند في هذه الزيارة
+  subcontractorId?: string;
+  subcontractorName?: string;
 }
 
 export interface InterimPaymentCertificate extends BaseDocument {
-  ipcNumber: number;
+  ipcNumber: string;
   contractId: string;
   status: 'draft' | 'clientCertified' | 'approved' | 'rejected';
   lineItems: {
