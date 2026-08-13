@@ -4,13 +4,12 @@ import { useState, useMemo, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { 
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableDropdown } from '@/components/ui/searchable-dropdown'; // المكون الموحد
 import { 
   Save, Loader2, Plus, CheckCircle2, Trash2, 
   Truck, LayoutGrid, Hammer, Users, 
@@ -81,6 +80,20 @@ function NewFieldVisitForm() {
   const clientProjects = useMemo(() => 
     selectedClientId ? (allTransactions || []).filter(p => p.clientId === selectedClientId) : [], 
   [allTransactions, selectedClientId]);
+
+  // --- (التعديل الجديد) استعلام عقود الباطن المرتبطة بالمشروع المختار فقط ---
+  const subContractsQuery = useMemo(() => 
+    companyId && db && selectedProjectId ? query(collection(db, paths.subconContracts(companyId)), where('transactionId', '==', selectedProjectId), where('status', '==', 'active')) : null, 
+  [db, companyId, selectedProjectId]);
+
+  const { data: projectSubContracts } = useCollection<any>(subContractsQuery);
+
+  // --- (التعديل الجديد) تصفية قائمة المقاولين: عرض المقاولين الذين لديهم عقد ساري في هذا المشروع فقط ---
+  const projectSubcontractors = useMemo(() => {
+    if (!projectSubContracts || !subcontractors) return [];
+    const subIds = projectSubContracts.map(sc => sc.subcontractorId);
+    return subcontractors.filter(s => subIds.includes(s.id));
+  }, [projectSubContracts, subcontractors]);
 
   useEffect(() => {
     async function fetchProjectContext() {
@@ -224,21 +237,25 @@ function NewFieldVisitForm() {
       </header>
 
       <div className="px-8 space-y-10">
-         <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden w-full">
+         <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-visible w-full">
             <CardContent className="p-8 grid grid-cols-1 md:grid-cols-4 gap-10 items-center">
                 <div className="space-y-2">
                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.clients')}</Label>
-                   <Select value={selectedClientId} onValueChange={v => { setSelectedClientId(v); setSelectedProjectId(''); }}>
-                      <SelectTrigger className="h-14 rounded-2xl border-2 font-black text-lg bg-slate-50/50 shadow-inner"><SelectValue placeholder="..." /></SelectTrigger>
-                      <SelectContent className="rounded-2xl z-[150] shadow-3xl border-0">{contractedClients.map(c => <SelectItem key={c.id} value={c.id} className="font-bold py-4 border-b last:border-0">{c.name}</SelectItem>)}</SelectContent>
-                   </Select>
+                   <SearchableDropdown
+                     options={contractedClients.map(c => ({ id: c.id, name: c.name }))}
+                     value={selectedClientId}
+                     onChange={(val) => { setSelectedClientId(val as string); setSelectedProjectId(''); }}
+                     placeholder="..."
+                   />
                 </div>
                 <div className="space-y-2">
                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.projects')}</Label>
-                   <Select disabled={!selectedClientId} value={selectedProjectId} onValueChange={setSelectedProjectId}>
-                      <SelectTrigger className="h-14 rounded-2xl border-2 font-black text-lg bg-slate-50/50 shadow-inner"><SelectValue placeholder="..." /></SelectTrigger>
-                      <SelectContent className="rounded-2xl z-[150] shadow-3xl border-0">{clientProjects.map(p => <SelectItem key={p.id} value={p.id} className="font-bold py-4 border-b last:border-0">{p.subServiceName}</SelectItem>)}</SelectContent>
-                   </Select>
+                   <SearchableDropdown
+                     options={clientProjects.map(p => ({ id: p.id, name: p.subServiceName }))}
+                     value={selectedProjectId}
+                     onChange={(val) => setSelectedProjectId(val as string)}
+                     placeholder="..."
+                   />
                 </div>
                 <div className="space-y-2">
                    <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5"><Workflow className="h-3 w-3" /> {tSafe('inline.active.stage', 'المرحلة النشطة', 'Active Stage')}</Label>
@@ -287,19 +304,12 @@ function NewFieldVisitForm() {
                      {executionRows.map((row, idx) => (
                         <TableRow key={idx} className="border-b last:border-0 hover:bg-primary/[0.01] transition-colors">
                            <TableCell className="ps-10 py-6 text-start">
-                              <Select value={row.boqItemId} onValueChange={v => { const nr = [...executionRows]; nr[idx].boqItemId = v; setExecutionRows(nr); }}>
-                                 <SelectTrigger className="h-12 rounded-xl border-2 font-black text-sm bg-white shadow-sm"><SelectValue placeholder="..." /></SelectTrigger>
-                                 <SelectContent className="rounded-2xl z-[160] shadow-3xl max-h-[400px]">
-                                    {filteredBoqItems.map(i => (
-                                       <SelectItem key={i.id} value={i.id!} className="font-bold py-4 border-b last:border-0 border-slate-50">
-                                          <div className="flex flex-col text-start">
-                                             <span className="text-slate-800 text-sm">{i.referenceTitle}</span>
-                                             <span className="text-[10px] text-slate-400 font-mono uppercase tracking-widest">{tSafe('inline.code', 'كود', 'CODE')}: {i.referenceCode}</span>
-                                          </div>
-                                       </SelectItem>
-                                    ))}
-                                 </SelectContent>
-                              </Select>
+                              <SearchableDropdown
+                                options={filteredBoqItems.map(i => ({ id: i.id!, name: i.referenceTitle, subText: i.referenceCode }))}
+                                value={row.boqItemId}
+                                onChange={(val) => { const nr = [...executionRows]; nr[idx].boqItemId = val as string; setExecutionRows(nr); }}
+                                placeholder="..."
+                              />
                            </TableCell>
                            <TableCell className="py-6">
                               <div className="relative group">
@@ -390,7 +400,7 @@ function NewFieldVisitForm() {
                                     
                                     {!row.employeeId && (
                                        <Select value={row.subcontractorId} onValueChange={v => {
-                                          const sub = subcontractors?.find((s:any) => s.id === v);
+                                          const sub = projectSubcontractors?.find((s:any) => s.id === v);
                                           const nr = [...staffRows];
                                           nr[idx] = { ...nr[idx], subcontractorId: v, subcontractorName: sub?.name || '' };
                                           setStaffRows(nr);
@@ -399,7 +409,11 @@ function NewFieldVisitForm() {
                                              <SelectValue placeholder={tSafe('inline.choose.subcon', 'اختر المقاول المسؤول...', 'Choose Subcontractor...')} />
                                           </SelectTrigger>
                                           <SelectContent className="rounded-xl z-[161] shadow-3xl">
-                                             {subcontractors?.map((s:any) => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3">{s.name}</SelectItem>)}
+                                             {projectSubcontractors.length === 0 ? (
+                                                <div className="p-4 text-center text-slate-400 text-xs">لا يوجد مقاولون معتمدون لهذا المشروع</div>
+                                             ) : (
+                                                projectSubcontractors.map((s:any) => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3">{s.name}</SelectItem>)
+                                             )}
                                           </SelectContent>
                                        </Select>
                                     )}

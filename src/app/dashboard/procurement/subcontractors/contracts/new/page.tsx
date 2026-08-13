@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, Suspense } from 'react';
@@ -9,7 +10,8 @@ import {
   ArrowRight, Loader2, Save, Sparkles, 
   Handshake, Building2, Workflow, Target,
   Calculator, Plus, Trash2, Gavel, Landmark, ShieldCheck,
-  Percent, FileText, Info, UserCircle, X, Clock
+  Percent, FileText, Info, UserCircle, X, Clock,
+  ShieldAlert, AlertTriangle, Search, Check, ChevronDown
 } from "lucide-react";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -38,6 +40,8 @@ function NewSubConContractContent() {
   const companyId = globalUser?.companyId;
 
   const [loading, setLoading] = useState(false);
+  const [checkingEligibility, setCheckingEligibility] = useState(false);
+  const [eligibilityError, setEligibilityError] = useState<string | null>(null);
 
   const [form, setForm] = useState<any>({
     subcontractorId: '',
@@ -78,6 +82,39 @@ function NewSubConContractContent() {
   const { data: clients } = useCollection<any>(clientsQuery);
   const { data: transactions } = useCollection<any>(transQuery);
   const { data: templates } = useCollection<SubConContractTemplate>(templatesQuery);
+
+  // حارس الأهلية: فحص وجود عقد معتمد للمالك قبل السماح بتعاقد الباطن
+  useEffect(() => {
+    async function checkClientEligibility() {
+      if (!db || !companyId || !form.clientId) {
+        setEligibilityError(null);
+        return;
+      }
+      setCheckingEligibility(true);
+      try {
+        const contractsPath = paths.contracts(companyId);
+        const q = query(
+          collection(db, contractsPath),
+          where('clientId', '==', form.clientId),
+          where('status', 'in', ['approved', 'active', 'signed', 'paid'])
+        );
+        const snap = await getDocs(q);
+        if (snap.empty) {
+          setEligibilityError(isRtl 
+            ? "تنبيه: لا يمكن التعاقد مع مقاول باطن لهذا العميل لعدم وجود عقد مالك معتمد أو موقع." 
+            : "Alert: SubCon award not allowed. Client must have an approved or signed contract first."
+          );
+        } else {
+          setEligibilityError(null);
+        }
+      } catch (e) {
+        console.error("Eligibility check failed", e);
+      } finally {
+        setCheckingEligibility(false);
+      }
+    }
+    checkClientEligibility();
+  }, [form.clientId, db, companyId, isRtl]);
 
   useEffect(() => {
     if (db && companyId && form.templateId) {
@@ -127,11 +164,20 @@ function NewSubConContractContent() {
   };
 
   const handleSave = async () => {
-    if (!db || !companyId || !user || !form.subcontractorId || !form.transactionId) return;
+    if (!db || !companyId || !user || !form.subcontractorId || !form.transactionId || eligibilityError) return;
     setLoading(true);
     try {
       const contractRef = doc(collection(db, paths.subconContracts(companyId)));
-      await setDoc(contractRef, { ...form, id: contractRef.id, status: 'active', projectTitle: `${form.clientName} - ${form.transactionName}`, companyId, createdBy: user.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      await setDoc(contractRef, { 
+        ...form, 
+        id: contractRef.id, 
+        status: 'active', 
+        projectTitle: `${form.clientName} - ${form.transactionName}`, 
+        companyId, 
+        createdBy: user.uid, 
+        createdAt: serverTimestamp(), 
+        updatedAt: serverTimestamp() 
+      });
       toast({ title: tSafe('common.saved', 'تم الحفظ بنجاح', 'Saved Successfully') });
       router.push(`/dashboard/procurement/subcontractors/contracts/${contractRef.id}`);
     } catch (e: any) {
@@ -147,7 +193,11 @@ function NewSubConContractContent() {
            <h1 className="text-xl font-black font-headline text-slate-900">{tSafe('subcon.contracts.new', 'تأسيس اتفاقية باطن جديدة', 'New SubCon Award')}</h1>
         </div>
         <div className="flex items-center gap-4">
-           <Button onClick={handleSave} disabled={loading || !form.subcontractorId || !form.transactionId} className="h-12 px-10 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-4 border-orange-700">
+           <Button 
+            onClick={handleSave} 
+            disabled={loading || !form.subcontractorId || !form.transactionId || !!eligibilityError} 
+            className="h-12 px-10 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-4 border-orange-700"
+           >
               {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />} {tSafe('subcon.contracts.issueNow', 'إصدار الاتفاقية الآن', 'Issue Award Now')}
            </Button>
         </div>
@@ -156,6 +206,17 @@ function NewSubConContractContent() {
       <div className="px-8 pb-20">
          <PrintWrapper title={tSafe('subcon.details.official', 'اتفاقية تنفيذ أعمال باطن', 'SubCon Services Agreement')} fullWidth={true}>
             <div className="space-y-12 text-start">
+               
+               {eligibilityError && (
+                 <div className="p-6 rounded-[2rem] bg-rose-50 border-4 border-rose-100 flex items-start gap-4 animate-in shake-in duration-500">
+                    <ShieldAlert className="h-10 w-10 text-rose-600 shrink-0 mt-1" />
+                    <div className="text-start">
+                       <h4 className="font-black text-rose-900 text-lg uppercase tracking-tight">{tSafe('inline.restriction', 'قيد إداري سيادي', 'Management Restriction')}</h4>
+                       <p className="text-sm font-bold text-rose-700 leading-relaxed mt-1">{eligibilityError}</p>
+                    </div>
+                 </div>
+               )}
+
                <div className="space-y-6">
                   <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em] border-b-2 border-primary/10 pb-2">{tSafe('subcon.legal.parties', 'أولاً: أطراف التعاقد', 'Parties of the Agreement')}</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
@@ -198,13 +259,14 @@ function NewSubConContractContent() {
                            <div className="space-y-2">
                               <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('common.targetTransaction', 'المشروع / المعاملة', 'Target Project')}</Label>
                               <SearchableDropdown
-                                options={(transactions || []).filter(t_item => !form.clientId || t_item.clientId === form.clientId).map(t_item => ({ id: t_item.id, name: t_item.subServiceName, subText: `#${t_item.transactionNumber}` }))}
+                                disabled={!form.clientId || !!eligibilityError}
+                                options={(transactions || []).filter(t_item => t_item.clientId === form.clientId).map(t_item => ({ id: t_item.id, name: t_item.subServiceName, subText: `#${t_item.transactionNumber}` }))}
                                 value={form.transactionId}
                                 onChange={(val) => {
                                   const selected = transactions?.find(t_item => t_item.id === val);
                                   setForm({...form, transactionId: val as string, transactionNumber: selected?.transactionNumber || '', transactionName: selected?.subServiceName || ''});
                                 }}
-                                placeholder={tSafe('subcon.form.project', 'اختر المشروع...', 'Choose Project')}
+                                placeholder={!form.clientId ? tSafe('inline.choose.client.first', 'اختر العميل أولاً...', 'Choose Client First') : tSafe('subcon.form.project', 'اختر المشروع...', 'Choose Project')}
                               />
                            </div>
                         </div>
@@ -244,7 +306,7 @@ function NewSubConContractContent() {
                               <th className="p-8 text-start">{tSafe('name', 'الوصف', 'Description')}</th>
                               {form.pricingMode === 'percentage' && <th className="p-8 text-center w-32">%</th>}
                               <th className="p-8 text-center w-32">{tSafe('timing', 'التوقيت', 'Timing')}</th>
-                              <th className="p-8 text-start w-48">{tSafe('technicalLink', 'الارتباط الميداني', 'Execution Link')}</th>
+                              <th className="p-8 text-start w-56">{tSafe('technicalLink', 'الارتباط الميداني', 'Execution Link')}</th>
                               <th className="p-8 text-end pe-12 w-48">{t('common.amount')}</th>
                               <th className="p-8 w-14"></th>
                            </tr>
@@ -268,7 +330,7 @@ function NewSubConContractContent() {
                                   )}
                                   <td className="p-4 text-center">
                                       <Select value={m.timing || 'at'} onValueChange={v => updateMilestone(idx, 'timing', v)}>
-                                         <SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs bg-white"><SelectValue placeholder="..." /></SelectTrigger>
+                                         <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs bg-white"><SelectValue placeholder="..." /></SelectTrigger>
                                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
                                             <SelectItem value="at" className="font-bold text-xs">{isRtl ? 'عند' : 'At'}</SelectItem>
                                             <SelectItem value="before" className="font-bold text-xs">{isRtl ? 'قبل' : 'Before'}</SelectItem>
@@ -280,18 +342,27 @@ function NewSubConContractContent() {
                                   <td className="p-4 text-start">
                                       <Select value={m.technicalStageId || ''} onValueChange={v => updateMilestone(idx, 'technicalStageId', v)}>
                                          <SelectTrigger className={cn(
-                                           "h-10 rounded-xl border-2 font-black text-xs",
+                                           "h-10 rounded-xl border-2 font-black text-xs min-w-[180px] max-w-[220px]",
                                            m.technicalStageId ? "bg-primary/5 text-primary border-primary/20" : "bg-white"
                                          )}>
-                                           <SelectValue placeholder="..." />
+                                           <SelectValue placeholder="...">
+                                              <span className="truncate block">
+                                                {m.technicalStageId === 'SIGNING' ? t('contractSigning') : (linkedStageName || '...')}
+                                              </span>
+                                           </SelectValue>
                                          </SelectTrigger>
-                                         <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
+                                         <SelectContent className="rounded-xl border-2 shadow-2xl z-[160] min-w-[200px]">
                                             <SelectItem value="SIGNING" className="font-black text-[10px] py-3 border-b border-slate-50">
                                                <span className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-emerald-500" /> {t('contractSigning')}</span>
                                             </SelectItem>
-                                            {pathStages.map(s => <SelectItem key={s.id} value={s.technicalStageId || s.id} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
-                                               <span className="flex items-center gap-2"><Workflow className="h-3.5 w-3.5 text-primary" /> {s.name}</span>
-                                            </SelectItem>)}
+                                            {pathStages.map(s => (
+                                              <SelectItem key={s.id} value={s.technicalStageId || s.id} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
+                                                 <span className="flex items-center gap-2 truncate max-w-[220px]">
+                                                   <Workflow className="h-3.5 w-3.5 text-primary shrink-0" /> 
+                                                   <span className="truncate">{s.name}</span>
+                                                 </span>
+                                              </SelectItem>
+                                            ))}
                                          </SelectContent>
                                       </Select>
                                   </td>
