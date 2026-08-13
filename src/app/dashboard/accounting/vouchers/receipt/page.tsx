@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -37,6 +38,79 @@ import { Contract } from '@/types/documents';
 import { useRouter } from 'next/navigation';
 import { Textarea } from '@/components/ui/textarea';
 
+/**
+ * مكون البحث الذكي المستقر لسندات القبض.
+ * تم إصلاح مشكلة عدم الإغلاق بعد الاختيار.
+ */
+function SearchablePicker({ value, onSelect, items, search, onSearchChange, icon: Icon, placeholder, type, disabled = false, isRtl }: any) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild disabled={disabled}>
+        <Button variant="outline" className="w-full h-12 rounded-xl border-2 font-bold justify-between bg-white px-4">
+          <div className="flex items-center gap-3 overflow-hidden">
+             <Icon className={cn("h-4 w-4 opacity-40", !disabled && "text-primary")} />
+             <span className="truncate">{value || placeholder}</span>
+          </div>
+          <ChevronDown className="h-4 w-4 opacity-20" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent 
+        className="w-[400px] p-0 rounded-2xl shadow-3xl border-2 z-[200]" 
+        align="start" 
+        onOpenAutoFocus={e => e.preventDefault()}
+        onInteractOutside={e => e.preventDefault()}
+      >
+         <div className="p-3 bg-slate-50 border-b">
+            <div className="relative">
+               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+               <Input 
+                 placeholder="بحث..." 
+                 className="h-9 ps-9 rounded-lg border-2 bg-white text-xs font-bold"
+                 value={search}
+                 onChange={e => onSearchChange(e.target.value)}
+               />
+            </div>
+         </div>
+         <ScrollArea className="h-64">
+            <div className="p-2 space-y-1">
+               {items.map((item: any) => {
+                 const isTransaction = type === 'transaction';
+                 const isClient = type === 'client';
+                 const mainTitle = isClient ? item.nameAr : (isTransaction ? item.subServiceName : item.name);
+                 const subTitle = isClient ? item.fileNumber : (isTransaction ? item.transactionNumber : null);
+                 
+                 return (
+                   <div 
+                     key={item.id} 
+                     onClick={(e) => { 
+                       e.stopPropagation(); 
+                       onSelect(item); 
+                       setOpen(false); 
+                     }}
+                     className={cn(
+                       "p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between border-2 border-transparent",
+                       (value === mainTitle) ? "bg-primary/5 border-primary/20 text-primary" : "hover:bg-slate-50"
+                     )}
+                   >
+                      <div className="text-start min-w-0 flex-1">
+                         <p className="font-black text-xs text-slate-900 truncate">{mainTitle}</p>
+                         {subTitle && (
+                           <p className="text-[8px] font-mono text-slate-400 mt-1 uppercase" dir="ltr">#{subTitle}</p>
+                         )}
+                      </div>
+                      {(value === mainTitle) && <Check className="h-3.5 w-3.5 shrink-0" />}
+                   </div>
+                 );
+               })}
+            </div>
+         </ScrollArea>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export default function ReceiptVouchersPage() {
   const { globalUser, user } = useAuthContext();
   const { t, dir, isRtl, tSafe, lang } = useLanguage();
@@ -49,11 +123,8 @@ export default function ReceiptVouchersPage() {
   const [milestonesLoading, setMilestonesLoading] = useState(false);
   const [milestonesStatus, setMilestonesStatus] = useState<MilestonePaymentStatus[]>([]);
 
-  // Search states for pickers
   const [clientSearch, setClientSearch] = useState("");
   const [transSearch, setTransSearch] = useState("");
-  const [openClientPicker, setOpenClientPicker] = useState(false);
-  const [openTransPicker, setOpenTransPicker] = useState(false);
 
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -211,111 +282,32 @@ export default function ReceiptVouchersPage() {
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('inline.received.from', 'المقبوض من السيد (العميل)', 'Received From')}</Label>
-                       <Popover open={openClientPicker} onOpenChange={setOpenClientPicker}>
-                          <PopoverTrigger asChild>
-                            <Button variant="outline" className="w-full h-12 rounded-xl border-2 font-bold justify-between bg-white px-4">
-                               <span className="truncate">{form.personName || tSafe('common.search', 'بحث...', 'Search...')}</span>
-                               <ChevronDown className="h-4 w-4 opacity-40" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent 
-                            className="w-[400px] p-0 rounded-2xl shadow-3xl border-2 z-[200]" 
-                            align="start" 
-                            onOpenAutoFocus={(e) => e.preventDefault()}
-                            onInteractOutside={(e) => e.preventDefault()}
-                          >
-                             <div className="p-3 bg-slate-50 border-b">
-                                <div className="relative">
-                                   <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                                   <Input 
-                                     placeholder={tSafe('common.search', 'بحث...', 'Search...')}
-                                     value={clientSearch}
-                                     onChange={e => setClientSearch(e.target.value)}
-                                     className="h-9 ps-9 rounded-lg border-2 bg-white text-xs font-bold"
-                                   />
-                                </div>
-                             </div>
-                             <ScrollArea className="h-64">
-                                <div className="p-2 space-y-1">
-                                   {filteredClients.map(c => (
-                                     <div 
-                                       key={c.id} 
-                                       onClick={(e) => { 
-                                         e.stopPropagation(); 
-                                         setForm({ ...form, personName: c.nameAr, transactionId: '', transactionName: '', contractId: '', notes: '' }); 
-                                         setOpenClientPicker(false); 
-                                         setClientSearch(""); 
-                                       }}
-                                       className={cn(
-                                         "p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between",
-                                         form.personName === c.nameAr ? "bg-primary/5 text-primary border-primary/20" : "hover:bg-slate-50"
-                                       )}
-                                     >
-                                        <div className="flex flex-col text-start">
-                                           <span className="text-xs font-black">{c.nameAr}</span>
-                                           <span className="text-[8px] font-mono text-slate-400 uppercase tracking-widest">{c.fileNumber}</span>
-                                        </div>
-                                        {form.personName === c.nameAr && <Check className="h-3.5 w-3.5" />}
-                                     </div>
-                                   ))}
-                                </div>
-                             </ScrollArea>
-                          </PopoverContent>
-                       </Popover>
+                       <SearchablePicker 
+                         type="client"
+                         value={form.personName}
+                         onSelect={(c: any) => setForm({ ...form, personName: c.nameAr, transactionId: '', transactionName: '', contractId: '', notes: '' })}
+                         items={filteredClients}
+                         search={clientSearch}
+                         onSearchChange={setClientSearch}
+                         icon={UserCircle}
+                         placeholder={tSafe('common.search', 'بحث عن عميل...', 'Search Client...')}
+                         isRtl={isRtl}
+                       />
                     </div>
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('inline.related.transaction', 'المعاملة الفنية المرتبطة', 'Related Transaction')}</Label>
-                       <Popover open={openTransPicker} onOpenChange={setOpenTransPicker}>
-                          <PopoverTrigger asChild>
-                            <Button disabled={!form.personName} variant="outline" className="w-full h-12 rounded-xl border-2 font-bold justify-between bg-white px-4">
-                               <span className="truncate">{form.transactionName || tSafe('common.search', 'بحث...', 'Search...')}</span>
-                               <ChevronDown className="h-4 w-4 opacity-40" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent 
-                            className="w-[450px] p-0 rounded-2xl shadow-3xl border-2 z-[200]" 
-                            align="start" 
-                            onOpenAutoFocus={(e) => e.preventDefault()}
-                            onInteractOutside={(e) => e.preventDefault()}
-                          >
-                             <div className="p-3 bg-slate-50 border-b">
-                                <div className="relative">
-                                   <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                                   <Input 
-                                     placeholder={tSafe('common.search', 'بحث...', 'Search...')}
-                                     value={transSearch}
-                                     onChange={e => setTransSearch(e.target.value)}
-                                     className="h-9 ps-9 rounded-lg border-2 bg-white text-xs font-bold"
-                                   />
-                                </div>
-                             </div>
-                             <ScrollArea className="h-64">
-                                <div className="p-2 space-y-1">
-                                   {filteredTrans.map(t_row => (
-                                     <div 
-                                       key={t_row.id} 
-                                       onClick={(e) => { 
-                                         e.stopPropagation(); 
-                                         setForm({ ...form, transactionId: t_row.id, transactionName: t_row.subServiceName, transactionNumber: t_row.transactionNumber, contractId: '', notes: '' }); 
-                                         setOpenTransPicker(false); 
-                                         setTransSearch(""); 
-                                       }}
-                                       className={cn(
-                                         "p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between group",
-                                         form.transactionId === t_row.id ? "bg-primary/5 text-primary border-primary/20" : "hover:bg-slate-50"
-                                       )}
-                                     >
-                                        <div className="flex flex-col text-start min-w-0">
-                                           <span className="font-black text-sm text-slate-800 truncate">{t_row.subServiceName}</span>
-                                           <Badge variant="outline" className="h-4 px-2 bg-white text-[8px] font-mono font-black uppercase mt-1 w-fit" dir="ltr">#{t_row.transactionNumber}</Badge>
-                                        </div>
-                                        {form.transactionId === t_row.id && <Check className="h-4 w-4" />}
-                                     </div>
-                                   ))}
-                                </div>
-                             </ScrollArea>
-                          </PopoverContent>
-                       </Popover>
+                       <SearchablePicker 
+                         type="transaction"
+                         disabled={!form.personName}
+                         value={form.transactionName}
+                         onSelect={(t_row: any) => setForm({ ...form, transactionId: t_row.id, transactionName: t_row.subServiceName, transactionNumber: t_row.transactionNumber, contractId: '', notes: '' })}
+                         items={filteredTrans}
+                         search={transSearch}
+                         onSearchChange={setTransSearch}
+                         icon={Workflow}
+                         placeholder={tSafe('common.search', 'بحث في المشاريع...', 'Search Project...')}
+                         isRtl={isRtl}
+                       />
                     </div>
                  </div>
 
