@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -8,10 +9,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   Users, Plus, Search, Loader2, ArrowRight,
   Filter, Phone, Mail, Star, Building2,
-  HardHat, ShieldCheck, Wallet, Receipt, Save, X
+  HardHat, ShieldCheck, Wallet, Receipt, Save, X,
+  TrendingUp, Handshake
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, serverTimestamp, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
@@ -21,11 +23,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Label } from "@/components/ui/label";
 import { toast } from '@/hooks/use-toast';
 import { Subcontractor } from '@/types/procurement';
+import { useRouter } from 'next/navigation';
 
 export default function SubcontractorsPage() {
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir, isRtl, tSafe } = useLanguage(); 
   const db = useFirestore();
+  const router = useRouter();
   const companyId = globalUser?.companyId;
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -56,7 +60,6 @@ export default function SubcontractorsPage() {
       setForm({ name: '', trade: '', phone: '', email: '', civilId: '' });
       setIsDialogOpen(false); 
     } catch (e: any) {
-      console.error(e);
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
       setIsSaving(false); 
@@ -69,61 +72,66 @@ export default function SubcontractorsPage() {
   );
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-20 text-start bg-white" dir={dir}>
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-8 px-4 pt-4">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-20 text-start" dir={dir}>
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-slate-100 pb-8 px-1">
         <div className="text-start space-y-1">
-           <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit border border-primary/10">
-              <HardHat className="h-3 w-3" /> {isRtl ? 'إدارة القوى العاملة الخارجية' : 'Subcontractor Management'}
+           <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit">
+              <HardHat className="h-3 w-3" /> {tSafe('subcon.registry', 'إدارة القوى العاملة الخارجية', 'Subcontractor Registry')}
            </div>
-           <h1 className="text-4xl font-black font-headline text-slate-900">{isRtl ? 'سجل مقاولي الباطن' : 'Subcontractor Registry'}</h1>
-           <p className="text-muted-foreground text-sm font-bold opacity-70 italic">{isRtl ? 'إدارة وتتبع مطالبات مقاولي الباطن المربوطة بالمشاريع.' : 'Manage and track subcontractor claims linked to projects.'}</p>
+           <h1 className="text-4xl font-black font-headline text-slate-900">{isRtl ? 'سجل مقاولي الباطن' : 'Subcontractor Master'}</h1>
+           <p className="text-muted-foreground text-sm font-bold opacity-70 italic">{isRtl ? 'إدارة وتتبع مطالبات مقاولي الباطن المربوطة بالمشاريع.' : 'Central hub for external labor and financial settlements.'}</p>
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setIsDialogOpen(true)} className="h-14 px-10 font-black rounded-2xl bg-primary text-white shadow-2xl hover:scale-105 transition-all gap-3 border-b-8 border-orange-700">
-               <Plus className="h-6 w-6" />
-               {isRtl ? 'إضافة مقاول باطن' : 'Add Subcontractor'}
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
-             <div className="bg-primary/5 p-10 text-slate-900 text-start border-b">
-                <DialogTitle className="text-3xl font-black font-headline flex items-center gap-4">
-                   <HardHat className="h-9 w-9 text-primary" />
-                   {isRtl ? 'تسجيل مقاول جديد' : 'New Subcontractor'}
-                </DialogTitle>
-             </div>
-             <div className="p-10 space-y-6 text-start bg-white">
-                <div className="space-y-2">
-                   <Label className="text-xs font-black uppercase text-slate-400">اسم المقاول / الشركة</Label>
-                   <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="h-12 rounded-xl border-2 font-black" />
-                </div>
-                <div className="space-y-2">
-                   <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'التخصص الفني' : 'Specialization'}</Label>
-                   <Input value={form.trade} onChange={e => setForm({...form, trade: e.target.value})} className="h-12 rounded-xl border-2 font-bold" placeholder="نجارة، حدادة، أصباغ..." />
-                </div>
-                <div className="grid grid-cols-2 gap-6">
-                   <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'رقم الهاتف' : 'Phone'}</Label>
-                      <Input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} className="h-12 rounded-xl border-2 font-mono" />
-                   </div>
-                   <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الرقم المدني / السجل' : 'Civil ID / Reg'}</Label>
-                      <Input value={form.civilId} onChange={e => setForm({...form, civilId: e.target.value})} className="h-12 rounded-xl border-2 font-mono" />
-                   </div>
-                </div>
-             </div>
-             <DialogFooter className="p-8 bg-slate-50 border-t">
-                <Button onClick={handleAdd} disabled={isSaving || !form.name} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl border-b-8 border-orange-700">
-                   {isSaving ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="me-2 h-6 w-6" />}
-                   {isRtl ? 'حفظ المقاول' : 'Save Subcontractor'}
-                </Button>
-             </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-3">
+           <Button onClick={() => router.push('/dashboard/procurement/subcontractors/contracts')} variant="outline" className="h-14 px-8 rounded-2xl border-2 font-black gap-3 shadow-sm bg-white">
+              <Handshake className="h-5 w-5 text-primary" /> {tSafe('subcon.view.contracts', 'عرض العقود', 'View Contracts')}
+           </Button>
+           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="h-14 px-10 font-black rounded-2xl bg-primary text-white shadow-2xl hover:scale-105 transition-all gap-3 border-b-8 border-orange-700">
+                 <Plus className="h-6 w-6" />
+                 {isRtl ? 'إضافة مقاول' : 'Add SubCon'}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-lg" dir={dir}>
+               <div className="bg-primary/5 p-10 text-slate-900 text-start border-b">
+                  <DialogTitle className="text-3xl font-black font-headline flex items-center gap-4">
+                     <HardHat className="h-9 w-9 text-primary" />
+                     {isRtl ? 'تسجيل مقاول جديد' : 'New Subcontractor'}
+                  </DialogTitle>
+               </div>
+               <div className="p-10 space-y-6 text-start bg-white">
+                  <div className="space-y-2">
+                     <Label className="text-xs font-black uppercase text-slate-400">اسم المقاول / الشركة</Label>
+                     <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="h-12 rounded-xl border-2 font-black" />
+                  </div>
+                  <div className="space-y-2">
+                     <Label className="text-xs font-black uppercase text-slate-400">{isRtl ? 'التخصص الفني' : 'Specialization'}</Label>
+                     <Input value={form.trade} onChange={e => setForm({...form, trade: e.target.value})} className="h-12 rounded-xl border-2 font-bold" placeholder="نجارة، حدادة، أصباغ..." />
+                  </div>
+                  <div className="grid grid-cols-2 gap-6">
+                     <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'رقم الهاتف' : 'Phone'}</Label>
+                        <Input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} className="h-12 rounded-xl border-2 font-mono" />
+                     </div>
+                     <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'الرقم المدني / السجل' : 'Civil ID / Reg'}</Label>
+                        <Input value={form.civilId} onChange={e => setForm({...form, civilId: e.target.value})} className="h-12 rounded-xl border-2 font-mono" />
+                     </div>
+                  </div>
+               </div>
+               <DialogFooter className="p-8 bg-slate-50 border-t">
+                  <Button onClick={handleAdd} disabled={isSaving || !form.name} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl border-b-8 border-orange-700">
+                     {isSaving ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="me-2 h-6 w-6" />}
+                     {isRtl ? 'حفظ المقاول' : 'Save Subcontractor'}
+                  </Button>
+               </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </header>
 
-      <Card className="rounded-[3rem] border-0 shadow-2xl overflow-hidden bg-white ring-1 ring-black/5 mx-4">
+      <Card className="rounded-[3rem] border-0 shadow-2xl overflow-hidden bg-white ring-1 ring-black/5">
         <div className="p-8 flex flex-col md:flex-row items-center justify-between gap-6 bg-slate-50 border-b text-start">
            <div className="relative w-full max-w-md text-start">
               <Search className="absolute start-5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
@@ -133,6 +141,12 @@ export default function SubcontractorsPage() {
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
+           </div>
+           <div className="flex gap-2">
+              <Button variant="outline" className="h-14 rounded-2xl border-2 px-6 font-black text-xs gap-2">
+                 <Filter className="h-4 w-4" /> {t('common.filter')}
+              </Button>
+              <Badge className="bg-slate-900 text-white font-black h-14 px-6 rounded-2xl text-lg shadow-xl">{filtered.length}</Badge>
            </div>
         </div>
         <CardContent className="p-0 overflow-x-auto">
@@ -153,7 +167,7 @@ export default function SubcontractorsPage() {
                 <TableRow><TableCell colSpan={5} className="text-center py-40 italic text-slate-300 font-black text-xl">{t('common.noResults')}</TableCell></TableRow>
               ) : (
                 filtered.map((sub) => (
-                  <TableRow key={sub.id} className="hover:bg-primary/[0.01] transition-colors group border-b-slate-100">
+                  <TableRow key={sub.id} className="hover:bg-primary/[0.01] transition-colors group border-b-slate-100 cursor-pointer" onClick={() => router.push(`/dashboard/procurement/subcontractors/${sub.id}`)}>
                     <TableCell className="py-8 ps-12 text-start">
                        <div className="flex items-center gap-6">
                           <div className="h-14 w-14 rounded-3xl bg-primary/5 text-primary flex items-center justify-center font-black text-2xl shadow-inner border-2 border-primary/10 group-hover:scale-110 transition-transform">
