@@ -152,8 +152,8 @@ export interface BOQReferenceNode extends BaseReference {
   unitTypeId?: string;
   unitName?: string;
   unitSymbol?: string;
-  technicalStageId?: string; // معرف المرحلة الرئيسية المظلية (The Umbrella Link)
-  technicalStageIds?: string[]; // دعم الارتباط المتعدد للمراحل
+  technicalStageId?: string; // المرحلة المالية الافتراضية
+  technicalStageIds?: string[]; // قائمة بكافة المراحل الفنية المرتبطة بالبند (الربط المظلي)
   estimatedRate?: number;
   billingTriggerGroup?: string;
   allowedItemCategoryIds?: string[];
