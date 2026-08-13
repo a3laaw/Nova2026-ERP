@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect, useCallback } from 'react';
@@ -55,8 +54,9 @@ export default function AppointmentDetailPage() {
 
   const [selectedStageId, setSelectedStageId] = useState("");
   const [loggedItems, setLoggedItems] = useState<any[]>([]);
-  const [laborDetails, setLaborDetails] = useState<any[]>([{ resourceType: 'work_group', resourceId: '', resourceName: '', count: 1, hours: 8, hourlyCostRef: 0 }]);
+  const [laborDetails, setLaborDetails] = useState<any[]>([]);
   const [equipmentUsed, setEquipmentUsed] = useState<any[]>([{ equipmentId: '', hoursUsed: 4, hourlyRateRef: 0 }]);
+  const [linkedSubcontractors, setLinkedSubcontractors] = useState<any[]>([]);
 
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [isRecordOpen, setIsRecordOpen] = useState(false);
@@ -79,13 +79,21 @@ export default function AppointmentDetailPage() {
 
   const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
   const equipQuery = useMemo(() => companyId && db ? query(collection(db, paths.equipment(companyId)), where('status', '==', 'available')) : null, [db, companyId]);
-  const subsQuery = useMemo(() => companyId && db ? query(collection(db, paths.subcontractors(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
   const groupsQuery = useMemo(() => companyId && db ? query(collection(db, paths.workGroups(companyId)), where('isActive', '==', true)) : null, [db, companyId]);
 
   const { data: allEmployees } = useCollection<any>(empsQuery);
   const { data: equipmentItems } = useCollection<any>(equipQuery);
-  const { data: subcontractors } = useCollection<any>(subsQuery);
   const { data: workGroups } = useCollection<any>(groupsQuery);
+
+  useEffect(() => {
+    if (db && companyId && appt?.transactionId) {
+      // جلب المقاولين المرتبطين مالياً بهذا المشروع فقط لضمان دقة الرقابة
+      getDocs(query(collection(db, paths.subconContracts(companyId)), where('transactionId', '==', appt.transactionId)))
+        .then(snap => {
+           setLinkedSubcontractors(snap.docs.map(d => ({ id: d.data().subcontractorId, name: d.data().subcontractorName })));
+        });
+    }
+  }, [db, companyId, appt?.transactionId]);
 
   useEffect(() => {
      if (selectedStageId && boqItems) {
@@ -110,7 +118,6 @@ export default function AppointmentDetailPage() {
 
   const updateLaborRow = (idx: number, selectionId: string) => {
     const newRows = [...laborDetails];
-    
     if (selectionId.startsWith('GROUP_')) {
       const groupId = selectionId.replace('GROUP_', '');
       const group = workGroups?.find((g: any) => g.id === groupId);
@@ -121,18 +128,18 @@ export default function AppointmentDetailPage() {
       newRows[idx] = { ...newRows[idx], resourceType: 'employee', resourceId: empId, resourceName: emp?.fullName || '', count: 1 };
     } else if (selectionId.startsWith('SUB_')) {
       const subId = selectionId.replace('SUB_', '');
-      const sub = subcontractors?.find((s: any) => s.id === subId);
+      const sub = linkedSubcontractors?.find((s: any) => s.id === subId);
       newRows[idx] = { ...newRows[idx], resourceType: 'subcontractor', resourceId: subId, resourceName: sub?.name || '', count: 1 };
     }
-    
     setLaborDetails(newRows);
   };
 
-  const addStaffRow = () => setLaborDetails([...laborDetails, { resourceType: 'work_group', resourceId: '', resourceName: '', count: 1, hours: 8, hourlyCostRef: 0 }]);
+  const addCompanyStaffRow = () => setLaborDetails([...laborDetails, { resourceType: 'work_group', resourceId: '', resourceName: '', count: 1, hours: 8, hourlyCostRef: 0 }]);
+  const addSubconRow = () => setLaborDetails([...laborDetails, { resourceType: 'subcontractor', resourceId: '', resourceName: '', count: 1, hours: 8, hourlyCostRef: 0 }]);
   const addEquipRow = () => setEquipmentUsed([...equipmentUsed, { equipmentId: '', hoursUsed: 4, hourlyRateRef: 0 }]);
 
   const handleRecordProgress = async () => {
-    if (!db || !companyId || !user || !activeBoq || loggedItems.length === 0) return;
+    if (!db || !companyId || !user || !activeBoq || !selectedStageId) return;
     setLoadingAction('recording');
     try {
       const service = new BOQExecutionService(db, companyId, permissions);
@@ -149,14 +156,11 @@ export default function AppointmentDetailPage() {
             );
          }
       }
-      
       toast({ title: t('construction.visitCreated') });
       setIsRecordOpen(false);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
-    } finally {
-      setLoadingAction(null);
-    }
+    } finally { setLoadingAction(null); }
   };
 
   if (apptLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
@@ -228,9 +232,7 @@ export default function AppointmentDetailPage() {
 
                {selectedStageId && (
                   <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
-                     <div className="flex items-center justify-between border-b pb-2">
-                        <h4 className="font-black text-xs text-primary flex items-center gap-2 uppercase tracking-widest"><Hammer className="h-4 w-4" /> {t('boq.workProgress')}</h4>
-                     </div>
+                     <h4 className="font-black text-xs text-primary flex items-center gap-2 uppercase tracking-widest"><Hammer className="h-4 w-4" /> {t('boq.workProgress')}</h4>
                      <div className="border-2 rounded-2xl overflow-hidden shadow-sm">
                         <Table>
                            <TableHeader className="bg-slate-50/80">
@@ -243,35 +245,20 @@ export default function AppointmentDetailPage() {
                               </TableRow>
                            </TableHeader>
                            <TableBody>
-                              {loggedItems.map((item: any, idx: number) => {
-                                const remaining = (item.plannedQuantity || 0) - (item.executedQuantity || 0);
-                                const isWarning = (Number(item.quantity) || 0) > remaining;
-                                return (
-                                  <TableRow key={idx} className="border-b-slate-100 hover:bg-slate-50/50">
-                                     <TableCell className="py-4 ps-6">
-                                        <p className="font-black text-slate-800 text-xs leading-tight">{item.itemName}</p>
-                                        <div className="flex items-center gap-2 mt-1">
-                                           {item.subcontractorName ? (
-                                             <Badge className="bg-orange-50 text-orange-600 border-orange-100 text-[8px] font-black h-4 px-2 uppercase">{item.subcontractorName}</Badge>
-                                           ) : <Badge className="bg-blue-50 text-blue-600 border-blue-100 text-[8px] font-black h-4 px-2">INTERNAL</Badge>}
-                                           <span className="text-[8px] font-bold text-slate-300 uppercase">({item.unit})</span>
-                                        </div>
-                                     </TableCell>
-                                     <TableCell className="text-center font-mono font-bold text-xs text-slate-400">{item.plannedQuantity}</TableCell>
-                                     <TableCell className="text-center font-mono font-black text-xs text-blue-600 bg-blue-50/20">{item.executedQuantity}</TableCell>
-                                     <TableCell className="py-4">
-                                        <Input 
-                                          type="number" 
-                                          step="0.01" 
-                                          value={item.quantity === 0 ? '' : item.quantity} 
-                                          onChange={e => { const ni = [...loggedItems]; ni[idx].quantity = Number(e.target.value); setLoggedItems(ni); }} 
-                                          className={cn("h-11 rounded-xl text-center font-black text-xl border-2", isWarning ? "border-rose-300 text-rose-600 bg-rose-50" : "text-primary bg-primary/5")} 
-                                        />
-                                     </TableCell>
-                                     <TableCell className="py-4 pe-6"><Input value={item.notes} onChange={e => { const ni = [...loggedItems]; ni[idx].notes = e.target.value; setLoggedItems(ni); }} className="h-11 rounded-xl text-xs font-bold border-2 bg-slate-50/30" placeholder="..." /></TableCell>
-                                  </TableRow>
-                                );
-                              })}
+                              {loggedItems.map((item: any, idx: number) => (
+                                <TableRow key={idx} className="border-b-slate-100 hover:bg-slate-50/50">
+                                   <TableCell className="py-4 ps-6">
+                                      <p className="font-black text-slate-800 text-xs leading-tight">{item.itemName}</p>
+                                      <div className="flex items-center gap-2 mt-1">
+                                         {item.subcontractorName ? <Badge className="bg-orange-50 text-orange-600 border-orange-100 text-[8px] font-black h-4 px-2 uppercase">{item.subcontractorName}</Badge> : <Badge className="bg-blue-50 text-blue-600 border-blue-100 text-[8px] font-black h-4 px-2">INTERNAL</Badge>}
+                                      </div>
+                                   </TableCell>
+                                   <TableCell className="text-center font-mono font-bold text-xs text-slate-400">{item.plannedQuantity}</TableCell>
+                                   <TableCell className="text-center font-mono font-black text-xs text-blue-600 bg-blue-50/20">{item.executedQuantity}</TableCell>
+                                   <TableCell className="py-4"><Input type="number" step="0.01" value={item.quantity === 0 ? '' : item.quantity} onChange={e => { const ni = [...loggedItems]; ni[idx].quantity = Number(e.target.value); setLoggedItems(ni); }} className="h-11 rounded-xl text-center font-black text-xl border-2 text-primary bg-primary/5" /></TableCell>
+                                   <TableCell className="py-4 pe-6"><Input value={item.notes} onChange={e => { const ni = [...loggedItems]; ni[idx].notes = e.target.value; setLoggedItems(ni); }} className="h-11 rounded-xl text-xs font-bold border-2 bg-slate-50/30" placeholder="..." /></TableCell>
+                                </TableRow>
+                              ))}
                            </TableBody>
                         </Table>
                      </div>
@@ -282,7 +269,10 @@ export default function AppointmentDetailPage() {
                   <div className="space-y-6">
                      <div className="flex justify-between items-center px-1">
                         <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{isRtl ? 'الموارد البشرية والعمالة' : 'Site Labor'}</Label>
-                        <Button variant="outline" size="sm" onClick={addStaffRow} className="h-8 rounded-xl border-2 font-black"><Plus className="h-3.5 w-3.5" /></Button>
+                        <div className="flex gap-2">
+                           <Button variant="outline" size="sm" onClick={addCompanyStaffRow} className="h-8 rounded-xl border-2 font-black text-[10px] gap-1.5"><UsersRound className="h-3.5 w-3.5" /> عمالة الشركة</Button>
+                           <Button variant="outline" size="sm" onClick={addSubconRow} className="h-8 rounded-xl border-2 font-black text-[10px] gap-1.5 border-orange-200 text-orange-600"><Handshake className="h-3.5 w-3.5" /> مقاول باطن</Button>
+                        </div>
                      </div>
                      <div className="space-y-3">
                         {laborDetails.map((l, i) => (
@@ -292,33 +282,29 @@ export default function AppointmentDetailPage() {
                                    <SelectValue placeholder={isRtl ? 'اختر المورد...' : 'Select...'} />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl z-[160] max-h-80">
-                                   <SelectGroup>
-                                      <SelectLabel className="text-[10px] font-black uppercase bg-slate-50 py-2">{isRtl ? 'فرق العمل المعتمدة' : 'Authorized Crews'}</SelectLabel>
-                                      {workGroups?.map((g: any) => (
-                                         <SelectItem key={g.id} value={`GROUP_${g.id}`} className="font-black text-xs py-3 border-b border-slate-50">
-                                            <span className="flex items-center gap-2"><UsersRound className="h-4 w-4" /> {g.name} ({g.memberCount} عمال)</span>
-                                         </SelectItem>
-                                      ))}
-                                   </SelectGroup>
-                                   <SelectGroup>
-                                      <SelectLabel className="text-[10px] font-black uppercase bg-slate-50 py-2 mt-2">{isRtl ? 'موظفون أفراد' : 'Individual Staff'}</SelectLabel>
-                                      {allEmployees?.map((e: any) => <SelectItem key={e.id} value={`EMP_${e.id}`} className="font-bold text-xs py-3"><div className="flex items-center gap-2"><User className="h-4 w-4" /> {e.fullName}</div></SelectItem>)}
-                                   </SelectGroup>
-                                   <SelectGroup>
-                                      <SelectLabel className="text-[10px] font-black uppercase bg-slate-50 py-2 mt-2">{isRtl ? 'مقاولو الباطن' : 'Subcontractors'}</SelectLabel>
-                                      {subcontractors?.map((s: any) => <SelectItem key={s.id} value={`SUB_${s.id}`} className="font-bold text-xs py-3"><div className="flex items-center gap-2"><Handshake className="h-4 w-4 text-primary" /> {s.name}</div></SelectItem>)}
-                                   </SelectGroup>
+                                   {l.resourceType === 'subcontractor' ? (
+                                      <SelectGroup>
+                                         <SelectLabel className="text-[10px] font-black uppercase bg-slate-50 py-2">المقاولون المرتبطون بهذا المشروع</SelectLabel>
+                                         {linkedSubcontractors.map(s => <SelectItem key={s.id} value={`SUB_${s.id}`} className="font-black text-xs py-3"><div className="flex items-center gap-2"><Handshake className="h-4 w-4" /> {s.name}</div></SelectItem>)}
+                                         {linkedSubcontractors.length === 0 && <div className="p-4 text-center text-[10px] font-bold text-rose-400">لا يوجد مقاولو باطن بعقود لهذا المشروع.</div>}
+                                      </SelectGroup>
+                                   ) : (
+                                      <>
+                                         <SelectGroup>
+                                            <SelectLabel className="text-[10px] font-black uppercase bg-slate-50 py-2">فرق العمل (Crews)</SelectLabel>
+                                            {workGroups?.map((g: any) => <SelectItem key={g.id} value={`GROUP_${g.id}`} className="font-black text-xs py-3 border-b border-slate-50"><span className="flex items-center gap-2"><UsersRound className="h-4 w-4" /> {g.name}</span></SelectItem>)}
+                                         </SelectGroup>
+                                         <SelectGroup>
+                                            <SelectLabel className="text-[10px] font-black uppercase bg-slate-50 py-2 mt-2">موظفون أفراد</SelectLabel>
+                                            {allEmployees?.map((e: any) => <SelectItem key={e.id} value={`EMP_${e.id}`} className="font-bold text-xs py-3"><div className="flex items-center gap-2"><User className="h-4 w-4" /> {e.fullName}</div></SelectItem>)}
+                                         </SelectGroup>
+                                      </>
+                                   )}
                                 </SelectContent>
                              </Select>
                              <div className="flex items-center gap-1.5 shrink-0">
                                 <Label className="text-[8px] font-black text-slate-400 uppercase">Count</Label>
-                                <Input 
-                                   type="number" 
-                                   readOnly={l.resourceType === 'employee'}
-                                   value={l.count} 
-                                   onChange={e => { const nl = [...laborDetails]; nl[i].count = Number(e.target.value); setLaborDetails(nl); }} 
-                                   className={cn("h-11 w-16 text-center text-lg font-black border-2", l.resourceType === 'employee' ? "bg-slate-100 border-0" : "bg-white")} 
-                                />
+                                <Input type="number" readOnly={l.resourceType === 'employee'} value={l.count} onChange={e => { const nl = [...laborDetails]; nl[i].count = Number(e.target.value); setLaborDetails(nl); }} className={cn("h-11 w-16 text-center text-lg font-black border-2", l.resourceType === 'employee' ? "bg-slate-100 border-0" : "bg-white")} />
                              </div>
                              <Button variant="ghost" size="icon" className="h-11 w-11 text-rose-300 hover:text-rose-600" onClick={() => setLaborDetails(laborDetails.filter((_, idx) => idx !== i))}><Trash2 className="h-4 w-4" /></Button>
                           </div>
@@ -345,10 +331,7 @@ export default function AppointmentDetailPage() {
                                <SelectTrigger className="h-10 rounded-xl border-2 text-[11px] font-bold bg-white flex-1"><SelectValue placeholder="..." /></SelectTrigger>
                                <SelectContent className="rounded-xl z-[160]">{equipmentItems?.map((x:any) => <SelectItem key={x.id} value={x.id!} className="text-xs py-3">{x.name}</SelectItem>)}</SelectContent>
                              </Select>
-                             <div className="flex items-center gap-1.5 shrink-0">
-                                <Label className="text-[8px] font-black text-slate-400">HRS</Label>
-                                <Input type="number" value={e.hoursUsed} onChange={v => { const ne = [...equipmentUsed]; ne[i].hoursUsed = Number(v.target.value); setEquipmentUsed(ne); }} className="h-10 w-16 text-center text-xs font-black border-2 bg-white" />
-                             </div>
+                             <div className="flex items-center gap-1.5 shrink-0"><Label className="text-[8px] font-black text-slate-400">HRS</Label><Input type="number" value={e.hoursUsed} onChange={v => { const ne = [...equipmentUsed]; ne[i].hoursUsed = Number(v.target.value); setEquipmentUsed(ne); }} className="h-10 w-16 text-center text-xs font-black border-2 bg-white" /></div>
                              <Button variant="ghost" size="icon" className="h-10 w-10 text-rose-300 hover:text-rose-600" onClick={() => setEquipmentUsed(equipmentUsed.filter((_, idx) => idx !== i))}><Trash2 className="h-4 w-4" /></Button>
                           </div>
                         ))}
