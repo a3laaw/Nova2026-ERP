@@ -11,7 +11,8 @@ import {
   getDocs,
   query,
   where,
-  limit
+  limit,
+  getDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { FieldVisit } from '@/types/field-visit';
@@ -42,7 +43,7 @@ export class FieldVisitService {
       ...data,
       id: logRef.id,
       companyId: this.companyId,
-      status: 'approved', // السجلات الميدانية للمهندس المعتمد تعتبر معتمدة فوراً
+      status: 'approved', 
       isVerified: true,
       createdBy: userId,
       createdAt: serverTimestamp(),
@@ -57,14 +58,12 @@ export class FieldVisitService {
       for (const item of data.items) {
         if (!item.boqId || !item.boqItemId) continue;
 
-        // تحديث الكمية المنفذة في بند المقايسة (BOQ Item)
         const boqItemRef = doc(this.db, paths.boqItems(this.companyId, item.boqId), item.boqItemId);
         batch.update(boqItemRef, {
           executedQuantity: increment(Number(item.quantity) || 0),
           updatedAt: serverTimestamp()
         });
 
-        // تحديث عداد الإنجاز في المرحلة الفنية النشطة (Stage Instance)
         if (data.activeStageId) {
           const stageRef = doc(this.db, paths.transactionStages(this.companyId, data.transactionId), data.activeStageId);
           batch.update(stageRef, {
@@ -91,19 +90,12 @@ export class FieldVisitService {
       await batch.commit();
       
       // 4. إطلاق محرك الفوترة الذكي (Billing Trigger)
-      // يقوم بفحص إذا كان هذا الإنجاز يستوجب إصدار مطالبة مالية للمالك (IPC)
-      const billing = new BillingService(this.db, this.companyId);
-      // فحص المطالبات المعتمدة على "أثناء التنفيذ"
+      // فحص المطالبات المعتمدة على "أثناء التنفيذ" (DURING)
       if (data.activeStageId) {
-        // نستخدم معرف المرحلة الفنية الأصلي (TechnicalStageId) للربط مع العقد
-        const stageSnap = await getDocs(query(
-           collection(this.db, paths.transactionStages(this.companyId, data.transactionId)),
-           where('id', '==', data.activeStageId),
-           limit(1)
-        ));
-        
-        if (!stageSnap.empty) {
-           const techStageId = stageSnap.docs[0].data().technicalStageId;
+        const stageInstanceSnap = await getDoc(doc(this.db, paths.transactionStages(this.companyId, data.transactionId), data.activeStageId));
+        if (stageInstanceSnap.exists()) {
+           const techStageId = stageInstanceSnap.data().technicalStageId;
+           const billing = new BillingService(this.db, this.companyId);
            await billing.triggerMilestoneBilling(data.transactionId, techStageId, 'during', userId, data.engineerName || 'System');
         }
       }

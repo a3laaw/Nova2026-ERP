@@ -118,16 +118,6 @@ export class TransactionService {
     return deleteDoc(transRef);
   }
 
-  async assignSubcontractor(transactionId: string, stageId: string, subId: string, subName: string, price: number) {
-    const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
-    await updateDoc(stageRef, {
-      subcontractorId: subId,
-      subcontractorName: subName,
-      subcontractorPrice: price,
-      updatedAt: serverTimestamp()
-    });
-  }
-
   async addStageRevision(transactionId: string, stageId: string, content: string, userId: string, userName: string) {
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
     const stageSnap = await getDoc(stageRef);
@@ -155,7 +145,7 @@ export class TransactionService {
 
     await batch.commit();
 
-    // أتمتة مالية: تفعيل "أثناء التنفيذ" إذا كان الشرط يعتمد على وجود مراجعات (لمكتب التصميم والمقاولات)
+    // أتمتة مالية: تفعيل "أثناء التنفيذ" (DURING) عند وجود مراجعات فنية موثقة
     const billing = new BillingService(this.db, this.companyId);
     await billing.triggerMilestoneBilling(transactionId, stage.technicalStageId, 'during', userId, userName);
   }
@@ -200,7 +190,7 @@ export class TransactionService {
       createdAt: serverTimestamp()
     });
 
-    // أتمتة مالية: تفعيل دفعة "عند البداية"
+    // أتمتة مالية للمالك: تفعيل دفعة "عند البداية" (AT)
     const billing = new BillingService(this.db, this.companyId);
     await billing.triggerMilestoneBilling(transactionId, stageData.technicalStageId, 'at', userId, userName);
   }
@@ -237,7 +227,7 @@ export class TransactionService {
 
     await batch.commit();
 
-    // أتمتة مالية للمالك: تفعيل دفعة "بعد الانتهاء"
+    // أتمتة مالية للمالك: تفعيل دفعة "بعد الانتهاء" (AFTER)
     const billing = new BillingService(this.db, this.companyId);
     await billing.triggerMilestoneBilling(transactionId, stageData.technicalStageId, 'after', userId, userName);
 

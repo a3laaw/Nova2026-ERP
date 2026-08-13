@@ -16,11 +16,8 @@ import {
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Contract } from '@/types/documents';
-import { ContractMilestone } from '@/types/templates';
-import { Voucher } from '@/types/accounting';
-import { SubIPC } from '@/types/procurement';
+import { ContractMilestone, MilestoneTiming } from '@/types/templates';
 import { nextSequential } from '@/lib/counters';
-import { MilestoneTiming } from '@/types/templates';
 
 /**
  * محرك الفوترة السيادي المطور (Sovereign Billing Engine V3).
@@ -31,7 +28,7 @@ export class BillingService {
 
   /**
    * إطلاق مطالبة مالية بناءً على شرط دفع (Milestone Trigger)
-   * يتم استدعاؤها من المسار الفني (رادار التنفيذ)
+   * يطبق القواعد: AT (عند)، DURING (أثناء)، AFTER (بعد)
    */
   async triggerMilestoneBilling(
     transactionId: string, 
@@ -40,7 +37,9 @@ export class BillingService {
     userId: string,
     userName: string
   ) {
-    if (!this.db || !this.companyId) return null;
+    if (!this.db || !this.companyId || !transactionId || !technicalStageId) return null;
+
+    console.log(`[Billing Engine] Checking triggers for Trans: ${transactionId}, Stage: ${technicalStageId}, Timing: ${timing}`);
 
     // 1. البحث عن عقد معتمد لهذه المعاملة
     const contractsSnap = await getDocs(query(
@@ -50,17 +49,25 @@ export class BillingService {
       limit(1)
     ));
 
-    if (contractsSnap.empty) return null;
-    const contract = { id: contractsSnap.docs[0].id, ...contractsSnap.docs[0].data() } as Contract;
+    if (contractsSnap.empty) {
+      console.log(`[Billing Engine] No approved contract found for transaction ${transactionId}`);
+      return null;
+    }
+    
+    const contractDoc = contractsSnap.docs[0];
+    const contract = { id: contractDoc.id, ...contractDoc.data() } as Contract;
 
-    // 2. البحث عن الدفعات المطابقة للشرط (المرحلة + التوقيت)
-    const targetMilestones = contract.milestones.filter(m => 
-      m.technicalStageId === technicalStageId && m.timing === timing
+    // 2. البحث عن الدفعات المطابقة للشرط (المرحلة الفنية المرجعية + التوقيت)
+    const targetMilestones = (contract.milestones || []).filter(m => 
+      String(m.technicalStageId) === String(technicalStageId) && m.timing === timing
     );
 
-    if (targetMilestones.length === 0) return null;
+    if (targetMilestones.length === 0) {
+      console.log(`[Billing Engine] No milestones found for Stage: ${technicalStageId} with Timing: ${timing}`);
+      return null;
+    }
 
-    // 3. حماية من التكرار: فحص إذا تم إطلاق هذه الدفعات مسبقاً في مستخلصات (Draft or Approved)
+    // 3. حماية من التكرار: فحص المطالبات السابقة (Prevent Duplicate Billing)
     const existingIpcsSnap = await getDocs(query(
       collection(this.db, paths.ipcs(this.companyId)),
       where('transactionId', '==', transactionId),
@@ -74,18 +81,24 @@ export class BillingService {
     // تصفية الدفعات التي لم تُطلب من قبل فقط
     const newMilestones = targetMilestones.filter(m => !alreadyBilledMilestones.has(m.name));
 
-    if (newMilestones.length === 0) return null;
+    if (newMilestones.length === 0) {
+      console.log(`[Billing Engine] All matching milestones for this trigger are already billed.`);
+      return null;
+    }
 
     const batch = writeBatch(this.db);
     const ipcRef = doc(collection(this.db, paths.ipcs(this.companyId)));
     const ipcNumber = await nextSequential(this.db, this.companyId, `ipc_owner_${transactionId}`, 'IPC-', 4);
 
+    // حساب المبلغ الإجمالي للدفعات المكتشفة في هذا الزناد
     const totalAmount = newMilestones.reduce((acc, m) => {
        const mAmt = m.amount || (contract.totalAmount * (m.percentage || 0)) / 100;
-       return acc + mAmt;
+       return acc + (Number(mAmt) || 0);
     }, 0);
 
-    const ipcData = {
+    const timingLabel = timing === 'at' ? 'بدء' : timing === 'during' ? 'أثناء تنفيذ' : 'إتمام';
+    
+    const ipcData: any = {
       id: ipcRef.id,
       ipcNumber: ipcNumber,
       transactionId,
@@ -93,23 +106,38 @@ export class BillingService {
       clientId: contract.clientId,
       clientName: contract.clientName,
       status: 'draft',
-      name: `مطالبة مالية (${timing === 'at' ? 'بدء' : timing === 'during' ? 'أثناء' : 'إتمام'}) - ${newMilestones.map(m => m.name).join(' & ')}`,
+      name: `مطالبة مالية (${timingLabel}) - ${newMilestones.map(m => m.name).join(' & ')}`,
       grossAmount: totalAmount,
       netPayable: totalAmount,
       milestonesTriggered: newMilestones.map(m => m.name),
       companyId: this.companyId,
       createdBy: userId,
       createdByName: userName,
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
     };
 
     batch.set(ipcRef, ipcData);
+
+    // توثيق الحدث في تايملاين المعاملة للشفافية المطلقة
+    const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
+    batch.set(timelineRef, {
+      transactionId,
+      type: 'billing_triggered',
+      content: `[أتمتة مالية] تم توليد مسودة مستخلص المالك رقم ${ipcNumber} بقيمة ${totalAmount.toLocaleString()} د.ك بناءً على إنجاز ${timingLabel} المرحلة.`,
+      userId,
+      userName: 'NovaFlow Finance',
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
+    });
+
     await batch.commit();
+    console.log(`[Billing Engine] IPC ${ipcNumber} generated successfully.`);
     return ipcRef.id;
   }
 
   /**
-   * توليد مسودة مستخلص لمقاول باطن بناءً على إنجاز مرحلة
+   * توليد مسودة مستخلص لمقاول باطن بناءً على إنجاز مرحلة (SubCon Settlement)
    */
   async generateSubcontractorIPC(
     transactionId: string,
@@ -125,7 +153,7 @@ export class BillingService {
     const transSnap = await getDoc(doc(this.db, paths.transactions(this.companyId), transactionId));
     const transData = transSnap.data();
 
-    const subIpcData: Partial<SubIPC> = {
+    const subIpcData: any = {
       id: ipcRef.id,
       ipcNumber: ipcNumber,
       subcontractorId,
@@ -139,7 +167,8 @@ export class BillingService {
       notes: description,
       companyId: this.companyId,
       createdBy: userId,
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
     };
 
     await setDoc(ipcRef, subIpcData);
