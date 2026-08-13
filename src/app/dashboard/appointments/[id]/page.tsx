@@ -12,7 +12,7 @@ import {
   Target, X, RotateCcw, Lock, Info, Play,
   Users, Truck, Plus, Trash2, Link as LinkIcon,
   ShieldAlert, ShieldX, Sparkles, DollarSign, Building2, Briefcase, Clock, Camera, LayoutGrid,
-  Handshake
+  Handshake, AlertCircle
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where, orderBy, limit, updateDoc, serverTimestamp, getDocs, collectionGroup } from 'firebase/firestore';
@@ -109,7 +109,9 @@ export default function AppointmentDetailPage() {
              notes: '',
              technicalStageId: stage.technicalStageId,
              subcontractorId: i.subcontractorId || '',
-             subcontractorName: i.subcontractorName || ''
+             subcontractorName: i.subcontractorName || '',
+             plannedQuantity: i.plannedQuantity || 0,
+             executedQuantity: i.executedQuantity || 0
            })));
         }
      }
@@ -225,7 +227,7 @@ export default function AppointmentDetailPage() {
       </div>
 
       <Dialog open={isRecordOpen} onOpenChange={setIsRecordOpen}>
-         <DialogContent className="max-w-5xl rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white flex flex-col max-h-[95vh]" dir={dir}>
+         <DialogContent className="max-w-6xl rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white flex flex-col max-h-[95vh]" dir={dir}>
             <div className="bg-slate-50 p-6 text-slate-900 text-start flex items-center justify-between border-b shrink-0">
                <div className="flex items-center gap-3">
                   <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary shadow-sm"><LayoutGrid className="h-5 w-5" /></div>
@@ -244,37 +246,57 @@ export default function AppointmentDetailPage() {
 
                {selectedStageId && (
                   <div className="space-y-4 animate-in fade-in zoom-in-95 duration-300">
-                     <h4 className="font-black text-xs text-primary flex items-center gap-2 border-b pb-2 uppercase tracking-widest"><Hammer className="h-4 w-4" /> {t('boq.workProgress')}</h4>
+                     <div className="flex items-center justify-between border-b pb-2">
+                        <h4 className="font-black text-xs text-primary flex items-center gap-2 uppercase tracking-widest"><Hammer className="h-4 w-4" /> {t('boq.workProgress')}</h4>
+                        <div className="flex gap-4">
+                           <Badge variant="outline" className="text-[9px] font-bold border-slate-200 bg-slate-50 text-slate-500">{tSafe('inline.planned', 'المخطط', 'Planned')}</Badge>
+                           <Badge variant="outline" className="text-[9px] font-bold border-blue-100 bg-blue-50 text-blue-600">{tSafe('inline.executed', 'المنجز سابقاً', 'Executed')}</Badge>
+                        </div>
+                     </div>
                      <div className="border-2 rounded-2xl overflow-hidden shadow-sm">
                         <Table>
                            <TableHeader className="bg-slate-50/80">
                               <TableRow className="border-0">
                                  <TableHead className="text-start text-[10px] font-black uppercase text-slate-400 py-4 ps-6">{t('common.addLabel')}</TableHead>
-                                 <TableHead className="text-start text-[10px] font-black uppercase text-slate-500 py-4">{tSafe('inline.executing.entity', 'المنفذ', 'Executor')}</TableHead>
-                                 <TableHead className="text-center w-[120px] text-[10px] font-black uppercase text-primary py-4">{t('common.quantity')}</TableHead>
+                                 <TableHead className="text-center text-[10px] font-black uppercase text-slate-500 w-[100px]">{tSafe('inline.planned', 'المخطط', 'Planned')}</TableHead>
+                                 <TableHead className="text-center text-[10px] font-black uppercase text-blue-600 w-[100px]">{tSafe('inline.executed', 'المنفذ', 'Executed')}</TableHead>
+                                 <TableHead className="text-center w-[120px] text-[10px] font-black uppercase text-primary py-4">{tSafe('inline.qty.now', 'الكمية الحالية', 'Current')}</TableHead>
                                  <TableHead className="text-start text-[10px] font-black uppercase text-slate-400 py-4 pe-6">{t('common.notes')}</TableHead>
                               </TableRow>
                            </TableHeader>
                            <TableBody>
-                              {loggedItems.map((item, idx) => (
-                                <TableRow key={idx} className="border-b-slate-100 hover:bg-slate-50/50">
-                                   <TableCell className="py-4 ps-6">
-                                      <p className="font-black text-slate-800 text-xs leading-tight">{item.itemName}</p>
-                                      <Badge variant="outline" className="mt-1 text-[8px] border-0 h-4 px-0 uppercase text-slate-400 font-mono">{item.unit}</Badge>
-                                   </TableCell>
-                                   <TableCell className="py-4">
-                                      {item.subcontractorName ? (
-                                        <Badge className="bg-orange-50 text-orange-600 border-orange-100 text-[8px] font-black gap-1.5 px-3">
-                                          <Handshake className="h-3 w-3" /> {item.subcontractorName}
-                                        </Badge>
-                                      ) : (
-                                        <Badge className="bg-blue-50 text-blue-600 border-blue-100 text-[8px] font-black px-3">{isRtl ? 'عمالة الشركة' : 'Internal'}</Badge>
-                                      )}
-                                   </TableCell>
-                                   <TableCell className="py-4"><Input type="number" step="0.01" value={item.quantity === 0 ? '' : item.quantity} onChange={e => { const ni = [...loggedItems]; ni[idx].quantity = Number(e.target.value); setLoggedItems(ni); }} className="h-11 rounded-xl text-center font-black text-xl border-2 text-primary bg-primary/5 focus:bg-white" /></TableCell>
-                                   <TableCell className="py-4 pe-6"><Input value={item.notes} onChange={e => { const ni = [...loggedItems]; ni[idx].notes = e.target.value; setLoggedItems(ni); }} className="h-11 rounded-xl text-xs font-bold border-2 bg-slate-50/30" placeholder="..." /></TableCell>
-                                </TableRow>
-                              ))}
+                              {loggedItems.map((item, idx) => {
+                                const remaining = (item.plannedQuantity || 0) - (item.executedQuantity || 0);
+                                const isWarning = (Number(item.quantity) || 0) > remaining;
+                                return (
+                                  <TableRow key={idx} className="border-b-slate-100 hover:bg-slate-50/50">
+                                     <TableCell className="py-4 ps-6">
+                                        <p className="font-black text-slate-800 text-xs leading-tight">{item.itemName}</p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                           {item.subcontractorName ? (
+                                             <Badge className="bg-orange-50 text-orange-600 border-orange-100 text-[8px] font-black h-4 px-2 uppercase">{item.subcontractorName}</Badge>
+                                           ) : <Badge className="bg-blue-50 text-blue-600 border-blue-100 text-[8px] font-black h-4 px-2">INTERNAL</Badge>}
+                                           <span className="text-[8px] font-bold text-slate-300 uppercase">({item.unit})</span>
+                                        </div>
+                                     </TableCell>
+                                     <TableCell className="text-center font-mono font-bold text-xs text-slate-400">{item.plannedQuantity}</TableCell>
+                                     <TableCell className="text-center font-mono font-black text-xs text-blue-600 bg-blue-50/20">{item.executedQuantity}</TableCell>
+                                     <TableCell className="py-4">
+                                        <div className="space-y-1">
+                                           <Input 
+                                             type="number" 
+                                             step="0.01" 
+                                             value={item.quantity === 0 ? '' : item.quantity} 
+                                             onChange={e => { const ni = [...loggedItems]; ni[idx].quantity = Number(e.target.value); setLoggedItems(ni); }} 
+                                             className={cn("h-11 rounded-xl text-center font-black text-xl border-2 transition-all", isWarning ? "border-rose-300 text-rose-600 bg-rose-50" : "text-primary bg-primary/5")} 
+                                           />
+                                           {isWarning && <p className="text-[8px] text-rose-500 font-bold text-center animate-pulse">{tSafe('inline.overrun_warning', 'تجاوز للمخطط!', 'Exceeds Planned')}</p>}
+                                        </div>
+                                     </TableCell>
+                                     <TableCell className="py-4 pe-6"><Input value={item.notes} onChange={e => { const ni = [...loggedItems]; ni[idx].notes = e.target.value; setLoggedItems(ni); }} className="h-11 rounded-xl text-xs font-bold border-2 bg-slate-50/30" placeholder="..." /></TableCell>
+                                  </TableRow>
+                                );
+                              })}
                            </TableBody>
                         </Table>
                      </div>
@@ -378,3 +400,4 @@ export default function AppointmentDetailPage() {
     </div>
   );
 }
+

@@ -146,6 +146,21 @@ function TransactionDetailsContent() {
     );
   }, [activeStageForLog, boqItems, logForm.sectionId]);
 
+  // الأتمتة الذكية: اختيار تلقائي إذا توفر قسم واحد أو بند واحد للمرحلة
+  useEffect(() => {
+     if (isLogOpen && activeStageForLog) {
+        if (availableSections.length === 1 && !logForm.sectionId) {
+           setLogForm(prev => ({ ...prev, sectionId: availableSections[0].id }));
+        }
+     }
+  }, [isLogOpen, activeStageForLog, availableSections, logForm.sectionId]);
+
+  useEffect(() => {
+     if (isLogOpen && logForm.sectionId && availableItems.length === 1 && !logForm.itemId) {
+        setLogForm(prev => ({ ...prev, itemId: availableItems[0].id! }));
+     }
+  }, [isLogOpen, logForm.sectionId, availableItems, logForm.itemId]);
+
   const handleStartStage = async (stageId: string) => {
     if (!transactionService || !user) return;
     setProcessingId(stageId);
@@ -200,28 +215,21 @@ function TransactionDetailsContent() {
      return { planned, executed, pct: Math.min(100, Math.round((executed / Math.max(1, planned)) * 100)) };
   };
 
-  /**
-   * محرك التراجع السيادي المطور:
-   * يقوم بتصفير عدادات المرحلة وخصم الكميات من المقايسة آلياً.
-   */
   const handleRevertStage = async () => {
     if (!db || !companyId || !revertingStage || !revertReason.trim() || !activeBoq) return;
     setLoadingAction('revert');
     
     try {
       const batch = writeBatch(db);
-      
-      // 1. تصفير رادار المرحلة وإعادتها "قيد التنفيذ"
       const stageRef = doc(db, paths.transactionStages(companyId, transactionId), revertingStage.id!);
       batch.update(stageRef, { 
         status: 'in-progress', 
-        currentCount: 0, // تصفير النسبة كما طلبت
+        currentCount: 0, 
         completedAt: null, 
         completedBy: null, 
         updatedAt: serverTimestamp() 
       });
 
-      // 2. البحث عن سجلات التنفيذ الفعلي المرتبطة بهذه المرحلة لخصمها من المقايسة
       const executionsPath = paths.executions(companyId);
       const q = query(
         collection(db, executionsPath), 
@@ -230,13 +238,11 @@ function TransactionDetailsContent() {
       );
       const execSnap = await getDocs(q);
 
-      // 3. خصم الكميات من بنود BOQ وأرشفة سجلات التنفيذ
       execSnap.docs.forEach(execDoc => {
         const data = execDoc.data();
         const itemId = data.boqItemId;
         const qtyToSubtract = data.quantity || 0;
 
-        // خصم من بند المقايسة
         if (itemId) {
            const boqItemRef = doc(db, paths.boqItems(companyId, activeBoq.id), itemId);
            batch.update(boqItemRef, { 
@@ -245,7 +251,6 @@ function TransactionDetailsContent() {
            });
         }
 
-        // أرشفة سجل التنفيذ
         batch.update(execDoc.ref, { 
           isArchived: true, 
           status: 'reverted',
@@ -254,7 +259,6 @@ function TransactionDetailsContent() {
         });
       });
 
-      // 4. توثيق التراجع في التايملاين
       const timelineRef = doc(collection(db, paths.transactionTimeline(companyId, transactionId)));
       batch.set(timelineRef, { 
         transactionId, 
@@ -267,7 +271,6 @@ function TransactionDetailsContent() {
         createdAt: serverTimestamp() 
       });
 
-      // 5. أرشفة التعليقات الفنية المرتبطة بالمرحلة (اختياري)
       const commentService = new (await import('@/services/comment-service')).CommentService(db, companyId, permissions);
       await commentService.archiveStageComments(transactionId, revertingStage.id!);
 
@@ -282,6 +285,11 @@ function TransactionDetailsContent() {
       setLoadingAction(null);
     }
   };
+
+  const selectedItemData = useMemo(() => {
+     if (!logForm.itemId || !boqItems) return null;
+     return boqItems.find(i => i.id === logForm.itemId);
+  }, [logForm.itemId, boqItems]);
 
   if (transLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
 
@@ -416,24 +424,58 @@ function TransactionDetailsContent() {
             <div className="p-8 space-y-6 text-start bg-white">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                     <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.select_section', 'اختر القسم الرئيسي', 'Select Section')}</Label>
+                     <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.select_section', 'القسم الرئيسي', 'Main Section')}</Label>
                      <Select value={logForm.sectionId} onValueChange={v => setLogForm({...logForm, sectionId: v, itemId: ''})}>
                         <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
                         <SelectContent className="rounded-xl z-[160]">{availableSections.map(s => <SelectItem key={s.id} value={s.id} className="font-bold py-3">{s.title}</SelectItem>)}</SelectContent>
                      </Select>
                   </div>
                   <div className="space-y-2">
-                     <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.select_work_item', 'اختر بند العمل', 'Select Work Item')}</Label>
+                     <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.select_work_item', 'بند العمل', 'Work Item')}</Label>
                      <Select disabled={!logForm.sectionId} value={logForm.itemId} onValueChange={v => setLogForm({...logForm, itemId: v})}>
                         <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white shadow-sm"><SelectValue placeholder="..." /></SelectTrigger>
                         <SelectContent className="rounded-xl z-[160]">{availableItems.map(i => <SelectItem key={i.id} value={i.id!} className="font-bold py-3">{i.referenceTitle}</SelectItem>)}</SelectContent>
                      </Select>
                   </div>
                </div>
+
+               {selectedItemData && (
+                 <div className="p-5 bg-slate-50 rounded-2xl border-2 border-dashed space-y-4 animate-in zoom-in-95">
+                    <div className="flex justify-between items-center text-xs font-black text-slate-500 uppercase">
+                       <span>{tSafe('inline.planned', 'المخطط', 'Planned')}</span>
+                       <span className="text-slate-900">{selectedItemData.plannedQuantity} {selectedItemData.unitSymbol}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs font-black text-slate-500 uppercase">
+                       <span>{tSafe('inline.prev_executed', 'المنجز سابقاً', 'Prev. Executed')}</span>
+                       <span className="text-blue-600">{selectedItemData.executedQuantity} {selectedItemData.unitSymbol}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs font-black text-slate-500 uppercase border-t pt-2">
+                       <span>{tSafe('inline.remaining', 'المتبقي', 'Remaining')}</span>
+                       <span className="text-emerald-600">{(selectedItemData.plannedQuantity || 0) - (selectedItemData.executedQuantity || 0)} {selectedItemData.unitSymbol}</span>
+                    </div>
+                 </div>
+               )}
+
                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-slate-50">
-                  <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.quantity', 'الكمية المنفذة', 'Quantity')}</Label><Input type="number" step="0.01" value={logForm.quantity} onChange={e => setLogForm({...logForm, quantity: e.target.value})} className="h-14 rounded-2xl border-2 font-black text-2xl text-center text-primary" /></div>
-                  <div className="md:col-span-2 space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('common.notes', 'ملاحظات المهندس', 'Notes')}</Label><Textarea value={logForm.notes} onChange={e => setLogForm({...logForm, notes: e.target.value})} className="min-h-[100px] rounded-2xl border-2" /></div>
+                  <div className="space-y-2 text-start">
+                     <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.quantity', 'الكمية الحالية', 'Current Qty')}</Label>
+                     <Input type="number" step="0.01" value={logForm.quantity} onChange={e => setLogForm({...logForm, quantity: e.target.value})} className="h-14 rounded-2xl border-2 font-black text-2xl text-center text-primary" autoFocus />
+                  </div>
+                  <div className="md:col-span-2 space-y-2 text-start">
+                     <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('common.notes', 'ملاحظات المهندس', 'Notes')}</Label>
+                     <Textarea value={logForm.notes} onChange={e => setLogForm({...logForm, notes: e.target.value})} className="min-h-[100px] rounded-2xl border-2" placeholder="..." />
+                  </div>
                </div>
+
+               {selectedItemData && logForm.quantity && (
+                 <div className="flex items-center justify-between p-4 bg-primary/5 rounded-xl border border-primary/10">
+                    <span className="text-[10px] font-black text-primary uppercase">{tSafe('inline.new_total_percent', 'النسبة الإجمالية بعد الإضافة', 'New Total %')}</span>
+                    <span className="font-black text-lg text-primary">
+                       {Math.min(100, Math.round((((selectedItemData.executedQuantity || 0) + Number(logForm.quantity)) / (selectedItemData.plannedQuantity || 1)) * 100))}%
+                    </span>
+                 </div>
+               )}
+
                <Button onClick={handleSaveLog} disabled={!logForm.itemId || !logForm.quantity || !!loadingAction} className="w-full h-16 rounded-[2rem] font-black text-xl bg-primary text-white shadow-xl shadow-primary/20 hover:scale-105 transition-all border-b-8 border-orange-700">
                   {loadingAction === 'logging' ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6 me-2" />} {tSafe('inline.confirm_log', 'اعتماد وتسجيل الإنجاز', 'Confirm & Log')}
                </Button>
@@ -477,7 +519,7 @@ function TransactionDetailsContent() {
       </Dialog>
 
       <Dialog open={isBoqInitOpen} onOpenChange={setIsBoqInitOpen}>
-         <DialogContent className="rounded-xl max-w-md p-0 overflow-hidden border shadow-3xl bg-white" dir={dir}>
+         <DialogContent className="rounded-xl max-md p-0 overflow-hidden border shadow-3xl bg-white" dir={dir}>
             <div className="bg-slate-50 p-6 border-b text-start">
                <DialogTitle className="text-base font-black flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-primary" /> {tSafe('inline.activate.boq.template', 'تنشيط المقايسة المرجعية', 'Activate BOQ Template')}
@@ -486,9 +528,13 @@ function TransactionDetailsContent() {
             <div className="p-8 space-y-4 text-start">
                <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.select.template', 'اختر القالب الهندسي', 'Select Template')}</Label>
                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                  <SelectTrigger className="h-12 rounded-xl border-2 font-black text-lg"><SelectValue placeholder="..." /></SelectTrigger>
-                  <SelectContent className="rounded-xl border-2 shadow-2xl">
-                     {(templates || []).map((t_item: any) => <SelectItem key={t_item.id} value={t_item.id!} className="font-bold py-4">{t_item.name}</SelectItem>)}
+                  <SelectTrigger className="h-12 rounded-xl border-2 font-black text-lg bg-white shadow-inner">
+                     <SelectValue placeholder="..." />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-0 shadow-2xl z-[200]">
+                     {(templates || []).map((t_item: any) => <SelectItem key={t_item.id} value={t_item.id!} className="font-bold py-4 border-b last:border-0 border-slate-50">
+                        {t_item.name}
+                     </SelectItem>)}
                   </SelectContent>
                </Select>
                <Button onClick={async () => {
