@@ -52,7 +52,7 @@ function SearchablePicker({ value, onSelect, items, search, onSearchChange, icon
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="w-full h-12 rounded-xl border-2 font-bold justify-between bg-white px-4 shadow-sm">
+        <Button variant="outline" className="w-full h-12 rounded-xl border-2 font-bold justify-between bg-white px-4 shadow-sm text-start">
           <div className="flex items-center gap-3 overflow-hidden text-start">
              <Icon className="h-4 w-4 text-primary opacity-40" />
              <span className="truncate">{isLoading ? '...' : (value || placeholder)}</span>
@@ -105,7 +105,7 @@ function SearchablePicker({ value, onSelect, items, search, onSearchChange, icon
 
 export default function NewStructuredFieldVisitPage() {
   const { globalUser, user } = useAuthContext();
-  const { t, lang, dir, tSafe } = useLanguage();
+  const { lang, dir, t, tSafe } = useLanguage();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
@@ -151,7 +151,6 @@ export default function NewStructuredFieldVisitPage() {
 
   useEffect(() => {
     if (db && companyId && formData.transactionId) {
-      // جلب المقاولين المرتبطين مالياً بهذا المشروع فقط
       getDocs(query(collection(db, paths.subconContracts(companyId)), where('transactionId', '==', formData.transactionId)))
         .then(snap => {
            const list = snap.docs.map(d => ({ id: d.data().subcontractorId, name: d.data().subcontractorName }));
@@ -191,21 +190,21 @@ export default function NewStructuredFieldVisitPage() {
     if (selectionId.startsWith('GROUP_')) {
       const groupId = selectionId.replace('GROUP_', '');
       const group = workGroups?.find((g: any) => g.id === groupId);
-      newRows[idx] = { resourceType: 'work_group', resourceId: groupId, resourceName: group?.name || '', count: group?.memberCount || 1 };
+      newRows[idx] = { ...newRows[idx], resourceType: 'work_group', resourceId: groupId, resourceName: group?.name || '', count: group?.memberCount || 1 };
     } else if (selectionId.startsWith('EMP_')) {
       const empId = selectionId.replace('EMP_', '');
       const emp = allEmployees?.find((e: any) => e.id === empId);
-      newRows[idx] = { resourceType: 'employee', resourceId: empId, resourceName: emp?.fullName || '', count: 1 };
+      newRows[idx] = { ...newRows[idx], resourceType: 'employee', resourceId: empId, resourceName: emp?.fullName || '', count: 1 };
     } else if (selectionId.startsWith('SUB_')) {
       const subId = selectionId.replace('SUB_', '');
       const sub = linkedSubcontractors?.find((s: any) => s.id === subId);
-      newRows[idx] = { resourceType: 'subcontractor', resourceId: subId, resourceName: sub?.name || '', count: 1 };
+      newRows[idx] = { ...newRows[idx], resourceType: 'subcontractor', resourceId: subId, resourceName: sub?.name || '', count: 1 };
     }
     setStaffRows(newRows);
   };
 
-  const addCompanyStaffRow = () => setStaffRows([...staffRows, { resourceType: 'work_group', resourceId: '', resourceName: '', count: 1 }]);
-  const addSubconRow = () => setStaffRows([...staffRows, { resourceType: 'subcontractor', resourceId: '', resourceName: '', count: 1 }]);
+  const addCompanyStaffRow = () => setStaffRows([...staffRows, { resourceType: 'work_group', resourceId: '', resourceName: '', count: 1, notes: '' }]);
+  const addSubconRow = () => setStaffRows([...staffRows, { resourceType: 'subcontractor', resourceId: '', resourceName: '', count: 1, notes: '' }]);
   const addEquipRow = () => setEquipRows([...equipRows, { equipmentId: '', equipmentName: '', count: 1, hours: 8 }]);
 
   const handleSave = async () => {
@@ -216,7 +215,7 @@ export default function NewStructuredFieldVisitPage() {
       const visitData = {
         ...formData,
         items: boqItems.filter(i => i.quantity > 0),
-        staffDetails: staffRows.map(r => ({ type: r.resourceType, id: r.resourceId, name: r.resourceName, count: r.count })),
+        staffDetails: staffRows.map(r => ({ type: r.resourceType, id: r.resourceId, name: r.resourceName, count: r.count, notes: r.notes })),
         equipmentUsed: equipRows.filter(r => r.equipmentId),
         engineerId: user.uid,
         engineerName: globalUser?.fullName || 'Engineer'
@@ -232,7 +231,7 @@ export default function NewStructuredFieldVisitPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-full mx-auto pb-20 animate-in fade-in duration-500 text-start bg-white" dir={dir}>
+    <div className="space-y-8 max-w-full mx-auto pb-20 animate-in fade-in duration-500 text-start bg-white min-h-screen" dir={dir}>
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-white/95 backdrop-blur-md px-8 shadow-sm">
         <div className="flex items-center gap-4 text-start">
            <button onClick={() => router.back()} className="h-10 w-10 border-2 rounded-xl flex items-center justify-center hover:bg-slate-50 transition-colors text-slate-400 shrink-0">
@@ -258,7 +257,7 @@ export default function NewStructuredFieldVisitPage() {
                </CardHeader>
                <CardContent className="p-6 space-y-6 text-start">
                   <div className="space-y-4">
-                     <div className="space-y-1.5">
+                     <div className="space-y-1.5 text-start">
                         <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.client')}</Label>
                         <SearchablePicker 
                           value={formData.clientName}
@@ -272,7 +271,7 @@ export default function NewStructuredFieldVisitPage() {
                           isRtl={isRtl}
                         />
                      </div>
-                     <div className="space-y-1.5">
+                     <div className="space-y-1.5 text-start">
                         <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.transaction')}</Label>
                         <SearchablePicker 
                           disabled={!formData.clientId}
@@ -287,7 +286,7 @@ export default function NewStructuredFieldVisitPage() {
                           isRtl={isRtl}
                         />
                      </div>
-                     <div className="space-y-1.5">
+                     <div className="space-y-1.5 text-start">
                         <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5"><Zap className="h-3 w-3" /> {tSafe('inline.target.stage', 'المرحلة الجارية المستهدفة', 'Target Active Stage')}</Label>
                         <Select disabled={!formData.transactionId} value={formData.activeStageId} onValueChange={v => {
                            const s = stages.find(x => x.id === v);
@@ -302,7 +301,7 @@ export default function NewStructuredFieldVisitPage() {
                         </Select>
                      </div>
                   </div>
-                  <div className="space-y-1.5 pt-4 border-t">
+                  <div className="space-y-1.5 pt-4 border-t text-start">
                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.date')}</Label>
                      <SmartDateInput value={formData.visitDate} onChange={v => setFormData({...formData, visitDate: v})} />
                   </div>
@@ -314,7 +313,7 @@ export default function NewStructuredFieldVisitPage() {
                <CardContent className="p-8 space-y-4 relative z-10 text-start">
                   <div className="flex items-center gap-3 text-primary mb-2">
                      <ShieldCheck className="h-6 w-6" />
-                     <h4 className="font-black text-lg uppercase tracking-tight">النزاهة الميدانية</h4>
+                     <h4 className="font-black text-lg uppercase tracking-tight">{tSafe('inline.field.integrity', 'بروتوكول النزاهة الميدانية', 'Field Integrity')}</h4>
                   </div>
                   <p className="text-[10px] font-bold text-slate-400 leading-relaxed italic">سيقوم النظام بتحديث نسب إنجاز المقايسة آلياً، وستظهر التكاليف الفعلية في النظام المالي.</p>
                </CardContent>
@@ -367,7 +366,7 @@ export default function NewStructuredFieldVisitPage() {
             <div className="space-y-4 text-start">
                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 px-1">
                   <h3 className="text-xl font-black font-headline text-slate-900 flex items-center gap-3">
-                     <Users className="h-6 w-6 text-primary" /> عمالة الموقع والمقاولون
+                     <Users className="h-6 w-6 text-primary" /> الموارد البشرية والعمالة
                   </h3>
                   <div className="flex gap-2 w-full md:w-auto">
                      <Button onClick={addCompanyStaffRow} variant="outline" size="sm" className="rounded-xl border-2 font-black text-[10px] h-10 gap-2 shadow-sm bg-white hover:bg-primary/5">
@@ -389,14 +388,15 @@ export default function NewStructuredFieldVisitPage() {
                   <Table>
                      <TableHeader className="bg-slate-50/50">
                         <TableRow className="border-0">
-                           <TableHead className="py-5 ps-8 text-slate-500 font-black uppercase text-[10px] tracking-widest">المصدر / المورد</TableHead>
-                           <TableHead className="text-center text-slate-900 font-black uppercase text-[10px] tracking-widest w-[120px]">{isRtl ? 'العدد' : 'Count'}</TableHead>
+                           <TableHead className="py-5 ps-8 text-slate-500 font-black uppercase text-[10px] tracking-widest">المورد / الجهة</TableHead>
+                           <TableHead className="text-center text-slate-900 font-black uppercase text-[10px] tracking-widest w-[100px]">{isRtl ? 'العدد' : 'Count'}</TableHead>
+                           <TableHead className="text-start text-slate-500 font-black uppercase text-[10px] tracking-widest">بيان العمل / ملاحظات</TableHead>
                            <TableHead className="pe-8 w-[60px]"></TableHead>
                         </TableRow>
                      </TableHeader>
                      <TableBody>
                         {staffRows.length === 0 ? (
-                           <TableRow><TableCell colSpan={3} className="py-16 text-center text-slate-300 font-bold italic">لا توجد عمالة مسجلة في هذا السجل.</TableCell></TableRow>
+                           <TableRow><TableCell colSpan={4} className="py-16 text-center text-slate-300 font-bold italic">لا توجد عمالة مسجلة في هذا السجل.</TableCell></TableRow>
                         ) : staffRows.map((row, idx) => (
                            <TableRow key={idx} className="border-b last:border-0 hover:bg-slate-50/30 transition-colors">
                               <TableCell className="ps-8 py-4">
@@ -405,7 +405,7 @@ export default function NewStructuredFieldVisitPage() {
                                       "h-11 rounded-xl border-2 font-black text-sm",
                                       row.resourceType === 'employee' ? "bg-blue-50 text-blue-600 border-blue-100" : (row.resourceType === 'subcontractor' ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-white")
                                     )}>
-                                       <SelectValue placeholder="اختر المورد..." />
+                                       <SelectValue placeholder="اختر..." />
                                     </SelectTrigger>
                                     <SelectContent className="rounded-xl border shadow-2xl z-[160] max-h-80">
                                        {row.resourceType === 'subcontractor' ? (
@@ -422,7 +422,7 @@ export default function NewStructuredFieldVisitPage() {
                                              </SelectGroup>
                                              <SelectGroup>
                                                 <SelectLabel className="font-black text-[10px] text-slate-400 uppercase bg-slate-50 py-2 mt-2">موظفون أفراد (Individual)</SelectLabel>
-                                                {allEmployees?.map((e: any) => <SelectItem key={e.id} value={`EMP_${e.id}`} className="font-bold py-3 text-xs border-b last:border-0 border-slate-50"><span className="flex items-center gap-2"><User className="h-4 w-4" /> {e.fullName}</span></SelectItem>)}
+                                                {allEmployees?.map((e: any) => <SelectItem key={e.id} value={`EMP_${e.id}`} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50"><span className="flex items-center gap-2"><User className="h-4 w-4" /> {e.fullName}</span></SelectItem>)}
                                              </SelectGroup>
                                           </>
                                        )}
@@ -442,6 +442,18 @@ export default function NewStructuredFieldVisitPage() {
                                    className={cn("h-11 rounded-xl border-2 text-center font-black text-xl", row.resourceType === 'employee' ? "bg-slate-100 text-slate-400 border-0" : "bg-slate-50 shadow-inner")} 
                                  />
                               </TableCell>
+                              <TableCell className="py-4">
+                                 <Input 
+                                   value={row.notes} 
+                                   onChange={e => {
+                                      const nr = [...staffRows];
+                                      nr[idx].notes = e.target.value;
+                                      setStaffRows(nr);
+                                   }}
+                                   placeholder={isRtl ? "بيان العمل (نظافة، فك، صب...)" : "Work desc..."}
+                                   className="h-11 rounded-xl border-2 font-bold text-xs bg-white" 
+                                 />
+                              </TableCell>
                               <TableCell className="pe-8">
                                  <Button variant="ghost" size="icon" onClick={() => setStaffRows(staffRows.filter((_, i) => i !== idx))} className="h-10 w-10 text-rose-300 hover:text-rose-600 transition-colors"><Trash2 className="h-4 w-4" /></Button>
                               </TableCell>
@@ -457,7 +469,7 @@ export default function NewStructuredFieldVisitPage() {
                   <h3 className="text-xl font-black font-headline text-slate-900 flex items-center gap-3">
                      <Truck className="h-6 w-6 text-primary" /> {tSafe('inline.equipment.usage', 'المعدات والآليات الميدانية', 'Equipment Usage')}
                   </h3>
-                  <Button onClick={addEquipRow} variant="outline" size="sm" className="rounded-xl border-2 font-black text-[10px] h-9 gap-2 shadow-sm">
+                  <Button onClick={addEquipRow} variant="outline" size="sm" className="rounded-xl border-2 font-black text-[10px] h-9 gap-2 shadow-sm bg-white">
                      <Plus className="h-3.5 w-3.5" /> {isRtl ? 'إضافة معدة' : 'Add Equipment'}
                   </Button>
                </div>
