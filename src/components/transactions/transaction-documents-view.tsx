@@ -86,27 +86,27 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
   const { data: subIpcs } = useCollection<any>(subIpcsQuery);
 
   const templatesQuery = useMemo(() => {
-    if (!companyId || !db || !docTypeToCreate) return null;
+    if (!companyId || !db || !docTypeToCreate || !transaction?.activityTypeId) return null;
     let path = '';
     if (docTypeToCreate === 'quotation') path = paths.quotationTemplates(companyId);
     else if (docTypeToCreate === 'contract') path = paths.contractTemplates(companyId);
     else if (docTypeToCreate === 'subcon_contract') path = paths.subconContractTemplates(companyId);
     
-    return query(collection(db, path), where('isActive', '==', true));
-  }, [db, companyId, docTypeToCreate]);
+    return query(collection(db, path), where('isActive', '==', true), where('activityTypeId', '==', transaction.activityTypeId));
+  }, [db, companyId, docTypeToCreate, transaction?.activityTypeId]);
   const { data: rawTemplates } = useCollection<any>(templatesQuery);
 
   const templates = useMemo(() => {
     if (!rawTemplates) return [];
     return [...rawTemplates].sort((a, b) => {
-       if (a.subServiceId === transaction.subServiceId) return -1;
-       if (b.subServiceId === transaction.subServiceId) return 1;
+       if (a.subServiceId === transaction?.subServiceId) return -1;
+       if (b.subServiceId === transaction?.subServiceId) return 1;
        return 0;
     });
   }, [rawTemplates, transaction?.subServiceId]);
 
   const handleCreate = async () => {
-    if (!db || !companyId || !docTypeToCreate || !selectedTemplateId) return;
+    if (!db || !companyId || !docTypeToCreate || !selectedTemplateId || !transaction) return;
     setLoading(true);
     try {
       if (docTypeToCreate === 'subcon_contract') {
@@ -117,7 +117,7 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
 
       const service = new DocumentService(db, companyId, permissions);
       const docPrefix = docTypeToCreate === 'quotation' ? tSafe('inline.quotation', 'عرض سعر', 'Quotation') : tSafe('inline.contract', 'عقد', 'Contract');
-      const name = `${docPrefix} - ${transaction.subServiceName}`;
+      const name = `${docPrefix} - ${transaction?.subServiceName || ''}`;
       const payload = { transactionId: transaction.id, clientId, clientName, name };
       
       let docId = "";
@@ -261,7 +261,7 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
                   {docTypeToCreate === 'quotation' ? <FileText className="h-8 w-8 text-primary" /> : <Gavel className="h-8 w-8 text-primary" />}
                   {docTypeToCreate === 'quotation' ? tSafe('inline.issue.quote', 'إصدار عرض سعر', 'Issue Quote') : (docTypeToCreate === 'contract' ? tSafe('inline.issue.contract', 'إصدار عقد جديد', 'Issue Contract') : tSafe('subcon.contracts.issue', 'إصدار اتفاقية باطن', 'Issue SubCon Award'))}
                </DialogTitle>
-               <p className="text-slate-500 font-bold mt-2 uppercase text-[10px] tracking-widest">{transaction.activityTypeName}</p>
+               <p className="text-slate-500 font-bold mt-2 uppercase text-[10px] tracking-widest">{transaction?.activityTypeName}</p>
             </div>
 
             <div className="p-10 space-y-6 text-start">
@@ -278,7 +278,7 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
                            <SelectItem key={temp.id} value={temp.id!} className="font-bold py-4 border-b last:border-0 border-slate-50">
                               <div className="flex flex-col text-start">
                                  <span className="text-slate-800">{temp.name}</span>
-                                 {temp.subServiceId === transaction.subServiceId && (
+                                 {temp.subServiceId === transaction?.subServiceId && (
                                     <Badge className="bg-emerald-50 text-emerald-600 border-0 text-[8px] font-black h-4 w-fit mt-1">{tSafe('inline.direct.matching.key', 'مطابقة مباشرة', 'DIRECT MATCH')}</Badge>
                                  )}
                               </div>
@@ -298,7 +298,7 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
                   disabled={loading || !selectedTemplateId}
                   className="w-full h-20 rounded-[2rem] bg-primary text-white font-black text-2xl shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-4 border-b-8 border-orange-700 mt-4"
                >
-                  {loading ? <Loader2 className="animate-spin h-8 w-8" /> : <Sparkles className="h-8 w-8" />}
+                  {loading ? <Loader2 className="animate-spin h-8 w-8" /> : <Save className="h-8 w-8" />}
                   {tSafe('inline.create.draft', 'تجهيز المسودة الآن', 'Create Draft Now')}
                </Button>
             </div>
@@ -331,4 +331,3 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
     </div>
   );
 }
-
