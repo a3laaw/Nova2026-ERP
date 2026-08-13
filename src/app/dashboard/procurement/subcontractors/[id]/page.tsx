@@ -12,7 +12,8 @@ import {
   Handshake, Wallet, TrendingUp, Gavel, 
   History, Calendar, Info, Landmark, 
   CheckCircle2, Clock, ExternalLink,
-  ShieldCheck, Briefcase, DollarSign
+  ShieldCheck, Briefcase, DollarSign,
+  Plus, Star
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where, orderBy } from 'firebase/firestore';
@@ -20,6 +21,7 @@ import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
 import { cn } from '@/lib/utils';
+import { PrintWrapper } from '@/components/layout/print-wrapper';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export default function SubcontractorDossierPage() {
@@ -66,8 +68,8 @@ export default function SubcontractorDossierPage() {
   return (
     <div className="space-y-8 pb-20 animate-in fade-in duration-700 text-start" dir={dir}>
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-slate-100 pb-8 px-1">
-        <div className="flex items-center gap-6">
-           <Button variant="ghost" onClick={() => router.back()} className="h-12 w-12 p-0 rounded-2xl bg-white shadow-sm border hover:bg-slate-50">
+        <div className="flex items-center gap-6 text-start">
+           <Button variant="ghost" size="icon" onClick={() => router.back()} className="h-12 w-12 p-0 rounded-2xl bg-white shadow-sm border hover:bg-slate-50">
              <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
            </Button>
            <div className="text-start space-y-1">
@@ -136,7 +138,7 @@ export default function SubcontractorDossierPage() {
                </CardHeader>
                <CardContent className="p-0 overflow-x-auto">
                   <Table>
-                     <TableHeader className="bg-muted/10">
+                     <TableHeader className="bg-muted/10 border-b">
                         <TableRow>
                            <TableHead className="py-6 ps-10 text-start text-[10px] font-black uppercase tracking-widest">{tSafe('common.project', 'المشروع / العقد', 'Project / Award')}</TableHead>
                            <TableHead className="text-start text-[10px] font-black uppercase tracking-widest">{tSafe('common.date', 'التاريخ', 'Date')}</TableHead>
@@ -258,3 +260,4 @@ export default function SubcontractorDossierPage() {
     </div>
   );
 }
+
