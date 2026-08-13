@@ -44,6 +44,8 @@ export function DashboardSidebar() {
 
     return [
       { title: t('dashboard'), icon: LayoutDashboard, url: "/dashboard", resource: 'dashboard' },
+      
+      // 1. CRM والمبيعات
       { 
         title: t('crm'), 
         icon: Users, 
@@ -57,6 +59,8 @@ export function DashboardSidebar() {
           { title: t('visitsDossier'), url: "/dashboard/projects/reports/client-visits", icon: MapPinned },
         ]
       },
+      
+      // 2. المشاريع والمالية الفنية
       { 
         title: t('projects'), 
         icon: HardHat, 
@@ -71,18 +75,21 @@ export function DashboardSidebar() {
           { title: t('reports'), url: "/dashboard/reports", icon: FileText },
         ]
       },
+      
+      // 3. المقاولات والميدان (تم توحيده وحذف الرادار لعدم التكرار)
       { 
         title: t('construction'), 
         icon: Hammer, 
-        url: "/dashboard/construction/bookings", 
+        url: "/dashboard/construction/field-visits", 
         resource: 'projects',
         subItems: [
-          { title: t('fieldRadar'), url: "/dashboard/construction/bookings", icon: MapPin },
+          { title: t('fieldLogs'), url: "/dashboard/construction/field-visits", icon: FileText },
           { title: t('workGroups'), url: "/dashboard/construction/groups", icon: Users },
           { title: t('equipment'), url: "/dashboard/equipment", icon: Truck },
-          { title: t('fieldLogs'), url: "/dashboard/construction/field-visits", icon: FileText },
         ]
       },
+      
+      // 4. المشتريات والتعاقدات
       { 
         title: t('procurement'), 
         icon: ShoppingCart, 
@@ -95,6 +102,8 @@ export function DashboardSidebar() {
           { title: t('aiAnalysis'), url: "/dashboard/ai", icon: FileSearch },
         ]
       },
+      
+      // 5. الموارد البشرية والرواتب
       { 
         title: isHrManager ? t('hr') : t('userProfile'), 
         icon: UserCircle, 
@@ -106,6 +115,8 @@ export function DashboardSidebar() {
           { title: t('payroll'), url: "/dashboard/hr/payroll", icon: Calculator, requiredAction: 'approve', hideIfOwnScope: true },
         ]
       },
+      
+      // 6. المحاسبة المالية
       { 
         title: t('accounting'), 
         icon: Calculator, 
@@ -119,6 +130,8 @@ export function DashboardSidebar() {
           { title: t('financialReports'), url: "/dashboard/accounting/reports", icon: BarChart3 },
         ]
       },
+      
+      // 7. المخازن والإعدادات
       { 
         title: t('inventory'), 
         icon: Package, 
