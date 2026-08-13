@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +16,7 @@ import {
   Search, Check, ChevronDown, Landmark,
   AlertTriangle, Handshake, CalendarDays,
   LayoutGrid, UserCircle, ShieldCheck,
-  User, UsersRound
+  User, UsersRound, Zap
 } from "lucide-react";
 import { 
   Popover,
@@ -127,7 +127,7 @@ export default function NewStructuredFieldVisitPage() {
   });
 
   const [staffRows, setStaffRows] = useState<any[]>([{ 
-    resourceType: 'internal_group', // 'employee' | 'internal_group' | 'subcontractor'
+    resourceType: 'internal_group', 
     resourceId: 'INTERNAL_CREW',
     resourceName: isRtl ? 'عمالة الشركة العامة' : 'Internal General Crew',
     count: 1 
@@ -194,11 +194,11 @@ export default function NewStructuredFieldVisitPage() {
       newRows[idx] = { resourceType: 'internal_group', resourceId: selectionId, resourceName: isRtl ? 'عمالة الشركة العامة' : 'Internal Crew', count: 1 };
     } else if (selectionId.startsWith('EMP_')) {
       const empId = selectionId.replace('EMP_', '');
-      const emp = allEmployees?.find(e => e.id === empId);
+      const emp = allEmployees?.find((e: any) => e.id === empId);
       newRows[idx] = { resourceType: 'employee', resourceId: empId, resourceName: emp?.fullName || '', count: 1 };
     } else if (selectionId.startsWith('SUB_')) {
       const subId = selectionId.replace('SUB_', '');
-      const sub = subcontractors?.find(s => s.id === subId);
+      const sub = subcontractors?.find((s: any) => s.id === subId);
       newRows[idx] = { resourceType: 'subcontractor', resourceId: subId, resourceName: sub?.name || '', count: 1 };
     }
     
@@ -261,7 +261,7 @@ export default function NewStructuredFieldVisitPage() {
                      <CardTitle className="text-base font-black uppercase tracking-tight">{tSafe('inline.site.context', 'سياق المعاملة والموقع', 'Site Context')}</CardTitle>
                   </div>
                </CardHeader>
-               <CardContent className="p-8 space-y-6 text-start">
+               <CardContent className="p-6 space-y-6 text-start">
                   <div className="space-y-4">
                      <div className="space-y-1.5">
                         <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('common.client', 'العميل', 'Client')}</Label>

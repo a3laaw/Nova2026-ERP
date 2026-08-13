@@ -11,7 +11,7 @@ import {
   Target, X, RotateCcw, Lock, Info, Play,
   Users, Truck, Plus, Trash2, Link as LinkIcon,
   ShieldAlert, ShieldX, Sparkles, DollarSign, Building2, Briefcase, Clock, Camera, LayoutGrid,
-  Handshake, AlertCircle, User, UsersRound
+  Handshake, AlertCircle, User, UsersRound, Zap
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where, orderBy, limit, updateDoc, serverTimestamp, getDocs, collectionGroup } from 'firebase/firestore';
@@ -22,7 +22,7 @@ import { paths } from '@/firebase/multi-tenant';
 import { Appointment } from '@/types/appointment';
 import { Transaction, StageInstance } from '@/types/transaction';
 import { BOQ, BOQItem, BOQItemExecutionEntry, LaborDetail, EquipmentUsed } from '@/types/documents';
-import { Job } from '@/types/reference';
+import { Job, Employee } from '@/types/hr';
 import { CommentSection } from '@/components/transactions/comment-section';
 import { BOQExecutionService, StageProgressResult } from '@/services/boq-execution-service';
 import { cn } from '@/lib/utils';
@@ -80,7 +80,7 @@ export default function AppointmentDetailPage() {
   const equipQuery = useMemo(() => companyId && db ? query(collection(db, paths.equipment(companyId)), where('status', '==', 'available')) : null, [db, companyId]);
   const subsQuery = useMemo(() => companyId && db ? query(collection(db, paths.subcontractors(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
 
-  const { data: allEmployees } = useCollection<Employee>(empsQuery);
+  const { data: allEmployees } = useCollection<any>(empsQuery);
   const { data: equipmentItems } = useCollection<any>(equipQuery);
   const { data: subcontractors } = useCollection<any>(subsQuery);
 
@@ -112,11 +112,11 @@ export default function AppointmentDetailPage() {
       newRows[idx] = { ...newRows[idx], resourceType: 'internal_group', resourceId: selectionId, resourceName: isRtl ? 'عمالة الشركة العامة' : 'Internal Crew', count: 1 };
     } else if (selectionId.startsWith('EMP_')) {
       const empId = selectionId.replace('EMP_', '');
-      const emp = allEmployees?.find(e => e.id === empId);
+      const emp = allEmployees?.find((e: any) => e.id === empId);
       newRows[idx] = { ...newRows[idx], resourceType: 'employee', resourceId: empId, resourceName: emp?.fullName || '', count: 1 };
     } else if (selectionId.startsWith('SUB_')) {
       const subId = selectionId.replace('SUB_', '');
-      const sub = subcontractors?.find(s => s.id === subId);
+      const sub = subcontractors?.find((s: any) => s.id === subId);
       newRows[idx] = { ...newRows[idx], resourceType: 'subcontractor', resourceId: subId, resourceName: sub?.name || '', count: 1 };
     }
     
@@ -235,7 +235,7 @@ export default function AppointmentDetailPage() {
                               </TableRow>
                            </TableHeader>
                            <TableBody>
-                              {loggedItems.map((item, idx) => {
+                              {loggedItems.map((item: any, idx: number) => {
                                 const remaining = (item.plannedQuantity || 0) - (item.executedQuantity || 0);
                                 const isWarning = (Number(item.quantity) || 0) > remaining;
                                 return (
@@ -292,11 +292,11 @@ export default function AppointmentDetailPage() {
                                    </SelectGroup>
                                    <SelectGroup>
                                       <SelectLabel className="text-[10px] font-black uppercase bg-slate-50 py-2 mt-2">{isRtl ? 'موظفو الشركة' : 'Employees'}</SelectLabel>
-                                      {allEmployees?.map(e => <SelectItem key={e.id} value={`EMP_${e.id}`} className="font-bold text-xs py-3"><div className="flex items-center gap-2"><User className="h-4 w-4" /> {e.fullName}</div></SelectItem>)}
+                                      {allEmployees?.map((e: any) => <SelectItem key={e.id} value={`EMP_${e.id}`} className="font-bold text-xs py-3"><div className="flex items-center gap-2"><User className="h-4 w-4" /> {e.fullName}</div></SelectItem>)}
                                    </SelectGroup>
                                    <SelectGroup>
                                       <SelectLabel className="text-[10px] font-black uppercase bg-slate-50 py-2 mt-2">{isRtl ? 'مقاولو الباطن' : 'Subcontractors'}</SelectLabel>
-                                      {subcontractors?.map(s => <SelectItem key={s.id} value={`SUB_${s.id}`} className="font-bold text-xs py-3"><div className="flex items-center gap-2"><Handshake className="h-4 w-4 text-primary" /> {s.name}</div></SelectItem>)}
+                                      {subcontractors?.map((s: any) => <SelectItem key={s.id} value={`SUB_${s.id}`} className="font-bold text-xs py-3"><div className="flex items-center gap-2"><Handshake className="h-4 w-4 text-primary" /> {s.name}</div></SelectItem>)}
                                    </SelectGroup>
                                 </SelectContent>
                              </Select>
