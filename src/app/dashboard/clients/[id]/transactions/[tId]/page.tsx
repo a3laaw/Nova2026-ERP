@@ -16,7 +16,7 @@ import {
   UserCheck, Briefcase, DollarSign, Receipt, FileSearch
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { collection, query, orderBy, where, doc, serverTimestamp, addDoc, updateDoc, getDocs, limit } from 'firebase/firestore';
+import { collection, query, orderBy, where, doc, serverTimestamp, addDoc, updateDoc, getDocs, limit, writeBatch, increment } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -198,6 +198,89 @@ function TransactionDetailsContent() {
      const planned = stageItems.reduce((acc, i) => acc + (i.plannedQuantity || 0), 0);
      const executed = stageItems.reduce((acc, i) => acc + (i.executedQuantity || 0), 0);
      return { planned, executed, pct: Math.min(100, Math.round((executed / Math.max(1, planned)) * 100)) };
+  };
+
+  /**
+   * محرك التراجع السيادي المطور:
+   * يقوم بتصفير عدادات المرحلة وخصم الكميات من المقايسة آلياً.
+   */
+  const handleRevertStage = async () => {
+    if (!db || !companyId || !revertingStage || !revertReason.trim() || !activeBoq) return;
+    setLoadingAction('revert');
+    
+    try {
+      const batch = writeBatch(db);
+      
+      // 1. تصفير رادار المرحلة وإعادتها "قيد التنفيذ"
+      const stageRef = doc(db, paths.transactionStages(companyId, transactionId), revertingStage.id!);
+      batch.update(stageRef, { 
+        status: 'in-progress', 
+        currentCount: 0, // تصفير النسبة كما طلبت
+        completedAt: null, 
+        completedBy: null, 
+        updatedAt: serverTimestamp() 
+      });
+
+      // 2. البحث عن سجلات التنفيذ الفعلي المرتبطة بهذه المرحلة لخصمها من المقايسة
+      const executionsPath = paths.executions(companyId);
+      const q = query(
+        collection(db, executionsPath), 
+        where('stageInstanceId', '==', revertingStage.id),
+        where('isArchived', '==', false)
+      );
+      const execSnap = await getDocs(q);
+
+      // 3. خصم الكميات من بنود BOQ وأرشفة سجلات التنفيذ
+      execSnap.docs.forEach(execDoc => {
+        const data = execDoc.data();
+        const itemId = data.boqItemId;
+        const qtyToSubtract = data.quantity || 0;
+
+        // خصم من بند المقايسة
+        if (itemId) {
+           const boqItemRef = doc(db, paths.boqItems(companyId, activeBoq.id), itemId);
+           batch.update(boqItemRef, { 
+              executedQuantity: increment(-qtyToSubtract),
+              updatedAt: serverTimestamp()
+           });
+        }
+
+        // أرشفة سجل التنفيذ
+        batch.update(execDoc.ref, { 
+          isArchived: true, 
+          status: 'reverted',
+          archivedReason: revertReason,
+          updatedAt: serverTimestamp() 
+        });
+      });
+
+      // 4. توثيق التراجع في التايملاين
+      const timelineRef = doc(collection(db, paths.transactionTimeline(companyId, transactionId)));
+      batch.set(timelineRef, { 
+        transactionId, 
+        stageId: revertingStage.id, 
+        type: 'stage_reopen', 
+        content: `[تراجع وتصفير] تم التراجع عن إتمام المرحلة "${revertingStage.name}" وتصفير نسب الإنجاز المرتبطة بها لسبب: ${revertReason}`, 
+        userId: user!.uid, 
+        userName: currentUserName, 
+        companyId, 
+        createdAt: serverTimestamp() 
+      });
+
+      // 5. أرشفة التعليقات الفنية المرتبطة بالمرحلة (اختياري)
+      const commentService = new (await import('@/services/comment-service')).CommentService(db, companyId, permissions);
+      await commentService.archiveStageComments(transactionId, revertingStage.id!);
+
+      await batch.commit();
+
+      toast({ title: tSafe('inline.reverted', 'تم التراجع والتصفير', 'Reverted & Zeroed') });
+      setRevertingStage(null);
+      setRevertReason("");
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('common.error'), description: e.message });
+    } finally {
+      setLoadingAction(null);
+    }
   };
 
   if (transLoading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>;
@@ -386,21 +469,7 @@ function TransactionDetailsContent() {
                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('inline.revert_reason', 'المبرر الفني للتراجع', 'Technical Reason')}</Label>
                   <Textarea value={revertReason} onChange={e => setRevertReason(e.target.value)} placeholder="..." className="min-h-[120px] rounded-2xl border-2 p-6 font-bold bg-slate-50" />
                </div>
-               <Button onClick={async () => {
-                  if (!db || !companyId || !revertingStage || !revertReason.trim()) return;
-                  setLoadingAction('revert');
-                  try {
-                    await updateDoc(doc(db, paths.transactionStages(companyId, transactionId), revertingStage.id!), { status: 'in-progress', completedAt: null, completedBy: null, updatedAt: serverTimestamp() });
-                    await addDoc(collection(db, paths.transactionTimeline(companyId, transactionId)), { transactionId, stageId: revertingStage.id, type: 'stage_reopen', content: `[تراجع] ${revertReason}`, userId: user!.uid, userName: currentUserName, companyId, createdAt: serverTimestamp() });
-                    
-                    const commentService = new (await import('@/services/comment-service')).CommentService(db, companyId, permissions);
-                    await commentService.archiveStageComments(transactionId, revertingStage.id!);
-
-                    toast({ title: tSafe('inline.reverted', 'تم التراجع', 'Reverted') });
-                    setRevertingStage(null);
-                    setRevertReason("");
-                  } finally { setLoadingAction(null); }
-               }} disabled={!revertReason.trim() || !!loadingAction} className="w-full h-16 rounded-[2rem] font-black bg-rose-600 text-white shadow-xl border-b-8 border-rose-800">
+               <Button onClick={handleRevertStage} disabled={!revertReason.trim() || !!loadingAction} className="w-full h-16 rounded-[2rem] font-black bg-rose-600 text-white shadow-xl border-b-8 border-rose-800">
                   {loadingAction === 'revert' ? <Loader2 className="animate-spin h-6 w-6" /> : tSafe('inline.confirm_revert', 'تأكيد التراجع الآن', 'Confirm Revert')}
                </Button>
             </div>
