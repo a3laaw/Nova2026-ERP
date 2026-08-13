@@ -30,24 +30,22 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { useFirestore, useCollection, useDoc } from '@/firebase';
+import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, getDocs, doc } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { FieldVisitService } from '@/services/field-visit-service';
-import { BOQExecutionService } from '@/services/boq-execution-service';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { SmartDateInput } from '@/components/ui/smart-date-input';
 import { BOQItem } from '@/types/documents';
-import { WorkGroup } from '@/types/hr';
 
 /**
  * مكون البحث الذكي للعملاء والمشاريع
  */
-function SearchablePicker({ value, onSelect, items, search, onSearchChange, icon: Icon, placeholder, isRtl }: any) {
+function SearchablePicker({ value, onSelect, items, search, onSearchChange, icon: Icon, placeholder, isRtl, isLoading = false }: any) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -56,7 +54,7 @@ function SearchablePicker({ value, onSelect, items, search, onSearchChange, icon
         <Button variant="outline" className="w-full h-12 rounded-xl border-2 font-bold justify-between bg-white px-4 shadow-sm">
           <div className="flex items-center gap-3 overflow-hidden text-start">
              <Icon className="h-4 w-4 text-primary opacity-40" />
-             <span className="truncate">{value || placeholder}</span>
+             <span className="truncate">{isLoading ? '...' : (value || placeholder)}</span>
           </div>
           <ChevronDown className="h-4 w-4 opacity-20" />
         </Button>
@@ -75,22 +73,28 @@ function SearchablePicker({ value, onSelect, items, search, onSearchChange, icon
          </div>
          <ScrollArea className="h-64">
             <div className="p-2 space-y-1">
-               {items.map((item: any) => (
-                 <div 
-                   key={item.id} 
-                   onClick={() => { onSelect(item); setOpen(false); }}
-                   className={cn(
-                     "p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between group",
-                     (value === (item.nameAr || item.subServiceName)) ? "bg-primary/5 text-primary" : "hover:bg-slate-50"
-                   )}
-                 >
-                    <div className="text-start">
-                       <p className="font-black text-xs text-slate-900">{item.nameAr || item.subServiceName}</p>
-                       <p className="text-[8px] font-mono text-slate-400 mt-1 uppercase">#{item.fileNumber || item.transactionNumber}</p>
-                    </div>
-                    {(value === (item.nameAr || item.subServiceName)) && <Check className="h-3.5 w-3.5" />}
-                 </div>
-               ))}
+               {isLoading ? (
+                 <div className="py-10 text-center"><Loader2 className="animate-spin h-6 w-6 mx-auto text-primary/20" /></div>
+               ) : items.length === 0 ? (
+                 <div className="py-10 text-center text-xs font-bold text-slate-400 italic">لا توجد نتائج</div>
+               ) : (
+                 items.map((item: any) => (
+                   <div 
+                     key={item.id} 
+                     onClick={() => { onSelect(item); setOpen(false); }}
+                     className={cn(
+                       "p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between group",
+                       (value === (item.nameAr || item.subServiceName)) ? "bg-primary/5 text-primary" : "hover:bg-slate-50"
+                     )}
+                   >
+                      <div className="text-start">
+                         <p className="font-black text-xs text-slate-900">{item.nameAr || item.subServiceName}</p>
+                         <p className="text-[8px] font-mono text-slate-400 mt-1 uppercase">#{item.fileNumber || item.transactionNumber}</p>
+                      </div>
+                      {(value === (item.nameAr || item.subServiceName)) && <Check className="h-3.5 w-3.5" />}
+                   </div>
+                 ))
+               )}
             </div>
          </ScrollArea>
       </PopoverContent>
@@ -123,26 +127,43 @@ export default function NewStructuredFieldVisitPage() {
     notes: ''
   });
 
-  // جداول الموارد
   const [staffRows, setStaffRows] = useState<any[]>([{ employeeId: '', employeeName: '', subcontractorId: '', subcontractorName: '', count: 1 }]);
   const [equipRows, setEquipRows] = useState<any[]>([{ equipmentId: '', equipmentName: '', count: 1, hours: 8 }]);
   const [boqItems, setBoqItems] = useState<any[]>([]);
 
   // استعلامات البيانات المرجعية
   const clientsQuery = useMemo(() => companyId && db ? query(collection(db, paths.clients(companyId)), orderBy('nameAr')) : null, [db, companyId]);
-  const transQuery = useMemo(() => companyId && db && formData.clientId ? query(collection(db, paths.transactions(companyId)), where('clientId', '==', formData.clientId), where('status', '!=', 'completed')) : null, [db, companyId, formData.clientId]);
+  
+  // تبسيط الاستعلام لتجنب مشاكل الفهرس المركب مع (!=)
+  const transQuery = useMemo(() => 
+    companyId && db && formData.clientId 
+      ? query(collection(db, paths.transactions(companyId)), where('clientId', '==', formData.clientId)) 
+      : null, 
+  [db, companyId, formData.clientId]);
+
   const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
   const equipQuery = useMemo(() => companyId && db ? query(collection(db, paths.equipment(companyId)), where('status', '==', 'available')) : null, [db, companyId]);
   const subsQuery = useMemo(() => companyId && db ? query(collection(db, paths.subcontractors(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
 
-  const { data: allClients } = useCollection<any>(clientsQuery);
-  const { data: allTransactions } = useCollection<any>(transQuery);
+  const { data: allClients, loading: clientsLoading } = useCollection<any>(clientsQuery);
+  const { data: allTransactionsRaw, loading: transLoading } = useCollection<any>(transQuery);
   const { data: allEmployees } = useCollection<any>(empsQuery);
   const { data: allEquipment } = useCollection<any>(equipQuery);
   const { data: subcontractors } = useCollection<any>(subsQuery);
 
-  const filteredClients = useMemo(() => (allClients || []).filter(c => c.nameAr.toLowerCase().includes(clientSearch.toLowerCase()) || c.fileNumber?.includes(clientSearch)), [allClients, clientSearch]);
-  const filteredTrans = useMemo(() => (allTransactions || []).filter(t => t.subServiceName.toLowerCase().includes(transSearch.toLowerCase()) || t.transactionNumber?.includes(transSearch)), [allTransactions, transSearch]);
+  const filteredClients = useMemo(() => (allClients || []).filter(c => c.nameAr?.toLowerCase().includes(clientSearch.toLowerCase()) || c.fileNumber?.includes(clientSearch)), [allClients, clientSearch]);
+  
+  // فلترة برمجية للمشاريع المكتملة والبحث
+  const filteredTrans = useMemo(() => {
+    return (allTransactionsRaw || [])
+      .filter(t => t.status !== 'completed')
+      .filter(t => {
+        const name = (t.subServiceName || "").toLowerCase();
+        const num = (t.transactionNumber || "").toLowerCase();
+        const search = transSearch.toLowerCase();
+        return name.includes(search) || num.includes(search);
+      });
+  }, [allTransactionsRaw, transSearch]);
 
   const [stages, setStages] = useState<any[]>([]);
 
@@ -251,6 +272,7 @@ export default function NewStructuredFieldVisitPage() {
                           search={clientSearch}
                           onSearchChange={setClientSearch}
                           icon={UserCircle}
+                          isLoading={clientsLoading}
                           placeholder={tSafe('inline.choose.client', 'اختر العميل...', 'Select Client')}
                           isRtl={isRtl}
                         />
@@ -265,6 +287,7 @@ export default function NewStructuredFieldVisitPage() {
                           search={transSearch}
                           onSearchChange={setTransSearch}
                           icon={Workflow}
+                          isLoading={transLoading}
                           placeholder={tSafe('inline.choose.project', 'اختر المشروع...', 'Select Project')}
                           isRtl={isRtl}
                         />
