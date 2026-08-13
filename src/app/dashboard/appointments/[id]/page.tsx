@@ -113,6 +113,10 @@ export default function AppointmentDetailPage() {
      }
   }, [selectedStageId, boqItems, stages]);
 
+  const isResourceSelected = (id: string, type: 'employee' | 'work_group' | 'subcontractor') => {
+     return laborDetails.some(l => l.resourceId === id && l.resourceType === type);
+  };
+
   const updateLaborRow = (idx: number, selectionId: string) => {
     const newRows = [...laborDetails];
     if (selectionId.startsWith('GROUP_')) {
@@ -266,7 +270,7 @@ export default function AppointmentDetailPage() {
                   <div className="flex justify-between items-center px-1">
                      <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{isRtl ? 'الموارد البشرية والعمالة' : 'Site Labor'}</Label>
                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={addCompanyStaffRow} className="h-8 rounded-xl border-2 font-black text-[10px] gap-1.5"><UsersRound className="h-3.5 w-3.5" /> عمالة الشركة</Button>
+                        <Button variant="outline" size="sm" onClick={addCompanyStaffRow} className="h-8 rounded-xl border-2 font-black text-[10px] gap-1.5"><UsersRound className="h-3.5 w-3.5" /> عمالة الشركة / مجموعة</Button>
                         <Button variant="outline" size="sm" onClick={addSubconRow} className="h-8 rounded-xl border-2 font-black text-[10px] gap-1.5 border-orange-200 text-orange-600"><Handshake className="h-3.5 w-3.5" /> مقاول باطن</Button>
                      </div>
                   </div>
@@ -294,17 +298,32 @@ export default function AppointmentDetailPage() {
                                          {l.resourceType === 'subcontractor' ? (
                                             <SelectGroup>
                                                <SelectLabel className="text-[10px] font-black uppercase bg-slate-50 py-2">المقاولون المرتبطون بهذا المشروع</SelectLabel>
-                                               {linkedSubcontractors.map(s => <SelectItem key={s.id} value={`SUB_${s.id}`} className="font-black text-xs py-3"><div className="flex items-center gap-2"><Handshake className="h-4 w-4" /> {s.name}</div></SelectItem>)}
+                                               {linkedSubcontractors.map(s => {
+                                                  const isDuplicate = isResourceSelected(s.id, 'subcontractor');
+                                                  return (
+                                                     <SelectItem key={s.id} value={`SUB_${s.id}`} disabled={isDuplicate} className="font-black text-xs py-3"><div className="flex items-center gap-2"><Handshake className="h-4 w-4" /> {s.name} {isDuplicate && `(${isRtl ? 'مختار' : 'Added'})`}</div></SelectItem>
+                                                  );
+                                               })}
                                             </SelectGroup>
                                          ) : (
                                             <>
                                                <SelectGroup>
                                                   <SelectLabel className="text-[10px] font-black uppercase bg-slate-50 py-2">فرق العمل (Crews)</SelectLabel>
-                                                  {workGroups?.map((g: any) => <SelectItem key={g.id} value={`GROUP_${g.id}`} className="font-black text-xs py-3 border-b border-slate-50"><span className="flex items-center gap-2"><UsersRound className="h-4 w-4" /> {g.name}</span></SelectItem>)}
+                                                  {workGroups?.map((g: any) => {
+                                                     const isDuplicate = isResourceSelected(g.id, 'work_group');
+                                                     return (
+                                                        <SelectItem key={g.id} value={`GROUP_${g.id}`} disabled={isDuplicate} className="font-black text-xs py-3 border-b border-slate-50"><span className="flex items-center gap-2"><UsersRound className="h-4 w-4" /> {g.name} {isDuplicate && `(${isRtl ? 'مختار' : 'Added'})`}</span></SelectItem>
+                                                     );
+                                                  })}
                                                </SelectGroup>
                                                <SelectGroup>
                                                   <SelectLabel className="text-[10px] font-black uppercase bg-slate-50 py-2 mt-2">موظفون أفراد</SelectLabel>
-                                                  {allEmployees?.map((e: any) => <SelectItem key={e.id} value={`EMP_${e.id}`} className="font-bold text-xs py-3"><div className="flex items-center gap-2"><User className="h-4 w-4" /> {e.fullName}</div></SelectItem>)}
+                                                  {allEmployees?.map((e: any) => {
+                                                     const isDuplicate = isResourceSelected(e.id, 'employee');
+                                                     return (
+                                                        <SelectItem key={e.id} value={`EMP_${e.id}`} disabled={isDuplicate} className="font-bold text-xs py-3"><div className="flex items-center gap-2"><User className="h-4 w-4" /> {e.fullName} {isDuplicate && `(${isRtl ? 'مختار' : 'Added'})`}</div></SelectItem>
+                                                     );
+                                                  })}
                                                </SelectGroup>
                                             </>
                                          )}
@@ -344,7 +363,14 @@ export default function AppointmentDetailPage() {
                             setEquipmentUsed(ne); 
                           }}>
                             <SelectTrigger className="h-10 rounded-xl border-2 text-[11px] font-bold bg-white flex-1"><SelectValue placeholder="..." /></SelectTrigger>
-                            <SelectContent className="rounded-xl z-[160]">{equipmentItems?.map((x:any) => <SelectItem key={x.id} value={x.id!} className="text-xs py-3">{x.name}</SelectItem>)}</SelectContent>
+                            <SelectContent className="rounded-xl z-[160]">
+                               {equipmentItems?.map((x:any) => {
+                                  const isDuplicate = equipmentUsed.some((er, idx) => er.equipmentId === x.id && idx !== i);
+                                  return (
+                                     <SelectItem key={x.id} value={x.id!} disabled={isDuplicate} className="text-xs py-3">{x.name} {isDuplicate && `(${isRtl ? 'مختارة' : 'Added'})`}</SelectItem>
+                                  );
+                               })}
+                            </SelectContent>
                           </Select>
                           <div className="flex items-center gap-1.5 shrink-0"><Label className="text-[8px] font-black text-slate-400">HRS</Label><Input type="number" value={e.hoursUsed} onChange={v => { const ne = [...equipmentUsed]; ne[i].hoursUsed = Number(v.target.value); setEquipmentUsed(ne); }} className="h-10 w-16 text-center text-xs font-black border-2 bg-white" /></div>
                           <Button variant="ghost" size="icon" className="h-10 w-10 text-rose-300 hover:text-rose-600" onClick={() => setEquipmentUsed(equipmentUsed.filter((_, idx) => idx !== i))}><Trash2 className="h-4 w-4" /></Button>

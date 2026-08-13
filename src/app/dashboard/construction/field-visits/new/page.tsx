@@ -17,7 +17,7 @@ import {
   AlertTriangle, Handshake, CalendarDays,
   LayoutGrid, UserCircle, ShieldCheck,
   User, UsersRound, Zap, ListChecks,
-  Briefcase
+  Briefcase, X
 } from "lucide-react";
 import { 
   Popover,
@@ -132,6 +132,7 @@ export default function NewStructuredFieldVisitPage() {
   const [boqItems, setBoqItems] = useState<any[]>([]);
   const [linkedSubcontractors, setLinkedSubcontractors] = useState<any[]>([]);
 
+  // جلب كافة الموظفين والمجموعات والمعدات للشركة
   const clientsQuery = useMemo(() => companyId && db ? query(collection(db, paths.clients(companyId)), orderBy('nameAr')) : null, [db, companyId]);
   const transQuery = useMemo(() => companyId && db && formData.clientId ? query(collection(db, paths.transactions(companyId)), where('clientId', '==', formData.clientId)) : null, [db, companyId, formData.clientId]);
   const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active'), orderBy('fullName')) : null, [db, companyId]);
@@ -145,10 +146,17 @@ export default function NewStructuredFieldVisitPage() {
   const { data: workGroups } = useCollection<any>(groupsQuery);
 
   const filteredClients = useMemo(() => (allClients || []).filter(c => c.nameAr?.toLowerCase().includes(clientSearch.toLowerCase()) || c.fileNumber?.includes(clientSearch)), [allClients, clientSearch]);
-  const filteredTrans = useMemo(() => (allTransactionsRaw || []).filter(t => t.status !== 'completed').filter(t => (t.subServiceName || "").toLowerCase().includes(transSearch.toLowerCase()) || (t.transactionNumber || "").toLowerCase().includes(transSearch.toLowerCase())), [allTransactionsRaw, transSearch]);
+  
+  // فلترة المعاملات برمجياً لتجنب مشاكل الفهرس السحابي
+  const filteredTrans = useMemo(() => {
+    return (allTransactionsRaw || [])
+      .filter(t => t.status !== 'completed')
+      .filter(t => (t.subServiceName || "").toLowerCase().includes(transSearch.toLowerCase()) || (t.transactionNumber || "").toLowerCase().includes(transSearch.toLowerCase()));
+  }, [allTransactionsRaw, transSearch]);
 
   const [stages, setStages] = useState<any[]>([]);
 
+  // تحميل البيانات المتربطة بالمشروع (مقاولين، مراحل)
   useEffect(() => {
     if (db && companyId && formData.transactionId) {
       getDocs(query(collection(db, paths.subconContracts(companyId)), where('transactionId', '==', formData.transactionId)))
@@ -166,6 +174,7 @@ export default function NewStructuredFieldVisitPage() {
     }
   }, [db, companyId, formData.transactionId]);
 
+  // تحميل بنود BOQ المرتبطة بالمرحلة
   useEffect(() => {
     if (db && companyId && formData.transactionId && formData.activeStageId) {
       const stage = stages.find(s => s.id === formData.activeStageId);
@@ -184,6 +193,11 @@ export default function NewStructuredFieldVisitPage() {
       }
     }
   }, [db, companyId, formData.transactionId, formData.activeStageId, stages]);
+
+  // حارس الازدواج المالي: فحص إذا كان المورد مختاراً مسبقاً
+  const isResourceAlreadyAdded = (id: string, type: 'work_group' | 'employee' | 'subcontractor') => {
+    return staffRows.some(row => row.resourceId === id && row.resourceType === type);
+  };
 
   const updateStaffRow = (idx: number, selectionId: string) => {
     const newRows = [...staffRows];
@@ -315,7 +329,7 @@ export default function NewStructuredFieldVisitPage() {
                      <ShieldCheck className="h-6 w-6" />
                      <h4 className="font-black text-lg uppercase tracking-tight">{tSafe('inline.field.integrity', 'بروتوكول النزاهة الميدانية', 'Field Integrity')}</h4>
                   </div>
-                  <p className="text-[10px] font-bold text-slate-400 leading-relaxed italic">سيقوم النظام بتحديث نسب إنجاز المقايسة آلياً، وستظهر التكاليف الفعلية في النظام المالي.</p>
+                  <p className="text-[10px] font-bold text-slate-400 leading-relaxed italic">سيقوم النظام بتحديث نسب إنجاز المقايسة آلياً، وستظهر التكاليف الفعلية في النظام المالي بناءً على الموارد الموثقة.</p>
                </CardContent>
             </Card>
          </div>
@@ -378,19 +392,13 @@ export default function NewStructuredFieldVisitPage() {
                   </div>
                </div>
                
-               {!formData.transactionId && (
-                 <div className="p-3 bg-rose-50 text-rose-600 rounded-xl border border-rose-100 flex items-center gap-2 text-[10px] font-bold">
-                    <AlertTriangle className="h-3 w-3" /> اختر المشروع أولاً لعرض المقاولين المرتبطين مالياً.
-                 </div>
-               )}
-
                <Card className="border-0 shadow-lg rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-hidden">
                   <Table>
                      <TableHeader className="bg-slate-50/50">
                         <TableRow className="border-0">
-                           <TableHead className="py-5 ps-8 text-slate-500 font-black uppercase text-[10px] tracking-widest">المورد / الجهة</TableHead>
+                           <TableHead className="py-5 ps-8 text-slate-500 font-black uppercase text-[10px] tracking-widest">المورد / الجهة المنفذة</TableHead>
                            <TableHead className="text-center text-slate-900 font-black uppercase text-[10px] tracking-widest w-[100px]">{isRtl ? 'العدد' : 'Count'}</TableHead>
-                           <TableHead className="text-start text-slate-500 font-black uppercase text-[10px] tracking-widest">بيان العمل / ملاحظات</TableHead>
+                           <TableHead className="text-start text-slate-500 font-black uppercase text-[10px] tracking-widest">بيان العمل المنفذ</TableHead>
                            <TableHead className="pe-8 w-[60px]"></TableHead>
                         </TableRow>
                      </TableHeader>
@@ -405,24 +413,54 @@ export default function NewStructuredFieldVisitPage() {
                                       "h-11 rounded-xl border-2 font-black text-sm",
                                       row.resourceType === 'employee' ? "bg-blue-50 text-blue-600 border-blue-100" : (row.resourceType === 'subcontractor' ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-white")
                                     )}>
-                                       <SelectValue placeholder="اختر..." />
+                                       <SelectValue placeholder="اختر المورد..." />
                                     </SelectTrigger>
                                     <SelectContent className="rounded-xl border shadow-2xl z-[160] max-h-80">
                                        {row.resourceType === 'subcontractor' ? (
                                           <SelectGroup>
                                              <SelectLabel className="font-black text-[10px] text-slate-400 uppercase bg-slate-50 py-2">مقاولون مرتبطون مالياً بالمشروع</SelectLabel>
-                                             {linkedSubcontractors.map(s => <SelectItem key={s.id} value={`SUB_${s.id}`} className="font-bold py-3 text-xs border-b last:border-0 border-slate-50"><span className="flex items-center gap-2"><Handshake className="h-4 w-4 text-orange-500" /> {s.name}</span></SelectItem>)}
+                                             {linkedSubcontractors.map(s => {
+                                                const isDuplicate = isResourceAlreadyAdded(s.id, 'subcontractor');
+                                                return (
+                                                  <SelectItem key={s.id} value={`SUB_${s.id}`} disabled={isDuplicate} className="font-bold py-3 text-xs border-b last:border-0 border-slate-50">
+                                                     <div className="flex items-center gap-2">
+                                                        <Handshake className={cn("h-4 w-4", isDuplicate ? "text-slate-200" : "text-orange-500")} /> 
+                                                        <span>{s.name} {isDuplicate && `(${isRtl ? 'مختار' : 'Added'})`}</span>
+                                                     </div>
+                                                  </SelectItem>
+                                                );
+                                             })}
                                              {linkedSubcontractors.length === 0 && <div className="p-4 text-center text-[10px] font-bold text-rose-400">لا يوجد مقاولو باطن بعقود نشطة لهذا المشروع.</div>}
                                           </SelectGroup>
                                        ) : (
                                           <>
                                              <SelectGroup>
                                                 <SelectLabel className="font-black text-[10px] text-slate-400 uppercase bg-slate-50 py-2">فرق العمل المعتمدة (Crews)</SelectLabel>
-                                                {workGroups?.map((g: any) => <SelectItem key={g.id} value={`GROUP_${g.id}`} className="font-black text-xs py-3 border-b border-slate-50"><span className="flex items-center gap-2"><UsersRound className="h-4 w-4" /> {g.name}</span></SelectItem>)}
+                                                {workGroups?.map((g: any) => {
+                                                   const isDuplicate = isResourceAlreadyAdded(g.id, 'work_group');
+                                                   return (
+                                                     <SelectItem key={g.id} value={`GROUP_${g.id}`} disabled={isDuplicate} className="font-black text-xs py-3 border-b border-slate-50">
+                                                        <span className="flex items-center gap-2">
+                                                           <UsersRound className={cn("h-4 w-4", isDuplicate ? "text-slate-200" : "text-primary")} /> 
+                                                           {g.name} {isDuplicate && `(${isRtl ? 'مختار' : 'Added'})`}
+                                                        </span>
+                                                     </SelectItem>
+                                                   );
+                                                })}
                                              </SelectGroup>
                                              <SelectGroup>
                                                 <SelectLabel className="font-black text-[10px] text-slate-400 uppercase bg-slate-50 py-2 mt-2">موظفون أفراد (Individual)</SelectLabel>
-                                                {allEmployees?.map((e: any) => <SelectItem key={e.id} value={`EMP_${e.id}`} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50"><span className="flex items-center gap-2"><User className="h-4 w-4" /> {e.fullName}</span></SelectItem>)}
+                                                {allEmployees?.map((e: any) => {
+                                                   const isDuplicate = isResourceAlreadyAdded(e.id, 'employee');
+                                                   return (
+                                                     <SelectItem key={e.id} value={`EMP_${e.id}`} disabled={isDuplicate} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
+                                                        <div className="flex items-center gap-2">
+                                                           <User className={cn("h-4 w-4", isDuplicate ? "text-slate-200" : "text-blue-500")} /> 
+                                                           <span>{e.fullName} {isDuplicate && `(${isRtl ? 'مختار' : 'Added'})`}</span>
+                                                        </div>
+                                                     </SelectItem>
+                                                   );
+                                                })}
                                              </SelectGroup>
                                           </>
                                        )}
@@ -495,7 +533,14 @@ export default function NewStructuredFieldVisitPage() {
                                  }}>
                                     <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs bg-white shadow-sm"><SelectValue placeholder="..." /></SelectTrigger>
                                     <SelectContent className="rounded-xl border shadow-2xl z-[160]">
-                                       {allEquipment?.map((e: any) => <SelectItem key={e.id} value={e.id!} className="font-bold py-3 text-xs border-b last:border-0">{e.name} ({e.code})</SelectItem>)}
+                                       {allEquipment?.map((e: any) => {
+                                          const isDuplicate = equipRows.some((er, i) => er.equipmentId === e.id && i !== idx);
+                                          return (
+                                             <SelectItem key={e.id} value={e.id!} disabled={isDuplicate} className="font-bold py-3 text-xs border-b last:border-0">
+                                                {e.name} ({e.code}) {isDuplicate && `(${isRtl ? 'مختارة' : 'Added'})`}
+                                             </SelectItem>
+                                          );
+                                       })}
                                     </SelectContent>
                                  </Select>
                               </TableCell>
