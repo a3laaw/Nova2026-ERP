@@ -11,7 +11,7 @@ import {
   Handshake, Building2, Workflow, Target,
   Search, Check, ChevronDown, Calculator,
   Plus, Trash2, Gavel, Landmark, ShieldCheck,
-  Percent, FileText, Info, UserCircle
+  Percent, FileText, Info, UserCircle, X
 } from "lucide-react";
 import { 
   Popover,
@@ -72,7 +72,6 @@ function NewSubConContractContent() {
 
   const [pathStages, setPathStages] = useState<any[]>([]);
 
-  // Queries
   const subsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.subcontractors(companyId)), where('status', '==', 'active')) : null, 
   [db, companyId]);
@@ -94,21 +93,21 @@ function NewSubConContractContent() {
   const { data: transactions } = useCollection<any>(transQuery);
   const { data: templates } = useCollection<SubConContractTemplate>(templatesQuery);
 
-  const filteredSubs = (subcontractors || []).filter(s => s.name.toLowerCase().includes(subSearch.toLowerCase()));
+  const filteredSubs = useMemo(() => (subcontractors || []).filter(s => s.name.toLowerCase().includes(subSearch.toLowerCase())), [subcontractors, subSearch]);
   
-  const filteredClients = (clients || []).filter(c => 
+  const filteredClients = useMemo(() => (clients || []).filter(c => 
     c.nameAr.toLowerCase().includes(clientSearch.toLowerCase()) || 
     c.fileNumber.toLowerCase().includes(clientSearch.toLowerCase())
-  );
+  ), [clients, clientSearch]);
 
-  const filteredTrans = (transactions || []).filter(t_item => {
+  const filteredTrans = useMemo(() => (transactions || []).filter(t_item => {
     const matchClient = !form.clientId || t_item.clientId === form.clientId;
     const matchSearch = t_item.subServiceName.toLowerCase().includes(transSearch.toLowerCase()) || 
                         t_item.transactionNumber.toLowerCase().includes(transSearch.toLowerCase());
     return matchClient && matchSearch;
-  });
+  }), [transactions, transSearch, form.clientId]);
 
-  const filteredTemps = (templates || []).filter(t => t.name.toLowerCase().includes(tempSearch.toLowerCase()));
+  const filteredTemps = useMemo(() => (templates || []).filter(t => t.name.toLowerCase().includes(tempSearch.toLowerCase())), [templates, tempSearch]);
 
   useEffect(() => {
     if (db && companyId && form.templateId) {
@@ -195,73 +194,6 @@ function NewSubConContractContent() {
     }
   };
 
-  const getOrdinalLabel = (index: number) => {
-    const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"];
-    const enOrdinals = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
-    const base = tSafe('inline.installment', 'الدفعة', 'Installment');
-    const ordinal = isRtl ? (arOrdinals[index] || `#${index + 1}`) : (enOrdinals[index] || `#${index + 1}`);
-    return `${base} ${ordinal}`;
-  };
-
-  const Picker = ({ label, value, onSelect, items, search, setSearch, icon: Icon, placeholder, type, disabled = false }: any) => (
-    <Popover>
-      <PopoverTrigger asChild disabled={disabled}>
-        <button type="button" className={cn(
-          "h-14 w-full rounded-2xl border-2 font-black flex items-center justify-between px-6 shadow-sm transition-all",
-          disabled ? "bg-slate-50 border-slate-100 cursor-not-allowed text-slate-300" : "bg-white hover:border-primary/40 text-slate-900"
-        )}>
-          <div className="flex items-center gap-3">
-             <Icon className={cn("h-5 w-5 opacity-40", !disabled && "text-primary")} />
-             <span className="truncate text-sm">{value || placeholder}</span>
-          </div>
-          <ChevronDown className="h-4 w-4 opacity-20" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0 rounded-2xl shadow-3xl border-2 z-[100]" align="start" onOpenAutoFocus={e => e.preventDefault()}>
-         <div className="p-4 bg-slate-50 border-b">
-            <div className="relative">
-               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
-               <Input 
-                 placeholder={t('common.search')} 
-                 className="h-10 ps-10 rounded-xl border-2 font-bold"
-                 value={search}
-                 onChange={e => setSearch(e.target.value)}
-               />
-            </div>
-         </div>
-         <ScrollArea className="h-64">
-            <div className="p-2 space-y-1">
-               {items.map((item: any) => {
-                 const isTransaction = type === 'transaction';
-                 const isClient = type === 'client';
-                 const mainTitle = isClient ? item.nameAr : (isTransaction ? item.subServiceName : item.name);
-                 const subTitle = isClient ? item.fileNumber : (isTransaction ? item.transactionNumber : null);
-                 
-                 return (
-                   <div 
-                     key={item.id} 
-                     onClick={(e) => { e.stopPropagation(); onSelect(item); }}
-                     className={cn(
-                       "p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between border-2 border-transparent",
-                       (value === mainTitle || form.clientId === item.id) ? "bg-primary/5 border-primary/20 text-primary" : "hover:bg-slate-50"
-                     )}
-                   >
-                      <div className="text-start min-w-0 flex-1">
-                         <p className="font-black text-xs text-slate-900 truncate">{mainTitle}</p>
-                         {subTitle && (
-                           <p className="text-[8px] font-mono text-slate-400 mt-1 uppercase" dir="ltr">#{subTitle}</p>
-                         )}
-                      </div>
-                      {(value === mainTitle || form.clientId === item.id) && <Check className="h-4 w-4 shrink-0" />}
-                   </div>
-                 );
-               })}
-            </div>
-         </ScrollArea>
-      </PopoverContent>
-    </Popover>
-  );
-
   return (
     <div className="space-y-8 animate-in fade-in duration-700 bg-white" dir={dir}>
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-white/95 backdrop-blur-md px-8 shadow-sm">
@@ -290,15 +222,15 @@ function NewSubConContractContent() {
                      </div>
                      <div className="p-8 rounded-[2.5rem] bg-primary/5 border-2 border-primary/10 shadow-sm space-y-4">
                         <Label className="text-[10px] font-black text-primary uppercase">{tSafe('subcon.second.party', 'الطرف الثاني (مقاول الباطن)', 'Second Party')}</Label>
-                        <Picker 
-                          type="subcontractor"
+                        <SearchablePicker 
                           value={form.subcontractorName} 
                           onSelect={(s: any) => setForm({...form, subcontractorId: s.id, subcontractorName: s.name})}
                           items={filteredSubs}
                           search={subSearch}
-                          setSearch={setSubSearch}
+                          onSearchChange={setSubSearch}
                           icon={Handshake}
                           placeholder={tSafe('subcon.form.vendor', 'اختر المقاول...', 'Choose Contractor')}
+                          isRtl={isRtl}
                         />
                      </div>
                   </div>
@@ -310,44 +242,47 @@ function NewSubConContractContent() {
                      <div className="lg:col-span-8 space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                            <div className="space-y-2">
-                              <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{tSafe('common.targetClient', 'العميل المستهدف (المالك)', 'Target Client')}</Label>
-                              <Picker 
+                              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('common.targetClient', 'العميل المستهدف (المالك)', 'Target Client')}</Label>
+                              <SearchablePicker 
                                 type="client"
                                 value={form.clientName} 
                                 onSelect={(c: any) => setForm({...form, clientId: c.id, clientName: c.nameAr, transactionId: '', transactionName: '', transactionNumber: ''})}
                                 items={filteredClients}
                                 search={clientSearch}
-                                setSearch={setClientSearch}
+                                onSearchChange={setClientSearch}
                                 icon={UserCircle}
                                 placeholder={tSafe('subcon.form.client', 'اختر العميل...', 'Choose Client')}
+                                isRtl={isRtl}
                               />
                            </div>
                            <div className="space-y-2">
-                              <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{tSafe('common.targetTransaction', 'المشروع / المعاملة', 'Target Project')}</Label>
-                              <Picker 
+                              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('common.targetTransaction', 'المشروع / المعاملة', 'Target Project')}</Label>
+                              <SearchablePicker 
                                 type="transaction"
                                 disabled={!form.clientId}
                                 value={form.transactionName} 
                                 onSelect={(t_item: any) => setForm({...form, transactionId: t_item.id, transactionNumber: t_item.transactionNumber, transactionName: t_item.subServiceName})}
                                 items={filteredTrans}
                                 search={transSearch}
-                                setSearch={setTransSearch}
+                                onSearchChange={setTransSearch}
                                 icon={Target}
                                 placeholder={tSafe('subcon.form.project', 'اختر المشروع...', 'Choose Project')}
+                                isRtl={isRtl}
                               />
                            </div>
                         </div>
                         <div className="space-y-2">
-                           <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{tSafe('subcon.form.template', 'القالب القانوني لتعاقد الباطن', 'Legal SubCon Template')}</Label>
-                           <Picker 
+                           <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('subcon.form.template', 'القالب القانوني لتعاقد الباطن', 'Legal SubCon Template')}</Label>
+                           <SearchablePicker 
                              type="template"
                              value={form.templateName} 
                              onSelect={(temp: any) => setForm({...form, templateId: temp.id, templateName: temp.name})}
                              items={filteredTemps}
                              search={tempSearch}
-                             setSearch={setTempSearch}
+                             onSearchChange={setTempSearch}
                              icon={FileText}
                              placeholder={tSafe('subcon.form.template', 'اختر القالب...', 'Choose Template')}
+                             isRtl={isRtl}
                            />
                         </div>
                      </div>
@@ -466,6 +401,81 @@ function NewSubConContractContent() {
   );
 }
 
-export default function NewSubConContractPage() {
-   return <Suspense fallback={<div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>}><NewSubConContractContent /></Suspense>;
+/**
+ * مكون البحث الذكي المستقر (Stable Searchable Picker).
+ * تم فصله لمنع إعادة البناء عند الكتابة.
+ */
+function SearchablePicker({ value, onSelect, items, search, onSearchChange, icon: Icon, placeholder, type, disabled = false, isRtl }: any) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild disabled={disabled}>
+        <button type="button" className={cn(
+          "h-14 w-full rounded-2xl border-2 font-black flex items-center justify-between px-6 shadow-sm transition-all",
+          disabled ? "bg-slate-50 border-slate-100 cursor-not-allowed text-slate-300" : "bg-white hover:border-primary/40 text-slate-900"
+        )}>
+          <div className="flex items-center gap-3">
+             <Icon className={cn("h-5 w-5 opacity-40", !disabled && "text-primary")} />
+             <span className="truncate text-sm">{value || placeholder}</span>
+          </div>
+          <ChevronDown className="h-4 w-4 opacity-20" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent 
+        className="w-[400px] p-0 rounded-2xl shadow-3xl border-2 z-[100]" 
+        align="start" 
+        onOpenAutoFocus={e => e.preventDefault()}
+        onInteractOutside={e => e.preventDefault()}
+      >
+         <div className="p-4 bg-slate-50 border-b">
+            <div className="relative">
+               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+               <Input 
+                 placeholder="بحث..." 
+                 className="h-10 ps-10 rounded-xl border-2 font-bold bg-white"
+                 value={search}
+                 onChange={e => onSearchChange(e.target.value)}
+               />
+            </div>
+         </div>
+         <ScrollArea className="h-64">
+            <div className="p-2 space-y-1">
+               {items.map((item: any) => {
+                 const isTransaction = type === 'transaction';
+                 const isClient = type === 'client';
+                 const mainTitle = isClient ? item.nameAr : (isTransaction ? item.subServiceName : item.name);
+                 const subTitle = isClient ? item.fileNumber : (isTransaction ? item.transactionNumber : null);
+                 
+                 return (
+                   <div 
+                     key={item.id} 
+                     onClick={(e) => { 
+                       e.stopPropagation(); 
+                       onSelect(item); 
+                       // Popover doesn't need explicit close if we use correct logic
+                     }}
+                     className={cn(
+                       "p-4 rounded-xl cursor-pointer transition-all flex items-center justify-between border-2 border-transparent",
+                       (value === mainTitle) ? "bg-primary/5 border-primary/20 text-primary" : "hover:bg-slate-50"
+                     )}
+                   >
+                      <div className="text-start min-w-0 flex-1">
+                         <p className="font-black text-xs text-slate-900 truncate">{mainTitle}</p>
+                         {subTitle && (
+                           <p className="text-[8px] font-mono text-slate-400 mt-1 uppercase" dir="ltr">#{subTitle}</p>
+                         )}
+                      </div>
+                      {(value === mainTitle) && <Check className="h-4 w-4 shrink-0" />}
+                   </div>
+                 );
+               })}
+            </div>
+         </ScrollArea>
+      </PopoverContent>
+    </Popover>
+  );
 }
+
+export default function NewSubConContractPage() {
+   return <Suspense fallback={<div className="h-screen flex items-center justify-center bg-[#fdfaf3]"><Loader2 className="animate-spin text-primary" /></div>}><NewSubConContractContent /></Suspense>;
+}
+
