@@ -20,6 +20,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, getDocs, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
@@ -160,6 +161,14 @@ export default function NewSubConContractPage() {
     }
   };
 
+  const getOrdinalLabel = (index: number) => {
+    const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"];
+    const enOrdinals = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
+    const base = tSafe('inline.installment', 'الدفعة', 'Installment');
+    const ordinal = isRtl ? (arOrdinals[index] || `#${index + 1}`) : (enOrdinals[index] || `#${index + 1}`);
+    return `${base} ${ordinal}`;
+  };
+
   const Picker = ({ label, value, onSelect, items, search, setSearch, icon: Icon, placeholder }: any) => (
     <Popover>
       <PopoverTrigger asChild>
@@ -217,7 +226,7 @@ export default function NewSubConContractPage() {
            </button>
            <h1 className="text-xl font-black font-headline text-slate-900">{tSafe('subcon.contracts.new', 'تأسيس اتفاقية باطن جديدة', 'New SubCon Award')}</h1>
         </div>
-        <Button onClick={handleSave} disabled={loading || !form.subcontractorId || !form.transactionId} className="h-12 px-10 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-3 border-b-4 border-orange-700">
+        <Button onClick={handleSave} disabled={loading || !form.subcontractorId || !form.transactionId} className="h-12 px-10 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-4 border-orange-700">
            {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
            {tSafe('subcon.contracts.issueNow', 'إصدار الاتفاقية الآن', 'Issue Award Now')}
         </Button>
@@ -230,7 +239,7 @@ export default function NewSubConContractPage() {
                <div className="space-y-6">
                   <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em] border-b-2 border-primary/10 pb-2">{tSafe('subcon.legal.parties', 'أولاً: أطراف التعاقد', 'Parties of the Agreement')}</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                     <div className="p-8 rounded-[2.5rem] bg-slate-50 border-2 border-white shadow-inner space-y-4">
+                     <div className="p-8 rounded-[2.5rem] bg-slate-50 border-2 border-white shadow-inner text-start space-y-4">
                         <p className="text-[10px] font-black text-slate-400 uppercase">{tSafe('subcon.first.party', 'الطرف الأول (المقاول الرئيسي)', 'First Party')}</p>
                         <h4 className="text-xl font-black text-slate-900">{globalUser?.companyName || 'NovaFlow ERP'}</h4>
                      </div>
