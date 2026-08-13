@@ -1,7 +1,8 @@
+
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useMemo, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,14 +34,18 @@ import { PrintWrapper } from '@/components/layout/print-wrapper';
 import { ContractMilestone, SubConContractTemplate } from '@/types/templates';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export default function NewSubConContractPage() {
+function NewSubConContractContent() {
   const { globalUser, user } = useAuthContext();
   const { lang, dir, t, tSafe } = useLanguage();
   const { permissions, isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
+
+  const preTransactionId = searchParams.get('transactionId');
+  const preTemplateId = searchParams.get('templateId');
 
   const [loading, setLoading] = useState(false);
   const [subSearch, setSubSearch] = useState("");
@@ -50,10 +55,10 @@ export default function NewSubConContractPage() {
   const [form, setForm] = useState<any>({
     subcontractorId: '',
     subcontractorName: '',
-    transactionId: '',
+    transactionId: preTransactionId || '',
     transactionNumber: '',
     transactionName: '',
-    templateId: '',
+    templateId: preTemplateId || '',
     templateName: '',
     name: '',
     totalAmount: 0,
@@ -91,6 +96,7 @@ export default function NewSubConContractPage() {
       if (template) {
         setForm(prev => ({
           ...prev,
+          templateName: template.name,
           milestones: template.defaultMilestones || [],
           legalText: template.legalText || '',
           pricingMode: template.pricingMode || 'percentage',
@@ -104,6 +110,7 @@ export default function NewSubConContractPage() {
     if (db && companyId && form.transactionId) {
        const trans = transactions?.find(t => t.id === form.transactionId);
        if (trans) {
+          setForm(prev => ({ ...prev, transactionName: trans.subServiceName, transactionNumber: trans.transactionNumber }));
           getDocs(query(collection(db, paths.transactionStages(companyId, trans.id)), orderBy('order')))
             .then(snap => setPathStages(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
             .catch(() => setPathStages([]));
@@ -172,13 +179,13 @@ export default function NewSubConContractPage() {
   const Picker = ({ label, value, onSelect, items, search, setSearch, icon: Icon, placeholder }: any) => (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="outline" className="h-14 w-full rounded-2xl border-2 font-black justify-between bg-white px-6 shadow-sm hover:border-primary/40 transition-all">
+        <button type="button" className="h-14 w-full rounded-2xl border-2 font-black flex items-center justify-between bg-white px-6 shadow-sm hover:border-primary/40 transition-all">
           <div className="flex items-center gap-3">
              <Icon className="h-5 w-5 text-primary opacity-40" />
              <span className="truncate">{value || placeholder}</span>
           </div>
           <ChevronDown className="h-4 w-4 opacity-20" />
-        </Button>
+        </button>
       </PopoverTrigger>
       <PopoverContent className="w-[400px] p-0 rounded-2xl shadow-3xl border-2 z-[100]" align="start" onOpenAutoFocus={e => e.preventDefault()}>
          <div className="p-4 bg-slate-50 border-b">
@@ -218,7 +225,6 @@ export default function NewSubConContractPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 bg-white" dir={dir}>
-      
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-white/95 backdrop-blur-md px-8 shadow-sm">
         <div className="flex items-center gap-4 text-start">
            <button onClick={() => router.back()} className="h-10 w-10 border-2 rounded-xl flex items-center justify-center hover:bg-slate-50 transition-colors text-slate-400 shadow-sm">
@@ -289,7 +295,7 @@ export default function NewSubConContractPage() {
                      </div>
                      <div className="p-8 rounded-[3rem] bg-emerald-600 text-white shadow-2xl relative overflow-hidden flex flex-col justify-center">
                         <div className="absolute top-0 right-0 p-8 opacity-10"><Calculator className="h-32 w-32" /></div>
-                        <div className="relative z-10 space-y-2">
+                        <div className="relative z-10 space-y-2 text-start">
                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-200">{tSafe('subcon.form.targetBudget', 'إجمالي قيمة التعاقد', 'Contract Value')}</p>
                            <Input 
                              type="number" 
@@ -402,3 +408,8 @@ export default function NewSubConContractPage() {
     </div>
   );
 }
+
+export default function NewSubConContractPage() {
+   return <Suspense fallback={<div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>}><NewSubConContractContent /></Suspense>;
+}
+

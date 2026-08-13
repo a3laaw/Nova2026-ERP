@@ -56,7 +56,7 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
   const [activeSubTab, setActiveSubTab] = useState<'owner' | 'subcon'>('owner');
 
   const [loading, setLoading] = useState(false);
-  const [docTypeToCreate, setDocTypeToCreate] = useState<'quotation' | 'contract' | null>(null);
+  const [docTypeToCreate, setDocTypeToCreate] = useState<'quotation' | 'contract' | 'subcon_contract' | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [deletingContext, setDeletingContext] = useState<{ id: string, type: string } | null>(null);
 
@@ -70,6 +70,11 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
   [db, companyId, transaction?.id]);
   const { data: contracts } = useCollection<any>(contractsQuery);
 
+  const subContractsQuery = useMemo(() => 
+    companyId && db && transaction?.id ? query(collection(db, paths.subconContracts(companyId)), where('transactionId', '==', transaction.id)) : null, 
+  [db, companyId, transaction?.id]);
+  const { data: subContracts } = useCollection<any>(subContractsQuery);
+
   const ownerIpcsQuery = useMemo(() => 
     companyId && db && transaction?.id ? query(collection(db, paths.ipcs(companyId)), where('transactionId', '==', transaction.id)) : null, 
   [db, companyId, transaction?.id]);
@@ -81,10 +86,14 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
   const { data: subIpcs } = useCollection<any>(subIpcsQuery);
 
   const templatesQuery = useMemo(() => {
-    if (!companyId || !db || !docTypeToCreate || !transaction?.activityTypeId) return null;
-    const path = docTypeToCreate === 'quotation' ? paths.quotationTemplates(companyId) : paths.contractTemplates(companyId);
-    return query(collection(db, path), where('isActive', '==', true), where('activityTypeId', '==', transaction.activityTypeId));
-  }, [db, companyId, docTypeToCreate, transaction?.activityTypeId]);
+    if (!companyId || !db || !docTypeToCreate) return null;
+    let path = '';
+    if (docTypeToCreate === 'quotation') path = paths.quotationTemplates(companyId);
+    else if (docTypeToCreate === 'contract') path = paths.contractTemplates(companyId);
+    else if (docTypeToCreate === 'subcon_contract') path = paths.subconContractTemplates(companyId);
+    
+    return query(collection(db, path), where('isActive', '==', true));
+  }, [db, companyId, docTypeToCreate]);
   const { data: rawTemplates } = useCollection<any>(templatesQuery);
 
   const templates = useMemo(() => {
@@ -100,6 +109,12 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
     if (!db || !companyId || !docTypeToCreate || !selectedTemplateId) return;
     setLoading(true);
     try {
+      if (docTypeToCreate === 'subcon_contract') {
+         router.push(`/dashboard/procurement/subcontractors/contracts/new?transactionId=${transaction.id}&templateId=${selectedTemplateId}`);
+         setDocTypeToCreate(null);
+         return;
+      }
+
       const service = new DocumentService(db, companyId, permissions);
       const docPrefix = docTypeToCreate === 'quotation' ? tSafe('inline.quotation', 'عرض سعر', 'Quotation') : tSafe('inline.contract', 'عقد', 'Contract');
       const name = `${docPrefix} - ${transaction.subServiceName}`;
@@ -123,22 +138,20 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
     setLoading(true);
     try {
       const service = new DocumentService(db, companyId, permissions);
-      if (deletingContext.type === 'quotation') {
-        await service.deleteQuotation(deletingContext.id);
-      } else {
-        await service.deleteContract(deletingContext.id);
+      if (deletingContext.type === 'quotation') await service.deleteQuotation(deletingContext.id);
+      else if (deletingContext.type === 'contract') await service.deleteContract(deletingContext.id);
+      else if (deletingContext.type === 'subcon_contract') {
+         await deleteDoc(doc(db, paths.subconContracts(companyId), deletingContext.id));
       }
       toast({ title: tSafe('inline.document.deleted', 'تم حذف المستند بنجاح', 'Document deleted') });
       setDeletingContext(null);
     } catch (e) {
       toast({ variant: "destructive", title: t('common.error') });
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const DocList = ({ title, data, type, icon: Icon, colorClass, bgClass, showAdd = false }: any) => (
-    <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 flex-1">
+    <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/5 flex-1">
        <CardHeader className="bg-slate-50/50 border-b p-8 flex flex-row items-center justify-between">
           <div className="flex items-center gap-4 text-start">
              <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center shadow-sm border", bgClass, colorClass)}>
@@ -162,7 +175,10 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
                   <TableRow><TableCell className="py-20 text-center text-slate-300 italic font-bold text-xs">{tSafe('inline.no.documents.yet', 'لا يوجد مستندات حالياً.', 'No documents yet.')}</TableCell></TableRow>
                 ) : (
                   data?.map((item: any) => (
-                    <TableRow key={item.id} className="hover:bg-slate-50/50 transition-colors border-b-slate-100 group cursor-pointer" onClick={() => router.push(`/dashboard/clients/${clientId}/${type === 'quotation' ? 'quotations' : 'contracts'}/${item.id}`)}>
+                    <TableRow key={item.id} className="hover:bg-slate-50/50 transition-colors border-b-slate-100 group cursor-pointer" onClick={() => {
+                       if (type === 'subcon_contract') router.push(`/dashboard/procurement/subcontractors/contracts/${item.id}`);
+                       else router.push(`/dashboard/clients/${clientId}/${type === 'quotation' ? 'quotations' : 'contracts'}/${item.id}`);
+                    }}>
                        <TableCell className="py-6 ps-10 text-start">
                           <div className="flex items-center gap-4">
                              <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center font-black", (item.status === 'paid' || item.isPaid) ? "bg-emerald-50 text-emerald-600" : "bg-primary/5 text-primary")}>
@@ -231,27 +247,19 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
          </TabsContent>
 
          <TabsContent value="subcon" className="space-y-8 animate-in slide-in-from-bottom-4">
-            <div className="p-10 bg-white border-2 border-primary/10 rounded-[3rem] text-slate-900 flex flex-col md:flex-row justify-between items-center gap-8 shadow-2xl relative overflow-hidden">
-               <div className="absolute top-0 right-0 p-10 opacity-5"><Handshake className="h-40 w-40 text-primary" /></div>
-               <div className="text-start relative z-10 space-y-2">
-                  <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">{isRtl ? 'إجمالي مستحقات مقاولي الباطن' : 'Total Subcontractor Payables'}</p>
-                  <h3 className="text-5xl font-black font-headline text-slate-900">0 <span className="text-sm font-bold opacity-40">KWD</span></h3>
-               </div>
-               <div className="bg-slate-50 p-6 rounded-3xl border border-primary/10 relative z-10 text-start">
-                  <p className="text-[11px] font-bold text-slate-500 max-w-xs leading-relaxed italic">{isRtl ? 'يتم توليد مسودات المستخلصات لمقاولي الباطن آلياً عند تسجيل إنجاز ميداني في البنود المسندة إليهم.' : 'Sub-IPC drafts are auto-generated when field progress is logged for assigned items.'}</p>
-               </div>
+            <div className="flex flex-col md:flex-row gap-8 items-start">
+               <DocList title={isRtl ? 'عقود مقاولي الباطن' : 'SubCon Contracts'} data={subContracts} type="subcon_contract" icon={Handshake} colorClass="text-amber-600" bgClass="bg-amber-50" showAdd />
+               <DocList title={isRtl ? 'مستخلصات مقاولي الباطن' : 'Sub-Con Progress Payments'} data={subIpcs} type="subipc" icon={Receipt} colorClass="text-emerald-600" bgClass="bg-emerald-50" />
             </div>
-            <DocList title={isRtl ? 'مستخلصات مقاولي الباطن' : 'Sub-Con Progress Payments'} data={subIpcs} type="subipc" icon={Receipt} colorClass="text-amber-600" bgClass="bg-amber-50" />
          </TabsContent>
       </Tabs>
 
-      {/* نافذة إنشاء مستند جديد */}
       <Dialog open={!!docTypeToCreate} onOpenChange={(v) => !v && setDocTypeToCreate(null)}>
          <DialogContent className="max-w-xl rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
             <div className="bg-primary/5 p-10 text-slate-900 text-start border-b">
                <DialogTitle className="text-2xl font-black font-headline flex items-center gap-4 text-slate-900">
                   {docTypeToCreate === 'quotation' ? <FileText className="h-8 w-8 text-primary" /> : <Gavel className="h-8 w-8 text-primary" />}
-                  {docTypeToCreate === 'quotation' ? tSafe('inline.issue.quote', 'إصدار عرض سعر', 'Issue Quote') : tSafe('inline.issue.contract', 'إصدار عقد جديد', 'Issue Contract')}
+                  {docTypeToCreate === 'quotation' ? tSafe('inline.issue.quote', 'إصدار عرض سعر', 'Issue Quote') : (docTypeToCreate === 'contract' ? tSafe('inline.issue.contract', 'إصدار عقد جديد', 'Issue Contract') : tSafe('subcon.contracts.issue', 'إصدار اتفاقية باطن', 'Issue SubCon Award'))}
                </DialogTitle>
                <p className="text-slate-500 font-bold mt-2 uppercase text-[10px] tracking-widest">{transaction.activityTypeName}</p>
             </div>
@@ -297,7 +305,6 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
          </DialogContent>
       </Dialog>
 
-      {/* حوار تأكيد الحذف */}
       <AlertDialog open={!!deletingContext} onOpenChange={(v) => !v && setDeletingContext(null)}>
          <AlertDialogContent className="rounded-xl p-10 border-0 shadow-3xl bg-white" dir={dir}>
             <AlertDialogHeader>
@@ -324,3 +331,4 @@ export function TransactionDocumentsView({ transaction, clientId, clientName, is
     </div>
   );
 }
+
