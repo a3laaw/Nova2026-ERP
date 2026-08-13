@@ -1,538 +1,365 @@
-'use client';
+"use client"
 
-import { useState, useMemo, useEffect, Suspense } from 'react';
-import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SearchableDropdown } from '@/components/ui/searchable-dropdown'; // المكون الموحد
-import { 
-  Save, Loader2, Plus, CheckCircle2, Trash2, 
-  Truck, LayoutGrid, Hammer, Users, 
-  Package, MapPin, Workflow, ShieldAlert,
-  PlusCircle, X, UserCircle, HardHat,
-  Search, Handshake, ChevronDown, Sparkles
-} from "lucide-react";
-import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, where, getDocs, orderBy, doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { useAuthContext } from '@/context/auth-context';
-import { useLanguage } from '@/context/language-context';
-import { paths } from '@/firebase/multi-tenant';
-import { toast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
-import { Employee, WorkGroup } from '@/types/hr';
-import { Transaction, StageInstance } from '@/types/transaction';
-import { BOQ, BOQItem } from '@/types/documents';
-import { usePermissions } from '@/hooks/use-permissions';
-import { BOQExecutionService } from '@/services/boq-execution-service';
-import { SmartDateInput } from '@/components/ui/smart-date-input';
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import * as React from "react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import {
+  LayoutDashboard, Users, HardHat, Calculator, UserCircle,
+  ShoppingCart, Sparkles, Clock, ShieldCheck,
+  Calendar, FileText, Package,
+  Layers, FileSearch, Truck,
+  Building2, Settings2, ChevronDown,
+  Database, FileSpreadsheet, CalendarDays, Gavel,
+  MapPinned, Hammer, MapPin, Landmark, Receipt,
+  GitBranch, BarChart3, Wallet, Handshake, UserPlus, TrendingUp
+} from "lucide-react"
+import { cn } from "@/lib/utils"
+import { useLanguage } from "@/context/language-context"
+import { usePermissions } from "@/hooks/use-permissions"
+import { useAuthContext } from "@/context/auth-context"
+import { Badge } from "@/components/ui/badge"
+import {
+  Sidebar, SidebarHeader, SidebarContent, SidebarGroup,
+  SidebarGroupContent, SidebarFooter, SidebarMenu, SidebarMenuItem,
+  useSidebar,
+} from "@/components/ui/sidebar"
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from "@/components/ui/collapsible"
+import {
+  Tooltip, TooltipProvider, TooltipTrigger, TooltipContent,
+} from "@/components/ui/tooltip"
 
-function NewFieldVisitForm() {
-  const { globalUser, user } = useAuthContext();
-  const { lang, dir, t, tSafe } = useLanguage();
-  const { isAdmin, permissions } = usePermissions();
-  const db = useFirestore();
-  const router = useRouter();
-  const isRtl = lang === 'ar';
-  const companyId = globalUser?.companyId;
+export function DashboardSidebar() {
+  const pathname = usePathname()
+  const { state } = useSidebar()
+  const { t, tSafe, isRtl } = useLanguage()
+  const { globalUser } = useAuthContext()
+  const { canAccess, check, isAdmin } = usePermissions()
+  const isCollapsed = state === "collapsed"
 
-  const [loading, setLoading] = useState(false);
-  const [selectedClientId, setSelectedClientId] = useState('');
-  const [selectedProjectId, setSelectedProjectId] = useState('');
-  const [visitDate, setVisitDate] = useState(new Date().toISOString().split('T')[0]);
-  
-  const [activeStage, setActiveStage] = useState<StageInstance | null>(null);
-  const [loadingStage, setLoadingStage] = useState(false);
+  const menuItems = React.useMemo(() => {
+    const hrAccess = check('hr', 'view');
+    const isHrManager = hrAccess.can && hrAccess.scope !== 'own';
 
-  const [staffRows, setStaffRows] = useState<any[]>([{ employeeId: '', subcontractorId: '', subcontractorName: '', position: '', count: 1 }]);
-  const [equipRows, setEquipRows] = useState<any[]>([{ equipmentId: '', count: 1, hours: 8 }]);
-  const [materialRows, setMaterialRows] = useState<any[]>([{ type: '', unit: '', quantity: 0 }]);
-  const [executionRows, setExecutionRows] = useState<any[]>([{ boqItemId: '', quantity: '', notes: '' }]);
-
-  const transQuery = useMemo(() => 
-    (companyId && db) ? query(collection(db, paths.transactions(companyId)), where('status', '!=', 'completed')) : null, [db, companyId]);
-  const empsQuery = useMemo(() => 
-    (companyId && db) ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
-  const equipQuery = useMemo(() => 
-    (companyId && db) ? query(collection(db, paths.equipment(companyId)), where('status', '==', 'available')) : null, [db, companyId]);
-  const groupsQuery = useMemo(() => 
-    (companyId && db) ? query(collection(db, paths.workGroups(companyId)), where('isActive', '==', true)) : null, [db, companyId]);
-  const subsQuery = useMemo(() => 
-    (companyId && db) ? query(collection(db, paths.subcontractors(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
-
-  const { data: allTransactions } = useCollection<Transaction>(transQuery);
-  const { data: employees } = useCollection<Employee>(empsQuery);
-  const { data: equipmentList } = useCollection<any>(equipQuery);
-  const { data: workGroups } = useCollection<WorkGroup>(groupsQuery);
-  const { data: subcontractors } = useCollection<any>(subsQuery);
-
-  const contractedClients = useMemo(() => {
-    const clientsMap = new Map();
-    (allTransactions || []).forEach(p => clientsMap.set(p.clientId, p.clientName));
-    return Array.from(clientsMap.entries()).map(([id, name]) => ({ id, name }));
-  }, [allTransactions]);
-
-  const clientProjects = useMemo(() => 
-    selectedClientId ? (allTransactions || []).filter(p => p.clientId === selectedClientId) : [], 
-  [allTransactions, selectedClientId]);
-
-  // --- (التعديل الجديد) استعلام عقود الباطن المرتبطة بالمشروع المختار فقط ---
-  const subContractsQuery = useMemo(() => 
-    companyId && db && selectedProjectId ? query(collection(db, paths.subconContracts(companyId)), where('transactionId', '==', selectedProjectId), where('status', '==', 'active')) : null, 
-  [db, companyId, selectedProjectId]);
-
-  const { data: projectSubContracts } = useCollection<any>(subContractsQuery);
-
-  // --- (التعديل الجديد) تصفية قائمة المقاولين: عرض المقاولين الذين لديهم عقد ساري في هذا المشروع فقط ---
-  const projectSubcontractors = useMemo(() => {
-    if (!projectSubContracts || !subcontractors) return [];
-    const subIds = projectSubContracts.map(sc => sc.subcontractorId);
-    return subcontractors.filter(s => subIds.includes(s.id));
-  }, [projectSubContracts, subcontractors]);
-
-  useEffect(() => {
-    async function fetchProjectContext() {
-      if (!selectedProjectId || !db || !companyId) {
-        setActiveStage(null);
-        return;
+    return [
+      { title: t('dashboard'), icon: LayoutDashboard, url: "/dashboard", resource: 'dashboard' },
+      
+      // 1. CRM والمبيعات
+      { 
+        title: t('crm'), 
+        icon: Users, 
+        url: "/dashboard/crm", 
+        resource: 'crm',
+        subItems: [
+          { title: t('leads'), url: "/dashboard/crm", icon: Users },
+          { title: t('clients'), url: "/dashboard/clients", icon: UserCircle },
+          { title: t('appointments'), url: "/dashboard/appointments", icon: CalendarDays },
+          { title: t('meetings'), url: "/dashboard/meetings", icon: Landmark },
+          { title: t('visitsDossier'), url: "/dashboard/projects/reports/client-visits", icon: MapPinned },
+        ]
+      },
+      
+      // 2. المشاريع والمقايسات
+      { 
+        title: t('projects'), 
+        icon: HardHat, 
+        url: "/dashboard/projects", 
+        resource: 'projects',
+        subItems: [
+          { title: t('activeProjects'), url: "/dashboard/projects", icon: Layers },
+          { title: t('boqExplorer'), url: "/dashboard/projects/boqs", icon: FileSpreadsheet },
+          { title: t('reports'), url: "/dashboard/reports", icon: FileText },
+        ]
+      },
+      
+      // 3. المقاولات والميدان
+      { 
+        title: t('construction'), 
+        icon: Hammer, 
+        url: "/dashboard/construction/bookings", 
+        resource: 'projects',
+        subItems: [
+          { title: t('fieldRadar'), url: "/dashboard/construction/bookings", icon: MapPin },
+          { title: t('workGroups'), url: "/dashboard/construction/groups", icon: Users },
+          { title: t('equipment'), url: "/dashboard/equipment", icon: Truck },
+          { title: t('fieldLogs'), url: "/dashboard/construction/field-visits", icon: FileText },
+        ]
+      },
+      
+      // 4. المشتريات ومقاولو الباطن (مجموعة في مكان واحد)
+      { 
+        title: t('procurement'), 
+        icon: ShoppingCart, 
+        url: "/dashboard/procurement", 
+        resource: 'procurement',
+        subItems: [
+          { title: t('suppliers'), url: "/dashboard/procurement/suppliers", icon: Truck },
+          { title: tSafe('procurement.orders', 'أوامر الشراء', 'Purchase Orders'), url: "/dashboard/procurement/orders", icon: ShoppingCart },
+          { title: t('subcontractors'), url: "/dashboard/procurement/subcontractors", icon: HardHat },
+          { title: tSafe('subcon.contracts.title', 'عقود الباطن', 'SubCon Contracts'), url: "/dashboard/procurement/subcontractors/contracts", icon: Handshake },
+          { title: tSafe('procurement.subClaims', 'مطالبات الباطن', 'SubCon Claims'), url: "/dashboard/procurement/sub-claims", icon: Receipt },
+          { title: t('contracts'), url: "/dashboard/procurement/contracts", icon: Gavel },
+          { title: t('aiAnalysis'), url: "/dashboard/ai", icon: FileSearch },
+        ]
+      },
+      
+      // 5. المحاسبة المالية
+      { 
+        title: t('accounting'), 
+        icon: Calculator, 
+        url: "/dashboard/accounting", 
+        resource: 'accounting',
+        subItems: [
+          { title: t('chartOfAccounts'), url: "/dashboard/accounting/coa", icon: GitBranch },
+          { title: tSafe('accounting.ownerClaims', 'مطالبات الشركة (IPC)', 'Owner Claims'), url: "/dashboard/accounting/claims", icon: Receipt },
+          { title: t('receiptVouchers'), url: "/dashboard/accounting/vouchers/receipt", icon: Receipt },
+          { title: t('paymentVouchers'), icon: Wallet, url: "/dashboard/accounting/vouchers/payment" },
+          { title: t('journalEntries'), url: "/dashboard/accounting/journals", icon: FileText },
+          { title: t('financialReports'), url: "/dashboard/accounting/reports", icon: BarChart3 },
+        ]
+      },
+      
+      // 6. الموارد البشرية
+      { 
+        title: isHrManager ? t('hr') : t('userProfile'), 
+        icon: UserCircle, 
+        url: "/dashboard/hr", 
+        resource: 'hr',
+        subItems: [
+          { title: t('staffRecords'), url: "/dashboard/hr/employees", icon: Users, hideIfOwnScope: true },
+          { title: tSafe('hr.recruitment', 'التوظيف', 'Recruitment'), url: "/dashboard/hr/recruitment", icon: UserPlus, hideIfOwnScope: true },
+          { title: t('leaveRequests'), url: "/dashboard/hr/leaves", icon: Calendar },
+          { title: t('payroll'), url: "/dashboard/hr/payroll", icon: Calculator, requiredAction: 'approve', hideIfOwnScope: true },
+          { title: tSafe('hr.legalGuide', 'الدليل القانوني', 'Legal Guide'), url: "/dashboard/hr/legal-guide", icon: ShieldCheck, hideIfOwnScope: true },
+        ]
+      },
+      
+      // 7. المخزون
+      { 
+        title: t('inventory'), 
+        icon: Package, 
+        url: "/dashboard/inventory", 
+        resource: 'inventory',
+        subItems: [
+          { title: t('inventory'), url: "/dashboard/inventory", icon: Building2 },
+        ]
+      },
+      
+      // 8. الإعدادات
+      { 
+        title: t('settings'), 
+        icon: Settings2, 
+        url: "/dashboard/settings", 
+        resource: 'settings',
+        subItems: [
+          { title: t('usersManagement'), url: "/dashboard/settings/users", icon: Users },
+          { title: t('rolesPermissions'), url: "/dashboard/settings/roles", icon: ShieldCheck },
+          { title: t('companyIdentity'), url: "/dashboard/settings/company", icon: Building2 },
+          { title: t('workHours'), url: "/dashboard/settings/work-hours", icon: Clock },
+          { title: tSafe('settings.costCenters', 'مراكز التكلفة', 'Cost Centers'), url: "/dashboard/settings/cost-centers", icon: Calculator },
+          { title: tSafe('settings.profitCenters', 'مراكز الربحية', 'Profit Centers'), url: "/dashboard/settings/profit-centers", icon: TrendingUp },
+          { title: t('settings.checklists'), url: "/dashboard/settings/checklists", icon: Database },
+          { title: t('userProfile'), url: "/dashboard/settings/profile", icon: UserCircle },
+        ]
       }
-      setLoadingStage(true);
-      try {
-        const stagesSnap = await getDocs(query(collection(db, paths.transactionStages(companyId, selectedProjectId))));
-        const allStages = stagesSnap.docs.map(d => ({ id: d.id, ...d.data() } as StageInstance));
-        const current = allStages.find(s => s.status === 'in-progress');
-        setActiveStage(current || null);
-      } finally {
-        setLoadingStage(false);
-      }
-    }
-    fetchProjectContext();
-  }, [selectedProjectId, db, companyId]);
+    ];
+  }, [t, tSafe, check, isAdmin, globalUser?.employeeId, globalUser?.departmentId]);
 
-  const boqQuery = useMemo(() => companyId && db && selectedProjectId ? query(collection(db, paths.boqs(companyId)), where('transactionId', '==', selectedProjectId)) : null, [db, companyId, selectedProjectId]);
-  const { data: boqs } = useCollection<BOQ>(boqQuery);
-  const activeBoq = boqs?.[0];
-
-  const itemsQuery = useMemo(() => companyId && db && activeBoq?.id ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
-  const { data: allBoqItems } = useCollection<BOQItem>(itemsQuery);
-
-  const filteredBoqItems = useMemo(() => {
-    if (!activeStage || !allBoqItems) return [];
-    return allBoqItems.filter(i => (i.technicalStageIds?.includes(activeStage.technicalStageId) || i.technicalStageId === activeStage.technicalStageId));
-  }, [activeStage, allBoqItems]);
-
-  const getAvailableEmployees = (currentRowIdx: number) => {
-    const selectedIds = staffRows.map((r, i) => i !== currentRowIdx ? r.employeeId : null).filter(Boolean);
-    return (employees || []).filter(e => !selectedIds.includes(e.id));
-  };
-
-  const getAvailableEquipment = (currentRowIdx: number) => {
-    const selectedIds = equipRows.map((r, i) => i !== currentRowIdx ? r.equipmentId : null).filter(Boolean);
-    return (equipmentList || []).filter(e => !selectedIds.includes(e.id));
-  };
-
-  const handleLoadGroup = (groupId: string) => {
-    const group = workGroups?.find(g => g.id === groupId);
-    if (!group || !employees) return;
-    const currentStaffIds = new Set(staffRows.map(r => r.employeeId).filter(Boolean));
-    const newRows = [...staffRows.filter(r => r.employeeId)];
-    group.memberIds.forEach(mid => {
-      if (!currentStaffIds.has(mid)) {
-        const emp = employees.find(e => e.id === mid);
-        if (emp) {
-          newRows.push({ employeeId: emp.id, subcontractorId: '', subcontractorName: '', position: emp.jobTitle, count: 1 });
-          currentStaffIds.add(mid);
+  const visibleItems = React.useMemo(() => {
+    const finalItems: any[] = [];
+    menuItems.forEach(item => {
+      if (!canAccess(item.resource)) return;
+      if (item.subItems) {
+        const filteredSubs = item.subItems.filter(sub => {
+          const action = (sub as any).requiredAction || 'view';
+          const access = check(item.resource, action);
+          if (!access.can) return false;
+          if ((sub as any).hideIfOwnScope && access.scope === 'own') return false;
+          return true;
+        });
+        if (filteredSubs.length > 0) {
+          finalItems.push({ ...item, subItems: filteredSubs });
+        } else if (item.url === "/dashboard") {
+          finalItems.push(item);
         }
+      } else {
+        finalItems.push(item);
       }
     });
-    setStaffRows(newRows);
-    toast({ title: t('construction.crewLoaded') });
-  };
-
-  const handleSave = async () => {
-    if (!db || !companyId || !user || !selectedProjectId || !activeBoq || !activeStage) return;
-    setLoading(true);
-    try {
-      const execService = new BOQExecutionService(db, companyId, permissions);
-      const visitRef = doc(collection(db, paths.fieldVisits(companyId)));
-      const project = allTransactions?.find(t => t.id === selectedProjectId);
-      const officialName = globalUser?.fullName || user.displayName || 'Engineer';
-
-      for (const row of executionRows.filter(r => r.boqItemId && Number(r.quantity) > 0)) {
-         await execService.recordBOQItemExecution(
-           activeBoq.id, row.boqItemId, activeStage.technicalStageId, Number(row.quantity),
-           user.uid, officialName, row.notes || '', activeStage.id!, false, '', 
-           { laborDetails: [], equipmentUsed: [] }
-         );
-      }
-
-      await setDoc(visitRef, {
-        id: visitRef.id,
-        companyId,
-        transactionId: selectedProjectId,
-        transactionNumber: project?.transactionNumber || '',
-        clientId: selectedClientId,
-        clientName: project?.clientName || '',
-        activeStageId: activeStage.id,
-        activeStageName: activeStage.name,
-        visitDate,
-        items: executionRows.filter(r => r.boqItemId).map(r => ({
-          ...r,
-          itemName: allBoqItems?.find(i => i.id === r.boqItemId)?.referenceTitle || '',
-          unit: allBoqItems?.find(i => i.id === r.boqItemId)?.unitSymbol || '',
-          executionStatus: 'executed'
-        })),
-        staffDetails: staffRows.filter(s => s.employeeId || s.subcontractorId).map(s => ({
-           ...s,
-           employeeName: s.employeeId ? (employees?.find(e => e.id === s.employeeId)?.fullName || '') : s.subcontractorName
-        })),
-        equipmentUsed: equipRows.filter(e => e.equipmentId).map(e => ({
-           ...e,
-           equipmentName: equipmentList?.find(eq => eq.id === e.equipmentId)?.name || ''
-        })),
-        materialsDelivered: materialRows.filter(m => m.type),
-        engineerId: globalUser?.employeeId || user.uid,
-        engineerName: officialName,
-        status: 'submitted',
-        createdAt: serverTimestamp(),
-      });
-
-      toast({ title: t('construction.visitCreated') });
-      router.push('/dashboard/construction/field-visits');
-    } catch (e: any) {
-      toast({ variant: "destructive", title: t('common.error'), description: e.message });
-    } finally { setLoading(false); }
-  };
+    return finalItems;
+  }, [menuItems, canAccess, check]);
 
   return (
-    <div className="space-y-6 w-full max-w-full pb-20 animate-in fade-in duration-500 text-start bg-slate-50/30" dir={dir}>
+    <Sidebar collapsible="icon" side={isRtl ? "right" : "left"} className="border-none bg-[#F8F9FA]">
+      <SidebarHeader className="p-4 pt-6">
+        {!isCollapsed ? (
+          <div className="flex flex-col text-start px-2 border-b-2 border-orange-50 pb-4">
+            <span className="font-headline font-black text-2xl text-slate-900 tracking-tighter leading-none">NovaFlow</span>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[8px] uppercase font-black tracking-[0.3em] text-[#e87c24]">ERP SYSTEM</span>
+              <div className="h-[1.5px] w-8 bg-[#e87c24] rounded-full" />
+            </div>
+          </div>
+        ) : (
+          <div className="mx-auto h-9 w-9 rounded-lg bg-gradient-to-br from-[#FFB000] to-[#e87c24] flex items-center justify-center text-white shadow-sm transition-all">
+             <Sparkles className="h-4 w-4" />
+          </div>
+        )}
+      </SidebarHeader>
       
-      <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-white/95 backdrop-blur-md px-8 shadow-sm border-primary/10">
-        <div className="flex items-center gap-5 text-start">
-          <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border-2 border-primary/5 shadow-inner">
-            <PlusCircle className="h-8 w-8" />
+      <SidebarContent className="px-3 py-4 overflow-y-auto scrollbar-hide">
+        <SidebarGroup className="p-0">
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-4">
+              {visibleItems.map((item) => (
+                <NavItemRenderer key={item.url} item={item} isCollapsed={isCollapsed} isRtl={isRtl} pathname={pathname} t={t} />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      
+      <SidebarFooter className="p-4 mt-auto">
+        {!isCollapsed && (
+          <div className="p-4 rounded-3xl bg-white border border-orange-100 shadow-xl ring-1 ring-black/[0.02] flex justify-between items-center">
+             <Badge className="bg-[#e87c24] text-white text-[8px] font-black uppercase h-5 px-2 rounded-full">V2.8</Badge>
+             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{t('common.status')}</span>
           </div>
-          <div className="text-start">
-            <h1 className="text-3xl font-black font-headline text-slate-900 tracking-tight">
-               {tSafe('inline.new.field.report', 'تسجيل تقرير ميداني جديد', 'New Field Report')}
-            </h1>
-            <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 text-[9px] font-black uppercase mt-1 tracking-widest px-3">
-              {tSafe('inline.site.ops.center', 'مركز عمليات الموقع', 'Center of Site Operations')}
-            </Badge>
-          </div>
-        </div>
-
-        <div className="flex gap-4">
-           <Button variant="ghost" onClick={() => router.back()} className="rounded-xl font-black h-12 px-8 border-2 border-slate-100 bg-white hover:bg-slate-50 transition-all">{t('common.cancel')}</Button>
-           <Button onClick={handleSave} disabled={loading || !activeStage} className="h-12 px-12 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 gap-3 border-b-4 border-orange-700 hover:scale-[1.02] active:scale-95 transition-all">
-              {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />} 
-              {tSafe('inline.commit.report.now', 'اعتماد التقرير الآن', 'Commit Report Now')}
-           </Button>
-        </div>
-      </header>
-
-      <div className="px-8 space-y-10">
-         <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white ring-1 ring-black/5 overflow-visible w-full">
-            <CardContent className="p-8 grid grid-cols-1 md:grid-cols-4 gap-10 items-center">
-                <div className="space-y-2">
-                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.clients')}</Label>
-                   <SearchableDropdown
-                     options={contractedClients.map(c => ({ id: c.id, name: c.name }))}
-                     value={selectedClientId}
-                     onChange={(val) => { setSelectedClientId(val as string); setSelectedProjectId(''); }}
-                     placeholder="..."
-                   />
-                </div>
-                <div className="space-y-2">
-                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.projects')}</Label>
-                   <SearchableDropdown
-                     options={clientProjects.map(p => ({ id: p.id, name: p.subServiceName }))}
-                     value={selectedProjectId}
-                     onChange={(val) => setSelectedProjectId(val as string)}
-                     placeholder="..."
-                   />
-                </div>
-                <div className="space-y-2">
-                   <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5"><Workflow className="h-3 w-3" /> {tSafe('inline.active.stage', 'المرحلة النشطة', 'Active Stage')}</Label>
-                   {loadingStage ? <div className="h-14 flex items-center animate-pulse"><Loader2 className="h-5 w-5 animate-spin text-primary/30" /></div> : activeStage ? (
-                     <div className="h-14 rounded-2xl bg-emerald-50 border-2 border-emerald-100 flex items-center px-6 gap-4 shadow-sm group">
-                        <div className="h-8 w-8 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600 transition-transform group-hover:scale-110"><Workflow className="h-4 w-4" /></div>
-                        <span className="text-sm font-black text-emerald-800 truncate">{activeStage.name}</span>
-                     </div>
-                   ) : selectedProjectId && (
-                     <div className="h-14 rounded-2xl bg-rose-50 border-2 border-dashed border-rose-200 flex items-center px-6 text-rose-500">
-                        <ShieldAlert className="h-4 w-4 me-3" />
-                        <span className="text-[11px] font-bold italic">{tSafe('inline.no.active.stage', 'لا توجد مرحلة نشطة.', 'No active stage found.')}</span>
-                     </div>
-                   )}
-                </div>
-                <div className="space-y-2">
-                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.date')}</Label>
-                   <SmartDateInput value={visitDate} onChange={setVisitDate} className="h-14" />
-                </div>
-            </CardContent>
-         </Card>
-
-         <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
-            <CardHeader className="bg-slate-50/50 p-8 border-b flex flex-row justify-between items-center">
-               <div className="text-start">
-                  <CardTitle className="text-xl font-black font-headline flex items-center gap-4 text-slate-800">
-                     <Hammer className="h-7 w-7 text-primary" /> 
-                     {tSafe('inline.work.items.execution.grid', 'إنجاز بنود المقايسة في المرحلة الجارية', 'Execution of BOQ Items in Current Stage')}
-                  </CardTitle>
-               </div>
-               <Button variant="outline" onClick={() => setExecutionRows([...executionRows, { boqItemId: '', quantity: '', notes: '' }])} className="rounded-xl h-11 px-8 font-black border-2 gap-3 bg-white hover:bg-primary/5 transition-all">
-                  <Plus className="h-5 w-5 text-primary" /> {t('common.add')}
-               </Button>
-            </CardHeader>
-            <CardContent className="p-0">
-               <Table className="w-full">
-                  <TableHeader>
-                     <TableRow className="bg-white hover:bg-transparent border-b-2 border-slate-100">
-                        <TableHead className="ps-10 text-start text-xs font-black uppercase text-slate-400 tracking-widest">{tSafe('inline.ref.work.item', 'بند العمل المرجعي', 'Reference Work Item')}</TableHead>
-                        <TableHead className="text-center w-[180px] text-xs font-black uppercase text-primary tracking-widest">{tSafe('inline.quantity.for.stage', 'الكمية لهذه المرحلة', 'Qty for Stage')}</TableHead>
-                        <TableHead className="text-start text-xs font-black uppercase text-slate-400 tracking-widest">{t('common.notes')}</TableHead>
-                        <TableHead className="w-16"></TableHead>
-                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                     {executionRows.map((row, idx) => (
-                        <TableRow key={idx} className="border-b last:border-0 hover:bg-primary/[0.01] transition-colors">
-                           <TableCell className="ps-10 py-6 text-start">
-                              <SearchableDropdown
-                                options={filteredBoqItems.map(i => ({ id: i.id!, name: i.referenceTitle, subText: i.referenceCode }))}
-                                value={row.boqItemId}
-                                onChange={(val) => { const nr = [...executionRows]; nr[idx].boqItemId = val as string; setExecutionRows(nr); }}
-                                placeholder="..."
-                              />
-                           </TableCell>
-                           <TableCell className="py-6">
-                              <div className="relative group">
-                                 <Input type="number" step="0.01" value={row.quantity} onChange={e => { const nr = [...executionRows]; nr[idx].quantity = e.target.value; setExecutionRows(nr); }} className="h-14 rounded-2xl text-center font-black text-3xl border-2 text-primary bg-primary/5 focus:bg-white transition-all shadow-inner" />
-                              </div>
-                           </TableCell>
-                           <TableCell className="py-6">
-                              <Input value={row.notes} onChange={e => { const nr = [...executionRows]; nr[idx].notes = e.target.value; setExecutionRows(nr); }} className="h-14 text-sm font-bold border-2 bg-slate-50/50 focus:bg-white rounded-xl px-6" placeholder="..." />
-                           </TableCell>
-                           <TableCell className="pe-8 text-center">
-                              <button onClick={() => setExecutionRows(executionRows.filter((_, i) => i !== idx))} className="text-rose-200 hover:text-rose-600 transition-colors hover:scale-110 p-2">
-                                 <Trash2 className="h-6 w-6" />
-                              </button>
-                           </TableCell>
-                        </TableRow>
-                     ))}
-                  </TableBody>
-               </Table>
-            </CardContent>
-         </Card>
-
-         <div className="grid grid-cols-1 xl:grid-cols-2 gap-10 pb-20">
-            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
-               <CardHeader className="bg-slate-50/80 border-b p-6 flex flex-col md:flex-row items-center justify-between gap-4">
-                  <div className="text-start">
-                    <CardTitle className="text-sm font-black uppercase text-slate-700 tracking-widest flex items-center gap-2">
-                       <UserCircle className="h-4 w-4 text-primary" /> 
-                       {tSafe('inline.staff.resources', 'الموارد البشرية والعمالة', 'Staff & Labor')}
-                    </CardTitle>
-                  </div>
-                  <div className="flex gap-2">
-                     <Select onValueChange={handleLoadGroup}>
-                        <SelectTrigger className="h-10 w-48 rounded-xl border-2 font-black text-[10px] bg-white">
-                           <SelectValue placeholder={tSafe('inline.load.from.group', 'تحميل من طاقم...', 'Load from Group...')} />
-                        </SelectTrigger>
-                        <SelectContent className="z-[160] shadow-3xl rounded-xl">
-                           {workGroups?.map(g => (
-                             <SelectItem key={g.id} value={g.id!} className="font-bold py-3">
-                                <div className="flex items-center gap-2"><Handshake className="h-3 w-3 text-primary" /> {g.name}</div>
-                             </SelectItem>
-                           ))}
-                        </SelectContent>
-                     </Select>
-                     <Button variant="ghost" size="icon" onClick={() => setStaffRows([...staffRows, { employeeId: '', subcontractorId: '', subcontractorName: '', position: '', count: 1 }])} className="text-primary hover:bg-primary/5 rounded-full"><PlusCircle className="h-6 w-6" /></Button>
-                  </div>
-               </CardHeader>
-               <CardContent className="p-0">
-                  <Table>
-                     <TableHeader className="bg-white border-b-2">
-                        <TableRow>
-                           <TableHead className="ps-6 text-start text-[10px] font-black text-slate-400 uppercase">{tSafe('inline.employee.labor', 'الموظف / الجهة', 'Employee / Source')}</TableHead>
-                           <TableHead className="text-center w-24 text-[10px] font-black text-slate-400 uppercase">{tSafe('inline.count', 'العدد', 'Count')}</TableHead>
-                           <TableHead className="w-12"></TableHead>
-                        </TableRow>
-                     </TableHeader>
-                     <TableBody>
-                        {staffRows.map((row, idx) => (
-                           <TableRow key={idx} className="border-b last:border-0 hover:bg-slate-50/50 transition-colors">
-                              <TableCell className="ps-6 py-3">
-                                 <div className="flex flex-col gap-2">
-                                    <Select value={row.employeeId || 'NONE'} onValueChange={v => {
-                                       if (v === 'SUBCON') {
-                                          setStaffRows(prev => {
-                                             const nr = [...prev];
-                                             nr[idx] = { ...nr[idx], employeeId: '', subcontractorId: '' };
-                                             return nr;
-                                          });
-                                       } else {
-                                          const emp = employees?.find(e => e.id === v);
-                                          const nr = [...staffRows];
-                                          nr[idx] = { ...nr[idx], employeeId: v, subcontractorId: '', subcontractorName: '', position: emp?.jobTitle || '' };
-                                          setStaffRows(nr);
-                                       }
-                                    }}>
-                                       <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs bg-white">
-                                          <SelectValue placeholder={tSafe('inline.select.internal.staff', '--- عمالة الشركة ---', 'Internal Staff')} />
-                                       </SelectTrigger>
-                                       <SelectContent className="rounded-xl z-[160] shadow-3xl">
-                                          <SelectItem value="NONE" className="font-bold text-xs py-3 border-b text-slate-400">--- عمالة الشركة ---</SelectItem>
-                                          {getAvailableEmployees(idx).map(e => (
-                                            <SelectItem key={e.id} value={e.id!} className="font-bold py-3">
-                                               {e.fullName} <Badge variant="outline" className="ms-2 text-[8px] h-4 border-0 bg-slate-100">{e.jobTitle}</Badge>
-                                            </SelectItem>
-                                          ))}
-                                          <SelectItem value="SUBCON" className="font-bold text-xs py-3 text-orange-600 border-t">--- مقاول باطن ---</SelectItem>
-                                       </SelectContent>
-                                    </Select>
-                                    
-                                    {!row.employeeId && (
-                                       <Select value={row.subcontractorId} onValueChange={v => {
-                                          const sub = projectSubcontractors?.find((s:any) => s.id === v);
-                                          const nr = [...staffRows];
-                                          nr[idx] = { ...nr[idx], subcontractorId: v, subcontractorName: sub?.name || '' };
-                                          setStaffRows(nr);
-                                       }}>
-                                          <SelectTrigger className="h-9 rounded-xl border-2 bg-orange-50/50 border-orange-200 text-orange-700 font-bold text-[10px] animate-in slide-in-from-top-2">
-                                             <SelectValue placeholder={tSafe('inline.choose.subcon', 'اختر المقاول المسؤول...', 'Choose Subcontractor...')} />
-                                          </SelectTrigger>
-                                          <SelectContent className="rounded-xl z-[161] shadow-3xl">
-                                             {projectSubcontractors.length === 0 ? (
-                                                <div className="p-4 text-center text-slate-400 text-xs">لا يوجد مقاولون معتمدون لهذا المشروع</div>
-                                             ) : (
-                                                projectSubcontractors.map((s:any) => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3">{s.name}</SelectItem>)
-                                             )}
-                                          </SelectContent>
-                                       </Select>
-                                    )}
-                                 </div>
-                              </TableCell>
-                              <TableCell className="py-3 align-top pt-4">
-                                 <Input type="number" value={row.count} onChange={e => { const nr = [...staffRows]; nr[idx].count = e.target.value; setStaffRows(nr); }} className="h-10 text-center font-black border-2 rounded-xl" />
-                              </TableCell>
-                              <TableCell className="pe-4 text-center align-top pt-5">
-                                 <button onClick={() => setStaffRows(staffRows.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-rose-500 p-1 transition-colors"><X className="h-4 w-4" /></button>
-                              </TableCell>
-                           </TableRow>
-                        ))}
-                     </TableBody>
-                  </Table>
-               </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
-               <CardHeader className="bg-slate-50/80 border-b p-6 flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle className="text-sm font-black uppercase text-slate-700 tracking-widest flex items-center gap-2">
-                       <Truck className="h-4 w-4 text-primary" /> 
-                       {tSafe('common.equipment', 'المعدات والآليات', 'Equipment')}
-                    </CardTitle>
-                  </div>
-                  <Button variant="ghost" size="icon" onClick={() => setEquipRows([...equipRows, { equipmentId: '', count: 1, hours: 8 }])} className="text-primary hover:bg-primary/5 rounded-full"><PlusCircle className="h-6 w-6" /></Button>
-               </CardHeader>
-               <CardContent className="p-0">
-                  <Table>
-                     <TableHeader className="bg-white border-b-2">
-                        <TableRow>
-                           <TableHead className="ps-6 text-start text-[10px] font-black text-slate-400 uppercase">{tSafe('inline.type.name', 'النوع / الاسم', 'Type / Name')}</TableHead>
-                           <TableHead className="text-center w-24 text-[10px] font-black text-slate-400 uppercase">{tSafe('inline.qty', 'الكمية', 'Qty')}</TableHead>
-                           <TableHead className="text-center w-24 text-[10px] font-black text-slate-400 uppercase">{tSafe('inline.hours', 'الساعات', 'Hours')}</TableHead>
-                           <TableHead className="w-12"></TableHead>
-                        </TableRow>
-                     </TableHeader>
-                     <TableBody>
-                        {equipRows.map((row, idx) => {
-                           const availableEquip = getAvailableEquipment(idx);
-                           return (
-                             <TableRow key={idx} className="border-b last:border-0 hover:bg-slate-50/50 transition-colors">
-                                <TableCell className="ps-6 py-3">
-                                   <Select value={row.equipmentId} onValueChange={v => { const nr = [...equipRows]; nr[idx].equipmentId = v; setEquipRows(nr); }}>
-                                      <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs bg-white"><SelectValue placeholder="..." /></SelectTrigger>
-                                      <SelectContent className="rounded-xl z-[160] shadow-3xl">
-                                         {availableEquip?.map(eq => (
-                                           <SelectItem key={eq.id} value={eq.id!} className="font-bold py-3">
-                                              {eq.name} <span className="text-[8px] text-slate-400">({eq.code})</span>
-                                           </SelectItem>
-                                         ))}
-                                      </SelectContent>
-                                   </Select>
-                                </TableCell>
-                                <TableCell className="py-3">
-                                   <Input type="number" value={row.count} onChange={e => { const nr = [...equipRows]; nr[idx].count = e.target.value; setEquipRows(nr); }} className="h-10 text-center font-black border-2 rounded-xl" />
-                                </TableCell>
-                                <TableCell className="py-3">
-                                   <Input type="number" value={row.hours} onChange={e => { const nr = [...equipRows]; nr[idx].hours = e.target.value; setEquipRows(nr); }} className="h-10 text-center font-black border-2 rounded-xl" />
-                                </TableCell>
-                                <TableCell className="pe-4 text-center">
-                                   <button onClick={() => setEquipRows(equipRows.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-rose-500 p-1 transition-colors"><X className="h-4 w-4" /></button>
-                                </TableCell>
-                             </TableRow>
-                           );
-                        })}
-                     </TableBody>
-                  </Table>
-               </CardContent>
-            </Card>
-
-            <Card className="xl:col-span-2 border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
-               <CardHeader className="bg-slate-50/80 border-b p-6 flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle className="text-sm font-black uppercase text-slate-700 tracking-widest flex items-center gap-2">
-                       <Package className="h-4 w-4 text-primary" /> 
-                       {tSafe('inline.materials', 'المواد الموردة للموقع', 'Materials')}
-                    </CardTitle>
-                  </div>
-                  <Button variant="ghost" size="icon" onClick={() => setMaterialRows([...materialRows, { type: '', unit: '', quantity: 0 }])} className="text-primary hover:bg-primary/5 rounded-full"><PlusCircle className="h-6 w-6" /></Button>
-               </CardHeader>
-               <CardContent className="p-0">
-                  <Table>
-                     <TableHeader className="bg-white border-b-2">
-                        <TableRow>
-                           <TableHead className="ps-10 text-start text-[10px] font-black text-slate-400 uppercase">{tSafe('inline.material.desc', 'وصف المادة', 'Material Description')}</TableHead>
-                           <TableHead className="text-center w-32 text-[10px] font-black text-slate-400 uppercase">{t('common.unit')}</TableHead>
-                           <TableHead className="text-center w-40 text-[10px] font-black text-primary uppercase">{tSafe('inline.qty.delivered', 'الكمية المسلمة', 'Quantity Delivered')}</TableHead>
-                           <TableHead className="w-16"></TableHead>
-                        </TableRow>
-                     </TableHeader>
-                     <TableBody>
-                        {materialRows.map((row, idx) => (
-                           <TableRow key={idx} className="border-b last:border-0 hover:bg-slate-50/50 transition-colors">
-                              <TableCell className="ps-10 py-4">
-                                 <Input value={row.type} onChange={e => { const nr = [...materialRows]; nr[idx].type = e.target.value; setMaterialRows(nr); }} className="h-11 border-2 font-bold bg-white rounded-xl shadow-inner" placeholder="..." />
-                              </TableCell>
-                              <TableCell className="py-4">
-                                 <Input value={row.unit} onChange={e => { const nr = [...materialRows]; nr[idx].unit = e.target.value; setMaterialRows(nr); }} className="h-11 text-center border-2 font-bold uppercase text-[10px] rounded-xl" placeholder="..." />
-                              </TableCell>
-                              <TableCell className="py-4">
-                                 <Input type="number" value={row.quantity} onChange={e => { const nr = [...materialRows]; nr[idx].quantity = e.target.value; setMaterialRows(nr); }} className="h-11 text-center border-2 font-black text-xl text-primary rounded-xl bg-primary/5" />
-                              </TableCell>
-                              <TableCell className="pe-8 text-center">
-                                 <button onClick={() => setMaterialRows(materialRows.filter((_, i) => i !== idx))} className="text-rose-200 hover:text-rose-600 transition-colors p-2"><Trash2 className="h-5 w-5" /></button>
-                              </TableCell>
-                           </TableRow>
-                        ))}
-                     </TableBody>
-                  </Table>
-               </CardContent>
-            </Card>
-         </div>
-      </div>
-    </div>
-  );
+        )}
+      </SidebarFooter>
+    </Sidebar>
+  )
 }
 
-export default function NewStructuredFieldVisitPage() {
-   return <Suspense fallback={<div className="h-screen flex items-center justify-center bg-[#fdfaf3]"><Loader2 className="animate-spin text-primary" /></div>}><NewFieldVisitForm /></Suspense>;
+function NavItemRenderer({ item, isCollapsed, isRtl, pathname, t }: any) {
+  const isGroupActive = item.subItems?.some((sub: any) => pathname === sub.url)
+  const isSelfActive = pathname === item.url
+  const isActive = isSelfActive || isGroupActive
+  
+  const [isExpanded, setIsExpanded] = React.useState(isActive)
+  const commonStyle = "flex items-center w-full h-11 px-5 transition-all duration-300 rounded-full shadow-md hover:shadow-xl hover:-translate-y-0.5 active:scale-[0.98] border-0"
+  
+  const expandedStyle = cn(
+    commonStyle,
+    isActive 
+      ? "bg-white text-[#e87c24] border-2 border-orange-100 shadow-orange-500/10 font-black" 
+      : "bg-gradient-to-r from-[#FFB000] to-[#e87c24] text-white"
+  )
+
+  if (isCollapsed) {
+    const collapsedStyle = cn(
+      "flex h-9 w-9 items-center justify-center transition-all duration-300 rounded-lg shadow-sm",
+      isActive 
+        ? "bg-white text-[#e87c24] border-2 border-orange-100 scale-110 z-10" 
+        : "bg-[#FFA000] text-white hover:scale-105"
+    )
+    return (
+      <SidebarMenuItem className="flex justify-center">
+        {item.subItems ? (
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="relative group">
+                  <button className={collapsedStyle}>
+                    <item.icon className="h-4 w-4" />
+                  </button>
+                  <div className={cn(
+                    "absolute top-0 z-[999] hidden group-hover:block animate-in fade-in zoom-in-95 duration-200",
+                    isRtl ? "right-full mr-3" : "left-full ml-3"
+                  )}>
+                    <div className="bg-white border-2 border-slate-100 shadow-3xl rounded-[1.5rem] min-w-[220px] overflow-hidden ring-4 ring-black/[0.02]">
+                      <div className="px-5 py-4 bg-slate-50 border-b flex items-center justify-between">
+                        <p className="text-sm font-black text-slate-800 uppercase tracking-widest">{item.title}</p>
+                        <div className="h-6 w-6 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <item.icon className="h-3.5 w-3.5 text-primary" />
+                        </div>
+                      </div>
+                      <div className="p-3 space-y-1.5 bg-white max-h-[60vh] overflow-y-auto scrollbar-hide">
+                        {item.subItems.map((sub: any) => (
+                          <Link 
+                            key={sub.url} 
+                            href={sub.url}
+                            className={cn(
+                              "flex items-center justify-between h-11 px-4 rounded-xl text-[11px] font-black transition-all shadow-sm border border-slate-100 bg-white group/sub",
+                              pathname === sub.url 
+                                ? "bg-primary text-white border-primary shadow-primary/20" 
+                                : "text-slate-700 hover:bg-primary/5 hover:text-primary hover:border-primary/20 hover:-translate-y-0.5"
+                            )}
+                          >
+                            <span className="truncate">{sub.title}</span>
+                            <sub.icon className={cn("h-3.5 w-3.5 transition-all", pathname === sub.url ? "text-white" : "opacity-30 group-hover/sub:opacity-100 group-hover/sub:scale-110")} />
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side={isRtl ? "left" : "right"} className="bg-white text-slate-900 font-black text-[10px] rounded-lg border-2 shadow-2xl py-2 px-4">
+                {item.title}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : (
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link href={item.url} className={collapsedStyle}>
+                  <item.icon className="h-4 w-4" />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side={isRtl ? "left" : "right"} className="bg-white text-slate-900 font-black text-[10px] rounded-lg border-2 shadow-2xl py-2 px-4">
+                {item.title}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </SidebarMenuItem>
+    )
+  }
+
+  return (
+    <SidebarMenuItem className="px-1">
+      {item.subItems ? (
+        <Collapsible open={isExpanded || isActive} onOpenChange={setIsExpanded}>
+          <CollapsibleTrigger asChild>
+            <button className={cn(expandedStyle)}>
+              <div className={cn("flex items-center gap-3 w-full", isRtl ? "flex-row-reverse" : "flex-row")}>
+                <item.icon className="h-5 w-5 shrink-0" />
+                <span className="flex-1 text-start text-xs font-black tracking-tight">{item.title}</span>
+                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform duration-300", isExpanded && "rotate-180")} />
+              </div>
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="mt-3 space-y-3 px-1 animate-in slide-in-from-top-2 duration-300">
+              {item.subItems.map((sub: any) => (
+                <Link 
+                  key={sub.url} 
+                  href={sub.url}
+                  className={cn(
+                    "flex items-center justify-between h-11 px-5 transition-all duration-300 text-[11px] font-black rounded-2xl border border-orange-100/30 shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98]",
+                    pathname === sub.url 
+                      ? "bg-white text-[#e87c24] border-primary/40 shadow-primary/5 ring-1 ring-primary/5" 
+                      : "bg-white text-slate-700 hover:bg-gradient-to-r hover:from-[#FFF3E0] hover:to-[#FFFDE7] hover:text-[#e87c24]"
+                  )}
+                >
+                  <span className="truncate text-start flex-1">{sub.title}</span>
+                  <sub.icon className={cn("h-3.5 w-3.5 ml-2 transition-all", pathname === sub.url ? "opacity-100 text-[#e87c24] scale-110" : "opacity-30")} />
+                </Link>
+              ))}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      ) : (
+        <Link href={item.url} className={cn(expandedStyle)}>
+          <div className={cn("flex items-center gap-3 w-full", isRtl ? "flex-row-reverse" : "flex-row")}>
+            <item.icon className="h-5 w-5 shrink-0" />
+            <span className="flex-1 text-start text-xs font-black tracking-tight">{item.title}</span>
+          </div>
+        </Link>
+      )}
+    </SidebarMenuItem>
+  )
 }
