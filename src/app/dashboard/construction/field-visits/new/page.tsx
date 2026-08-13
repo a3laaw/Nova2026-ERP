@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -132,7 +133,6 @@ export default function NewStructuredFieldVisitPage() {
   const [boqItems, setBoqItems] = useState<any[]>([]);
   const [linkedSubcontractors, setLinkedSubcontractors] = useState<any[]>([]);
 
-  // 1. جلب البيانات الأساسية
   const clientsQuery = useMemo(() => companyId && db ? query(collection(db, paths.clients(companyId)), orderBy('nameAr')) : null, [db, companyId]);
   const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
   const equipQuery = useMemo(() => companyId && db ? query(collection(db, paths.equipment(companyId)), where('status', '==', 'available')) : null, [db, companyId]);
@@ -143,7 +143,6 @@ export default function NewStructuredFieldVisitPage() {
   const { data: allEquipment } = useCollection<any>(equipQuery);
   const { data: workGroups } = useCollection<any>(groupsQuery);
 
-  // 2. جلب المشاريع (حل مشكلة القائمة الفارغة عبر تبسيط الاستعلام وفلترته برمجياً)
   const [clientTransactions, setClientTransactions] = useState<any[]>([]);
   const [transLoadingLocal, setTransLoadingLocal] = useState(false);
 
@@ -158,7 +157,6 @@ export default function NewStructuredFieldVisitPage() {
         const q = query(collection(db, paths.transactions(companyId)), where('clientId', '==', formData.clientId));
         const snap = await getDocs(q);
         const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        // فلترة المشاريع غير المكتملة برمجياً لضمان العمل دون فهارس مركبة معقدة
         setClientTransactions(list.filter(t => t.status !== 'completed'));
       } finally {
         setTransLoadingLocal(false);
@@ -175,7 +173,6 @@ export default function NewStructuredFieldVisitPage() {
 
   const [stages, setStages] = useState<any[]>([]);
 
-  // تحميل البيانات المتربطة بالمشروع (مقاولين، مراحل)
   useEffect(() => {
     if (db && companyId && formData.transactionId) {
       getDocs(query(collection(db, paths.subconContracts(companyId)), where('transactionId', '==', formData.transactionId)))
@@ -193,7 +190,6 @@ export default function NewStructuredFieldVisitPage() {
     }
   }, [db, companyId, formData.transactionId]);
 
-  // تحميل بنود BOQ المرتبطة بالمرحلة
   useEffect(() => {
     if (db && companyId && formData.transactionId && formData.activeStageId) {
       const stage = stages.find(s => s.id === formData.activeStageId);
@@ -206,7 +202,7 @@ export default function NewStructuredFieldVisitPage() {
              const items = itemsSnap.docs
                 .map(d => ({ id: d.id, ...d.data() } as BOQItem))
                 .filter(i => (i.technicalStageIds?.includes(stage.technicalStageId) || i.technicalStageId === stage.technicalStageId))
-                .map(i => ({ boqItemId: i.id, itemName: i.referenceTitle, quantity: 0, unit: i.unitSymbol || 'unit', notes: '' }));
+                .map(i => ({ boqId, boqItemId: i.id, itemName: i.referenceTitle, quantity: 0, unit: i.unitSymbol || 'unit', notes: '' }));
              setBoqItems(items);
           });
       }
@@ -253,7 +249,7 @@ export default function NewStructuredFieldVisitPage() {
         engineerName: globalUser?.fullName || 'Engineer'
       };
       await service.submitFieldLog(visitData, user.uid);
-      toast({ title: tSafe('inline.visit.recorded', 'تم حفظ السجل الميداني بنجاح', 'Visit Recorded Successfully') });
+      toast({ title: tSafe('inline.visit.recorded', 'تم حفظ السجل الميداني وتحديث المقايسة بنجاح', 'Visit Recorded & BOQ Updated') });
       router.push('/dashboard/construction/field-visits');
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
@@ -401,12 +397,12 @@ export default function NewStructuredFieldVisitPage() {
                      <Users className="h-6 w-6 text-primary" /> الموارد البشرية والعمالة
                   </h3>
                   <div className="flex gap-2 w-full md:w-auto">
-                     <Button onClick={addCompanyStaffRow} variant="outline" size="sm" className="rounded-xl border-2 font-black text-[10px] h-10 gap-2 shadow-sm bg-white hover:bg-primary/5">
+                     <button onClick={addCompanyStaffRow} type="button" className="rounded-xl border-2 font-black text-[10px] h-10 gap-2 shadow-sm bg-white hover:bg-primary/5 px-4 flex items-center">
                         <UsersRound className="h-4 w-4 text-primary" /> عمالة الشركة / مجموعة
-                     </Button>
-                     <Button onClick={addSubconRow} disabled={!formData.transactionId} variant="outline" size="sm" className="rounded-xl border-2 font-black text-[10px] h-10 gap-2 shadow-sm bg-white hover:bg-orange-50 border-orange-200 text-orange-600">
+                     </button>
+                     <button onClick={addSubconRow} type="button" disabled={!formData.transactionId} className="rounded-xl border-2 font-black text-[10px] h-10 gap-2 shadow-sm bg-white hover:bg-orange-50 border-orange-200 text-orange-600 px-4 flex items-center">
                         <Handshake className="h-4 w-4" /> عمالة مقاول باطن
-                     </Button>
+                     </button>
                   </div>
                </div>
                
@@ -448,7 +444,6 @@ export default function NewStructuredFieldVisitPage() {
                                                   </SelectItem>
                                                 );
                                              })}
-                                             {linkedSubcontractors.length === 0 && <div className="p-4 text-center text-[10px] font-bold text-rose-400">لا يوجد مقاولو باطن بعقود نشطة لهذا المشروع.</div>}
                                           </SelectGroup>
                                        ) : (
                                           <>
