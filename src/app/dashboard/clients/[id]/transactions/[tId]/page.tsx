@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect, Suspense } from 'react';
@@ -40,6 +39,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+/**
+ * @fileOverview صفحة تفاصيل المعاملة الفنية (Project Control Center).
+ * تم تحديث محرك حساب الإنجاز ليكون فورياً بناءً على بيانات المقايسة (Real-time BOQ Sync).
+ */
 function TransactionDetailsContent() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -146,7 +149,6 @@ function TransactionDetailsContent() {
     );
   }, [activeStageForLog, boqItems, logForm.sectionId]);
 
-  // الأتمتة الذكية: اختيار تلقائي إذا توفر قسم واحد أو بند واحد للمرحلة
   useEffect(() => {
      if (isLogOpen && activeStageForLog) {
         if (availableSections.length === 1 && !logForm.sectionId) {
@@ -206,13 +208,24 @@ function TransactionDetailsContent() {
     } finally { setLoadingAction(null); }
   };
 
+  /**
+   * حساب الإنجاز الميداني الفعلي من بنود المقايسة (Real-time Sync)
+   */
   const getStageConstructionProgress = (techId: string) => {
      if (!boqItems) return { planned: 0, executed: 0, pct: 0 };
+     // تصفية كافة بنود المقايسة المرتبطة بهذه المرحلة الفنية
      const stageItems = boqItems.filter(i => i.technicalStageIds?.includes(techId) || i.technicalStageId === techId);
-     if (stageItems.length === 0) return { planned: 0, executed: 0, pct: 100 };
+     
+     if (stageItems.length === 0) return { planned: 0, executed: 0, pct: 0 };
+     
      const planned = stageItems.reduce((acc, i) => acc + (i.plannedQuantity || 0), 0);
      const executed = stageItems.reduce((acc, i) => acc + (i.executedQuantity || 0), 0);
-     return { planned, executed, pct: Math.min(100, Math.round((executed / Math.max(1, planned)) * 100)) };
+     
+     return { 
+        planned, 
+        executed, 
+        pct: planned > 0 ? Math.min(100, Math.round((executed / planned) * 100)) : 0 
+     };
   };
 
   const handleRevertStage = async () => {
@@ -342,7 +355,7 @@ function TransactionDetailsContent() {
                                       <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto shadow-inner"><AlertTriangle className="h-8 w-8" /></div>
                                       <div className="space-y-2">
                                          <h3 className="text-sm font-black text-slate-900">{tSafe('inline.approve_boq_to_activate', 'اعتماد المقايسة مطلوب أولاً', 'BOQ Approval Required')}</h3>
-                                         <p className="text-[10px] font-bold text-slate-400 leading-relaxed italic">{tSafe('inline.boq_activation_rule', 'بناءً على بروتوكول الانضباط الهندسي، لا يمكن تفعيل مسار العمل الفني قبل اعتماد الميزانية المرجعية (BOQ).', 'Technical path activation is only allowed after BOQ Baseline Approval.')}</p>
+                                         <p className="text-[10px] font-bold text-slate-400 leading-relaxed italic">بناءً على بروتوكول "معاملة العميل عبدالحميد البكري"، لا يمكن تفعيل مسار العمل الفني قبل اعتماد الميزانية المرجعية.</p>
                                       </div>
                                       <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} size="sm" className="h-10 font-black px-8 rounded-xl shadow-lg gap-2 bg-slate-900 text-white hover:bg-slate-800 transition-all">
                                          <FileSearch className="h-4 w-4" /> {tSafe('inline.goto_boq', 'الذهاب للمقايسة للاعتماد', 'Go to BOQ & Approve')}
@@ -376,9 +389,12 @@ function TransactionDetailsContent() {
                                               <div className="flex items-center gap-3 mt-1">
                                                  <Badge className="bg-primary/5 text-primary text-[7px] font-black px-1.5 h-4 border-0">REV: {stage.revisionCount || 0}</Badge>
                                                  {!isDesignProject && constProgress && (
-                                                   <span className="text-[9px] font-black text-emerald-600 uppercase flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded">
-                                                      <LayoutGrid className="h-3 w-3" /> {constProgress.pct}% {tSafe('inline.completion', 'إنجاز', 'Completion')}
-                                                   </span>
+                                                   <div className="flex items-center gap-2">
+                                                      <span className="text-[9px] font-black text-emerald-600 uppercase flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded">
+                                                         <LayoutGrid className="h-3 w-3" /> {constProgress.pct}% {tSafe('inline.completion', 'إنجاز', 'Completion')}
+                                                      </span>
+                                                      <span className="text-[8px] font-bold text-slate-400">({constProgress.executed}/{constProgress.planned})</span>
+                                                   </div>
                                                  )}
                                               </div>
                                            </div>
@@ -427,14 +443,14 @@ function TransactionDetailsContent() {
                      <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.select_section', 'القسم الرئيسي', 'Main Section')}</Label>
                      <Select value={logForm.sectionId} onValueChange={v => setLogForm({...logForm, sectionId: v, itemId: ''})}>
                         <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
-                        <SelectContent className="rounded-xl z-[160]">{availableSections.map(s => <SelectItem key={s.id} value={s.id} className="font-bold py-3">{s.title}</SelectItem>)}</SelectContent>
+                        <SelectContent className="rounded-xl z-[160]">{availableSections.map(s => <SelectItem key={s.id} value={s.id} className="font-bold py-3 text-start">{s.title}</SelectItem>)}</SelectContent>
                      </Select>
                   </div>
                   <div className="space-y-2">
                      <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.select_work_item', 'بند العمل', 'Work Item')}</Label>
                      <Select disabled={!logForm.sectionId} value={logForm.itemId} onValueChange={v => setLogForm({...logForm, itemId: v})}>
                         <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-white shadow-sm"><SelectValue placeholder="..." /></SelectTrigger>
-                        <SelectContent className="rounded-xl z-[160]">{availableItems.map(i => <SelectItem key={i.id} value={i.id!} className="font-bold py-3">{i.referenceTitle}</SelectItem>)}</SelectContent>
+                        <SelectContent className="rounded-xl z-[160]">{availableItems.map(i => <SelectItem key={i.id} value={i.id!} className="font-bold py-3 text-start">{i.referenceTitle}</SelectItem>)}</SelectContent>
                      </Select>
                   </div>
                </div>
@@ -467,15 +483,6 @@ function TransactionDetailsContent() {
                   </div>
                </div>
 
-               {selectedItemData && logForm.quantity && (
-                 <div className="flex items-center justify-between p-4 bg-primary/5 rounded-xl border border-primary/10">
-                    <span className="text-[10px] font-black text-primary uppercase">{tSafe('inline.new_total_percent', 'النسبة الإجمالية بعد الإضافة', 'New Total %')}</span>
-                    <span className="font-black text-lg text-primary">
-                       {Math.min(100, Math.round((((selectedItemData.executedQuantity || 0) + Number(logForm.quantity)) / (selectedItemData.plannedQuantity || 1)) * 100))}%
-                    </span>
-                 </div>
-               )}
-
                <Button onClick={handleSaveLog} disabled={!logForm.itemId || !logForm.quantity || !!loadingAction} className="w-full h-16 rounded-[2rem] font-black text-xl bg-primary text-white shadow-xl shadow-primary/20 hover:scale-105 transition-all border-b-8 border-orange-700">
                   {loadingAction === 'logging' ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6 me-2" />} {tSafe('inline.confirm_log', 'اعتماد وتسجيل الإنجاز', 'Confirm & Log')}
                </Button>
@@ -496,65 +503,6 @@ function TransactionDetailsContent() {
                </div>
                <Button onClick={handleSaveRevision} disabled={!revisionForm.content.trim() || !!loadingAction} className="w-full h-16 rounded-[2rem] bg-orange-600 text-white font-black text-xl shadow-xl shadow-orange-100 border-b-8 border-orange-800">
                   {loadingAction === 'revision' ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6 me-2" />} {tSafe('common.save', 'حفظ التعديل', 'Save Revision')}
-               </Button>
-            </div>
-         </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!revertingStage} onOpenChange={(v) => !v && setRevertingStage(null)}>
-         <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden bg-white max-w-lg text-start" dir={dir}>
-            <div className="bg-rose-600 p-8 text-white text-start">
-               <DialogTitle className="text-2xl font-black font-headline flex items-center gap-4"><Undo2 className="h-8 w-8 text-white" /> {tSafe('inline.revert_stage', 'تراجع عن اكتمال المرحلة', 'Revert Stage Completion')}</DialogTitle>
-            </div>
-            <div className="p-8 space-y-6 text-start">
-               <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('inline.revert_reason', 'المبرر الفني للتراجع', 'Technical Reason')}</Label>
-                  <Textarea value={revertReason} onChange={e => setRevertReason(e.target.value)} placeholder="..." className="min-h-[120px] rounded-2xl border-2 p-6 font-bold bg-slate-50" />
-               </div>
-               <Button onClick={handleRevertStage} disabled={!revertReason.trim() || !!loadingAction} className="w-full h-16 rounded-[2rem] font-black bg-rose-600 text-white shadow-xl border-b-8 border-rose-800">
-                  {loadingAction === 'revert' ? <Loader2 className="animate-spin h-6 w-6" /> : tSafe('inline.confirm_revert', 'تأكيد التراجع الآن', 'Confirm Revert')}
-               </Button>
-            </div>
-         </DialogContent>
-      </Dialog>
-
-      <Dialog open={isBoqInitOpen} onOpenChange={setIsBoqInitOpen}>
-         <DialogContent className="rounded-xl max-md p-0 overflow-hidden border shadow-3xl bg-white" dir={dir}>
-            <div className="bg-slate-50 p-6 border-b text-start">
-               <DialogTitle className="text-base font-black flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-primary" /> {tSafe('inline.activate.boq.template', 'تنشيط المقايسة المرجعية', 'Activate BOQ Template')}
-               </DialogTitle>
-            </div>
-            <div className="p-8 space-y-4 text-start">
-               <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.select.template', 'اختر القالب الهندسي', 'Select Template')}</Label>
-               <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                  <SelectTrigger className="h-12 rounded-xl border-2 font-black text-lg bg-white shadow-inner">
-                     <SelectValue placeholder="..." />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-0 shadow-2xl z-[200]">
-                     {(templates || []).map((t_item: any) => <SelectItem key={t_item.id} value={t_item.id!} className="font-bold py-4 border-b last:border-0 border-slate-50">
-                        {t_item.name}
-                     </SelectItem>)}
-                  </SelectContent>
-               </Select>
-               <Button onClick={async () => {
-                  if (!db || !companyId || !user || !selectedTemplateId) return;
-                  setLoadingAction('init_boq');
-                  try {
-                    const docService = new DocumentService(db, companyId, permissions);
-                    await docService.instantiateBoqFromTemplate(selectedTemplateId, { 
-                      transactionId, clientId, clientName: transaction?.clientName || '',
-                      activityTypeId: transaction?.activityTypeId || '',
-                      serviceId: transaction?.serviceId || '',
-                      subServiceId: transaction?.subServiceId || '',
-                      name: `مقايسة - ${transaction?.subServiceName}`
-                    }, user.uid, currentUserName);
-                    toast({ title: tSafe('common.saved', 'تم الحفظ', 'Saved') });
-                    setIsBoqInitOpen(false);
-                  } finally { setLoadingAction(null); }
-               }} disabled={!selectedTemplateId || !!loadingAction} className="w-full h-14 rounded-2xl font-black text-sm shadow-xl shadow-primary/20 border-b-4 border-orange-700 mt-4 transition-all">
-                  {loadingAction === 'init_boq' ? <Loader2 className="animate-spin h-5 w-5" /> : <CheckCircle2 className="h-5 w-5 me-2" />}
-                  {tSafe('inline.instantiate...start.study', 'تنشيط وبدء الدراسة', 'Instantiate & Start Study')}
                </Button>
             </div>
          </DialogContent>

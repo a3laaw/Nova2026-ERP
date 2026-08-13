@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -51,56 +50,62 @@ function SearchablePicker({ value, onSelect, items, search, onSearchChange, icon
   const [open, setOpen] = useState(false);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild disabled={disabled}>
-        <Button variant="outline" className="w-full h-12 rounded-xl border-2 font-bold justify-between bg-white px-4 shadow-sm text-start">
-          <div className="flex items-center gap-3 overflow-hidden text-start">
-             <Icon className="h-4 w-4 text-primary opacity-40" />
-             <span className="truncate">{isLoading ? '...' : (value || placeholder)}</span>
+    <div className="relative w-full">
+      <Button
+        type="button"
+        variant="outline"
+        disabled={disabled}
+        onClick={() => setOpen(!open)}
+        className="w-full h-12 rounded-xl border-2 font-bold justify-between bg-white px-4 shadow-sm text-start"
+      >
+        <div className="flex items-center gap-3 overflow-hidden text-start">
+           <Icon className="h-4 w-4 text-primary opacity-40" />
+           <span className="truncate">{isLoading ? '...' : (value || placeholder)}</span>
+        </div>
+        <ChevronDown className="h-4 w-4 opacity-20" />
+      </Button>
+
+      {open && (
+        <div className="absolute z-[999] mt-2 w-full bg-white border-2 border-slate-100 rounded-2xl shadow-3xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+          <div className="p-3 bg-slate-50 border-b border-slate-100 relative">
+            <Search className="absolute start-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="ابحث..."
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              autoFocus
+              className="h-10 ps-10 rounded-xl border-2 font-bold focus:border-primary"
+            />
           </div>
-          <ChevronDown className="h-4 w-4 opacity-20" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[350px] p-0 rounded-2xl shadow-3xl border-2 z-[200]" align="start">
-         <div className="p-3 bg-slate-50 border-b">
-            <div className="relative">
-               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-               <Input 
-                 placeholder="بحث..." 
-                 className="h-9 ps-9 rounded-lg border-2 bg-white text-xs font-bold"
-                 value={search}
-                 onChange={e => onSearchChange(e.target.value)}
-               />
+          <ScrollArea className="max-h-60 overflow-y-auto p-2">
+            <div className="space-y-1">
+              {isLoading ? (
+                <div className="py-10 text-center"><Loader2 className="animate-spin h-6 w-6 mx-auto text-primary/20" /></div>
+              ) : items.length === 0 ? (
+                <div className="py-10 text-center text-xs font-bold text-slate-400 italic">لا توجد نتائج</div>
+              ) : (
+                items.map((item: any) => (
+                  <div 
+                    key={item.id} 
+                    onClick={() => { onSelect(item); setOpen(false); }}
+                    className={cn(
+                      "p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between group",
+                      (value === (item.nameAr || item.subServiceName)) ? "bg-primary/5 text-primary border-primary/10" : "hover:bg-slate-50"
+                    )}
+                  >
+                    <div className="flex flex-col text-start">
+                      <span className="font-bold text-sm">{item.nameAr || item.subServiceName}</span>
+                      <span className="text-[10px] text-slate-400">#{item.fileNumber || item.transactionNumber}</span>
+                    </div>
+                    {(value === (item.nameAr || item.subServiceName)) && <Check className="h-4 w-4" />}
+                  </div>
+                ))
+              )}
             </div>
-         </div>
-         <ScrollArea className="h-64">
-            <div className="p-2 space-y-1">
-               {isLoading ? (
-                 <div className="py-10 text-center"><Loader2 className="animate-spin h-6 w-6 mx-auto text-primary/20" /></div>
-               ) : items.length === 0 ? (
-                 <div className="py-10 text-center text-xs font-bold text-slate-400 italic">لا توجد نتائج</div>
-               ) : (
-                 items.map((item: any) => (
-                   <div 
-                     key={item.id} 
-                     onClick={() => { onSelect(item); setOpen(false); }}
-                     className={cn(
-                       "p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between group",
-                       (value === (item.nameAr || item.subServiceName)) ? "bg-primary/5 text-primary" : "hover:bg-slate-50"
-                     )}
-                   >
-                      <div className="text-start">
-                         <p className="font-black text-xs text-slate-900">{item.nameAr || item.subServiceName}</p>
-                         <p className="text-[8px] font-mono text-slate-400 mt-1 uppercase">#{item.fileNumber || item.transactionNumber}</p>
-                      </div>
-                      {(value === (item.nameAr || item.subServiceName)) && <Check className="h-3.5 w-3.5" />}
-                   </div>
-                 ))
-               )}
-            </div>
-         </ScrollArea>
-      </PopoverContent>
-    </Popover>
+          </ScrollArea>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -129,13 +134,13 @@ export default function NewStructuredFieldVisitPage() {
   });
 
   const [staffRows, setStaffRows] = useState<any[]>([]);
-  const [equipRows, setEquipRows] = useState<any[]>([{ equipmentId: '', equipmentName: '', count: 1, hours: 8 }]);
+  const [equipRows, setEquipRows] = useState<any[]>([]);
   const [boqItems, setBoqItems] = useState<any[]>([]);
   const [linkedSubcontractors, setLinkedSubcontractors] = useState<any[]>([]);
 
   const clientsQuery = useMemo(() => companyId && db ? query(collection(db, paths.clients(companyId)), orderBy('nameAr')) : null, [db, companyId]);
-  const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
-  const equipQuery = useMemo(() => companyId && db ? query(collection(db, paths.equipment(companyId)), where('status', '==', 'available')) : null, [db, companyId]);
+  const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active'), orderBy('fullName')) : null, [db, companyId]);
+  const equipQuery = useMemo(() => companyId && db ? query(collection(db, paths.equipment(companyId)), where('isActive', '==', true)) : null, [db, companyId]);
   const groupsQuery = useMemo(() => companyId && db ? query(collection(db, paths.workGroups(companyId)), where('isActive', '==', true)) : null, [db, companyId]);
 
   const { data: allClients, loading: clientsLoading } = useCollection<any>(clientsQuery);
@@ -157,6 +162,7 @@ export default function NewStructuredFieldVisitPage() {
         const q = query(collection(db, paths.transactions(companyId)), where('clientId', '==', formData.clientId));
         const snap = await getDocs(q);
         const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // الفلترة برمجياً لتجنب مشاكل الفهارس في Firebase
         setClientTransactions(list.filter(t => t.status !== 'completed'));
       } finally {
         setTransLoadingLocal(false);
@@ -209,31 +215,29 @@ export default function NewStructuredFieldVisitPage() {
     }
   }, [db, companyId, formData.transactionId, formData.activeStageId, stages]);
 
-  const isResourceAlreadyAdded = (id: string, type: string) => {
-    return staffRows.some(row => row.resourceId === id && row.resourceType === type);
-  };
+  const addCompanyStaffRow = () => setStaffRows([...staffRows, { resourceType: 'work_group', resourceId: '', resourceName: '', count: 1, notes: '' }]);
+  const addSubconRow = () => setStaffRows([...staffRows, { resourceType: 'subcontractor', resourceId: '', resourceName: '', count: 1, notes: '' }]);
+  const addEquipRow = () => setEquipRows([...equipRows, { equipmentId: '', equipmentName: '', count: 1, hours: 8 }]);
+
+  const isResourceAdded = (id: string, type: string) => staffRows.some(r => r.resourceId === id && r.resourceType === type);
 
   const updateStaffRow = (idx: number, selectionId: string) => {
     const newRows = [...staffRows];
     if (selectionId.startsWith('GROUP_')) {
-      const groupId = selectionId.replace('GROUP_', '');
-      const group = workGroups?.find((g: any) => g.id === groupId);
-      newRows[idx] = { ...newRows[idx], resourceType: 'work_group', resourceId: groupId, resourceName: group?.name || '', count: group?.memberCount || 1 };
+      const id = selectionId.replace('GROUP_', '');
+      const g = workGroups?.find((x:any) => x.id === id);
+      newRows[idx] = { ...newRows[idx], resourceType: 'work_group', resourceId: id, resourceName: g?.name || '', count: g?.memberCount || 1 };
     } else if (selectionId.startsWith('EMP_')) {
-      const empId = selectionId.replace('EMP_', '');
-      const emp = allEmployees?.find((e: any) => e.id === empId);
-      newRows[idx] = { ...newRows[idx], resourceType: 'employee', resourceId: empId, resourceName: emp?.fullName || '', count: 1 };
+      const id = selectionId.replace('EMP_', '');
+      const e = allEmployees?.find((x:any) => x.id === id);
+      newRows[idx] = { ...newRows[idx], resourceType: 'employee', resourceId: id, resourceName: e?.fullName || '', count: 1 };
     } else if (selectionId.startsWith('SUB_')) {
-      const subId = selectionId.replace('SUB_', '');
-      const sub = linkedSubcontractors?.find((s: any) => s.id === subId);
-      newRows[idx] = { ...newRows[idx], resourceType: 'subcontractor', resourceId: subId, resourceName: sub?.name || '', count: 1 };
+      const id = selectionId.replace('SUB_', '');
+      const s = linkedSubcontractors?.find((x:any) => x.id === id);
+      newRows[idx] = { ...newRows[idx], resourceType: 'subcontractor', resourceId: id, resourceName: s?.name || '', count: 1 };
     }
     setStaffRows(newRows);
   };
-
-  const addCompanyStaffRow = () => setStaffRows([...staffRows, { resourceType: 'work_group', resourceId: '', resourceName: '', count: 1, notes: '' }]);
-  const addSubconRow = () => setStaffRows([...staffRows, { resourceType: 'subcontractor', resourceId: '', resourceName: '', count: 1, notes: '' }]);
-  const addEquipRow = () => setEquipRows([...equipRows, { equipmentId: '', equipmentName: '', count: 1, hours: 8 }]);
 
   const handleSave = async () => {
     if (!db || !companyId || !user || !formData.transactionId || !formData.activeStageId) return;
@@ -249,7 +253,7 @@ export default function NewStructuredFieldVisitPage() {
         engineerName: globalUser?.fullName || 'Engineer'
       };
       await service.submitFieldLog(visitData, user.uid);
-      toast({ title: tSafe('inline.visit.recorded', 'تم حفظ السجل الميداني وتحديث المقايسة بنجاح', 'Visit Recorded & BOQ Updated') });
+      toast({ title: tSafe('inline.visit.recorded', 'تم حفظ السجل وتحديث المقايسة بنجاح', 'Visit Recorded Successfully') });
       router.push('/dashboard/construction/field-visits');
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
@@ -259,15 +263,13 @@ export default function NewStructuredFieldVisitPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-full mx-auto pb-20 animate-in fade-in duration-500 text-start bg-white min-h-screen" dir={dir}>
-      <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-white/95 backdrop-blur-md px-8 shadow-sm">
+    <div className="space-y-8 animate-in fade-in duration-500 text-start bg-[#fdfaf3] min-h-screen" dir={dir}>
+      <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-white/90 backdrop-blur-md px-8 shadow-sm">
         <div className="flex items-center gap-4 text-start">
            <button onClick={() => router.back()} className="h-10 w-10 border-2 rounded-xl flex items-center justify-center hover:bg-slate-50 transition-colors text-slate-400 shrink-0">
              <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
            </button>
-           <div className="text-start">
-              <h1 className="text-xl font-black font-headline text-slate-900">{isRtl ? 'توثيق سجل ميداني سيادي' : 'Sovereign Field Documentation'}</h1>
-           </div>
+           <h1 className="text-xl font-black font-headline text-slate-900">{isRtl ? 'توثيق سجل ميداني سيادي' : 'Sovereign Field Documentation'}</h1>
         </div>
         <Button onClick={handleSave} disabled={loading || !formData.transactionId || !formData.activeStageId} className="h-12 px-10 rounded-xl bg-primary text-white font-black shadow-xl border-b-4 border-orange-700">
            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {t('common.confirm')}
@@ -325,6 +327,7 @@ export default function NewStructuredFieldVisitPage() {
                            </SelectTrigger>
                            <SelectContent className="rounded-xl border shadow-2xl z-[160]">
                               {stages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">{s.name}</SelectItem>)}
+                              {stages.length === 0 && <div className="p-4 text-center text-xs font-bold text-slate-400 italic">لا توجد مراحل نشطة (قيد التنفيذ) في رادار المشاريع حالياً.</div>}
                            </SelectContent>
                         </Select>
                      </div>
@@ -343,7 +346,7 @@ export default function NewStructuredFieldVisitPage() {
                      <ShieldCheck className="h-6 w-6" />
                      <h4 className="font-black text-lg uppercase tracking-tight">{tSafe('inline.field.integrity', 'بروتوكول النزاهة الميدانية', 'Field Integrity')}</h4>
                   </div>
-                  <p className="text-[10px] font-bold text-slate-400 leading-relaxed italic">سيقوم النظام بتحديث نسب إنجاز المقايسة آلياً، وستظهر التكاليف الفعلية في النظام المالي بناءً على الموارد الموثقة.</p>
+                  <p className="text-[10px] font-bold text-slate-400 leading-relaxed italic">سيقوم النظام بتحديث نسب إنجاز المقايسة والمسار الفني آلياً فور الحفظ.</p>
                </CardContent>
             </Card>
          </div>
@@ -364,7 +367,7 @@ export default function NewStructuredFieldVisitPage() {
                      </TableHeader>
                      <TableBody>
                         {boqItems.length === 0 ? (
-                          <TableRow><TableCell colSpan={3} className="py-20 text-center text-slate-300 font-bold italic">يرجى اختيار المرحلة أولاً لعرض البنود.</TableCell></TableRow>
+                          <TableRow><TableCell colSpan={3} className="py-20 text-center text-slate-300 font-bold italic">يرجى اختيار المرحلة أولاً لعرض البنود المرتبطة بها في المقايسة.</TableCell></TableRow>
                         ) : boqItems.map((item, idx) => (
                            <TableRow key={idx} className="border-b-slate-50 hover:bg-slate-50/30 transition-colors">
                               <td className="py-6 ps-8 font-black text-slate-800 text-sm">{item.itemName}</td>
@@ -383,7 +386,7 @@ export default function NewStructuredFieldVisitPage() {
                                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-300 uppercase">{item.unit}</span>
                                  </div>
                               </td>
-                              <td className="pe-8"><Input className="h-10 border-2 rounded-xl bg-slate-50/30 text-xs font-bold" placeholder="..." /></td>
+                              <td className="pe-8"><Input value={item.notes} onChange={e => { const ni = [...boqItems]; ni[idx].notes = e.target.value; setBoqItems(ni); }} className="h-10 border-2 rounded-xl bg-slate-50/30 text-xs font-bold" placeholder="..." /></td>
                            </TableRow>
                         ))}
                      </TableBody>
@@ -434,9 +437,9 @@ export default function NewStructuredFieldVisitPage() {
                                           <SelectGroup>
                                              <SelectLabel className="font-black text-[10px] text-slate-400 uppercase bg-slate-50 py-2">مقاولون مرتبطون مالياً بالمشروع</SelectLabel>
                                              {linkedSubcontractors.map(s => {
-                                                const isDuplicate = isResourceAlreadyAdded(s.id, 'subcontractor');
+                                                const isDuplicate = isResourceAdded(s.id, 'subcontractor');
                                                 return (
-                                                  <SelectItem key={s.id} value={`SUB_${s.id}`} disabled={isDuplicate} className="font-bold py-3 text-xs border-b last:border-0 border-slate-50">
+                                                  <SelectItem key={s.id} value={`SUB_${s.id}`} disabled={isDuplicate} className="font-bold py-3 text-xs border-b last:border-0 border-slate-50 text-start">
                                                      <div className="flex items-center gap-2">
                                                         <Handshake className={cn("h-4 w-4", isDuplicate ? "text-slate-200" : "text-orange-500")} /> 
                                                         <span>{s.name} {isDuplicate && `(${isRtl ? 'مختار' : 'Added'})`}</span>
@@ -450,9 +453,9 @@ export default function NewStructuredFieldVisitPage() {
                                              <SelectGroup>
                                                 <SelectLabel className="font-black text-[10px] text-slate-400 uppercase bg-slate-50 py-2">فرق العمل المعتمدة (Crews)</SelectLabel>
                                                 {workGroups?.map((g: any) => {
-                                                   const isDuplicate = isResourceAlreadyAdded(g.id, 'work_group');
+                                                   const isDuplicate = isResourceAdded(g.id, 'work_group');
                                                    return (
-                                                     <SelectItem key={g.id} value={`GROUP_${g.id}`} disabled={isDuplicate} className="font-black text-xs py-3 border-b border-slate-50">
+                                                     <SelectItem key={g.id} value={`GROUP_${g.id}`} disabled={isDuplicate} className="font-black text-xs py-3 border-b last:border-0 border-slate-50 text-start">
                                                         <span className="flex items-center gap-2">
                                                            <UsersRound className={cn("h-4 w-4", isDuplicate ? "text-slate-200" : "text-primary")} /> 
                                                            {g.name} {isDuplicate && `(${isRtl ? 'مختار' : 'Added'})`}
@@ -464,9 +467,9 @@ export default function NewStructuredFieldVisitPage() {
                                              <SelectGroup>
                                                 <SelectLabel className="font-black text-[10px] text-slate-400 uppercase bg-slate-50 py-2 mt-2">موظفون من كافة الأقسام (Individual)</SelectLabel>
                                                 {allEmployees?.map((e: any) => {
-                                                   const isDuplicate = isResourceAlreadyAdded(e.id, 'employee');
+                                                   const isDuplicate = isResourceAdded(e.id, 'employee');
                                                    return (
-                                                     <SelectItem key={e.id} value={`EMP_${e.id}`} disabled={isDuplicate} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
+                                                     <SelectItem key={e.id} value={`EMP_${e.id}`} disabled={isDuplicate} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50 text-start">
                                                         <div className="flex items-center gap-2">
                                                            <User className={cn("h-4 w-4", isDuplicate ? "text-slate-200" : "text-blue-500")} /> 
                                                            <span>{e.fullName} {isDuplicate && `(${isRtl ? 'مختار' : 'Added'})`}</span>
@@ -493,7 +496,7 @@ export default function NewStructuredFieldVisitPage() {
                                    className={cn("h-11 rounded-xl border-2 text-center font-black text-xl", row.resourceType === 'employee' ? "bg-slate-100 text-slate-400 border-0" : "bg-slate-50 shadow-inner")} 
                                  />
                               </TableCell>
-                              <TableCell className="py-4">
+                              <TableCell className="py-4 text-start">
                                  <Input 
                                    value={row.notes} 
                                    onChange={e => {
@@ -535,7 +538,9 @@ export default function NewStructuredFieldVisitPage() {
                         </TableRow>
                      </TableHeader>
                      <TableBody>
-                        {equipRows.map((row: any, idx: number) => (
+                        {equipRows.length === 0 ? (
+                           <TableRow><TableCell colSpan={4} className="py-16 text-center text-slate-300 font-bold italic">لا توجد آليات مسجلة.</TableCell></TableRow>
+                        ) : equipRows.map((row: any, idx: number) => (
                            <TableRow key={idx} className="border-b last:border-0 hover:bg-slate-50/30 transition-colors">
                               <TableCell className="ps-6 py-3 text-start">
                                  <Select value={row.equipmentId} onValueChange={v => {
@@ -549,7 +554,7 @@ export default function NewStructuredFieldVisitPage() {
                                        {allEquipment?.map((e: any) => {
                                           const isDuplicate = equipRows.some((er, i) => er.equipmentId === e.id && i !== idx);
                                           return (
-                                             <SelectItem key={e.id} value={e.id!} disabled={isDuplicate} className="font-bold py-3 text-xs border-b last:border-0">
+                                             <SelectItem key={e.id} value={e.id!} disabled={isDuplicate} className="font-bold py-3 text-xs border-b last:border-0 text-start">
                                                 {e.name} ({e.code}) {isDuplicate && `(${isRtl ? 'مختارة' : 'Added'})`}
                                              </SelectItem>
                                           );
@@ -558,10 +563,20 @@ export default function NewStructuredFieldVisitPage() {
                                  </Select>
                               </TableCell>
                               <TableCell className="py-3">
-                                 <Input type="number" defaultValue={1} className="h-10 rounded-xl border-2 text-center font-black bg-slate-50 shadow-inner" />
+                                 <Input 
+                                    type="number" 
+                                    value={row.count} 
+                                    onChange={e => { const nr = [...equipRows]; nr[idx].count = Number(e.target.value); setEquipRows(nr); }}
+                                    className="h-10 rounded-xl border-2 text-center font-black bg-slate-50 shadow-inner" 
+                                 />
                               </TableCell>
                               <TableCell className="py-3">
-                                 <Input type="number" defaultValue={8} className="h-10 rounded-xl border-2 text-center font-black bg-primary/5 text-primary" />
+                                 <Input 
+                                    type="number" 
+                                    value={row.hours} 
+                                    onChange={e => { const nr = [...equipRows]; nr[idx].hours = Number(e.target.value); setEquipRows(nr); }}
+                                    className="h-10 rounded-xl border-2 text-center font-black bg-primary/5 text-primary" 
+                                 />
                               </TableCell>
                               <TableCell className="pe-8">
                                  <Button variant="ghost" size="icon" onClick={() => setEquipRows(equipRows.filter((_, i) => i !== idx))} className="h-10 w-10 text-rose-300 hover:text-rose-600 transition-colors"><Trash2 className="h-4 w-4" /></Button>
