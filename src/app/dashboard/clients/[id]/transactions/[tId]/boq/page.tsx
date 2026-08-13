@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -17,7 +16,7 @@ import {
   LayoutGrid, X, Clock, FilePlus,
   History, TrendingUp, DollarSign,
   HardHat, UserCheck, Link as LinkIcon,
-  ShieldCheck
+  ShieldCheck, Handshake
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
@@ -158,7 +157,9 @@ export default function TransactionBOQProgressPage() {
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-2 shadow-2xl z-[150]">
                      <SelectItem value="NONE" className="font-bold text-[10px] text-slate-400 italic">--- {isRtl ? 'بدون مقاول' : 'Internal'} ---</SelectItem>
-                     {subcontractors?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px] py-1.5">{s.name}</SelectItem>)}
+                     {subcontractors?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-[10px] py-1.5">
+                        <span className="flex items-center gap-2"><Handshake className="h-2.5 w-2.5" /> {s.name}</span>
+                     </SelectItem>)}
                   </SelectContent>
                </Select>
             </TableCell>

@@ -50,7 +50,7 @@ function NewFieldVisitForm() {
   const [activeStage, setActiveStage] = useState<StageInstance | null>(null);
   const [loadingStage, setLoadingStage] = useState(false);
 
-  const [staffRows, setStaffRows] = useState<any[]>([{ employeeId: '', position: '', count: 1 }]);
+  const [staffRows, setStaffRows] = useState<any[]>([{ employeeId: '', subcontractorId: '', subcontractorName: '', position: '', count: 1 }]);
   const [equipRows, setEquipRows] = useState<any[]>([{ equipmentId: '', count: 1, hours: 8 }]);
   const [materialRows, setMaterialRows] = useState<any[]>([{ type: '', unit: '', quantity: 0 }]);
   const [executionRows, setExecutionRows] = useState<any[]>([{ boqItemId: '', quantity: '', notes: '' }]);
@@ -63,11 +63,14 @@ function NewFieldVisitForm() {
     (companyId && db) ? query(collection(db, paths.equipment(companyId)), where('status', '==', 'available')) : null, [db, companyId]);
   const groupsQuery = useMemo(() => 
     (companyId && db) ? query(collection(db, paths.workGroups(companyId)), where('isActive', '==', true)) : null, [db, companyId]);
+  const subsQuery = useMemo(() => 
+    (companyId && db) ? query(collection(db, paths.subcontractors(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
 
   const { data: allTransactions } = useCollection<Transaction>(transQuery);
   const { data: employees } = useCollection<Employee>(empsQuery);
   const { data: equipmentList } = useCollection<any>(equipQuery);
   const { data: workGroups } = useCollection<WorkGroup>(groupsQuery);
+  const { data: subcontractors } = useCollection<any>(subsQuery);
 
   const contractedClients = useMemo(() => {
     const clientsMap = new Map();
@@ -115,11 +118,6 @@ function NewFieldVisitForm() {
     return (employees || []).filter(e => !selectedIds.includes(e.id));
   };
 
-  const getAvailableEquipment = (currentRowIdx: number) => {
-    const selectedIds = equipRows.map((r, i) => i !== currentRowIdx ? r.equipmentId : null).filter(Boolean);
-    return (equipmentList || []).filter(e => !selectedIds.includes(e.id));
-  };
-
   const handleLoadGroup = (groupId: string) => {
     const group = workGroups?.find(g => g.id === groupId);
     if (!group || !employees) return;
@@ -129,7 +127,7 @@ function NewFieldVisitForm() {
       if (!currentStaffIds.has(mid)) {
         const emp = employees.find(e => e.id === mid);
         if (emp) {
-          newRows.push({ employeeId: emp.id, position: emp.jobTitle, count: 1 });
+          newRows.push({ employeeId: emp.id, subcontractorId: '', subcontractorName: '', position: emp.jobTitle, count: 1 });
           currentStaffIds.add(mid);
         }
       }
@@ -171,9 +169,9 @@ function NewFieldVisitForm() {
           unit: allBoqItems?.find(i => i.id === r.boqItemId)?.unitSymbol || '',
           executionStatus: 'executed'
         })),
-        staffDetails: staffRows.filter(s => s.employeeId).map(s => ({
+        staffDetails: staffRows.filter(s => s.employeeId || s.subcontractorId).map(s => ({
            ...s,
-           employeeName: employees?.find(e => e.id === s.employeeId)?.fullName || ''
+           employeeName: s.employeeId ? (employees?.find(e => e.id === s.employeeId)?.fullName || '') : s.subcontractorName
         })),
         equipmentUsed: equipRows.filter(e => e.equipmentId).map(e => ({
            ...e,
@@ -324,7 +322,7 @@ function NewFieldVisitForm() {
                   <div className="text-start">
                     <CardTitle className="text-sm font-black uppercase text-slate-700 tracking-widest flex items-center gap-2">
                        <UserCircle className="h-4 w-4 text-primary" /> 
-                       {tSafe('inline.staff.resources', 'الموارد البشرية', 'Staff Resources')}
+                       {tSafe('inline.staff.resources', 'الموارد البشرية والعمالة', 'Staff & Labor')}
                     </CardTitle>
                   </div>
                   <div className="flex gap-2">
@@ -340,49 +338,76 @@ function NewFieldVisitForm() {
                            ))}
                         </SelectContent>
                      </Select>
-                     <Button variant="ghost" size="icon" onClick={() => setStaffRows([...staffRows, { employeeId: '', position: '', count: 1 }])} className="text-primary hover:bg-primary/5 rounded-full"><PlusCircle className="h-6 w-6" /></Button>
+                     <Button variant="ghost" size="icon" onClick={() => setStaffRows([...staffRows, { employeeId: '', subcontractorId: '', subcontractorName: '', position: '', count: 1 }])} className="text-primary hover:bg-primary/5 rounded-full"><PlusCircle className="h-6 w-6" /></Button>
                   </div>
                </CardHeader>
                <CardContent className="p-0">
                   <Table>
                      <TableHeader className="bg-white border-b-2">
                         <TableRow>
-                           <TableHead className="ps-6 text-start text-[10px] font-black text-slate-400 uppercase">{tSafe('inline.employee.position', 'الموظف / المساعد', 'Employee / Position')}</TableHead>
+                           <TableHead className="ps-6 text-start text-[10px] font-black text-slate-400 uppercase">{tSafe('inline.employee.labor', 'الموظف / الجهة', 'Employee / Source')}</TableHead>
                            <TableHead className="text-center w-24 text-[10px] font-black text-slate-400 uppercase">{tSafe('inline.count', 'العدد', 'Count')}</TableHead>
                            <TableHead className="w-12"></TableHead>
                         </TableRow>
                      </TableHeader>
                      <TableBody>
-                        {staffRows.map((row, idx) => {
-                           const availableEmps = getAvailableEmployees(idx);
-                           return (
-                             <TableRow key={idx} className="border-b last:border-0 hover:bg-slate-50/50 transition-colors">
-                                <TableCell className="ps-6 py-3">
-                                   <Select value={row.employeeId} onValueChange={v => {
-                                      const emp = employees?.find(e => e.id === v);
-                                      const nr = [...staffRows];
-                                      nr[idx] = { ...nr[idx], employeeId: v, position: emp?.jobTitle || '' };
-                                      setStaffRows(nr);
-                                   }}>
-                                      <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs bg-white"><SelectValue placeholder="..." /></SelectTrigger>
-                                      <SelectContent className="rounded-xl z-[160] shadow-3xl">
-                                         {availableEmps?.map(e => (
-                                           <SelectItem key={e.id} value={e.id!} className="font-bold py-3">
-                                              {e.fullName} <Badge variant="outline" className="ms-2 text-[8px] h-4 border-0 bg-slate-100">{e.jobTitle}</Badge>
-                                           </SelectItem>
-                                         ))}
-                                      </SelectContent>
-                                   </Select>
-                                </TableCell>
-                                <TableCell className="py-3">
-                                   <Input type="number" value={row.count} onChange={e => { const nr = [...staffRows]; nr[idx].count = e.target.value; setStaffRows(nr); }} className="h-10 text-center font-black border-2 rounded-xl" />
-                                </TableCell>
-                                <TableCell className="pe-4 text-center">
-                                   <button onClick={() => setStaffRows(staffRows.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-rose-500 p-1 transition-colors"><X className="h-4 w-4" /></button>
-                                </TableCell>
-                             </TableRow>
-                           );
-                        })}
+                        {staffRows.map((row, idx) => (
+                           <TableRow key={idx} className="border-b last:border-0 hover:bg-slate-50/50 transition-colors">
+                              <TableCell className="ps-6 py-3">
+                                 <div className="flex flex-col gap-2">
+                                    <Select value={row.employeeId || 'NONE'} onValueChange={v => {
+                                       if (v === 'SUBCON') {
+                                          setStaffRows(prev => {
+                                             const nr = [...prev];
+                                             nr[idx] = { ...nr[idx], employeeId: '', subcontractorId: '' };
+                                             return nr;
+                                          });
+                                       } else {
+                                          const emp = employees?.find(e => e.id === v);
+                                          const nr = [...staffRows];
+                                          nr[idx] = { ...nr[idx], employeeId: v, subcontractorId: '', subcontractorName: '', position: emp?.jobTitle || '' };
+                                          setStaffRows(nr);
+                                       }
+                                    }}>
+                                       <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs bg-white">
+                                          <SelectValue placeholder={tSafe('inline.select.internal.staff', '--- عمالة الشركة ---', 'Internal Staff')} />
+                                       </SelectTrigger>
+                                       <SelectContent className="rounded-xl z-[160] shadow-3xl">
+                                          <SelectItem value="NONE" className="font-bold text-xs py-3 border-b text-slate-400">--- عمالة الشركة ---</SelectItem>
+                                          {getAvailableEmployees(idx).map(e => (
+                                            <SelectItem key={e.id} value={e.id!} className="font-bold py-3">
+                                               {e.fullName} <Badge variant="outline" className="ms-2 text-[8px] h-4 border-0 bg-slate-100">{e.jobTitle}</Badge>
+                                            </SelectItem>
+                                          ))}
+                                          <SelectItem value="SUBCON" className="font-bold text-xs py-3 text-orange-600 border-t">--- مقاول باطن ---</SelectItem>
+                                       </SelectContent>
+                                    </Select>
+                                    
+                                    {!row.employeeId && (
+                                       <Select value={row.subcontractorId} onValueChange={v => {
+                                          const sub = subcontractors?.find((s:any) => s.id === v);
+                                          const nr = [...staffRows];
+                                          nr[idx] = { ...nr[idx], subcontractorId: v, subcontractorName: sub?.name || '' };
+                                          setStaffRows(nr);
+                                       }}>
+                                          <SelectTrigger className="h-9 rounded-xl border-2 bg-orange-50/50 border-orange-200 text-orange-700 font-bold text-[10px] animate-in slide-in-from-top-2">
+                                             <SelectValue placeholder={tSafe('inline.choose.subcon', 'اختر المقاول المسؤول...', 'Choose Subcontractor...')} />
+                                          </SelectTrigger>
+                                          <SelectContent className="rounded-xl z-[161] shadow-3xl">
+                                             {subcontractors?.map((s:any) => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3">{s.name}</SelectItem>)}
+                                          </SelectContent>
+                                       </Select>
+                                    )}
+                                 </div>
+                              </TableCell>
+                              <TableCell className="py-3 align-top pt-4">
+                                 <Input type="number" value={row.count} onChange={e => { const nr = [...staffRows]; nr[idx].count = e.target.value; setStaffRows(nr); }} className="h-10 text-center font-black border-2 rounded-xl" />
+                              </TableCell>
+                              <TableCell className="pe-4 text-center align-top pt-5">
+                                 <button onClick={() => setStaffRows(staffRows.filter((_, i) => i !== idx))} className="text-slate-300 hover:text-rose-500 p-1 transition-colors"><X className="h-4 w-4" /></button>
+                              </TableCell>
+                           </TableRow>
+                        ))}
                      </TableBody>
                   </Table>
                </CardContent>
