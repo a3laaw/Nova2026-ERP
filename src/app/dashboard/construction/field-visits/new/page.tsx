@@ -16,7 +16,7 @@ import {
   ArrowRight, CheckCircle2, Workflow,
   Search, Check, ChevronDown, Landmark,
   AlertTriangle, Handshake, CalendarDays,
-  LayoutGrid
+  LayoutGrid, UserCircle
 } from "lucide-react";
 import { 
   Popover,
@@ -117,6 +117,7 @@ export default function NewStructuredFieldVisitPage() {
     clientName: '',
     transactionId: '',
     transactionNumber: '',
+    transactionName: '',
     activeStageId: '',
     activeStageName: '',
     visitDate: new Date().toISOString().split('T')[0],
@@ -175,6 +176,11 @@ export default function NewStructuredFieldVisitPage() {
   const addStaffRow = () => setStaffRows([...staffRows, { employeeId: '', employeeName: '', subcontractorId: '', subcontractorName: '', count: 1 }]);
   const addEquipRow = () => setEquipRows([...equipRows, { equipmentId: '', equipmentName: '', count: 1, hours: 8 }]);
 
+  const getAvailableEquipment = (currentIndex: number) => {
+    const selectedIds = equipRows.filter((_, i) => i !== currentIndex).map(r => r.equipmentId);
+    return (allEquipment || []).filter(e => !selectedIds.includes(e.id));
+  };
+
   const updateBoqQty = (idx: number, val: string) => {
      const newItems = [...boqItems];
      newItems[idx].quantity = Number(val) || 0;
@@ -203,11 +209,6 @@ export default function NewStructuredFieldVisitPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const getAvailableEquipment = (currentIndex: number) => {
-    const selectedIds = equipRows.filter((_, i) => i !== currentIndex).map(r => r.equipmentId);
-    return (allEquipment || []).filter(e => !selectedIds.includes(e.id));
   };
 
   return (
@@ -245,7 +246,7 @@ export default function NewStructuredFieldVisitPage() {
                         <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('common.client', 'العميل', 'Client')}</Label>
                         <SearchablePicker 
                           value={formData.clientName}
-                          onSelect={(c: any) => setFormData({...formData, clientName: c.nameAr, clientId: c.id, transactionId: '', transactionNumber: '', activeStageId: '', activeStageName: ''})}
+                          onSelect={(c: any) => setFormData({...formData, clientName: c.nameAr, clientId: c.id, transactionId: '', transactionNumber: '', transactionName: '', activeStageId: '', activeStageName: ''})}
                           items={filteredClients}
                           search={clientSearch}
                           onSearchChange={setClientSearch}
@@ -277,7 +278,7 @@ export default function NewStructuredFieldVisitPage() {
                            <SelectTrigger className="h-12 rounded-xl border-2 font-black bg-primary/5 border-primary/20 text-primary">
                               <SelectValue placeholder="..." />
                            </SelectTrigger>
-                           <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
+                           <SelectContent className="rounded-xl border shadow-2xl z-[160]">
                               {stages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">{s.name}</SelectItem>)}
                               {stages.length === 0 && formData.transactionId && <div className="p-4 text-center text-xs font-bold text-slate-400 italic">لا توجد مراحل نشطة للمباشرة.</div>}
                            </SelectContent>
@@ -368,7 +369,7 @@ export default function NewStructuredFieldVisitPage() {
                         </TableRow>
                      </TableHeader>
                      <TableBody>
-                        {staffRows.map((row, idx) => (
+                        {staffRows.map((row: any, idx: number) => (
                            <TableRow key={idx} className="border-b last:border-0 hover:bg-slate-50/30 transition-colors">
                               <TableCell className="ps-8 py-4">
                                  <Select onValueChange={v => {
@@ -405,7 +406,7 @@ export default function NewStructuredFieldVisitPage() {
                                  <Input type="number" defaultValue={1} className="h-10 rounded-xl border-2 text-center font-black text-lg bg-slate-50 shadow-inner" />
                               </TableCell>
                               <TableCell className="pe-8">
-                                 <Button variant="ghost" size="icon" onClick={() => setStaffRows(staffRows.filter((_, i) => i !== idx))} className="h-10 w-10 text-rose-300 hover:text-rose-600 transition-colors"><Trash2 className="h-5 w-5" /></Button>
+                                 <Button variant="ghost" size="icon" onClick={() => setStaffRows(staffRows.filter((_: any, i: number) => i !== idx))} className="h-10 w-10 text-rose-300 hover:text-rose-600 transition-colors"><Trash2 className="h-4 w-4" /></Button>
                               </TableCell>
                            </TableRow>
                         ))}
@@ -435,7 +436,7 @@ export default function NewStructuredFieldVisitPage() {
                         </TableRow>
                      </TableHeader>
                      <TableBody>
-                        {equipRows.map((row, idx) => {
+                        {equipRows.map((row: any, idx: number) => {
                            const availableEquip = getAvailableEquipment(idx);
                            return (
                              <TableRow key={idx} className="border-b last:border-0 hover:bg-slate-50/50 transition-colors">
@@ -459,7 +460,7 @@ export default function NewStructuredFieldVisitPage() {
                                    <Input type="number" defaultValue={8} className="h-10 rounded-xl border-2 text-center font-black bg-primary/5 text-primary" />
                                 </TableCell>
                                 <TableCell className="pe-8">
-                                   <Button variant="ghost" size="icon" onClick={() => setEquipRows(equipRows.filter((_, i) => i !== idx))} className="h-10 w-10 text-rose-300 hover:text-rose-600"><Trash2 className="h-5 w-5" /></Button>
+                                   <Button variant="ghost" size="icon" onClick={() => setEquipRows(equipRows.filter((_: any, i: number) => i !== idx))} className="h-10 w-10 text-rose-300 hover:text-rose-600"><Trash2 className="h-4 w-4" /></Button>
                                 </TableCell>
                              </TableRow>
                            );
