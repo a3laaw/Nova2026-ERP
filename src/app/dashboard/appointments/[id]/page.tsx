@@ -11,7 +11,7 @@ import {
   Target, X, RotateCcw, Lock, Info, Play,
   Users, Truck, Plus, Trash2, Link as LinkIcon,
   ShieldAlert, ShieldX, Sparkles, DollarSign, Building2, Briefcase, Clock, Camera, LayoutGrid,
-  Handshake, AlertCircle
+  Handshake, AlertCircle, User, UsersRound
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where, orderBy, limit, updateDoc, serverTimestamp, getDocs, collectionGroup } from 'firebase/firestore';
@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -54,7 +54,7 @@ export default function AppointmentDetailPage() {
 
   const [selectedStageId, setSelectedStageId] = useState("");
   const [loggedItems, setLoggedItems] = useState<any[]>([]);
-  const [laborDetails, setLaborDetails] = useState<any[]>([{ subcontractorId: '', subcontractorName: '', count: 1, hours: 8, hourlyCostRef: 0 }]);
+  const [laborDetails, setLaborDetails] = useState<any[]>([{ resourceType: 'internal_group', resourceId: 'INTERNAL_CREW', resourceName: isRtl ? 'عمالة الشركة العامة' : 'Internal General Crew', count: 1, hours: 8, hourlyCostRef: 0 }]);
   const [equipmentUsed, setEquipmentUsed] = useState<any[]>([{ equipmentId: '', hoursUsed: 4, hourlyRateRef: 0 }]);
 
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
@@ -76,10 +76,12 @@ export default function AppointmentDetailPage() {
   const itemsQuery = useMemo(() => companyId && db && activeBoq?.id ? query(collection(db, paths.boqItems(companyId, activeBoq.id))) : null, [db, companyId, activeBoq]);
   const { data: boqItems } = useCollection<BOQItem>(itemsQuery);
 
-  const inventoryQuery = useMemo(() => companyId && db ? query(collection(db, paths.equipment(companyId)), where('status', '==', 'available')) : null, [db, companyId]);
-  const { data: equipmentItems } = useCollection<any>(inventoryQuery);
-
+  const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
+  const equipQuery = useMemo(() => companyId && db ? query(collection(db, paths.equipment(companyId)), where('status', '==', 'available')) : null, [db, companyId]);
   const subsQuery = useMemo(() => companyId && db ? query(collection(db, paths.subcontractors(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
+
+  const { data: allEmployees } = useCollection<Employee>(empsQuery);
+  const { data: equipmentItems } = useCollection<any>(equipQuery);
   const { data: subcontractors } = useCollection<any>(subsQuery);
 
   useEffect(() => {
@@ -102,6 +104,24 @@ export default function AppointmentDetailPage() {
         }
      }
   }, [selectedStageId, boqItems, stages]);
+
+  const updateLaborRow = (idx: number, selectionId: string) => {
+    const newRows = [...laborDetails];
+    
+    if (selectionId === 'INTERNAL_CREW') {
+      newRows[idx] = { ...newRows[idx], resourceType: 'internal_group', resourceId: selectionId, resourceName: isRtl ? 'عمالة الشركة العامة' : 'Internal Crew', count: 1 };
+    } else if (selectionId.startsWith('EMP_')) {
+      const empId = selectionId.replace('EMP_', '');
+      const emp = allEmployees?.find(e => e.id === empId);
+      newRows[idx] = { ...newRows[idx], resourceType: 'employee', resourceId: empId, resourceName: emp?.fullName || '', count: 1 };
+    } else if (selectionId.startsWith('SUB_')) {
+      const subId = selectionId.replace('SUB_', '');
+      const sub = subcontractors?.find(s => s.id === subId);
+      newRows[idx] = { ...newRows[idx], resourceType: 'subcontractor', resourceId: subId, resourceName: sub?.name || '', count: 1 };
+    }
+    
+    setLaborDetails(newRows);
+  };
 
   const handleRecordProgress = async () => {
     if (!db || !companyId || !user || !activeBoq || loggedItems.length === 0) return;
@@ -253,28 +273,42 @@ export default function AppointmentDetailPage() {
                <div className="grid grid-cols-1 md:grid-cols-2 gap-10 pt-6 border-t border-slate-100">
                   <div className="space-y-6">
                      <div className="flex justify-between items-center px-1">
-                        <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{isRtl ? 'عمالة الموقع (باطن / شركة)' : 'Site Labor'}</Label>
-                        <Button variant="outline" size="sm" onClick={() => setLaborDetails([...laborDetails, { subcontractorId: '', subcontractorName: '', count: 1, hours: 8, hourlyCostRef: 0 }])} className="h-8 rounded-xl border-2 font-black"><Plus className="h-3.5 w-3.5" /></Button>
+                        <Label className="font-black text-[10px] uppercase text-slate-400 tracking-widest">{isRtl ? 'الموارد البشرية والعمالة' : 'Site Labor'}</Label>
+                        <Button variant="outline" size="sm" onClick={() => setLaborDetails([...laborDetails, { resourceType: 'internal_group', resourceId: 'INTERNAL_CREW', resourceName: isRtl ? 'عمالة الشركة العامة' : 'Internal Crew', count: 1, hours: 8, hourlyCostRef: 0 }])} className="h-8 rounded-xl border-2 font-black"><Plus className="h-3.5 w-3.5" /></Button>
                      </div>
                      <div className="space-y-3">
                         {laborDetails.map((l, i) => (
                           <div key={i} className="flex gap-2 items-center group p-4 rounded-2xl bg-slate-50/50 border-2 border-white shadow-inner">
-                             <Select value={l.subcontractorId} onValueChange={v => {
-                                const sub = v === 'INTERNAL' ? { name: isRtl ? 'عمالة الشركة' : 'Internal' } : subcontractors?.find((s:any) => s.id === v);
-                                const nl = [...laborDetails];
-                                nl[i].subcontractorId = v;
-                                nl[i].subcontractorName = sub?.name || '';
-                                setLaborDetails(nl);
-                             }}>
-                                <SelectTrigger className="h-11 rounded-xl border-2 font-bold text-xs bg-white flex-1"><SelectValue placeholder={isRtl ? 'اختر المقاول...' : 'Select...'} /></SelectTrigger>
-                                <SelectContent className="rounded-xl z-[160]">
-                                   <SelectItem value="INTERNAL" className="font-black text-xs py-3 border-b text-blue-600">{isRtl ? 'عمالة الشركة' : 'Internal Crew'}</SelectItem>
-                                   {subcontractors?.map((s:any) => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3">{s.name}</SelectItem>)}
+                             <Select value={l.resourceId || (l.resourceType === 'internal_group' ? 'INTERNAL_CREW' : '')} onValueChange={v => updateLaborRow(i, v)}>
+                                <SelectTrigger className={cn("h-11 rounded-xl border-2 font-bold text-xs bg-white flex-1", l.resourceType === 'employee' ? "text-blue-600" : (l.resourceType === 'subcontractor' ? "text-amber-600" : ""))}>
+                                   <SelectValue placeholder={isRtl ? 'اختر المورد...' : 'Select...'} />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl z-[160] max-h-80">
+                                   <SelectGroup>
+                                      <SelectLabel className="text-[10px] font-black uppercase bg-slate-50 py-2">{isRtl ? 'مجموعات الشركة' : 'Internal Crew'}</SelectLabel>
+                                      <SelectItem value="INTERNAL_CREW" className="font-black text-xs py-3 border-b">
+                                         <span className="flex items-center gap-2"><UsersRound className="h-4 w-4" /> {isRtl ? 'عمالة الشركة (مجموعة)' : 'Internal Crew'}</span>
+                                      </SelectItem>
+                                   </SelectGroup>
+                                   <SelectGroup>
+                                      <SelectLabel className="text-[10px] font-black uppercase bg-slate-50 py-2 mt-2">{isRtl ? 'موظفو الشركة' : 'Employees'}</SelectLabel>
+                                      {allEmployees?.map(e => <SelectItem key={e.id} value={`EMP_${e.id}`} className="font-bold text-xs py-3"><div className="flex items-center gap-2"><User className="h-4 w-4" /> {e.fullName}</div></SelectItem>)}
+                                   </SelectGroup>
+                                   <SelectGroup>
+                                      <SelectLabel className="text-[10px] font-black uppercase bg-slate-50 py-2 mt-2">{isRtl ? 'مقاولو الباطن' : 'Subcontractors'}</SelectLabel>
+                                      {subcontractors?.map(s => <SelectItem key={s.id} value={`SUB_${s.id}`} className="font-bold text-xs py-3"><div className="flex items-center gap-2"><Handshake className="h-4 w-4 text-primary" /> {s.name}</div></SelectItem>)}
+                                   </SelectGroup>
                                 </SelectContent>
                              </Select>
                              <div className="flex items-center gap-1.5 shrink-0">
                                 <Label className="text-[8px] font-black text-slate-400 uppercase">Count</Label>
-                                <Input type="number" value={l.count} onChange={e => { const nl = [...laborDetails]; nl[i].count = Number(e.target.value); setLaborDetails(nl); }} className="h-11 w-16 text-center text-lg font-black border-2 bg-white" />
+                                <Input 
+                                   type="number" 
+                                   readOnly={l.resourceType === 'employee'}
+                                   value={l.count} 
+                                   onChange={e => { const nl = [...laborDetails]; nl[i].count = Number(e.target.value); setLaborDetails(nl); }} 
+                                   className={cn("h-11 w-16 text-center text-lg font-black border-2", l.resourceType === 'employee' ? "bg-slate-100 border-0" : "bg-white")} 
+                                />
                              </div>
                              <Button variant="ghost" size="icon" className="h-11 w-11 text-rose-300 hover:text-rose-600" onClick={() => setLaborDetails(laborDetails.filter((_, idx) => idx !== i))}><Trash2 className="h-4 w-4" /></Button>
                           </div>
