@@ -13,7 +13,7 @@ import {
   Sparkles, FilePlus, Lock, Plus, Save, CheckCircle2, RotateCcw,
   MessageSquare, History, Hammer, X, AlertTriangle, Undo2,
   Hash, Target, Calculator, LayoutGrid, Folder, Pencil,
-  UserCheck, Briefcase, DollarSign, Receipt
+  UserCheck, Briefcase, DollarSign, Receipt, FileSearch
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, serverTimestamp, addDoc, updateDoc, getDocs, limit } from 'firebase/firestore';
@@ -106,7 +106,6 @@ function TransactionDetailsContent() {
   const allTemplatesQuery = useMemo(() => (companyId && db) ? query(collection(db, paths.boqTemplates(companyId))) : null, [db, companyId]);
   const { data: allTemplates } = useCollection<BOQTemplate>(allTemplatesQuery);
 
-  // الربط السيادي: فلترة القوالب بناءً على المسار الفني للمشروع (The DNA Link)
   const templates = useMemo(() => {
     if (!allTemplates || !transaction) return [];
     return allTemplates.filter(t => t.subServiceId === transaction.subServiceId);
@@ -246,9 +245,27 @@ function TransactionDetailsContent() {
                         
                         <div className="space-y-3">
                            {!stages?.length ? (
-                              <div className="py-20 text-center bg-white rounded-lg border-2 border-dashed space-y-4">
-                                <Workflow className="h-8 w-8 text-slate-100 mx-auto" />
-                                <Button onClick={() => transactionService?.initializeTechnicalPath(transactionId, transaction?.activityTypeId || '', transaction?.serviceId || '', transaction?.subServiceId || '', user!.uid)} size="sm" className="h-8 font-bold px-6 text-[10px] rounded-md"><Zap className="h-3.5 w-3.5 me-2" />{tSafe('inline.launch.path', 'تفعيل المسار', 'Launch Path')}</Button>
+                              <div className="py-20 text-center bg-white rounded-lg border-2 border-dashed space-y-6">
+                                {activeBoq?.status !== 'approved' ? (
+                                   <div className="space-y-4 max-w-sm mx-auto animate-in zoom-in-95">
+                                      <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto shadow-inner"><AlertTriangle className="h-8 w-8" /></div>
+                                      <div className="space-y-2">
+                                         <h3 className="text-sm font-black text-slate-900">{tSafe('inline.approve_boq_to_activate', 'اعتماد المقايسة مطلوب أولاً', 'BOQ Approval Required')}</h3>
+                                         <p className="text-[10px] font-bold text-slate-400 leading-relaxed italic">{tSafe('inline.boq_activation_rule', 'بناءً على بروتوكول الانضباط الهندسي، لا يمكن تفعيل مسار العمل الفني قبل اعتماد الميزانية المرجعية (BOQ).', 'Technical path activation is only allowed after BOQ Baseline Approval.')}</p>
+                                      </div>
+                                      <Button onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${transactionId}/boq`)} size="sm" className="h-10 font-black px-8 rounded-xl shadow-lg gap-2 bg-slate-900 text-white hover:bg-slate-800 transition-all">
+                                         <FileSearch className="h-4 w-4" /> {tSafe('inline.goto_boq', 'الذهاب للمقايسة للاعتماد', 'Go to BOQ & Approve')}
+                                      </Button>
+                                   </div>
+                                ) : (
+                                  <div className="space-y-4 animate-in zoom-in-95">
+                                     <Workflow className="h-10 w-10 text-primary/20 mx-auto" />
+                                     <div className="space-y-1">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{tSafe('inline.ready_to_launch', 'المقايسة معتمدة وجاهز للتفعيل', 'BOQ Approved & Ready')}</p>
+                                     </div>
+                                     <Button onClick={() => transactionService?.initializeTechnicalPath(transactionId, transaction?.activityTypeId || '', transaction?.serviceId || '', transaction?.subServiceId || '', user!.uid)} className="h-12 font-black px-10 rounded-2xl shadow-xl shadow-primary/20 gap-3 hover:scale-105 transition-all"><Zap className="h-4 w-4" />{tSafe('inline.launch.path', 'تفعيل مسار العمل الآن', 'Launch Path Now')}</Button>
+                                  </div>
+                                )}
                               </div>
                            ) : stages.map((stage, idx) => {
                               const isFiltered = filterStageId === stage.id;
@@ -335,7 +352,7 @@ function TransactionDetailsContent() {
                   <div className="md:col-span-2 space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('common.notes', 'ملاحظات المهندس', 'Notes')}</Label><Textarea value={logForm.notes} onChange={e => setLogForm({...logForm, notes: e.target.value})} className="min-h-[100px] rounded-2xl border-2" /></div>
                </div>
                <Button onClick={handleSaveLog} disabled={!logForm.itemId || !logForm.quantity || !!loadingAction} className="w-full h-16 rounded-[2rem] font-black text-xl bg-primary text-white shadow-xl shadow-primary/20 hover:scale-105 transition-all border-b-8 border-orange-700">
-                  {loadingAction === 'logging' ? <Loader2 className="h-6 w-6 animate-spin" /> : <Save className="h-6 w-6 me-2" />} {tSafe('inline.confirm_log', 'اعتماد وتسجيل الإنجاز', 'Confirm & Log')}
+                  {loadingAction === 'logging' ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6 me-2" />} {tSafe('inline.confirm_log', 'اعتماد وتسجيل الإنجاز', 'Confirm & Log')}
                </Button>
             </div>
          </DialogContent>
@@ -376,7 +393,6 @@ function TransactionDetailsContent() {
                     await updateDoc(doc(db, paths.transactionStages(companyId, transactionId), revertingStage.id!), { status: 'in-progress', completedAt: null, completedBy: null, updatedAt: serverTimestamp() });
                     await addDoc(collection(db, paths.transactionTimeline(companyId, transactionId)), { transactionId, stageId: revertingStage.id, type: 'stage_reopen', content: `[تراجع] ${revertReason}`, userId: user!.uid, userName: currentUserName, companyId, createdAt: serverTimestamp() });
                     
-                    // أرشفة تعليقات المرحلة لضمان نظافة السجل
                     const commentService = new (await import('@/services/comment-service')).CommentService(db, companyId, permissions);
                     await commentService.archiveStageComments(transactionId, revertingStage.id!);
 
