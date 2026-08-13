@@ -217,6 +217,20 @@ function NewSubConContractContent() {
     setForm({...form, milestones: newM});
   };
 
+  const addMilestone = () => {
+    const nextIdx = (form.milestones || []).length;
+    setForm({
+      ...form, 
+      milestones: [...(form.milestones || []), { 
+        name: getOrdinalLabel(nextIdx), 
+        percentage: 0, 
+        amount: 0,
+        timing: 'at', 
+        contractualEvent: 'MANUAL' 
+      }]
+    });
+  };
+
   const handleSave = async () => {
     if (!db || !companyId || !user || !form.subcontractorId || !form.transactionId) return;
     setLoading(true);
@@ -279,11 +293,11 @@ function NewSubConContractContent() {
                            <SearchablePicker type="template" value={form.templateName} onSelect={(temp: any) => setForm({...form, templateId: temp.id, templateName: temp.name})} items={filteredTemps} search={tempSearch} onSearchChange={setTempSearch} icon={FileText} placeholder={tSafe('subcon.form.template', 'اختر القالب...', 'Choose Template')} isRtl={isRtl} />
                         </div>
                      </div>
-                     <div className="lg:col-span-4 p-8 rounded-[3rem] bg-emerald-600 text-white shadow-2xl relative overflow-hidden flex flex-col justify-center">
+                     <div className="lg:col-span-4 p-8 rounded-[3rem] bg-slate-50 border-2 border-primary/20 shadow-2xl relative overflow-hidden flex flex-col justify-center">
                         <div className="absolute top-0 right-0 p-8 opacity-10"><Calculator className="h-32 w-32" /></div>
                         <div className="relative z-10 space-y-2 text-start">
-                           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-200">{tSafe('subcon.form.targetBudget', 'إجمالي قيمة العقد', 'Contract Value')}</p>
-                           <Input type="number" value={form.totalAmount === 0 ? "" : form.totalAmount} onChange={e => setForm({...form, totalAmount: Number(e.target.value)})} className="h-16 bg-white/20 border-0 rounded-2xl text-4xl font-black text-center text-white shadow-inner focus:bg-white/30" />
+                           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">{tSafe('subcon.form.targetBudget', 'إجمالي قيمة العقد', 'Contract Value')}</p>
+                           <Input type="number" value={form.totalAmount === 0 ? "" : form.totalAmount} onChange={e => setForm({...form, totalAmount: Number(e.target.value)})} className="h-16 bg-white border-2 border-primary/10 rounded-2xl text-4xl font-black text-center text-slate-900 shadow-inner" />
                         </div>
                      </div>
                   </div>
@@ -300,9 +314,11 @@ function NewSubConContractContent() {
                            <tr>
                               <th className="p-8 w-14 text-start">#</th>
                               <th className="p-8 text-start">{tSafe('name', 'الوصف', 'Description')}</th>
-                              {form.pricingMode === 'percentage' && <th className="p-8 text-center w-24">%</th>}
+                              {form.pricingMode === 'percentage' && <th className="p-8 text-center w-32">%</th>}
+                              <th className="p-8 text-center w-32">{tSafe('timing', 'التوقيت', 'Timing')}</th>
                               <th className="p-8 text-start w-48">{tSafe('technicalLink', 'الارتباط الميداني', 'Execution Link')}</th>
                               <th className="p-8 text-end pe-12 w-48">{t('common.amount')}</th>
+                              <th className="p-8 w-14"></th>
                            </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -323,19 +339,49 @@ function NewSubConContractContent() {
                                     </td>
                                   )}
                                   <td className="p-4">
-                                     <Badge variant="outline" className={cn(
-                                       "font-black text-[10px] border-0 px-4 h-8 rounded-xl shadow-sm",
-                                       m.technicalStageId ? "bg-primary/5 text-primary" : "bg-slate-50 text-slate-300"
-                                     )}>
-                                        <Workflow className="h-3.5 w-3.5 me-2" />
-                                        {linkedStageName || tSafe('inline.link.pending', 'غير مربوط', 'Unlinked')}
-                                     </Badge>
+                                      <Select value={m.timing || 'at'} onValueChange={v => updateMilestone(idx, 'timing', v)}>
+                                         <SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs bg-white"><SelectValue /></SelectTrigger>
+                                         <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
+                                            <SelectItem value="at" className="font-bold text-xs">{isRtl ? 'عند' : 'At'}</SelectItem>
+                                            <SelectItem value="before" className="font-bold text-xs">{isRtl ? 'قبل' : 'Before'}</SelectItem>
+                                            <SelectItem value="during" className="font-bold text-xs">{isRtl ? 'أثناء' : 'During'}</SelectItem>
+                                            <SelectItem value="after" className="font-bold text-xs">{isRtl ? 'بعد' : 'After'}</SelectItem>
+                                         </SelectContent>
+                                      </Select>
+                                  </td>
+                                  <td className="p-4 text-start">
+                                      <Select value={m.technicalStageId || ''} onValueChange={v => updateMilestone(idx, 'technicalStageId', v)}>
+                                         <SelectTrigger className={cn(
+                                           "h-10 rounded-xl border-2 font-black text-xs",
+                                           m.technicalStageId ? "bg-primary/5 text-primary border-primary/20" : "bg-white"
+                                         )}>
+                                           <SelectValue placeholder="..." />
+                                         </SelectTrigger>
+                                         <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
+                                            <SelectItem value="SIGNING" className="font-black text-[10px] py-3 border-b border-slate-50">
+                                               <span className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-emerald-500" /> {t('contractSigning')}</span>
+                                            </SelectItem>
+                                            {pathStages.map(s => <SelectItem key={s.id} value={s.technicalStageId} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
+                                               <span className="flex items-center gap-2"><Workflow className="h-3.5 w-3.5 text-primary" /> {s.name}</span>
+                                            </SelectItem>)}
+                                         </SelectContent>
+                                      </Select>
                                   </td>
                                   <td className="p-4 text-end pe-12">
                                      <div className="flex items-center gap-2 justify-end">
-                                        <span className="font-mono font-black text-emerald-600 text-xl">{m.amount?.toLocaleString()}</span>
                                         <span className="text-[9px] font-bold text-slate-300">KWD</span>
+                                        <Input 
+                                          type="number" 
+                                          step="0.001" 
+                                          readOnly={form.pricingMode === 'percentage'}
+                                          value={m.amount === 0 ? "" : (m.amount || "")} 
+                                          onChange={e => updateMilestone(idx, 'amount', e.target.value)} 
+                                          className="h-10 w-32 text-end font-black text-emerald-600 text-sm bg-slate-50 border-2 rounded-xl" 
+                                        />
                                      </div>
+                                  </td>
+                                  <td className="p-4 text-center">
+                                      <button type="button" onClick={() => setForm({...form, milestones: form.milestones?.filter((_, i) => i !== idx)})} className="text-rose-300 hover:text-rose-600 transition-colors"><Trash2 className="h-5 w-5" /></button>
                                   </td>
                                </tr>
                              );
@@ -343,7 +389,7 @@ function NewSubConContractContent() {
                         </tbody>
                         <tfoot className="bg-slate-50 border-t-8 border-primary">
                            <tr>
-                              <td colSpan={form.pricingMode === 'percentage' ? 3 : 2} className="p-10 text-start">
+                              <td colSpan={form.pricingMode === 'percentage' ? 5 : 4} className="p-10 text-start">
                                  <h3 className="text-xl font-black font-headline uppercase tracking-tighter text-slate-800">{tSafe('subcon.totalPayable', 'إجمالي قيمة عقد الباطن', 'Total SubCon Value')}</h3>
                                  <Badge className={cn("mt-3 border-0 text-[10px] font-black h-7 px-5 shadow-lg", stats.isValid ? "bg-emerald-600 text-white" : "bg-rose-600 text-white")}>
                                     {stats.isValid ? `BALANCED: 100%` : `MISMATCH: ${stats.totalPercentage}%`}

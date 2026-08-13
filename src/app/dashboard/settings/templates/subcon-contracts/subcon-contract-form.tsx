@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -272,7 +273,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                <div className="space-y-12 text-start">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b-2 pb-8">
                      <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('subcon.form.contractName', 'مسمى العقد / الاتفاقية', 'Contract / Agreement Title')}</Label>
+                        <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('subcon.form.contractName', 'مسمى القالب / الاتفاقية', 'Contract / Agreement Title')}</Label>
                         <Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-12 rounded-xl border-2 font-black text-lg bg-slate-50 shadow-inner" />
                      </div>
                      <div className="space-y-2">
@@ -290,7 +291,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                   <div className="space-y-6">
                      <div className="flex justify-between items-center px-4">
                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                           <LayoutGrid className="h-5 w-5 text-primary" /> {tSafe('pricing.milestones', 'جدول دفعات المقاول والربط الفني', 'Payment Milestones & Execution Links')}
+                           <LayoutGrid className="h-5 w-5 text-primary" /> {tSafe('pricing.milestones', 'جدول دفعات المقاول والارتباط الفني', 'Payment Milestones & Execution Links')}
                         </h4>
                         <Button variant="outline" size="sm" onClick={addMilestone} className="rounded-xl font-black text-[10px] border-2 h-10 px-8 gap-3 bg-white hover:bg-primary/5 shadow-md">
                            <Plus className="h-4 w-4 text-primary" /> {tSafe('common.add', 'إضافة دفعة', 'Add Milestone')}
@@ -301,21 +302,21 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                         <table className="w-full text-xs text-start">
                            <thead className="bg-slate-50 border-b-2 text-slate-600 font-black uppercase text-[10px] tracking-widest">
                               <tr>
-                                 <th className="p-6 w-12 text-start">#</th>
-                                 <th className="p-6 text-start">{tSafe('name', 'مسمى الدفعة', 'Milestone Name')}</th>
-                                 {formData.pricingMode === 'percentage' && <th className="p-6 text-center w-24">%</th>}
-                                 <th className="p-6 text-center w-32">{tSafe('timing', 'التوقيت', 'Timing')}</th>
-                                 <th className="p-6 text-start w-48">{tSafe('technicalLink', 'الارتباط الميداني', 'Technical Link')}</th>
-                                 <th className="p-6 text-end pe-12 w-48">{t('common.amount')}</th>
+                                 <th className="p-8 w-14 text-start">#</th>
+                                 <th className="p-8 text-start">{tSafe('name', 'مسمى الدفعة', 'Milestone Name')}</th>
+                                 {formData.pricingMode === 'percentage' && <th className="p-8 text-center w-32">%</th>}
+                                 <th className="p-8 text-center w-32">{tSafe('timing', 'التوقيت', 'Timing')}</th>
+                                 <th className="p-8 text-start w-48">{tSafe('technicalLink', 'الارتباط الميداني', 'Technical Link')}</th>
+                                 <th className="p-8 text-end pe-12 w-48">{t('common.amount')}</th>
                                  <th className="p-6 w-14"></th>
                               </tr>
                            </thead>
                            <tbody className="divide-y divide-slate-100">
                               {(formData.defaultMilestones || []).map((m, idx) => (
                                 <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                                   <td className="p-6 font-black text-slate-300 text-start">{idx + 1}</td>
+                                   <td className="p-8 font-black text-slate-300 text-start">{idx + 1}</td>
                                    <td className="p-4">
-                                      <Input value={m.name || ''} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-10 rounded-xl font-black text-sm bg-white border-2" />
+                                      <Input value={m.name || ''} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-10 border-2 rounded-xl font-bold bg-white" />
                                    </td>
                                    {formData.pricingMode === 'percentage' && (
                                       <td className="p-4 text-center">
@@ -334,10 +335,10 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                                       <Select value={m.timing || 'at'} onValueChange={v => updateMilestone(idx, 'timing', v)}>
                                          <SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs bg-white"><SelectValue /></SelectTrigger>
                                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
-                                            <SelectItem value="at" className="font-bold text-xs">عند</SelectItem>
-                                            <SelectItem value="before" className="font-bold text-xs">قبل</SelectItem>
-                                            <SelectItem value="during" className="font-bold text-xs">أثناء</SelectItem>
-                                            <SelectItem value="after" className="font-bold text-xs">بعد</SelectItem>
+                                            <SelectItem value="at" className="font-bold text-xs">{isRtl ? 'عند' : 'At'}</SelectItem>
+                                            <SelectItem value="before" className="font-bold text-xs">{isRtl ? 'قبل' : 'Before'}</SelectItem>
+                                            <SelectItem value="during" className="font-bold text-xs">{isRtl ? 'أثناء' : 'During'}</SelectItem>
+                                            <SelectItem value="after" className="font-bold text-xs">{isRtl ? 'بعد' : 'After'}</SelectItem>
                                          </SelectContent>
                                       </Select>
                                    </td>
@@ -350,8 +351,8 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                                            <SelectValue placeholder="..." />
                                          </SelectTrigger>
                                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
-                                            {pathStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
-                                               <span className="flex items-center gap-2"><Workflow className="h-3 w-3 text-primary" /> {s.name}</span>
+                                            {pathStages.map(s => <SelectItem key={s.id} value={s.technicalStageId} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
+                                               <span className="flex items-center gap-2"><Workflow className="h-3.5 w-3.5 text-primary" /> {s.name}</span>
                                             </SelectItem>)}
                                          </SelectContent>
                                       </Select>
