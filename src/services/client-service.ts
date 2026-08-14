@@ -64,10 +64,12 @@ export class ClientService {
 
   /**
    * تحديث بيانات العميل مع مزامنة الاسم عبر كافة المسارات (Cascading Update)
+   * تم التحديث ليشمل عقود مقاولي الباطن (SubCon Contracts)
    */
   async updateClient(clientId: string, data: Partial<Client>, userId: string, userName: string) {
     const clientRef = doc(this.db, paths.clients(this.companyId), clientId);
     const clientSnap = await getDoc(clientRef);
+    if (!clientSnap.exists()) throw new Error("Client not found");
     const oldData = clientSnap.data() as Client;
 
     const batch = writeBatch(this.db);
@@ -89,9 +91,22 @@ export class ClientService {
       const quotesSnap = await getDocs(query(collection(this.db, paths.quotations(this.companyId)), where('clientId', '==', clientId)));
       quotesSnap.docs.forEach(d => batch.update(d.ref, { clientName: data.nameAr, updatedAt: serverTimestamp() }));
 
-      // مزامنة العقود
+      // مزامنة العقود (عقود المالك)
       const contractsSnap = await getDocs(query(collection(this.db, paths.contracts(this.companyId)), where('clientId', '==', clientId)));
       contractsSnap.docs.forEach(d => batch.update(d.ref, { clientName: data.nameAr, updatedAt: serverTimestamp() }));
+
+      // مزامنة عقود الباطن (SubCon Contracts) - حل الفجوة المكتشفة
+      const subconSnap = await getDocs(query(collection(this.db, paths.subconContracts(this.companyId)), where('clientId', '==', clientId)));
+      subconSnap.docs.forEach(d => {
+         const subData = d.data();
+         // إعادة بناء مسمى المشروع ليشمل الاسم الجديد للعميل
+         const newProjectTitle = `${data.nameAr} - ${subData.transactionName || ''}`;
+         batch.update(d.ref, {
+            clientName: data.nameAr,
+            projectTitle: newProjectTitle,
+            updatedAt: serverTimestamp()
+         });
+      });
 
       // مزامنة المقايسات
       const boqsSnap = await getDocs(query(collection(this.db, paths.boqs(this.companyId)), where('clientId', '==', clientId)));
@@ -106,7 +121,7 @@ export class ClientService {
       batch.set(historyRef, {
         clientId,
         type: 'status_change',
-        content: `تغيير اسم العميل من [${oldData.nameAr}] إلى [${data.nameAr}] ومزامنة كافة المستندات المالية والفنية.`,
+        content: `[مزامنة سيادية] تغيير اسم العميل من [${oldData.nameAr}] إلى [${data.nameAr}] وتحديث كافة المعاملات وعقود الباطن المرتبطة.`,
         userId,
         userName,
         companyId: this.companyId,
