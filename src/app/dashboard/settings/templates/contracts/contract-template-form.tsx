@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -35,9 +36,6 @@ import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
 
-/**
- * نموذج هندسة قوالب العقود - تم تحديثه لدعم الربط المظلي بالقوالب المرجعية.
- */
 interface Props {
   template: ContractTemplate | null;
   onClose: () => void;
@@ -115,6 +113,22 @@ export function ContractTemplateForm({ template, onClose }: Props) {
     }
   }, [db, companyId, formData.subServiceId, formData.activityTypeId, formData.serviceId]);
 
+  // محرك المزامنة التفاعلية: تحديث المبالغ عند تغيير الميزانية الإجمالية
+  useEffect(() => {
+    if (formData.pricingMode === 'percentage' && formData.baseAmount !== undefined) {
+      const total = formData.baseAmount || 0;
+      const updatedMilestones = (formData.defaultMilestones || []).map(m => ({
+        ...m,
+        amount: Math.round(((total * (m.percentage || 0)) / 100) * 1000) / 1000
+      }));
+      
+      // فحص لمنع الـ Infinite Loop
+      if (JSON.stringify(updatedMilestones) !== JSON.stringify(formData.defaultMilestones)) {
+        setFormData(prev => ({ ...prev, defaultMilestones: updatedMilestones }));
+      }
+    }
+  }, [formData.baseAmount, formData.pricingMode]);
+
   const stats = useMemo(() => {
     const milestones = formData.defaultMilestones || [];
     const totalPercentage = milestones.reduce((acc, m) => acc + (Number(m.percentage) || 0), 0);
@@ -148,7 +162,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
     const item = { ...newM[idx], [field]: value };
     if (formData.pricingMode === 'percentage' && (field === 'percentage' || field === 'amount')) {
       const total = formData.baseAmount || 0;
-      if (field === 'percentage') item.amount = (total * (Number(value) || 0)) / 100;
+      if (field === 'percentage') item.amount = Math.round(((total * (Number(value) || 0)) / 100) * 1000) / 1000;
       else if (field === 'amount' && total > 0) item.percentage = (Number(value) / total) * 100;
     }
     newM[idx] = item;
@@ -170,19 +184,23 @@ export function ContractTemplateForm({ template, onClose }: Props) {
     });
   };
 
+  const currentDisplayAmount = formData.pricingMode === 'percentage' 
+    ? (formData.baseAmount || 0)
+    : stats.totalItemizedAmount;
+
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-500 bg-white min-h-screen text-start" dir={dir}>
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-white/95 backdrop-blur-md px-8 shadow-sm">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 border-2 rounded-xl text-slate-400"><ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} /></Button>
           <div className="text-start">
-             <h1 className="text-xl font-black text-slate-900">{tSafe('inline.contract.engineering', 'هندسة قوالب العقود', 'Contract Template Engineering')}</h1>
-             <Badge className="bg-primary/5 text-primary border-primary/20 text-[8px] font-black h-4 px-2 uppercase">Financial Umbrella Enabled</Badge>
+             <h1 className="text-xl font-black text-slate-900 leading-none">{tSafe('inline.contract.engineering', 'هندسة قوالب العقود', 'Contract Template Engineering')}</h1>
+             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{formData.name || 'Draft Template'}</p>
           </div>
         </div>
         <div className="flex items-center gap-4">
-           <Button onClick={handleSave} disabled={loading} className="h-12 px-10 rounded-xl bg-primary text-white font-black shadow-xl gap-3 border-b-4 border-orange-700">
-              {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />} {t('common.save')}
+           <Button onClick={handleSave} disabled={loading} className="h-12 px-10 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 gap-3 border-b-4 border-orange-700">
+              {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />} {t('common.save')}
            </Button>
         </div>
       </header>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -100,6 +101,21 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
     }
   }, [db, companyId, formData.subServiceId, formData.activityTypeId, formData.serviceId]);
 
+  // محرك المزامنة التفاعلية لمقاول الباطن
+  useEffect(() => {
+    if (formData.pricingMode === 'percentage' && formData.baseAmount !== undefined) {
+      const total = formData.baseAmount || 0;
+      const updatedMilestones = (formData.defaultMilestones || []).map(m => ({
+        ...m,
+        amount: Math.round(((total * (m.percentage || 0)) / 100) * 1000) / 1000
+      }));
+      
+      if (JSON.stringify(updatedMilestones) !== JSON.stringify(formData.defaultMilestones)) {
+        setFormData(prev => ({ ...prev, defaultMilestones: updatedMilestones }));
+      }
+    }
+  }, [formData.baseAmount, formData.pricingMode]);
+
   const stats = useMemo(() => {
     const milestones = formData.defaultMilestones || [];
     const totalPercentage = milestones.reduce((acc, m) => acc + (Number(m.percentage) || 0), 0);
@@ -136,11 +152,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
       
       toast({ title: tSafe('common.saved', 'تم الحفظ', 'Saved') });
       onClose();
-    } catch (e: any) {
-      toast({ variant: "destructive", title: t('common.error'), description: e.message });
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const getOrdinalLabel = (index: number) => {
@@ -158,7 +170,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
     if (formData.pricingMode === 'percentage' && (field === 'percentage' || field === 'amount')) {
       const total = formData.baseAmount || 0;
       if (field === 'percentage') {
-        item.amount = (total * (Number(value) || 0)) / 100;
+        item.amount = Math.round(((total * (Number(value) || 0)) / 100) * 1000) / 1000;
       } else if (field === 'amount' && total > 0) {
         item.percentage = (Number(value) / total) * 100;
       }
@@ -191,7 +203,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-white/95 backdrop-blur-md px-8 shadow-sm">
         <div className="flex items-center gap-4 text-start">
           <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 border-2 rounded-xl hover:bg-slate-50 transition-all text-slate-400">
-            <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
+            <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
           </Button>
           <div className="text-start">
              <h1 className="text-xl font-black text-slate-900 leading-none">{tSafe('subcon.template.title', 'هندسة قوالب عقود الباطن', 'SubCon Template Design')}</h1>
@@ -315,7 +327,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                                 <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                                    <td className="p-8 font-black text-slate-300 text-start">{idx + 1}</td>
                                    <td className="p-4">
-                                      <Input value={m.name || ''} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-10 border-2 rounded-xl font-bold bg-white" />
+                                      <Input value={m.name || ''} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-10 rounded-xl border-2 font-black text-sm bg-white" />
                                    </td>
                                    {formData.pricingMode === 'percentage' && (
                                       <td className="p-4 text-center">
@@ -385,7 +397,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                                  </td>
                                  <td colSpan={2} className="p-10 text-end pe-12">
                                     <div className="space-y-1">
-                                       <h2 className="text-5xl font-black font-headline text-primary">{currentDisplayAmount.toLocaleString()}</h2>
+                                       <h2 className="text-5xl font-black font-headline text-primary">{(currentDisplayAmount || 0).toLocaleString()}</h2>
                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em]">{tSafe('currency.kwdOnly', 'دينار كويتي لا غير', 'KUWAITI DINARS ONLY')}</p>
                                     </div>
                                  </td>

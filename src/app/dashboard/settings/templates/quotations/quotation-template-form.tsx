@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -113,6 +114,21 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
     }
   }, [db, companyId, formData.subServiceId, formData.activityTypeId, formData.serviceId]);
 
+  // محرك المزامنة التفاعلية: تحديث المبالغ عند تغيير الميزانية الإجمالية
+  useEffect(() => {
+    if (formData.pricingMode === 'percentage' && formData.baseAmount !== undefined) {
+      const total = formData.baseAmount || 0;
+      const updatedItems = (formData.items || []).map(m => ({
+        ...m,
+        amount: Math.round(((total * (m.percentage || 0)) / 100) * 1000) / 1000
+      }));
+      
+      if (JSON.stringify(updatedItems) !== JSON.stringify(formData.items)) {
+        setFormData(prev => ({ ...prev, items: updatedItems }));
+      }
+    }
+  }, [formData.baseAmount, formData.pricingMode]);
+
   const stats = useMemo(() => {
     const items = formData.items || [];
     const totalPercentage = items.reduce((acc, item) => acc + (Number(item.percentage) || 0), 0);
@@ -170,7 +186,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
     if (formData.pricingMode === 'percentage' && (field === 'percentage' || field === 'amount')) {
       const total = formData.baseAmount || 0;
       if (field === 'percentage') {
-        item.amount = (total * (Number(value) || 0)) / 100;
+        item.amount = Math.round(((total * (Number(value) || 0)) / 100) * 1000) / 1000;
       } else if (field === 'amount' && total > 0) {
         item.percentage = (Number(value) / total) * 100;
       }
@@ -425,7 +441,7 @@ export function QuotationTemplateForm({ template, onClose }: Props) {
                                  <td colSpan={formData.pricingMode === 'percentage' ? 5 : 4} className="p-10 text-start">
                                     <h3 className="text-xl font-black font-headline uppercase tracking-tighter text-slate-800">{isRtl ? 'إجمالي قيمة عرض السعر' : 'Total Quotation Value'}</h3>
                                     <Badge className={cn("mt-3 border-0 text-[10px] font-black h-7 px-5 shadow-lg", stats.isValid ? "bg-emerald-600 text-white" : "bg-rose-600 text-white")}>
-                                       {stats.isValid ? `BALANCED: 100%` : `MISMATCH: ${stats.totalPercentage}%`}
+                                       {stats.isValid ? `BALANCED` : `MISMATCH`}
                                     </Badge>
                                  </td>
                                  <td colSpan={2} className="p-10 text-end pe-12">
