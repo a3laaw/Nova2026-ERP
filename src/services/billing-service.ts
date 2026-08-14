@@ -20,15 +20,14 @@ import { ContractMilestone, MilestoneTiming } from '@/types/templates';
 import { nextSequential } from '@/lib/counters';
 
 /**
- * محرك الفوترة السيادي المطور (Sovereign Billing Engine V3).
- * تم تحديثه ليدعم "الارتباط المظلي"؛ حيث تطلق الكميات الميدانية المطالبات المالية آلياً.
+ * محرك الفوترة السيادي المطور (Sovereign Billing Engine V4).
+ * تم تحديثه ليدعم حساب المحتجزات (Retention) بنسبة 5% آلياً.
  */
 export class BillingService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * إطلاق مطالبة مالية بناءً على شرط دفع (Milestone Trigger)
-   * يطبق القواعد: AT (عند)، DURING (أثناء)، AFTER (بعد)
+   * إطلاق مطالبة مالية للمالك مع احتساب المحتجزات
    */
   async triggerMilestoneBilling(
     transactionId: string, 
@@ -41,7 +40,6 @@ export class BillingService {
 
     console.log(`[Billing Engine] Checking triggers for Trans: ${transactionId}, Stage: ${technicalStageId}, Timing: ${timing}`);
 
-    // 1. البحث عن عقد معتمد لهذه المعاملة
     const contractsSnap = await getDocs(query(
       collection(this.db, paths.contracts(this.companyId)), 
       where('transactionId', '==', transactionId),
@@ -49,23 +47,17 @@ export class BillingService {
       limit(1)
     ));
 
-    if (contractsSnap.empty) {
-      console.log(`[Billing Engine] No approved contract found for transaction ${transactionId}`);
-      return null;
-    }
+    if (contractsSnap.empty) return null;
     
     const contractDoc = contractsSnap.docs[0];
     const contract = { id: contractDoc.id, ...contractDoc.data() } as Contract;
 
-    // 2. البحث عن الدفعات المطابقة للمرحلة المظلية (Umbrella Stage)
-    // العقد الآن يراقب نفس الـ technicalStageId القادم من الميدان
     const targetMilestones = (contract.milestones || []).filter(m => 
       String(m.technicalStageId) === String(technicalStageId) && m.timing === timing
     );
 
     if (targetMilestones.length === 0) return null;
 
-    // 3. حماية من تكرار المطالبة لنفس الدفعة (Idempotency Guard)
     const existingIpcsSnap = await getDocs(query(
       collection(this.db, paths.ipcs(this.companyId)),
       where('transactionId', '==', transactionId),
@@ -77,17 +69,21 @@ export class BillingService {
     );
 
     const newMilestones = targetMilestones.filter(m => !alreadyBilledMilestones.has(m.name));
-
     if (newMilestones.length === 0) return null;
 
     const batch = writeBatch(this.db);
     const ipcRef = doc(collection(this.db, paths.ipcs(this.companyId)));
     const ipcNumber = await nextSequential(this.db, this.companyId, `ipc_owner_${transactionId}`, 'IPC-', 4);
 
-    const totalAmount = newMilestones.reduce((acc, m) => {
+    const totalGrossAmount = newMilestones.reduce((acc, m) => {
        const mAmt = m.amount || (contract.totalAmount * (m.percentage || 0)) / 100;
        return acc + (Number(mAmt) || 0);
     }, 0);
+
+    // تطبيق قاعدة المحتجزات السيادية (Default 5%)
+    const retentionRate = (contract as any).retentionRate || 5; 
+    const retentionAmount = Math.round((totalGrossAmount * (retentionRate / 100)) * 1000) / 1000;
+    const netPayable = totalGrossAmount - retentionAmount;
 
     const timingLabel = timing === 'at' ? 'بدء' : timing === 'during' ? 'أثناء تنفيذ' : 'إتمام';
     
@@ -99,9 +95,11 @@ export class BillingService {
       clientId: contract.clientId,
       clientName: contract.clientName,
       status: 'draft',
-      name: `مطالبة مالية آليّة (${timingLabel}) - ${newMilestones.map(m => m.name).join(' & ')}`,
-      grossAmount: totalAmount,
-      netPayable: totalAmount,
+      name: `مطالبة مالية (${timingLabel}) - ${newMilestones.map(m => m.name).join(' & ')}`,
+      grossAmount: totalGrossAmount,
+      retentionAmount: retentionAmount,
+      retentionRate: retentionRate,
+      netPayable: netPayable,
       milestonesTriggered: newMilestones.map(m => m.name),
       companyId: this.companyId,
       createdBy: userId,
@@ -112,12 +110,11 @@ export class BillingService {
 
     batch.set(ipcRef, ipcData);
 
-    // توثيق الحدث في تايملاين المعاملة للربط المزدوج
     const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
     batch.set(timelineRef, {
       transactionId,
       type: 'billing_triggered',
-      content: `[أتمتة مالية سيادية] تم توليد مسودة مطالبة (IPC) رقم ${ipcNumber} بقيمة ${totalAmount.toLocaleString()} د.ك بناءً على إنجاز ميداني موثق في مرحلة "${timingLabel}".`,
+      content: `[أتمتة مالية] تم إصدار مطالبة (IPC) رقم ${ipcNumber}. القيمة الإجمالية: ${totalGrossAmount.toLocaleString()} د.ك، المحتجزات (${retentionRate}%): ${retentionAmount.toLocaleString()} د.ك، الصافي: ${netPayable.toLocaleString()} د.ك.`,
       userId,
       userName: 'NovaFlow Finance Engine',
       companyId: this.companyId,
@@ -128,6 +125,9 @@ export class BillingService {
     return ipcRef.id;
   }
 
+  /**
+   * توليد مطالبة لمقاول باطن مع احتساب المحتجزات (SIP)
+   */
   async generateSubcontractorIPC(
     transactionId: string,
     subcontractorId: string,
@@ -142,6 +142,19 @@ export class BillingService {
     const transSnap = await getDoc(doc(this.db, paths.transactions(this.companyId), transactionId));
     const transData = transSnap.data();
 
+    // البحث عن عقد مقاول الباطن لمعرفة نسبة المحتجزات الخاصة به
+    const subContractsSnap = await getDocs(query(
+      collection(this.db, paths.subconContracts(this.companyId)),
+      where('transactionId', '==', transactionId),
+      where('subcontractorId', '==', subcontractorId),
+      limit(1)
+    ));
+    
+    const subContract = subContractsSnap.empty ? null : subContractsSnap.docs[0].data();
+    const subRetentionRate = subContract?.retentionRate || 5;
+    const retentionAmount = Math.round((amount * (subRetentionRate / 100)) * 1000) / 1000;
+    const netPayable = amount - retentionAmount;
+
     const subIpcData: any = {
       id: ipcRef.id,
       ipcNumber: ipcNumber,
@@ -151,8 +164,10 @@ export class BillingService {
       transactionNumber: transData?.transactionNumber || '',
       status: 'draft',
       grossAmount: amount,
+      retentionAmount: retentionAmount,
+      retentionRate: subRetentionRate,
       deductions: 0,
-      netPayable: amount,
+      netPayable: netPayable,
       notes: description,
       companyId: this.companyId,
       createdBy: userId,

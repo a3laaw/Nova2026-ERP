@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -20,7 +19,7 @@ import {
   Gavel, Calculator, DollarSign, ShieldCheck,
   Target, Percent, Workflow,
   LayoutGrid, Clock, Link as LinkIcon, Info,
-  Landmark
+  Landmark, ShieldAlert
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -65,7 +64,8 @@ export function ContractTemplateForm({ template, onClose }: Props) {
       pricingMode: 'percentage',
       defaultMilestones: [],
       isDefault: false,
-      isActive: true
+      isActive: true,
+      retentionRate: 5 // القيمة الافتراضية السيادية 5%
     }
   );
 
@@ -122,7 +122,6 @@ export function ContractTemplateForm({ template, onClose }: Props) {
         amount: Math.round(((total * (m.percentage || 0)) / 100) * 1000) / 1000
       }));
       
-      // فحص لمنع الـ Infinite Loop
       if (JSON.stringify(updatedMilestones) !== JSON.stringify(formData.defaultMilestones)) {
         setFormData(prev => ({ ...prev, defaultMilestones: updatedMilestones }));
       }
@@ -221,10 +220,21 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                </CardContent>
             </Card>
 
-            <div className="p-6 rounded-[2rem] bg-slate-50 border-2 border-primary/10 space-y-4 relative overflow-hidden shadow-inner">
+            <div className="p-6 rounded-[2rem] bg-slate-50 border-2 border-primary/10 space-y-6 relative overflow-hidden shadow-inner">
                <div className="absolute top-0 right-0 p-6 opacity-5"><Calculator className="h-20 w-20 text-primary" /></div>
-               <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-1">{isRtl ? 'الميزانية المستهدفة' : 'Target Budget'}</p>
-               <Input type="number" value={formData.baseAmount || 0} onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} className="h-14 rounded-2xl border-2 bg-white text-2xl text-center font-black text-primary" />
+               <div className="space-y-2 text-start relative z-10">
+                  <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-1">{isRtl ? 'الميزانية المستهدفة' : 'Target Budget'}</p>
+                  <Input type="number" value={formData.baseAmount || 0} onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} className="h-14 rounded-2xl border-2 bg-white text-2xl text-center font-black text-primary" />
+               </div>
+
+               <div className="pt-4 border-t border-primary/10 relative z-10 text-start space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'نسبة المحتجزات (Retention)' : 'Retention Rate'}</Label>
+                  <div className="relative">
+                    <Input type="number" value={formData.retentionRate} onChange={e => setFormData({...formData, retentionRate: Number(e.target.value)})} className="h-11 rounded-xl border-2 bg-white text-lg font-black text-center pr-10" />
+                    <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+                  </div>
+                  <p className="text-[8px] font-bold text-slate-400 italic">يتم خصم هذه النسبة آلياً من كل مستخلص مالك.</p>
+               </div>
             </div>
          </aside>
 
@@ -274,6 +284,14 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                         </table>
                      </div>
                   </div>
+
+                  <div className="p-6 rounded-3xl bg-blue-50/50 border-2 border-dashed border-blue-200 flex items-start gap-4">
+                     <ShieldAlert className="h-6 w-6 text-blue-600 shrink-0" />
+                     <p className="text-xs font-bold text-blue-800 leading-relaxed">
+                        سيقوم النظام عند إصدار أي مستخلص مالي للمالك بخصم مبلغ محتجزات بنسبة ({formData.retentionRate}%) آلياً من إجمالي قيمة الدفعة المستحقة.
+                     </p>
+                  </div>
+
                   <div className="space-y-4 pt-10"><h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 border-b-4 border-primary/20 pb-3"><Gavel className="h-6 w-6 text-primary" /> {isRtl ? 'الشروط والأحكام القانونية المرجعية' : 'Legal Clauses & Obligations'}</h4><Textarea value={formData.legalText || ''} onChange={e => setFormData({...formData, legalText: e.target.value})} className="min-h-[400px] rounded-[3rem] border-2 p-10 text-base font-bold leading-relaxed bg-slate-50 focus:bg-white transition-all shadow-inner" /></div>
                </div>
             </PrintWrapper>

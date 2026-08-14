@@ -1,6 +1,6 @@
 /**
  * @fileOverview تعريف واجهات البيانات لمكتبة القوالب في نظام NovaFlow ERP.
- * تم تحديث الهياكل لتتوافق مع المرجع الشجري الديناميكي الجديد لبنود BOQ.
+ * تم تحديث الهياكل لتتوافق مع المرجع الشجري الديناميكي الجديد لبنود BOQ ودعم المحتجزات.
  */
 
 import { BaseReference } from './reference';
@@ -79,6 +79,7 @@ export interface ContractTemplate extends BaseTemplate {
   contractType?: string;
   durationNotes?: string;
   pricingMode?: PricingMode;
+  retentionRate: number; // نسبة المحتجزات (الافتراضي 5%)
 }
 
 export interface SubConContractTemplate extends BaseTemplate {
@@ -86,6 +87,7 @@ export interface SubConContractTemplate extends BaseTemplate {
   legalText?: string;
   defaultMilestones: ContractMilestone[];
   pricingMode: PricingMode;
+  retentionRate: number; // نسبة المحتجزات لمقاول الباطن
 }
 
 /**
