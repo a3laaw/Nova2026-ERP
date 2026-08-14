@@ -37,7 +37,6 @@ import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 
 interface Props {
   template: BOQTemplate | null;
@@ -58,8 +57,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
   const [isPickerOpen, setIsMasterPickerOpen] = useState(false);
   const [masterSearch, setMasterSearch] = useState("");
   const [expandedNodes, setExpandedNodes] = useState<string[]>([]);
-  const [pathStages, setPathStages] = useState<TechnicalStage[]>([]);
-  const [loadingStages, setLoadingStages] = useState(false);
   const [activeSubs, setActiveSubs] = useState<SubService[]>([]);
   
   const [formData, setFormData] = useState<any>(
@@ -95,19 +92,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     }
   }, [db, companyId, formData.activityTypeId, formData.serviceId]);
 
-  useEffect(() => {
-    if (db && companyId && formData.activityTypeId && formData.serviceId && formData.subServiceId) {
-      setLoadingStages(true);
-      const stagesPath = paths.technicalStages(companyId, formData.activityTypeId, formData.serviceId, formData.subServiceId);
-      getDocs(query(collection(db, stagesPath), orderBy('order')))
-        .then(snap => setPathStages(snap.docs.map(d => ({ id: d.id, ...d.data() } as TechnicalStage))))
-        .catch(() => setPathStages([]))
-        .finally(() => setLoadingStages(false));
-    } else {
-      setPathStages([]);
-    }
-  }, [db, companyId, formData.subServiceId, formData.activityTypeId, formData.serviceId]);
-
   const service = useMemo(() => db && companyId ? new TemplateService(db, companyId, permissions) : null, [db, companyId, permissions]);
 
   useEffect(() => {
@@ -136,6 +120,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
     try {
       const sanitizedItems = items.map(item => ({
         ...item,
+        // الربط المظلي يتم تمريره خفية كما هو قادم من القاموس
         technicalStageId: item.technicalStageId || (item.technicalStageIds?.length ? item.technicalStageIds[0] : ''),
         technicalStageIds: item.technicalStageIds || [],
         unitSymbol: item.unitSymbol || ""
@@ -177,6 +162,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
       unitTypeId: node.unitTypeId || '',
       unitName: node.unitName || '',
       unitSymbol: node.unitSymbol || '',
+      // حفظ الربط المظلي خفية في كائن البند
       technicalStageId: normalizedDefaultStageId,
       technicalStageIds: normalizedStageIds, 
       plannedQuantity: 1,
@@ -236,7 +222,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                 <div className="flex items-center gap-2">
                    <span className="text-[10px] font-mono font-black text-slate-400">#{node.code}</span>
                    <span className="text-xs font-bold text-slate-800">{node.title}</span>
-                   {node.technicalStageIds?.length > 0 && <Badge className="bg-primary/10 text-primary border-0 text-[7px] font-black h-4">UMBRELLA: {node.technicalStageIds.length}</Badge>}
+                   {node.technicalStageIds?.length > 0 && <Badge className="bg-primary/10 text-primary border-0 text-[7px] font-black h-4">LINKS: {node.technicalStageIds.length}</Badge>}
                 </div>
              </div>
           </div>
@@ -269,7 +255,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
               {node.title}
             </div>
           </TableCell>
-          <TableCell colSpan={7}></TableCell>
+          <TableCell colSpan={6}></TableCell>
         </TableRow>
 
         {node.items.map((item, iIdx) => {
@@ -278,31 +264,21 @@ export function BOQTemplateForm({ template, onClose }: Props) {
           const subtotal = (item.plannedQuantity || 0) * (item.estimatedRate || 0);
 
           return (
-            <TableRow key={`${item.boqReferenceNodeId}-${originalIdx}`} className="hover:bg-primary/[0.02] transition-colors border-b-slate-50 group/item">
+            <TableRow key={`${item.boqReferenceNodeId}-${originalIdx}`} className="relative hover:z-10 hover:bg-primary/[0.02] transition-colors border-b-slate-50 group/item">
               <TableCell className="font-mono text-[10px] font-bold text-slate-300 ps-8 text-start">{itemPrefix}</TableCell>
               <TableCell className="font-mono text-[10px] font-black text-primary/60 text-start">{item.referenceCode}</TableCell>
               <TableCell className="text-xs font-bold text-slate-700 text-start" style={{ paddingInlineStart: `${(node.depth + 1) * 20 + 16}px` }}>
                 {item.referenceTitle}
               </TableCell>
-              <TableCell className="p-1 min-w-[120px] text-start">
+              <TableCell className="p-1 min-w-[200px] text-start">
                 <Input 
                   value={item.referenceDescription || ''} 
                   onChange={e => updateItem(originalIdx, 'referenceDescription', e.target.value)}
                   className="h-8 rounded-lg text-[10px] border-transparent hover:border-slate-200 bg-transparent focus:bg-white text-start"
-                  placeholder={isRtl ? "المواصفة..." : "Spec..."}
+                  placeholder={isRtl ? "المواصفة الفنية..." : "Spec..."}
                 />
               </TableCell>
-              <TableCell className="p-1 min-w-[200px] text-start">
-                 <div className="relative z-[50]">
-                    <SearchableDropdown
-                      multiple
-                      options={pathStages.map(s => ({ id: s.id!, name: s.name }))}
-                      value={item.technicalStageIds || []}
-                      onChange={(val) => updateItem(originalIdx, 'technicalStageIds', val)}
-                      placeholder={isRtl ? "الارتباط المظلي..." : "Umbrella Link..."}
-                    />
-                 </div>
-              </TableCell>
+              {/* تمت إزالة عمود الارتباط المظلي من العرض ولكن البيانات باقية في الـ state */}
               <TableCell className="text-center font-black text-[10px] text-slate-400 uppercase">{item.unitSymbol || item.unitName || '-'}</TableCell>
               <TableCell className="p-1 w-[80px]">
                 <Input 
@@ -463,11 +439,14 @@ export function BOQTemplateForm({ template, onClose }: Props) {
         <main className="lg:col-span-9 overflow-auto bg-white/40 p-6 scrollbar-hide">
            <div className="bg-white rounded-3xl shadow-2xl border border-primary/5 overflow-hidden flex flex-col h-full min-h-[600px]">
               <div className="p-4 bg-slate-50/50 border-b flex items-center justify-between">
-                 <div className="flex items-center gap-3">
+                 <div className="flex items-center gap-3 text-start">
                     <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
                        <LayoutGrid className="h-4 w-4" />
                     </div>
-                    <h3 className="font-black text-sm text-slate-700">{isRtl ? 'هيكل المقايسة والارتباطات المظلية' : 'BOQ Structure & Umbrella Links'}</h3>
+                    <div className="text-start">
+                       <h3 className="font-black text-sm text-slate-700">{isRtl ? 'هيكل المقايسة (وراثة آلية)' : 'BOQ Structure (Auto-Inheritance)'}</h3>
+                       <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{tSafe('inline.auto_link_hint', 'يتم جلب الارتباطات الميدانية آلياً من القاموس الهندسي', 'Field links inherited from registry')}</p>
+                    </div>
                  </div>
 
                  <div className="flex items-center gap-3">
@@ -512,7 +491,6 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                     <TableHead className="w-[100px] text-slate-400 font-mono text-[10px] text-start">{t('common.code')}</TableHead>
                     <TableHead className="text-slate-900 font-black text-xs text-start">{isRtl ? 'وصف بند العمل' : 'Work Item Description'}</TableHead>
                     <TableHead className="text-slate-900 font-black text-xs text-start">{isRtl ? 'المواصفة' : 'Spec'}</TableHead>
-                    <TableHead className="text-slate-900 font-black text-xs text-start">{isRtl ? 'الارتباط المظلي' : 'Umbrella Stages'}</TableHead>
                     <TableHead className="text-center w-[60px] text-slate-900 font-black text-xs">{isRtl ? 'الوحدة' : 'Unit'}</TableHead>
                     <TableHead className="text-center w-[80px] text-slate-900 font-black text-xs">{isRtl ? 'الكمية' : 'Qty'}</TableHead>
                     <TableHead className="text-center w-[100px] text-slate-900 font-black text-xs">{isRtl ? 'الفئة' : 'Rate'}</TableHead>
@@ -523,7 +501,7 @@ export function BOQTemplateForm({ template, onClose }: Props) {
                 <TableBody>
                   {items.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={10} className="py-60 text-center opacity-20">
+                      <TableCell colSpan={9} className="py-60 text-center opacity-20">
                          <div className="flex flex-col items-center gap-8">
                             <LayoutGrid className="h-24 w-24 text-slate-300" />
                             <p className="text-2xl font-black uppercase tracking-[0.4em] text-slate-400">{isRtl ? 'المقايسة فارغة' : 'Grid is Empty'}</p>
