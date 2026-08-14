@@ -58,13 +58,14 @@ export class BillingService {
     const contract = { id: contractDoc.id, ...contractDoc.data() } as Contract;
 
     // 2. البحث عن الدفعات المطابقة للمرحلة المظلية (Umbrella Stage)
+    // العقد الآن يراقب نفس الـ technicalStageId القادم من الميدان
     const targetMilestones = (contract.milestones || []).filter(m => 
       String(m.technicalStageId) === String(technicalStageId) && m.timing === timing
     );
 
     if (targetMilestones.length === 0) return null;
 
-    // 3. حماية من تكرار المطالبة لنفس الدفعة
+    // 3. حماية من تكرار المطالبة لنفس الدفعة (Idempotency Guard)
     const existingIpcsSnap = await getDocs(query(
       collection(this.db, paths.ipcs(this.companyId)),
       where('transactionId', '==', transactionId),
@@ -98,7 +99,7 @@ export class BillingService {
       clientId: contract.clientId,
       clientName: contract.clientName,
       status: 'draft',
-      name: `مطالبة مالية (${timingLabel}) - ${newMilestones.map(m => m.name).join(' & ')}`,
+      name: `مطالبة مالية آليّة (${timingLabel}) - ${newMilestones.map(m => m.name).join(' & ')}`,
       grossAmount: totalAmount,
       netPayable: totalAmount,
       milestonesTriggered: newMilestones.map(m => m.name),
@@ -111,13 +112,14 @@ export class BillingService {
 
     batch.set(ipcRef, ipcData);
 
+    // توثيق الحدث في تايملاين المعاملة للربط المزدوج
     const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
     batch.set(timelineRef, {
       transactionId,
       type: 'billing_triggered',
-      content: `[أتمتة مالية] تم توليد مطالبة (IPC) رقم ${ipcNumber} بقيمة ${totalAmount.toLocaleString()} د.ك بناءً على مطابقة الكميات الميدانية مع مرحلة "${timingLabel}" المعرفة في العقد.`,
+      content: `[أتمتة مالية سيادية] تم توليد مسودة مطالبة (IPC) رقم ${ipcNumber} بقيمة ${totalAmount.toLocaleString()} د.ك بناءً على إنجاز ميداني موثق في مرحلة "${timingLabel}".`,
       userId,
-      userName: 'NovaFlow Finance',
+      userName: 'NovaFlow Finance Engine',
       companyId: this.companyId,
       createdAt: serverTimestamp()
     });
@@ -126,9 +128,6 @@ export class BillingService {
     return ipcRef.id;
   }
 
-  /**
-   * توليد مستخلص مقاول الباطن بناءً على الكميات الميدانية الموثقة (SIP)
-   */
   async generateSubcontractorIPC(
     transactionId: string,
     subcontractorId: string,

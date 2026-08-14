@@ -21,7 +21,7 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 import { BillingService } from './billing-service';
 
 /**
- * خدمة السجلات الميدانية السيادية - محرك المطابقة المزدوجة.
+ * خدمة السجلات الميدانية السيادية - محرك المطابقة المزدوجة والارتباط المالي.
  */
 export class FieldVisitService {
   constructor(private db: Firestore, private companyId: string) {}
@@ -73,7 +73,7 @@ export class FieldVisitService {
     batch.set(timelineRef, {
       transactionId: data.transactionId,
       type: 'numeric_update',
-      content: `[إنجاز ميداني] تم تسجيل كميات جديدة لـ ${data.items?.length || 0} بند. تم تحديث المقايسة المعتمدة آلياً.`,
+      content: `[إنجاز ميداني] تم تسجيل كميات جديدة لـ ${data.items?.length || 0} بند. تم تحديث المقايسة المعتمدة آلياً بنظام الربط المظلي.`,
       userId,
       userName: data.engineerName,
       companyId: this.companyId,
@@ -83,14 +83,22 @@ export class FieldVisitService {
     try {
       await batch.commit();
       
-      // 3. المحرك المالي: فحص المطالبات المرتبطة بـ "أثناء التنفيذ"
+      // 3. المحرك المالي: فحص المطالبات المرتبطة بـ "أثناء التنفيذ" (DURING)
+      // يتم الزناد بمجرد وجود أي إنجاز في المرحلة النشطة
       if (data.activeStageId) {
         const stageInstanceSnap = await getDoc(doc(this.db, paths.transactionStages(this.companyId, data.transactionId), data.activeStageId));
         if (stageInstanceSnap.exists()) {
            const techStageId = stageInstanceSnap.data().technicalStageId;
            const billing = new BillingService(this.db, this.companyId);
-           // تفعيل زناد المطالبة المالية (أثناء التنفيذ)
-           await billing.triggerMilestoneBilling(data.transactionId, techStageId, 'during', userId, data.engineerName || 'System');
+           
+           // تفعيل زناد المطالبة المالية (أثناء التنفيذ - Progress Based)
+           await billing.triggerMilestoneBilling(
+             data.transactionId, 
+             techStageId, 
+             'during', 
+             userId, 
+             data.engineerName || 'System Financial Engine'
+           );
         }
       }
 
