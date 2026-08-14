@@ -7,7 +7,6 @@ import {
   setDoc,
   updateDoc, 
   serverTimestamp,
-  addDoc,
   getDoc,
   getDocs,
   query,
@@ -20,6 +19,10 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { nextSequential } from '@/lib/counters';
 
+/**
+ * خدمة إدارة العملاء السيادية (Sovereign Client Service).
+ * تحتوي على محرك المزامنة المتسلسل (Cascading Sync Engine) لضمان وحدة البيانات.
+ */
 export class ClientService {
   constructor(private db: Firestore, private companyId: string) {}
 
@@ -32,6 +35,9 @@ export class ClientService {
     return `${num}/${year}`;
   }
 
+  /**
+   * تسجيل عميل جديد في النظام
+   */
   async addClient(data: Partial<Client>, userId: string, userName: string) {
     const clientRef = doc(collection(this.db, paths.clients(this.companyId)));
     const clientData = {
@@ -63,8 +69,8 @@ export class ClientService {
   }
 
   /**
-   * تحديث بيانات العميل مع مزامنة الاسم عبر كافة المسارات (Cascading Update)
-   * تم التحديث ليشمل عقود مقاولي الباطن (SubCon Contracts) وإعادة بناء مسمى المشروع
+   * تحديث بيانات العميل مع محرك المزامنة الشامل (Universal Cascading Update)
+   * هذا المحرك يطارد اسم العميل في كل خانة ومستند داخل النظام.
    */
   async updateClient(clientId: string, data: Partial<Client>, userId: string, userName: string) {
     const clientRef = doc(this.db, paths.clients(this.companyId), clientId);
@@ -81,22 +87,31 @@ export class ClientService {
       updatedAt: serverTimestamp(),
     });
 
-    // 2. إذا تغير الاسم، نقوم بمزامنته في كافة السجلات المرتبطة (Sovereign Data Sync)
+    // 2. تفعيل بروتوكول المزامنة إذا تغير الاسم (Cascading Protocol)
     if (data.nameAr && data.nameAr !== oldData.nameAr) {
-      // مزامنة المعاملات (Technical Path)
+      console.log(`[Cascading Sync] Updating client name from ${oldData.nameAr} to ${data.nameAr} across all records.`);
+
+      // أ. مزامنة المعاملات الفنية (Technical Path)
       const transSnap = await getDocs(query(collection(this.db, paths.transactions(this.companyId)), where('clientId', '==', clientId)));
       transSnap.docs.forEach(d => batch.update(d.ref, { clientName: data.nameAr, updatedAt: serverTimestamp() }));
 
-      // مزامنة عروض الأسعار
+      // ب. مزامنة عروض الأسعار (Quotations)
       const quotesSnap = await getDocs(query(collection(this.db, paths.quotations(this.companyId)), where('clientId', '==', clientId)));
       quotesSnap.docs.forEach(d => batch.update(d.ref, { clientName: data.nameAr, updatedAt: serverTimestamp() }));
 
-      // مزامنة العقود (عقود المالك)
+      // ج. مزامنة العقود الرسمية (Owner Contracts)
       const contractsSnap = await getDocs(query(collection(this.db, paths.contracts(this.companyId)), where('clientId', '==', clientId)));
       contractsSnap.docs.forEach(d => batch.update(d.ref, { clientName: data.nameAr, updatedAt: serverTimestamp() }));
 
-      // مزامنة عقود الباطن (SubCon Contracts)
-      // تم حل الفجوة المكتشفة: العقد يعتمد على projectTitle الذي يحتوي اسم العميل
+      // د. مزامنة المقايسات (BOQs)
+      const boqsSnap = await getDocs(query(collection(this.db, paths.boqs(this.companyId)), where('clientId', '==', clientId)));
+      boqsSnap.docs.forEach(d => batch.update(d.ref, { clientName: data.nameAr, updatedAt: serverTimestamp() }));
+
+      // هـ. مزامنة المستخلصات المالية (IPCs)
+      const ipcsSnap = await getDocs(query(collection(this.db, paths.ipcs(this.companyId)), where('clientId', '==', clientId)));
+      ipcsSnap.docs.forEach(d => batch.update(d.ref, { clientName: data.nameAr, updatedAt: serverTimestamp() }));
+
+      // و. مزامنة عقود مقاولي الباطن (SubCon Contracts) - تحديث الاسم وإعادة صياغة مسمى المشروع
       const subconSnap = await getDocs(query(collection(this.db, paths.subconContracts(this.companyId)), where('clientId', '==', clientId)));
       subconSnap.docs.forEach(d => {
          const subData = d.data();
@@ -108,20 +123,20 @@ export class ClientService {
          });
       });
 
-      // مزامنة المقايسات (BOQs)
-      const boqsSnap = await getDocs(query(collection(this.db, paths.boqs(this.companyId)), where('clientId', '==', clientId)));
-      boqsSnap.docs.forEach(d => batch.update(d.ref, { clientName: data.nameAr, updatedAt: serverTimestamp() }));
-
-      // مزامنة السجلات الميدانية (Field Reports)
+      // ز. مزامنة السجلات الميدانية (Field Reports)
       const visitsSnap = await getDocs(query(collection(this.db, paths.fieldVisits(this.companyId)), where('clientId', '==', clientId)));
       visitsSnap.docs.forEach(d => batch.update(d.ref, { clientName: data.nameAr, updatedAt: serverTimestamp() }));
 
-      // توثيق التغيير في السجل التاريخي للعميل
+      // ح. مزامنة المواعيد والرادار (Appointments)
+      const apptsSnap = await getDocs(query(collection(this.db, paths.appointments(this.companyId)), where('clientId', '==', clientId)));
+      apptsSnap.docs.forEach(d => batch.update(d.ref, { clientName: data.nameAr, updatedAt: serverTimestamp() }));
+
+      // ط. توثيق التغيير في السجل التاريخي للعميل
       const historyRef = doc(collection(this.db, paths.clientHistory(this.companyId, clientId)));
       batch.set(historyRef, {
         clientId,
         type: 'status_change',
-        content: `[مزامنة سيادية] تم تحديث اسم العميل رسمياً إلى [${data.nameAr}] وتزامن كافة المعاملات وعقود الباطن الجارية.`,
+        content: `[مزامنة سيادية شاملة] تم تغيير الاسم الرسمي للعميل من [${oldData.nameAr}] إلى [${data.nameAr}]. تم تحديث كافة العقود، المعاملات، المقايسات، وسجلات الميدان آلياً.`,
         userId,
         userName,
         companyId: this.companyId,
@@ -137,6 +152,9 @@ export class ClientService {
     });
   }
 
+  /**
+   * توثيق تفاعل يدوي أو آلي في سجل العميل
+   */
   async logInteraction(clientId: string, content: string, userId: string, userName: string) {
     const clientRef = doc(this.db, paths.clients(this.companyId), clientId);
     const clientSnap = await getDoc(clientRef);
@@ -151,6 +169,9 @@ export class ClientService {
     }
   }
 
+  /**
+   * إضافة سجل تاريخي للعميل
+   */
   async addHistory(clientId: string, history: Omit<ClientHistory, 'id' | 'createdAt' | 'clientId'>) {
     const historyPath = paths.clientHistory(this.companyId, clientId);
     await addDoc(collection(this.db, historyPath), { ...history, clientId, createdAt: serverTimestamp() });
