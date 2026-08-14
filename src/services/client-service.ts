@@ -64,7 +64,7 @@ export class ClientService {
 
   /**
    * تحديث بيانات العميل مع مزامنة الاسم عبر كافة المسارات (Cascading Update)
-   * تم التحديث ليشمل عقود مقاولي الباطن (SubCon Contracts)
+   * تم التحديث ليشمل عقود مقاولي الباطن (SubCon Contracts) وإعادة بناء مسمى المشروع
    */
   async updateClient(clientId: string, data: Partial<Client>, userId: string, userName: string) {
     const clientRef = doc(this.db, paths.clients(this.companyId), clientId);
@@ -95,11 +95,11 @@ export class ClientService {
       const contractsSnap = await getDocs(query(collection(this.db, paths.contracts(this.companyId)), where('clientId', '==', clientId)));
       contractsSnap.docs.forEach(d => batch.update(d.ref, { clientName: data.nameAr, updatedAt: serverTimestamp() }));
 
-      // مزامنة عقود الباطن (SubCon Contracts) - حل الفجوة المكتشفة
+      // مزامنة عقود الباطن (SubCon Contracts)
+      // تم حل الفجوة المكتشفة: العقد يعتمد على projectTitle الذي يحتوي اسم العميل
       const subconSnap = await getDocs(query(collection(this.db, paths.subconContracts(this.companyId)), where('clientId', '==', clientId)));
       subconSnap.docs.forEach(d => {
          const subData = d.data();
-         // إعادة بناء مسمى المشروع ليشمل الاسم الجديد للعميل
          const newProjectTitle = `${data.nameAr} - ${subData.transactionName || ''}`;
          batch.update(d.ref, {
             clientName: data.nameAr,
@@ -108,7 +108,7 @@ export class ClientService {
          });
       });
 
-      // مزامنة المقايسات
+      // مزامنة المقايسات (BOQs)
       const boqsSnap = await getDocs(query(collection(this.db, paths.boqs(this.companyId)), where('clientId', '==', clientId)));
       boqsSnap.docs.forEach(d => batch.update(d.ref, { clientName: data.nameAr, updatedAt: serverTimestamp() }));
 
@@ -116,12 +116,12 @@ export class ClientService {
       const visitsSnap = await getDocs(query(collection(this.db, paths.fieldVisits(this.companyId)), where('clientId', '==', clientId)));
       visitsSnap.docs.forEach(d => batch.update(d.ref, { clientName: data.nameAr, updatedAt: serverTimestamp() }));
 
-      // توثيق التغيير في السجل التاريخي
+      // توثيق التغيير في السجل التاريخي للعميل
       const historyRef = doc(collection(this.db, paths.clientHistory(this.companyId, clientId)));
       batch.set(historyRef, {
         clientId,
         type: 'status_change',
-        content: `[مزامنة سيادية] تغيير اسم العميل من [${oldData.nameAr}] إلى [${data.nameAr}] وتحديث كافة المعاملات وعقود الباطن المرتبطة.`,
+        content: `[مزامنة سيادية] تم تحديث اسم العميل رسمياً إلى [${data.nameAr}] وتزامن كافة المعاملات وعقود الباطن الجارية.`,
         userId,
         userName,
         companyId: this.companyId,
