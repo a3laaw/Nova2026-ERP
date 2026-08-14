@@ -8,7 +8,11 @@ import {
   updateDoc, 
   serverTimestamp,
   addDoc,
-  getDoc
+  getDoc,
+  getDocs,
+  query,
+  where,
+  writeBatch
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Client, ClientHistory } from '@/types/client';
@@ -58,13 +62,59 @@ export class ClientService {
     return clientRef.id;
   }
 
+  /**
+   * تحديث بيانات العميل مع مزامنة الاسم عبر كافة المسارات (Cascading Update)
+   */
   async updateClient(clientId: string, data: Partial<Client>, userId: string, userName: string) {
     const clientRef = doc(this.db, paths.clients(this.companyId), clientId);
-    await updateDoc(clientRef, {
+    const clientSnap = await getDoc(clientRef);
+    const oldData = clientSnap.data() as Client;
+
+    const batch = writeBatch(this.db);
+    
+    // 1. تحديث وثيقة العميل الأساسية
+    batch.update(clientRef, {
       ...data,
       updatedBy: userId,
       updatedAt: serverTimestamp(),
-    }).catch((err) => {
+    });
+
+    // 2. إذا تغير الاسم، نقوم بمزامنته في كافة السجلات المرتبطة (Sovereign Data Sync)
+    if (data.nameAr && data.nameAr !== oldData.nameAr) {
+      // مزامنة المعاملات (Technical Path)
+      const transSnap = await getDocs(query(collection(this.db, paths.transactions(this.companyId)), where('clientId', '==', clientId)));
+      transSnap.docs.forEach(d => batch.update(d.ref, { clientName: data.nameAr, updatedAt: serverTimestamp() }));
+
+      // مزامنة عروض الأسعار
+      const quotesSnap = await getDocs(query(collection(this.db, paths.quotations(this.companyId)), where('clientId', '==', clientId)));
+      quotesSnap.docs.forEach(d => batch.update(d.ref, { clientName: data.nameAr, updatedAt: serverTimestamp() }));
+
+      // مزامنة العقود
+      const contractsSnap = await getDocs(query(collection(this.db, paths.contracts(this.companyId)), where('clientId', '==', clientId)));
+      contractsSnap.docs.forEach(d => batch.update(d.ref, { clientName: data.nameAr, updatedAt: serverTimestamp() }));
+
+      // مزامنة المقايسات
+      const boqsSnap = await getDocs(query(collection(this.db, paths.boqs(this.companyId)), where('clientId', '==', clientId)));
+      boqsSnap.docs.forEach(d => batch.update(d.ref, { clientName: data.nameAr, updatedAt: serverTimestamp() }));
+
+      // مزامنة السجلات الميدانية (Field Reports)
+      const visitsSnap = await getDocs(query(collection(this.db, paths.fieldVisits(this.companyId)), where('clientId', '==', clientId)));
+      visitsSnap.docs.forEach(d => batch.update(d.ref, { clientName: data.nameAr, updatedAt: serverTimestamp() }));
+
+      // توثيق التغيير في السجل التاريخي
+      const historyRef = doc(collection(this.db, paths.clientHistory(this.companyId, clientId)));
+      batch.set(historyRef, {
+        clientId,
+        type: 'status_change',
+        content: `تغيير اسم العميل من [${oldData.nameAr}] إلى [${data.nameAr}] ومزامنة كافة المستندات المالية والفنية.`,
+        userId,
+        userName,
+        companyId: this.companyId,
+        createdAt: serverTimestamp()
+      });
+    }
+
+    await batch.commit().catch((err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: clientRef.path, operation: 'update', requestResourceData: data
       }));
