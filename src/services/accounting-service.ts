@@ -36,9 +36,6 @@ export class AccountingService {
     this.validationService = new AnalyticalValidationService();
   }
 
-  /**
-   * ضبط القواعد التلقائية للأبعاد بناءً على نوع الحساب
-   */
   private getDefaultAnalyticalConfig(type: Account['type'], nature?: Account['expenseNature']): AccountAnalyticalConfig {
     const config: AccountAnalyticalConfig = {
       costCenter: 'not_allowed',
@@ -85,9 +82,6 @@ export class AccountingService {
     return ref.id;
   }
 
-  /**
-   * أتمتة سيادية: إنشاء مركز تكلفة آلي لمورد (موظف أو معدة)
-   */
   async createAutomaticCostCenter(referenceId: string, name: string, code: string, projectId?: string) {
     const ccPath = paths.costCenters(this.companyId);
     const ccRef = doc(this.db, ccPath, `cc_${referenceId}`);
@@ -115,9 +109,6 @@ export class AccountingService {
     return ccRef.id;
   }
 
-  /**
-   * أتمتة سيادية: إنشاء مركز ربحية آلي لمشروع
-   */
   async createAutomaticProfitCenter(projectId: string, name: string, code: string) {
     const pcPath = paths.profitCenters(this.companyId);
     const pcRef = doc(this.db, pcPath, `pc_${projectId}`);
@@ -297,24 +288,42 @@ export class AccountingService {
     await setDoc(ref, {
       id: ref.id, code, nameAr, nameEn, type,
       isActive: true, companyId: this.companyId, createdAt: serverTimestamp(),
-      isGroup: true // حسابات الرقابة (Control) هي مجموعات دائماً
+      isGroup: true,
+      level: code.length
     });
     return ref.id;
   }
 
   async createAutomaticSubAccount(parentCode: string, referenceId: string, referenceName: string, type: any) {
+    // 1. البحث عن الأب لربط الشجرة (The Anchor)
+    const parentQ = query(collection(this.db, paths.accounts(this.companyId)), where('code', '==', parentCode), limit(1));
+    const parentSnap = await getDocs(parentQ);
+    const parentId = parentSnap.empty ? null : parentSnap.docs[0].id;
+    const parentLevel = parentSnap.empty ? 0 : (parentSnap.docs[0].data().level || 0);
+
+    // 2. التحقق من الوجود المسبق لمنع التكرار
     const q = query(collection(this.db, paths.accounts(this.companyId)), where('referenceId', '==', referenceId), limit(1));
     const snap = await getDocs(q);
     if (!snap.empty) return snap.docs[0].id;
 
+    // 3. التأسيس
     const subCode = await nextSequential(this.db, this.companyId, `acc_${parentCode}`, parentCode, 4);
     const ref = doc(collection(this.db, paths.accounts(this.companyId)));
     
     await setDoc(ref, {
-      id: ref.id, code: subCode, nameAr: referenceName, nameEn: referenceName,
-      type, isActive: true, referenceId: referenceId, companyId: this.companyId,
-      isGroup: false, // الحسابات التلقائية للمشاريع هي حسابات فرعية للتسجيل
-      createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+      id: ref.id, 
+      code: subCode, 
+      nameAr: referenceName, 
+      nameEn: referenceName,
+      type, 
+      isActive: true, 
+      referenceId: referenceId, 
+      parentId: parentId, // ربط سيادي بالشجرة
+      level: parentLevel + 1,
+      isGroup: false, 
+      companyId: this.companyId,
+      createdAt: serverTimestamp(), 
+      updatedAt: serverTimestamp()
     });
     return ref.id;
   }
