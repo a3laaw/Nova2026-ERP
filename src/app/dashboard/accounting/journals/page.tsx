@@ -1,16 +1,18 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
   FileText, Plus, Loader2, Save, 
   Trash2, ArrowRight, Calculator,
-  LayoutGrid, DatabaseZap, Briefcase
+  LayoutGrid, DatabaseZap, Briefcase,
+  Zap, Search, Check, ChevronDown, X,
+  AlertTriangle
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, where, getDocs } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
@@ -22,10 +24,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
+import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 
+/**
+ * شاشة قيود اليومية السيادية (Sovereign Journal Entries).
+ * تم تحديث محرك الربط ليكون ديناميكياً وصامتاً (Silent Row-Level Linking).
+ */
 export default function JournalEntriesPage() {
   const { globalUser, user } = useAuthContext();
-  const { t, tSafe, dir, isRtl } = useLanguage();
+  const { t, tSafe, dir, isRtl, lang } = useLanguage();
   const db = useFirestore();
   const companyId = globalUser?.companyId;
 
@@ -35,9 +43,9 @@ export default function JournalEntriesPage() {
     date: new Date().toISOString().split('T')[0],
     description: '',
     lines: [
-      { accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '', costCenterId: '', profitCenterId: '' },
-      { accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '', costCenterId: '', profitCenterId: '' }
-    ] as JournalEntryLine[]
+      { accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '', costCenterId: '', profitCenterId: '', isAutoLinked: false },
+      { accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '', costCenterId: '', profitCenterId: '', isAutoLinked: false }
+    ] as (JournalEntryLine & { isAutoLinked: boolean })[]
   });
 
   const journalsQuery = useMemo(() => 
@@ -68,6 +76,37 @@ export default function JournalEntriesPage() {
 
   const availableAccounts = useMemo(() => accounts?.filter(a => !a.isGroup), [accounts]);
 
+  // --- محرك الربط الصامت على مستوى السطر (Row-Level Silent Linker) ---
+  const autoLinkLine = (idx: number, projectId: string, accId: string) => {
+    const newLines = [...form.lines];
+    const acc = availableAccounts?.find(a => a.id === accId);
+    
+    let ccId = '';
+    let pcId = '';
+    let isAuto = false;
+
+    if (projectId && projectId !== 'NONE') {
+       // البحث عن مركز تكلفة مرتبط آلياً (cc_PROJECT_ID)
+       const matchedCC = costCenters?.find(cc => cc.projectId === projectId || cc.id === `cc_${projectId}`);
+       // البحث عن مركز ربحية مرتبط آلياً (pc_PROJECT_ID)
+       const matchedPC = profitCenters?.find(pc => pc.projectId === projectId || pc.id === `pc_${projectId}`);
+
+       if (acc?.type === 'expense' && matchedCC) {
+          ccId = matchedCC.id;
+          isAuto = true;
+       }
+       if (acc?.type === 'revenue' && matchedPC) {
+          pcId = matchedPC.id;
+          isAuto = true;
+       }
+    }
+
+    newLines[idx].costCenterId = ccId;
+    newLines[idx].profitCenterId = pcId;
+    newLines[idx].isAutoLinked = isAuto;
+    setForm({ ...form, lines: newLines });
+  };
+
   const totals = useMemo(() => {
     return form.lines.reduce((acc, l) => ({
       debit: acc.debit + (Number(l.debit) || 0),
@@ -78,7 +117,7 @@ export default function JournalEntriesPage() {
   const isBalanced = Math.abs(totals.debit - totals.credit) < 0.001 && totals.debit > 0;
 
   const handleAddLine = () => {
-    setForm({ ...form, lines: [...form.lines, { accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '', costCenterId: '', profitCenterId: '' }] });
+    setForm({ ...form, lines: [...form.lines, { accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '', costCenterId: '', profitCenterId: '', isAutoLinked: false }] });
   };
 
   const handleRemoveLine = (idx: number) => {
@@ -86,15 +125,19 @@ export default function JournalEntriesPage() {
     setForm({ ...form, lines: form.lines.filter((_, i) => i !== idx) });
   };
 
-  const updateLine = (idx: number, field: keyof JournalEntryLine, val: any) => {
+  const updateLine = (idx: number, field: keyof (JournalEntryLine & { isAutoLinked: boolean }), val: any) => {
     const newLines = [...form.lines];
     if (field === 'accountId') {
        const acc = availableAccounts?.find(a => a.id === val);
        newLines[idx].accountName = isRtl ? acc?.nameAr || '' : acc?.nameEn || '';
+       // تفعيل الربط الصامت فور تغيير الحساب
+       autoLinkLine(idx, newLines[idx].projectId || '', val);
     }
     if (field === 'projectId') {
-       newLines[idx].costCenterId = '';
-       newLines[idx].profitCenterId = '';
+       (newLines[idx] as any)[field] = val;
+       // تفعيل الربط الصامت فور تغيير المشروع
+       autoLinkLine(idx, val, newLines[idx].accountId);
+       return;
     }
     (newLines[idx] as any)[field] = val;
     setForm({ ...form, lines: newLines });
@@ -108,7 +151,7 @@ export default function JournalEntriesPage() {
       await service.createJournalEntry(form, user.uid);
       toast({ title: t('common.saved') });
       setIsAdding(false);
-      setForm({ date: new Date().toISOString().split('T')[0], description: '', lines: [{ accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '', costCenterId: '', profitCenterId: '' }, { accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '', costCenterId: '', profitCenterId: '' }] });
+      setForm({ date: new Date().toISOString().split('T')[0], description: '', lines: [{ accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '', costCenterId: '', profitCenterId: '', isAutoLinked: false }, { accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '', costCenterId: '', profitCenterId: '', isAutoLinked: false }] });
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
@@ -117,120 +160,158 @@ export default function JournalEntriesPage() {
   };
 
   return (
-    <div className="space-y-4 animate-in fade-in" dir={dir}>
-      <header className="flex justify-between items-center">
-        <div className="text-start">
-          <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2 text-slate-900">
-            <Calculator className="h-6 w-6 text-primary" /> {t('accounting.journals.title')}
+    <div className="space-y-6 animate-in fade-in" dir={dir}>
+      <header className="flex justify-between items-center text-start">
+        <div className="text-start space-y-1">
+          <h1 className="text-2xl font-black font-headline flex items-center gap-3 text-slate-900">
+            <Calculator className="h-7 w-7 text-primary" /> {t('accounting.journals.title')}
           </h1>
-          <p className="text-muted-foreground text-xs font-medium">{t('accounting.journals.desc')}</p>
+          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">{t('accounting.journals.desc')}</p>
         </div>
-        <Button onClick={() => setIsAdding(!isAdding)} size="sm" className="h-9 px-6 font-bold gap-2">
-           {isAdding ? <ArrowRight className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+        <Button onClick={() => setIsAdding(!isAdding)} size="sm" className="h-11 px-8 font-black rounded-xl shadow-lg gap-2">
+           {isAdding ? <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} /> : <Plus className="h-4 w-4" />}
            {isAdding ? t('common.back') : t('accounting.journals.newEntry')}
         </Button>
       </header>
 
       {isAdding ? (
-        <Card className="rounded-xl border-0 shadow-2xl bg-white overflow-hidden animate-in slide-in-from-bottom-4">
-           <CardHeader className="bg-slate-50 p-6 border-b text-start">
-              <CardTitle className="font-black text-slate-800">{t('accounting.journals.draftTitle')}</CardTitle>
+        <Card className="rounded-[2rem] border-0 shadow-3xl bg-white overflow-hidden animate-in slide-in-from-bottom-4">
+           <CardHeader className="bg-slate-50/50 p-8 border-b text-start">
+              <CardTitle className="font-black text-slate-800 text-xl">{t('accounting.journals.draftTitle')}</CardTitle>
            </CardHeader>
-           <CardContent className="p-8 space-y-6 text-start bg-white">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+           <CardContent className="p-8 space-y-8 text-start bg-white">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">{t('common.date')}</Label>
-                    <Input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} />
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.date')}</Label>
+                    <Input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="h-12 border-2 rounded-xl font-bold" />
                  </div>
                  <div className="md:col-span-3 space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">{t('common.notes')}</Label>
-                    <Input value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="..." />
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.notes')}</Label>
+                    <Input value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="..." className="h-12 border-2 rounded-xl font-bold bg-slate-50/30" />
                  </div>
               </div>
 
-              <div className="border rounded-xl overflow-hidden shadow-sm">
+              <div className="border-2 rounded-3xl overflow-hidden shadow-sm">
                  <Table>
-                    <TableHeader className="bg-slate-50/50">
-                       <TableRow>
-                          <TableHead className="w-[180px]">{tSafe('inline.account', 'الحساب', 'Account')}</TableHead>
-                          <TableHead className="w-[140px]">{tSafe('inline.project', 'المشروع', 'Project')}</TableHead>
-                          <TableHead className="w-[140px]">{tSafe('inline.cost_center', 'مركز التكلفة', 'Cost Center')}</TableHead>
-                          <TableHead className="w-[140px]">{tSafe('inline.profit_center', 'مركز الربحية', 'Profit Center')}</TableHead>
-                          <TableHead className="text-center w-[100px]">{tSafe('inline.debit', 'مدين', 'Debit')}</TableHead>
-                          <TableHead className="text-center w-[100px]">{tSafe('inline.credit', 'دائن', 'Credit')}</TableHead>
-                          <TableHead className="w-[40px]"></TableHead>
+                    <TableHeader className="bg-slate-50">
+                       <TableRow className="hover:bg-slate-50 border-0">
+                          <TableHead className="py-4 ps-6 text-[10px] font-black uppercase w-[250px]">{isRtl ? 'الحساب المالي' : 'Account'}</TableHead>
+                          <TableHead className="text-[10px] font-black uppercase w-[220px]">{isRtl ? 'المشروع المرتبط' : 'Project'}</TableHead>
+                          <TableHead className="text-center text-[10px] font-black uppercase w-[120px]">{isRtl ? 'مدين' : 'Debit'}</TableHead>
+                          <TableHead className="text-center text-[10px] font-black uppercase w-[120px]">{isRtl ? 'دائن' : 'Credit'}</TableHead>
+                          <TableHead className="w-[50px]"></TableHead>
                        </TableRow>
                     </TableHeader>
                     <TableBody>
                        {form.lines.map((line, idx) => {
-                         const filteredCC = costCenters?.filter(cc => cc.isAdministrative || (line.projectId && cc.projectId === line.projectId));
-                         const filteredPC = profitCenters?.filter(pc => line.projectId && pc.projectId === line.projectId);
+                         const acc = availableAccounts?.find(a => a.id === line.accountId);
+                         const requiresCC = acc?.analyticalConfig?.costCenter === 'required';
+                         const requiresPC = acc?.analyticalConfig?.profitCenter === 'required';
+
+                         // تصفية المشاريع ديناميكياً إذا كان الحساب مرتبط بمرجع (مثل عميل)
+                         const dynamicProjects = useMemo(() => {
+                            if (!acc?.referenceId) return projects || [];
+                            return (projects || []).filter((p: any) => p.clientId === acc.referenceId);
+                         }, [acc, projects]);
 
                          return (
-                           <TableRow key={idx} className="border-b-slate-50">
-                              <TableCell className="p-1">
-                                 <Select value={line.accountId} onValueChange={v => updateLine(idx, 'accountId', v)}>
-                                    <SelectTrigger className="h-9 font-bold text-[10px]"><SelectValue placeholder="..." /></SelectTrigger>
-                                    <SelectContent className="rounded-xl border-2">
-                                       {availableAccounts?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold text-[10px]">{a.code} - {tSafe('data.account.name', a.nameAr, a.nameEn)}</SelectItem>)}
-                                    </SelectContent>
-                                 </Select>
+                           <TableRow key={idx} className="border-b-slate-50 hover:bg-primary/[0.01]">
+                              <TableCell className="py-3 ps-6">
+                                 <SearchableDropdown
+                                   options={(availableAccounts || []).map(a => ({ id: a.id!, name: isRtl ? a.nameAr : a.nameEn, subText: a.code }))}
+                                   value={line.accountId}
+                                   onChange={v => updateLine(idx, 'accountId', v)}
+                                   placeholder={isRtl ? "اختر الحساب..." : "Select Account..."}
+                                 />
                               </TableCell>
-                              <TableCell className="p-1">
-                                 <Select value={line.projectId} onValueChange={v => updateLine(idx, 'projectId', v)}>
-                                    <SelectTrigger className="h-9 font-bold text-[10px] bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
-                                    <SelectContent className="rounded-xl border-2">
-                                       <SelectItem value="NONE" className="italic text-slate-400">---</SelectItem>
-                                       {projects?.map(p => <SelectItem key={p.id} value={p.id!} className="font-bold text-[10px]">{p.subServiceName}</SelectItem>)}
-                                    </SelectContent>
-                                 </Select>
+                              <TableCell className="py-3">
+                                 <div className="flex flex-col gap-2">
+                                    <Select value={line.projectId || 'NONE'} onValueChange={v => updateLine(idx, 'projectId', v)}>
+                                       <SelectTrigger className={cn("h-11 rounded-xl border-2 font-bold text-[11px]", line.projectId && line.projectId !== 'NONE' ? "bg-primary/5 border-primary/20" : "bg-white")}>
+                                          <SelectValue placeholder={isRtl ? "اختيار المشروع..." : "Project..."} />
+                                       </SelectTrigger>
+                                       <SelectContent className="rounded-xl border shadow-2xl z-[160]">
+                                          <SelectItem value="NONE" className="italic text-slate-400 py-3">--- {isRtl ? 'مصروف إداري عام' : 'No Project'} ---</SelectItem>
+                                          {dynamicProjects?.map(p => (
+                                             <SelectItem key={p.id} value={p.id!} className="font-bold text-[11px] py-3 border-b last:border-0">
+                                                <div className="flex flex-col text-start">
+                                                   <span>{p.subServiceName}</span>
+                                                   <span className="text-[8px] text-slate-400 uppercase">#{p.transactionNumber}</span>
+                                                </div>
+                                             </SelectItem>
+                                          ))}
+                                       </SelectContent>
+                                    </Select>
+                                    
+                                    {/* عرض اختيار المركز فقط في حال فشل الربط التلقائي (Exception Handler) */}
+                                    {line.projectId && line.projectId !== 'NONE' && (requiresCC || requiresPC) && !line.isAutoLinked && (
+                                       <div className="animate-in slide-in-from-top-1">
+                                          {requiresCC && (
+                                             <Select value={line.costCenterId} onValueChange={v => updateLine(idx, 'costCenterId', v)}>
+                                                <SelectTrigger className="h-8 rounded-lg border-2 border-rose-100 bg-rose-50 text-[10px] font-black text-rose-600"><SelectValue placeholder={isRtl ? "اختر مركز التكلفة..." : "Select Cost Center..."} /></SelectTrigger>
+                                                <SelectContent className="z-[161]">{costCenters?.filter(cc => cc.isAdministrative || cc.projectId === line.projectId).map(cc => <SelectItem key={cc.id} value={cc.id!} className="text-[10px] font-bold">{cc.name}</SelectItem>)}</SelectContent>
+                                             </Select>
+                                          )}
+                                          {requiresPC && (
+                                             <Select value={line.profitCenterId} onValueChange={v => updateLine(idx, 'profitCenterId', v)}>
+                                                <SelectTrigger className="h-8 rounded-lg border-2 border-rose-100 bg-rose-50 text-[10px] font-black text-rose-600"><SelectValue placeholder={isRtl ? "اختر مركز الربحية..." : "Select Profit Center..."} /></SelectTrigger>
+                                                <SelectContent className="z-[161]">{profitCenters?.filter(pc => pc.projectId === line.projectId).map(pc => <SelectItem key={pc.id} value={pc.id!} className="text-[10px] font-bold">{pc.name}</SelectItem>)}</SelectContent>
+                                             </Select>
+                                          )}
+                                       </div>
+                                    )}
+
+                                    {line.isAutoLinked && (
+                                       <div className="flex items-center gap-2 text-emerald-600 animate-in fade-in">
+                                          <Zap className="h-3 w-3 fill-current" />
+                                          <span className="text-[8px] font-black uppercase tracking-widest">{isRtl ? 'ربط تحليل سيادي نشط' : 'Sovereign Auto-Link Active'}</span>
+                                       </div>
+                                    )}
+                                 </div>
                               </TableCell>
-                              <TableCell className="p-1">
-                                 <Select disabled={!line.projectId && !costCenters?.some(c => c.isAdministrative)} value={line.costCenterId} onValueChange={v => updateLine(idx, 'costCenterId', v)}>
-                                    <SelectTrigger className="h-9 font-bold text-[10px] bg-blue-50/20"><SelectValue placeholder="..." /></SelectTrigger>
-                                    <SelectContent className="rounded-xl border-2">
-                                       <SelectItem value="NONE" className="italic text-slate-400">---</SelectItem>
-                                       {filteredCC?.map(c => <SelectItem key={c.id} value={c.id!} className="font-bold text-[10px]">{c.name}</SelectItem>)}
-                                    </SelectContent>
-                                 </Select>
+                              <TableCell className="p-3">
+                                 <Input type="number" step="0.001" value={line.debit === 0 ? '' : line.debit} onChange={e => updateLine(idx, 'debit', Number(e.target.value))} className="h-11 text-center font-black text-blue-600 text-lg border-2 rounded-xl bg-slate-50/30" />
                               </TableCell>
-                              <TableCell className="p-1">
-                                 <Select disabled={!line.projectId} value={line.profitCenterId} onValueChange={v => updateLine(idx, 'profitCenterId', v)}>
-                                    <SelectTrigger className="h-9 font-bold text-[10px] bg-emerald-50/20"><SelectValue placeholder="..." /></SelectTrigger>
-                                    <SelectContent className="rounded-xl border-2">
-                                       <SelectItem value="NONE" className="italic text-slate-400">---</SelectItem>
-                                       {filteredPC?.map(p => <SelectItem key={p.id} value={p.id!} className="font-bold text-[10px]">{p.name}</SelectItem>)}
-                                    </SelectContent>
-                                 </Select>
+                              <TableCell className="p-3">
+                                 <Input type="number" step="0.001" value={line.credit === 0 ? '' : line.credit} onChange={e => updateLine(idx, 'credit', Number(e.target.value))} className="h-11 text-center font-black text-rose-600 text-lg border-2 rounded-xl bg-slate-50/30" />
                               </TableCell>
-                              <TableCell className="p-1"><Input type="number" step="0.001" value={line.debit || ''} onChange={e => updateLine(idx, 'debit', Number(e.target.value))} className="h-9 text-center font-black text-blue-600" /></TableCell>
-                              <TableCell className="p-1"><Input type="number" step="0.001" value={line.credit || ''} onChange={e => updateLine(idx, 'credit', Number(e.target.value))} className="h-9 text-center font-black text-rose-600" /></TableCell>
-                              <TableCell className="p-1"><Button variant="ghost" size="icon" onClick={() => handleRemoveLine(idx)} className="h-8 w-8 text-slate-300 hover:text-rose-500"><Trash2 className="h-4 w-4" /></Button></TableCell>
+                              <TableCell className="pe-4 text-center">
+                                 <Button variant="ghost" size="icon" onClick={() => handleRemoveLine(idx)} className="h-9 w-9 text-slate-300 hover:text-rose-500 rounded-xl"><Trash2 className="h-4 w-4" /></Button>
+                              </TableCell>
                            </TableRow>
                          );
                        })}
                     </TableBody>
-                    <tfoot className="bg-slate-50">
+                    <tfoot className="bg-slate-50/80 border-t-4 border-slate-100">
                        <tr>
-                          <td className="p-4" colSpan={4}><Button variant="outline" size="sm" onClick={handleAddLine} className="font-bold text-[10px] h-8 px-4 rounded-lg border-2"><Plus className="h-3 w-3 me-1" /> {t('common.add')}</Button></td>
-                          <td className="p-4 text-center font-black text-blue-600 text-lg">{totals.debit.toLocaleString()}</td>
-                          <td className="p-4 text-center font-black text-rose-600 text-lg">{totals.credit.toLocaleString()}</td>
-                          <td className="p-4"></td>
+                          <td className="p-6 ps-8" colSpan={2}>
+                             <Button variant="outline" size="sm" onClick={handleAddLine} className="font-black text-[10px] h-10 px-8 rounded-xl border-2 bg-white hover:bg-slate-100 gap-2">
+                                <Plus className="h-4 w-4" /> {t('common.add')}
+                             </Button>
+                          </td>
+                          <td className="p-6 text-center font-black text-blue-600 text-2xl border-x border-white shadow-inner">{totals.debit.toLocaleString()}</td>
+                          <td className="p-6 text-center font-black text-rose-600 text-2xl shadow-inner">{totals.credit.toLocaleString()}</td>
+                          <td className="pe-4"></td>
                        </tr>
                     </tfoot>
                  </Table>
               </div>
 
-              <div className="flex justify-between items-center bg-slate-50 p-6 rounded-2xl border-2 border-dashed">
-                 <div className="flex items-center gap-4">
-                    {isBalanced ? (
-                      <Badge className="bg-emerald-500 text-white font-black text-xs px-6 py-2 rounded-xl shadow-lg">{t('accounting.journals.balanced')}</Badge>
-                    ) : (
-                      <Badge variant="destructive" className="font-black text-xs px-6 py-2 rounded-xl shadow-lg">{t('accounting.journals.unbalanced')}</Badge>
-                    )}
-                    <p className="text-[10px] font-bold text-slate-400 max-w-xs">{tSafe('inline.analytical_validation_hint', 'سيتم فحص الأبعاد التحليلية (مراكز التكلفة والربحية) فور الضغط على ترحيل.', 'Analytical dimensions (Cost/Profit centers) will be validated upon posting.')}</p>
+              <div className="flex flex-col md:flex-row justify-between items-center bg-slate-50 p-8 rounded-[2.5rem] border-2 border-white shadow-inner gap-6">
+                 <div className="flex items-center gap-6">
+                    <div className={cn(
+                      "flex items-center gap-3 px-8 py-3 rounded-2xl font-black text-xs shadow-xl transition-all",
+                      isBalanced ? "bg-emerald-600 text-white" : "bg-rose-500 text-white animate-pulse"
+                    )}>
+                       {isBalanced ? <CheckCircle2 className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
+                       {isBalanced ? t('accounting.journals.balanced') : t('accounting.journals.unbalanced')}
+                    </div>
+                    <div className="text-start max-w-xs space-y-1">
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{tSafe('inline.analytical_validation_hint', 'الرقابة السيادية للأبعاد', 'Sovereign Validation')}</p>
+                       <p className="text-[9px] font-bold text-slate-400 italic">يتم التحقق من مطابقة مراكز التكلفة والربحية آلياً عند الترحيل لضمان نزاهة التقارير.</p>
+                    </div>
                  </div>
-                 <Button onClick={handleSave} disabled={loading || !isBalanced} className="h-14 rounded-2xl px-12 bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2">
+                 <Button onClick={handleSave} disabled={loading || !isBalanced} className="h-16 rounded-[1.5rem] px-16 bg-primary text-white font-black text-xl shadow-2xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-8 border-orange-700">
                     {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
                     {t('accounting.journals.postToLedger')}
                  </Button>
@@ -238,40 +319,43 @@ export default function JournalEntriesPage() {
            </CardContent>
         </Card>
       ) : (
-        <Card className="rounded-lg shadow-sm border overflow-hidden bg-white">
+        <Card className="rounded-[1.5rem] shadow-sm border border-slate-100 overflow-hidden bg-white text-start">
            <CardContent className="p-0 overflow-x-auto">
               <Table>
-                 <TableHeader className="bg-slate-50">
-                    <TableRow>
-                       <TableHead className="py-3 ps-6 text-start">{tSafe('inline.entry_date', 'رقم القيد / التاريخ', 'Entry No. / Date')}</TableHead>
-                       <TableHead className="text-start">{t('common.notes')}</TableHead>
-                       <TableHead className="text-end">{t('common.amount')}</TableHead>
-                       <TableHead className="text-center">{t('common.status')}</TableHead>
-                       <TableHead className="pe-6"></TableHead>
+                 <TableHeader className="bg-slate-50/50">
+                    <TableRow className="border-b-2">
+                       <TableHead className="py-4 ps-8 text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{tSafe('inline.entry_date', 'رقم القيد / التاريخ', 'Entry No. / Date')}</TableHead>
+                       <TableHead className="text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('common.notes')}</TableHead>
+                       <TableHead className="text-end text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('common.amount')}</TableHead>
+                       <TableHead className="text-center text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('common.status')}</TableHead>
+                       <TableHead className="pe-8"></TableHead>
                     </TableRow>
                  </TableHeader>
                  <TableBody>
                     {journalsLoading ? (
-                      <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></TableCell></TableRow>
+                      <TableRow><TableCell colSpan={5} className="text-center py-24"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/20" /></TableCell></TableRow>
                     ) : journals?.length === 0 ? (
-                      <TableRow><TableCell colSpan={5} className="text-center py-20 text-slate-300 font-bold italic">{t('common.noResults')}</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={5} className="text-center py-24 text-slate-300 font-bold italic text-lg">{t('common.noResults')}</TableCell></TableRow>
                     ) : journals?.map(j => {
                       const total = j.lines.reduce((sum, l) => sum + (l.debit || 0), 0);
                       return (
-                        <TableRow key={j.id} className="hover:bg-slate-50/50 transition-colors border-b-slate-50">
-                           <TableCell className="py-3 ps-6 text-start font-black text-slate-800">
+                        <TableRow key={j.id} className="hover:bg-slate-50/50 transition-colors border-b-slate-50 group">
+                           <TableCell className="py-5 ps-8 text-start font-black text-slate-800">
                               <div className="flex flex-col">
-                                 <span>{j.entryNumber}</span>
-                                 <span className="text-[9px] text-slate-400 font-mono">{j.date}</span>
+                                 <span className="text-sm">{j.entryNumber}</span>
+                                 <span className="text-[9px] text-slate-400 font-mono mt-0.5">{j.date}</span>
                               </div>
                            </TableCell>
-                           <TableCell className="text-start font-bold text-slate-600 text-xs truncate max-w-[200px]">{j.description}</TableCell>
-                           <TableCell className="text-end font-mono font-black text-primary">{total.toLocaleString()} <span className="text-[8px] opacity-40">KWD</span></TableCell>
+                           <TableCell className="text-start font-bold text-slate-600 text-xs truncate max-w-[300px]">{j.description}</TableCell>
+                           <TableCell className="text-end font-mono font-black text-slate-900 text-sm">{total.toLocaleString()} <span className="text-[8px] opacity-40">KWD</span></TableCell>
                            <TableCell className="text-center">
-                              <Badge variant="outline" className="text-[8px] font-black uppercase px-2">{t('status.' + j.status)}</Badge>
+                              <Badge variant="outline" className={cn(
+                                "text-[8px] font-black uppercase px-3 h-5 border-0 shadow-sm",
+                                j.status === 'posted' ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-400"
+                              )}>{t('status.' + j.status)}</Badge>
                            </TableCell>
-                           <TableCell className="pe-6 text-end">
-                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-slate-300 hover:text-primary"><FileText className="h-4 w-4" /></Button>
+                           <TableCell className="pe-8 text-end">
+                              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-slate-300 group-hover:text-primary group-hover:bg-primary/5 transition-all"><FileText className="h-4 w-4" /></Button>
                            </TableCell>
                         </TableRow>
                       );
