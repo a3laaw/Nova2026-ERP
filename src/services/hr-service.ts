@@ -21,6 +21,10 @@ import { Employee, EmployeeAuditLog } from '@/types/hr';
 import { ensureActionPermission } from '@/lib/permissions';
 import { AccountingService } from './accounting-service';
 
+/**
+ * خدمة الموارد البشرية السيادية (Sovereign HR Service).
+ * تم تحديثها لتوليد "أبعاد مالية مزدوجة" (Cost & Profit Centers) لكل موظف جديد.
+ */
 export class HRService {
   constructor(
     private db: Firestore, 
@@ -49,12 +53,21 @@ export class HRService {
     try {
       await setDoc(empRef, docData);
       
-      // أتمتة سيادية: إنشاء مركز تكلفة آلي للموظف لتتبع الـ ROI
+      // الأتمتة السيادية: إنشاء الأبعاد المالية فوراً في الخفاء
       const accService = new AccountingService(this.db, this.companyId);
+      
+      // 1. مركز التكلفة: لمطاردة الرواتب والمصاريف
       await accService.createAutomaticCostCenter(
         empRef.id, 
         `تكلفة الموظف: ${data.fullName}`, 
         `CC-EMP-${data.employeeNumber}`
+      );
+
+      // 2. مركز الربحية: لمطاردة القيمة المنتجة والربحية (The Missing Link)
+      await accService.createAutomaticProfitCenter(
+        empRef.id, 
+        `ربحية الموظف: ${data.fullName}`, 
+        `PC-EMP-${data.employeeNumber}`
       );
 
     } catch (err: any) {
