@@ -5,10 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { 
   GitBranch, Plus, Loader2, Folder, 
   FileText, Search, ChevronRight, ChevronDown,
-  Save, Landmark, DatabaseZap
+  Save, Landmark
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -24,7 +25,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
@@ -37,7 +37,7 @@ import {
 
 export default function ChartOfAccountsPage() {
   const { globalUser, user } = useAuthContext();
-  const { t, tSafe, dir, isRtl } = useLanguage();
+  const { t, dir, isRtl } = useLanguage();
   const db = useFirestore();
   const companyId = globalUser?.companyId;
 
@@ -69,6 +69,7 @@ export default function ChartOfAccountsPage() {
       }
       toast({ title: t('common.saved') });
       setIsAdding(false);
+      setForm({ nameAr: '', nameEn: '', code: '', type: 'asset', isGroup: false, parentId: null });
     } finally { setSaving(false); }
   };
 
@@ -77,7 +78,6 @@ export default function ChartOfAccountsPage() {
       ?.filter(a => a.parentId === parentId)
       .filter(a => {
         if (searchTerm === "") return true;
-        // عند البحث، نظهر العقدة لو كان اسمها أو كودها يطابق البحث
         return a.nameAr.toLowerCase().includes(searchTerm.toLowerCase()) || a.code.includes(searchTerm);
       })
       .map(account => {
@@ -88,7 +88,7 @@ export default function ChartOfAccountsPage() {
           <div key={account.id} className="select-none">
             <div 
               className={cn(
-                "flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl cursor-pointer transition-all border-b border-slate-50 group", 
+                "flex items-center gap-3 p-2.5 hover:bg-slate-50 rounded-xl cursor-pointer transition-all border-b border-slate-50 group", 
                 account.isGroup ? "font-black text-slate-900" : "font-medium text-slate-600"
               )} 
               style={{ paddingInlineStart: `${level * 24 + 12}px` }} 
@@ -124,42 +124,40 @@ export default function ChartOfAccountsPage() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in" dir={dir}>
+    <div className="space-y-6 animate-in fade-in max-w-[1600px] mx-auto" dir={dir}>
       <header className="flex justify-between items-center text-start">
         <div className="text-start space-y-1">
           <h1 className="text-2xl font-black font-headline flex items-center gap-3 text-slate-900">
              <GitBranch className="h-7 w-7 text-primary" /> {t('chartOfAccounts')}
           </h1>
-          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Sovereign Financial Registry V2.8</p>
+          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Sovereign Financial Registry V2.9</p>
         </div>
         <Button onClick={() => { setForm({ nameAr: '', nameEn: '', code: '', type: 'asset', isGroup: false }); setIsAdding(true); }} size="sm" className="h-10 px-8 font-black rounded-xl shadow-lg gap-2">
           <Plus className="h-4 w-4" /> {isRtl ? 'إضافة حساب' : 'Add Account'}
         </Button>
       </header>
 
-      <div className="max-w-[1600px] mx-auto">
-        <Card className="rounded-[2rem] shadow-2xl border-0 bg-white overflow-hidden ring-1 ring-black/5">
-          <CardHeader className="bg-slate-50/50 p-6 border-b text-start">
-            <div className="relative max-w-md">
-              <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
-              <Input 
-                placeholder={isRtl ? "بحث بالاسم أو الكود..." : "Search name or code..."} 
-                className="ps-12 h-11 rounded-xl bg-white border-2 border-slate-100 font-bold" 
-                value={searchTerm} 
-                onChange={e => setSearchTerm(e.target.value)} 
-              />
+      <Card className="rounded-[2rem] shadow-2xl border-0 bg-white overflow-hidden ring-1 ring-black/5">
+        <CardHeader className="bg-slate-50/50 p-6 border-b text-start">
+          <div className="relative max-w-md">
+            <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+            <Input 
+              placeholder={isRtl ? "بحث بالاسم أو الكود..." : "Search name or code..."} 
+              className="ps-11 h-10 rounded-xl bg-white border-2 border-slate-100 font-bold" 
+              value={searchTerm} 
+              onChange={e => setSearchTerm(e.target.value)} 
+            />
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 min-h-[600px]">
+          {loading ? (
+            <div className="py-40 text-center flex flex-col items-center gap-4">
+               <Loader2 className="animate-spin h-10 w-10 text-primary/20" />
+               <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest italic">Loading Chart...</p>
             </div>
-          </CardHeader>
-          <CardContent className="p-4 min-h-[600px]">
-            {loading ? (
-              <div className="py-40 text-center flex flex-col items-center gap-4">
-                 <Loader2 className="animate-spin h-12 w-12 text-primary/20" />
-                 <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest italic">Loading Chart...</p>
-              </div>
-            ) : renderTree(null)}
-          </CardContent>
-        </Card>
-      </div>
+          ) : renderTree(null)}
+        </CardContent>
+      </Card>
 
       <Dialog open={isAdding} onOpenChange={setIsAdding}>
         <DialogContent className="rounded-xl p-0 overflow-hidden max-w-xl bg-white border-0 shadow-3xl" dir={dir}>
@@ -191,7 +189,7 @@ export default function ChartOfAccountsPage() {
               
               <div className="space-y-2">
                  <Label className="text-[10px] font-black text-slate-400 uppercase">الاسم الكامل (Ar)</Label>
-                 <Input value={form.nameAr} onChange={e => setForm({...form, nameAr: e.target.value})} className="h-12 border-2 font-black text-lg bg-slate-50/50" />
+                 <Input value={form.nameAr} onChange={e => setForm({...form, nameAr: e.target.value})} className="h-10 border-2 font-black bg-slate-50/50" />
               </div>
 
               <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border-2">
@@ -202,8 +200,8 @@ export default function ChartOfAccountsPage() {
                  <Switch checked={form.isGroup} onCheckedChange={v => setForm({...form, isGroup: v})} />
               </div>
 
-              <Button onClick={handleSaveAccount} disabled={saving || !form.nameAr || !form.code} className="w-full h-14 rounded-2xl bg-primary text-white font-black shadow-xl border-b-4 border-orange-700 hover:scale-[1.02] transition-all gap-3">
-                 {saving ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />} {t('common.save')}
+              <Button onClick={handleSaveAccount} disabled={saving || !form.nameAr || !form.code} className="w-full h-12 rounded-xl bg-primary text-white font-black shadow-xl border-b-4 border-orange-700 hover:scale-[1.02] transition-all gap-3">
+                 {saving ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />} {t('common.save')}
               </Button>
            </div>
         </DialogContent>
