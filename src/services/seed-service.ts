@@ -37,7 +37,6 @@ export class SeedService {
       let targetCompanyId = data.companyId;
       let roleId = data.roleId;
 
-      // 1. استرجاع الكود المفقود من ملف الشركة (حالة الحسابات التي فقدت الكود)
       if (!currentRoleCode && roleId && targetCompanyId && targetCompanyId !== 'awaiting_setup') {
         try {
           const roleSnap = await getDoc(doc(this.db, 'companies', targetCompanyId, 'roles', roleId));
@@ -49,8 +48,6 @@ export class SeedService {
         }
       }
 
-      // 2. التوحيد القطعي لحالة الأحرف (Sovereign Normalization)
-      // نضمن أن أي كلمة "admin" تتحول لـ "ADMIN" لفتح القفل الأمني
       const rawCode = currentRoleCode || currentRole || 'USER';
       const finalRoleCode = String(rawCode).toUpperCase();
       const finalRole = finalRoleCode.toLowerCase();
@@ -62,7 +59,6 @@ export class SeedService {
           updatedAt: serverTimestamp()
         });
 
-        // مزامنة السجل المحلي داخل الشركة أيضاً
         if (targetCompanyId && targetCompanyId !== 'awaiting_setup') {
            const localUserRef = doc(this.db, 'companies', targetCompanyId, 'users', userDoc.id);
            batch.update(localUserRef, {
@@ -71,7 +67,6 @@ export class SeedService {
               updatedAt: serverTimestamp()
            });
         }
-
         count++;
       }
     }
@@ -139,9 +134,10 @@ export class SeedService {
       }
     }
 
-    // 3. الهيكل الفني
+    // 3. الهيكل الفني مع توفير القوالب المتخصصة (Seed Templates)
     const activityRefs: Record<string, string> = {};
     const serviceRefs: Record<string, string> = {};
+    const subServiceRefs: Record<string, string> = {};
     const stageRefs: Record<string, string> = {};
 
     for (const act of SEED_DATA.activityTypes) {
@@ -175,6 +171,7 @@ export class SeedService {
 
         for (const sub of srv.subServices) {
           const subRef = doc(collection(this.db, paths.subServices(this.companyId, actRef.id, srvRef.id)));
+          subServiceRefs[sub.code] = subRef.id;
           batch.set(subRef, {
             code: sub.code,
             name: sub.name,
@@ -198,6 +195,7 @@ export class SeedService {
 
             batch.set(stageRef, {
               ...stage,
+              id: stageRef.id,
               activityTypeId: actRef.id,
               serviceId: srvRef.id,
               subServiceId: subRef.id,
@@ -213,47 +211,59 @@ export class SeedService {
       }
     }
 
-    const rootCivilRef = doc(collection(this.db, paths.boqReferenceNodes(this.companyId)));
-    batch.set(rootCivilRef, {
-      code: 'CONSTRUCTION_ROOT',
-      title: 'أعمال المقاولات والإنشاءات',
-      parentId: null,
-      depth: 0,
-      ancestorIds: [],
-      childrenCount: 1,
-      nodeRole: 'group',
-      isExecutable: false,
+    // 4. ضخ قوالب العقود المتخصصة (Design vs Construction)
+    const contractTemplatesRef = collection(this.db, paths.contractTemplates(this.companyId));
+    
+    // أ. قالب التصميم الهندسي (0% Retention)
+    const designTemplateRef = doc(contractTemplatesRef);
+    batch.set(designTemplateRef, {
+      id: designTemplateRef.id,
+      name: 'اتفاقية أتعاب تصميم معماري وهندسي',
+      nameEn: 'Engineering Design Fee Agreement',
+      code: 'TPL-ARCH-01',
+      activityTypeId: activityRefs['CONSULTING'],
+      serviceId: serviceRefs['RESIDENTIAL_DESIGN'],
+      subServiceId: subServiceRefs['MUN-PERMIT'],
+      baseAmount: 1500,
+      retentionRate: 0, // لا توجد محتجزات في التصميم عادة
+      pricingMode: 'fixed',
       isActive: true,
-      allowedActivityTypeIds: [activityRefs['CONSTRUCTION'] || ''],
-      allowedActivityTypeNames: ['أعمال المقاولات والإنشاءات'],
-      order: 1,
+      isDefault: true,
+      defaultMilestones: [
+        { name: 'دفعة عند توقيع العقد', percentage: 20, timing: 'at', technicalStageId: 'SIGNING' },
+        { name: 'دفعة عند اعتماد المسقط الأفقي المعماري', percentage: 40, timing: 'after', technicalStageId: stageRefs['ARCH-APPR'] },
+        { name: 'دفعة عند تسليم المخططات النهائية والمختومة', percentage: 40, timing: 'after', technicalStageId: stageRefs['ENG-STAMP'] },
+      ],
       companyId: this.companyId,
-      createdAt: serverTimestamp()
-    } as BOQReferenceNode);
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
 
-    const excavationRef = doc(collection(this.db, paths.boqReferenceNodes(this.companyId)));
-    const excavationStageId = stageRefs['EXCAVATION'] || '';
-
-    batch.set(excavationRef, {
-      code: 'EXC_STR_01',
-      title: 'حفريات القواعد والأساسات الإنشائية',
-      parentId: rootCivilRef.id,
-      depth: 1,
-      ancestorIds: [rootCivilRef.id],
-      childrenCount: 0,
-      nodeRole: 'work_item',
-      isExecutable: true,
+    // ب. قالب أعمال المقاولات (5% Retention)
+    const constTemplateRef = doc(contractTemplatesRef);
+    batch.set(constTemplateRef, {
+      id: constTemplateRef.id,
+      name: 'عقد تنفيذ أعمال الهيكل الأسود',
+      nameEn: 'Construction Skeleton Execution Contract',
+      code: 'TPL-CONST-01',
+      activityTypeId: activityRefs['CONSTRUCTION'],
+      serviceId: serviceRefs['SKELETON_WORKS'],
+      subServiceId: subServiceRefs['VILLA-SKELETON'],
+      baseAmount: 45000,
+      retentionRate: 5, // استقطاع سيادي 5%
+      pricingMode: 'percentage',
       isActive: true,
-      unitName: 'متر مكعب',
-      unitSymbol: 'CUM',
-      estimatedRate: 2.5,
-      technicalStageId: excavationStageId,
-      technicalStageIds: [excavationStageId],
-      allowedItemCategoryIds: ['CIVIL_MAT'],
-      order: 1,
+      isDefault: true,
+      defaultMilestones: [
+        { name: 'دفعة مقدمة (مباشرة الحفر)', percentage: 10, timing: 'at', technicalStageId: stageRefs['EXCAVATION'] },
+        { name: 'دفعة صب القواعد والأساسات', percentage: 20, timing: 'after', technicalStageId: stageRefs['FOOTINGS'] },
+        { name: 'دفعة صب أعمدة الدور الأرضي', percentage: 15, timing: 'after', technicalStageId: stageRefs['COLUMNS-G'] },
+        { name: 'دفعة صب سقف الدور الأرضي', percentage: 25, timing: 'after', technicalStageId: stageRefs['SLAB-G'] },
+      ],
       companyId: this.companyId,
-      createdAt: serverTimestamp()
-    } as BOQReferenceNode);
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
 
     await batch.commit();
   }
@@ -273,22 +283,15 @@ export class SeedService {
     return !snap.empty;
   }
 
-  /**
-   * ضخ دليل حسابات سيادي مخصص لشركات المقاولات في الكويت.
-   * يتبع معايير IFRS وقواعد WIP والمحتجزات.
-   */
   async seedConstructionCOA(userId: string) {
     const batch = writeBatch(this.db);
     const coaRef = collection(this.db, paths.accounts(this.companyId));
     
-    // تعريف الشجرة المحاسبية (Sovereign Construction COA)
     const tree = [
-      // 1. الأصول (Assets)
       { code: '1', nameAr: 'الأصول', nameEn: 'Assets', type: 'asset', isGroup: true, parentId: null, level: 1 },
       { code: '11', nameAr: 'الأصول غير المتداولة', nameEn: 'Non-Current Assets', type: 'asset', isGroup: true, parentId: '1', level: 2 },
       { code: '1101', nameAr: 'آليات ومعدات ثقيلة', nameEn: 'Heavy Machinery & Equipment', type: 'asset', isGroup: true, parentId: '11', level: 3 },
       { code: '1102', nameAr: 'مجمع إهلاك المعدات', nameEn: 'Accumulated Depreciation', type: 'asset', isGroup: true, parentId: '11', level: 3 },
-      
       { code: '12', nameAr: 'الأصول المتداولة', nameEn: 'Current Assets', type: 'asset', isGroup: true, parentId: '1', level: 2 },
       { code: '1201', nameAr: 'الصناديق والبنوك', nameEn: 'Cash & Banks', type: 'asset', isGroup: true, parentId: '12', level: 3 },
       { code: '1202', nameAr: 'ذمم العملاء', nameEn: 'Accounts Receivable', type: 'asset', isGroup: true, parentId: '12', level: 3 },
@@ -296,39 +299,29 @@ export class SeedService {
       { code: '1204', nameAr: 'مخزون مواد البناء', nameEn: 'Inventory - Raw Materials', type: 'asset', isGroup: true, parentId: '12', level: 3 },
       { code: '1205', nameAr: 'أعمال تحت التنفيذ (WIP)', nameEn: 'Work In Progress', type: 'asset', isGroup: true, parentId: '12', level: 3 },
       { code: '1206', nameAr: 'عهد موظفين', nameEn: 'Employee Advances', type: 'asset', isGroup: true, parentId: '12', level: 3 },
-
-      // 2. الالتزامات (Liabilities)
       { code: '2', nameAr: 'الالتزامات', nameEn: 'Liabilities', type: 'liability', isGroup: true, parentId: null, level: 1 },
       { code: '22', nameAr: 'الالتزامات المتداولة', nameEn: 'Current Liabilities', type: 'liability', isGroup: true, parentId: '2', level: 2 },
       { code: '2201', nameAr: 'ذمم الموردين', nameEn: 'Accounts Payable', type: 'liability', isGroup: true, parentId: '22', level: 3 },
       { code: '2202', nameAr: 'محتجزات لمقاولي الباطن', nameEn: 'Retentions Payable', type: 'liability', isGroup: true, parentId: '22', level: 3 },
       { code: '2203', nameAr: 'دفعات مقدمة من العملاء', nameEn: 'Advanced Payments (Clients)', type: 'liability', isGroup: true, parentId: '22', level: 3 },
       { code: '2204', nameAr: 'مستحقات رواتب وأجور', nameEn: 'Accrued Salaries', type: 'liability', isGroup: true, parentId: '22', level: 3 },
-
-      // 3. حقوق الملكية (Equity)
       { code: '3', nameAr: 'حقوق الملكية', nameEn: 'Equity', type: 'equity', isGroup: true, parentId: null, level: 1 },
       { code: '301', nameAr: 'رأس المال', nameEn: 'Capital', type: 'equity', isGroup: false, parentId: '3', level: 2 },
       { code: '302', nameAr: 'الأرباح والخسائر المدورة', nameEn: 'Retained Earnings', type: 'equity', isGroup: false, parentId: '3', level: 2 },
-
-      // 4. الإيرادات (Revenue)
       { code: '4', nameAr: 'الإيرادات', nameEn: 'Revenue', type: 'revenue', isGroup: true, parentId: null, level: 1 },
       { code: '401', nameAr: 'إيرادات عقود المقاولات', nameEn: 'Construction Contracts Revenue', type: 'revenue', isGroup: false, parentId: '4', level: 2 },
       { code: '402', nameAr: 'إيرادات أوامر تغييرية', nameEn: 'Variation Orders Revenue', type: 'revenue', isGroup: false, parentId: '4', level: 2 },
-
-      // 5. المصروفات (Expenses)
       { code: '5', nameAr: 'المصروفات', nameEn: 'Expenses', type: 'expense', isGroup: true, parentId: null, level: 1 },
       { code: '501', nameAr: 'تكاليف تشغيلية مباشرة', nameEn: 'Direct Operational Costs', type: 'expense', isGroup: true, parentId: '5', level: 2 },
       { code: '50101', nameAr: 'تكاليف مواد', nameEn: 'Material Costs', type: 'expense', isGroup: false, parentId: '501', level: 3 },
       { code: '50102', nameAr: 'تكاليف عمالة موقع', nameEn: 'Site Labor Costs', type: 'expense', isGroup: false, parentId: '501', level: 3 },
       { code: '50103', nameAr: 'إيجار آليات ومعدات', nameEn: 'Equipment Rental Costs', type: 'expense', isGroup: false, parentId: '501', level: 3 },
       { code: '50104', nameAr: 'تكاليف مقاولي باطن', nameEn: 'Subcontractor Costs', type: 'expense', isGroup: false, parentId: '501', level: 3 },
-      
       { code: '502', nameAr: 'مصاريف إدارية وعمومية', nameEn: 'General & Admin Expenses', type: 'expense', isGroup: true, parentId: '5', level: 2 },
       { code: '50201', nameAr: 'رواتب إدارية', nameEn: 'Admin Salaries', type: 'expense', isGroup: false, parentId: '502', level: 3 },
       { code: '50202', nameAr: 'إيجار مكتب', nameEn: 'Office Rent', type: 'expense', isGroup: false, parentId: '502', level: 3 },
     ];
 
-    // خريطة لتخزين المعرفات المولدة لربط الأباء
     const idMap: Record<string, string> = {};
 
     for (const item of tree) {

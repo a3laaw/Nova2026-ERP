@@ -65,7 +65,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
       defaultMilestones: [],
       isDefault: false,
       isActive: true,
-      retentionRate: 5 // القيمة الافتراضية السيادية 5%
+      retentionRate: 5 
     }
   );
 
@@ -113,7 +113,24 @@ export function ContractTemplateForm({ template, onClose }: Props) {
     }
   }, [db, companyId, formData.subServiceId, formData.activityTypeId, formData.serviceId]);
 
-  // محرك المزامنة التفاعلية: تحديث المبالغ عند تغيير الميزانية الإجمالية
+  // الضبط التلقائي للمحتجزات بناءً على نوع النشاط
+  useEffect(() => {
+    if (formData.activityTypeId && activities) {
+      const act = activities.find(a => a.id === formData.activityTypeId);
+      if (act) {
+        const isConsulting = act.code === 'CONSULTING' || act.nameEn?.includes('Consulting');
+        // إذا كان تصميم هندسي، المحتجزات غالباً 0%
+        if (isConsulting && formData.retentionRate !== 0) {
+           setFormData(prev => ({ ...prev, retentionRate: 0 }));
+        } 
+        // إذا كان مقاولات، المحتجزات 5%
+        else if (!isConsulting && formData.retentionRate === 0) {
+           setFormData(prev => ({ ...prev, retentionRate: 5 }));
+        }
+      }
+    }
+  }, [formData.activityTypeId, activities]);
+
   useEffect(() => {
     if (formData.pricingMode === 'percentage' && formData.baseAmount !== undefined) {
       const total = formData.baseAmount || 0;
@@ -193,15 +210,15 @@ export function ContractTemplateForm({ template, onClose }: Props) {
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 border-2 rounded-xl text-slate-400"><ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} /></Button>
           <div className="text-start">
-             <h1 className="text-xl font-black text-slate-900 leading-none">{tSafe('inline.contract.engineering', 'هندسة قوالب العقود', 'Contract Template Engineering')}</h1>
+             <h1 className="text-xl font-black text-slate-900 leading-none">{tSafe('inline.contract.engineering', 'هندسة قوالب العقود المتخصصة', 'Specialized Contract Engineering')}</h1>
              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{formData.name || 'Draft Template'}</p>
           </div>
         </div>
         <div className="flex items-center gap-4">
            <div className="flex flex-col text-end">
-              <span className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'حالة التوازن' : 'Balance Status'}</span>
+              <span className="text-[9px] font-black text-slate-400 uppercase">ميزانية القالب</span>
               <Badge variant="outline" className={cn("h-6 border-2 font-black text-[9px]", stats.isValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>
-                 {stats.isValid ? `BALANCED` : `BUDGET MISMATCH`}
+                 {currentDisplayAmount.toLocaleString()} KWD
               </Badge>
            </div>
            <Button onClick={handleSave} disabled={loading} className="h-12 px-10 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 gap-3 border-b-4 border-orange-700">
@@ -213,14 +230,21 @@ export function ContractTemplateForm({ template, onClose }: Props) {
       <div className="max-w-full mx-auto px-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
          <aside className="lg:col-span-3 space-y-6 text-start">
             <Card className="border-0 shadow-xl rounded-[2rem] bg-white ring-1 ring-black/5 overflow-hidden">
-               <CardHeader className="bg-primary/5 p-6 border-b"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2"><Target className="h-4 w-4" /> {isRtl ? 'السياق والمطابقة' : 'Direct Matching'}</CardTitle></CardHeader>
+               <CardHeader className="bg-primary/5 p-6 border-b"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2"><Target className="h-4 w-4" /> {isRtl ? 'تصنيف النشاط والربط' : 'Activity & Link'}</CardTitle></CardHeader>
                <CardContent className="p-6 space-y-4">
-                  <div className="space-y-1.5"><Label className="text-[10px] font-black text-slate-400 uppercase">النشاط</Label><Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: '', boqTemplateId: ''})}><SelectTrigger className="h-10 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger><SelectContent className="rounded-xl">{activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent></Select></div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black text-slate-400 uppercase">نوع النشاط</Label>
+                    <Select value={formData.activityTypeId} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: '', boqTemplateId: ''})}>
+                      <SelectTrigger className="h-10 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger>
+                      <SelectContent className="rounded-xl">{activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  
                   <div className="space-y-1.5"><Label className="text-[10px] font-black text-slate-400 uppercase">الخدمة</Label><Select disabled={!formData.activityTypeId} value={formData.serviceId} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: '', boqTemplateId: ''})}><SelectTrigger className="h-10 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger><SelectContent className="rounded-xl">{services?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent></Select></div>
                   <div className="space-y-1.5"><Label className="text-[10px] font-black text-slate-400 uppercase">المسار</Label><Select disabled={!formData.serviceId} value={formData.subServiceId} onValueChange={v => { const sub = activeSubs.find(s => s.id === v); setFormData({...formData, subServiceId: v, subServiceName: sub?.name || '', boqTemplateId: ''}); }}><SelectTrigger className="h-10 rounded-xl border-2 font-bold"><SelectValue placeholder="..." /></SelectTrigger><SelectContent className="rounded-xl">{activeSubs.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs">{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent></Select></div>
                   
                   <div className="pt-6 border-t space-y-4">
-                     <Label className="text-[10px] font-black uppercase text-primary flex items-center gap-1.5"><LinkIcon className="h-3 w-3" /> {isRtl ? 'المقايسة المرتبطة جينياً' : 'Genetic BOQ Link'}</Label>
+                     <Label className="text-[10px] font-black uppercase text-primary flex items-center gap-1.5"><LinkIcon className="h-3 w-3" /> المقايسة المرتبطة</Label>
                      <Select disabled={!formData.subServiceId} value={formData.boqTemplateId} onValueChange={v => { const bt = boqTemplates?.find(b => b.id === v); setFormData({...formData, boqTemplateId: v, boqTemplateName: bt?.name || ''}); }}><SelectTrigger className="h-12 rounded-xl border-2 font-black bg-orange-50/50 border-orange-100"><SelectValue placeholder="..." /></SelectTrigger><SelectContent className="rounded-xl">{boqTemplates?.map(bt => <SelectItem key={bt.id} value={bt.id!} className="font-bold py-3">{bt.name}</SelectItem>)}</SelectContent></Select>
                   </div>
                </CardContent>
@@ -229,17 +253,20 @@ export function ContractTemplateForm({ template, onClose }: Props) {
             <div className="p-6 rounded-[2rem] bg-slate-50 border-2 border-primary/10 space-y-6 relative overflow-hidden shadow-inner">
                <div className="absolute top-0 right-0 p-6 opacity-5"><Calculator className="h-20 w-20 text-primary" /></div>
                <div className="space-y-2 text-start relative z-10">
-                  <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-1">{isRtl ? 'الميزانية المستهدفة' : 'Target Budget'}</p>
+                  <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-1">{isRtl ? 'الميزانية التقديرية' : 'Estimated Budget'}</p>
                   <Input type="number" value={formData.baseAmount || 0} onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} className="h-14 rounded-2xl border-2 bg-white text-2xl text-center font-black text-primary" />
                </div>
 
                <div className="pt-4 border-t border-primary/10 relative z-10 text-start space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'نسبة المحتجزات (Retention)' : 'Retention Rate'}</Label>
+                  <div className="flex justify-between items-center mb-1">
+                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المحتجزات' : 'Retention'}</Label>
+                    <Badge className={cn("h-5 border-0 font-black text-[9px]", formData.retentionRate === 0 ? "bg-slate-100 text-slate-400" : "bg-orange-100 text-orange-600")}>{formData.retentionRate}%</Badge>
+                  </div>
                   <div className="relative">
-                    <Input type="number" value={formData.retentionRate} onChange={e => setFormData({...formData, retentionRate: Number(e.target.value)})} className="h-11 rounded-xl border-2 bg-white text-lg font-black text-center pr-10" />
+                    <Input type="number" value={formData.retentionRate} onChange={e => setFormData({...formData, retentionRate: Number(e.target.value)})} className="h-10 rounded-xl border-2 bg-white text-lg font-black text-center pr-10" />
                     <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
                   </div>
-                  <p className="text-[8px] font-bold text-slate-400 italic">يتم خصم هذه النسبة آلياً من كل مستخلص مالي.</p>
+                  <p className="text-[8px] font-bold text-slate-400 italic">يتم ضبطها آلياً حسب نوع النشاط المختار.</p>
                </div>
             </div>
          </aside>
@@ -254,7 +281,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
 
                   <div className="space-y-6">
                      <div className="flex justify-between items-center px-4">
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><LayoutGrid className="h-5 w-5 text-primary" /> {isRtl ? 'جدول الدفعات والارتباط المظلي' : 'Milestones & Umbrella Links'}</h4>
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2"><LayoutGrid className="h-5 w-5 text-primary" /> {isRtl ? 'هيكلة الدفعات والارتباط الفني' : 'Milestones & Technical Link'}</h4>
                         <Button variant="outline" size="sm" onClick={addMilestone} className="rounded-xl h-9 px-6 font-black border-2 gap-2 bg-white hover:bg-primary/5 shadow-sm"><Plus className="h-4 w-4" /> إضافة دفعة</Button>
                      </div>
 
@@ -266,8 +293,8 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                  <th className="p-6">مسمى الدفعة</th>
                                  {formData.pricingMode === 'percentage' && <th className="p-6 text-center w-24">%</th>}
                                  <th className="p-6 text-center w-32">التوقيت</th>
-                                 <th className="p-6 w-56">المرحلة المظلية (Link)</th>
-                                 <th className="p-6 text-end pe-12 w-48">القيمة</th>
+                                 <th className="p-6 w-56">الارتباط الفني (Link)</th>
+                                 <th className="p-6 text-end pe-12 w-48">القيمة التقديرية</th>
                                  <th className="p-6 w-14"></th>
                               </tr>
                            </thead>
@@ -286,19 +313,12 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                 </tr>
                               ))}
                            </tbody>
-                           <tfoot className="bg-slate-50 border-t-8 border-primary"><tr className="font-black text-slate-800"><td colSpan={formData.pricingMode === 'percentage' ? 5 : 4} className="p-10 text-xl font-headline uppercase">{isRtl ? 'إجمالي قيمة التعاقد المعتمدة' : 'Total Contract Approved Value'}</td><td colSpan={2} className="p-10 text-end pe-12"><div className="space-y-1"><h2 className="text-5xl font-black font-headline text-primary">{(currentDisplayAmount || 0).toLocaleString()}</h2><p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em]">{isRtl ? 'دينار كويتي لا غير' : 'KUWAITI DINARS ONLY'}</p></div></td></tr></tfoot>
+                           <tfoot className="bg-slate-50 border-t-8 border-primary"><tr className="font-black text-slate-800"><td colSpan={formData.pricingMode === 'percentage' ? 5 : 4} className="p-10 text-xl font-headline uppercase">{isRtl ? 'إجمالي قيمة التعاقد المعتمدة' : 'Total Contract Value'}</td><td colSpan={2} className="p-10 text-end pe-12"><div className="space-y-1"><h2 className="text-5xl font-black font-headline text-primary">{(currentDisplayAmount || 0).toLocaleString()}</h2><p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em]">{isRtl ? 'دينار كويتي لا غير' : 'KUWAITI DINARS ONLY'}</p></div></td></tr></tfoot>
                         </table>
                      </div>
                   </div>
 
-                  <div className="p-6 rounded-3xl bg-blue-50/50 border-2 border-dashed border-blue-200 flex items-start gap-4">
-                     <ShieldAlert className="h-6 w-6 text-blue-600 shrink-0" />
-                     <p className="text-xs font-bold text-blue-800 leading-relaxed">
-                        سيقوم النظام عند إصدار أي مستخلص مالي للمالك بخصم مبلغ محتجزات بنسبة ({formData.retentionRate}%) آلياً من إجمالي قيمة الدفعة المستحقة.
-                     </p>
-                  </div>
-
-                  <div className="space-y-4 pt-10"><h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 border-b-4 border-primary/20 pb-3"><Gavel className="h-6 w-6 text-primary" /> {isRtl ? 'الشروط والأحكام القانونية المرجعية' : 'Legal Clauses & Obligations'}</h4><Textarea value={formData.legalText || ''} onChange={e => setFormData({...formData, legalText: e.target.value})} className="min-h-[400px] rounded-[3rem] border-2 p-10 text-base font-bold leading-relaxed bg-slate-50 focus:bg-white transition-all shadow-inner" /></div>
+                  <div className="space-y-4 pt-10"><h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 border-b-4 border-primary/20 pb-3"><Gavel className="h-6 w-6 text-primary" /> {isRtl ? 'البنود والالتزامات القانونية المرجعية' : 'Legal Clauses & Obligations'}</h4><Textarea value={formData.legalText || ''} onChange={e => setFormData({...formData, legalText: e.target.value})} className="min-h-[400px] rounded-[3rem] border-2 p-10 text-base font-bold leading-relaxed bg-slate-50 focus:bg-white transition-all shadow-inner" /></div>
                </div>
             </PrintWrapper>
          </div>
