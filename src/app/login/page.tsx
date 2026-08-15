@@ -45,8 +45,8 @@ export default function LoginPage() {
             <Sparkles className="h-8 w-8" />
           </div>
           <div className="space-y-2">
-            <CardTitle className="text-3xl font-black font-headline tracking-tight">NovaFlow ERP</CardTitle>
-            <CardDescription className="text-lg font-bold">بوابة الدخول الموحدة للمنشآت</CardDescription>
+            <CardTitle className="text-3xl font-black font-headline tracking-tight text-slate-900">NovaFlow ERP</CardTitle>
+            <CardDescription className="text-sm font-bold text-slate-500">بوابة الدخول الموحدة للمنشآت</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
@@ -66,7 +66,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="h-12 rounded-xl border-2 text-left font-bold"
+                className="h-10 rounded-xl border-2 text-left font-bold"
                 dir="ltr"
               />
             </div>
@@ -77,21 +77,21 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="h-12 rounded-xl border-2 text-left font-bold"
+                className="h-10 rounded-xl border-2 text-left font-bold"
                 dir="ltr"
               />
             </div>
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-16 bg-primary text-white rounded-2xl text-xl font-black shadow-xl shadow-primary/20 hover:scale-[1.01] transition-all"
+              className="w-full h-12 bg-primary text-white rounded-2xl text-lg font-black shadow-xl shadow-primary/20 hover:scale-[1.01] transition-all border-b-4 border-orange-700"
             >
               {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : 'تسجيل الدخول'}
             </Button>
           </form>
         </CardContent>
         <CardFooter className="pb-10 pt-4 flex flex-col space-y-4 text-center">
-          <Button variant="link" onClick={() => router.push('/register')} className="text-primary font-black gap-2">
+          <Button variant="link" onClick={() => router.push('/register')} className="text-primary font-black text-sm gap-2">
             <Building2 className="h-4 w-4" /> تسجيل شركة جديدة
           </Button>
           <p className="text-[10px] text-muted-foreground font-bold italic">

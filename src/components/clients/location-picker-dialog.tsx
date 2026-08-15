@@ -15,11 +15,9 @@ import {
   Search, 
   Loader2, 
   Crosshair,
-  Map as MapIcon,
-  CheckCircle2,
+  X,
   MapPin,
-  LocateFixed,
-  X
+  LocateFixed
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import dynamic from 'next/dynamic';
@@ -28,7 +26,7 @@ import { toast } from '@/hooks/use-toast';
 const MapView = dynamic(() => import('./map-view'), { 
   ssr: false,
   loading: () => (
-    <div className="h-[400px] w-full rounded-[2.5rem] bg-slate-50 flex items-center justify-center border-4 border-slate-100">
+    <div className="h-[400px] w-full rounded-2xl bg-slate-50 flex items-center justify-center border-4 border-slate-100">
       <div className="flex flex-col items-center gap-3">
          <Loader2 className="h-10 w-10 animate-spin text-primary/30" />
          <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Initializing Map...</p>
@@ -77,7 +75,6 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
       const lng = parseFloat(coordMatch[2]);
       if (!isNaN(lat) && !isNaN(lng)) {
         setPosition([lat, lng]);
-        toast({ title: t('common.confirm') });
         return;
       }
     }
@@ -93,10 +90,7 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
         const lng = parseFloat(data[0].lon);
         setPosition([lat, lng]);
       } else {
-        toast({ 
-          variant: "destructive", 
-          title: t('common.error')
-        });
+        toast({ variant: "destructive", title: t('common.error') });
       }
     } catch (e) {
       console.error("Search failed", e);
@@ -106,18 +100,14 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
   };
 
   const handleLocateMe = () => {
-    if (typeof window === 'undefined' || !navigator.geolocation) {
-      return;
-    }
+    if (typeof window === 'undefined' || !navigator.geolocation) return;
     setIsLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setPosition([pos.coords.latitude, pos.coords.longitude]);
         setIsLocating(false);
       },
-      () => {
-        setIsLocating(false);
-      }
+      () => setIsLocating(false)
     );
   };
 
@@ -129,68 +119,59 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
-        <div className="bg-primary/5 p-8 text-slate-900 text-start border-b flex items-center justify-between shrink-0 relative">
-           <div className="flex items-center gap-4 relative z-10 text-start">
-              <div className="h-12 w-12 bg-primary/20 rounded-2xl flex items-center justify-center text-primary shadow-lg ring-4 ring-primary/5">
-                 <LocateFixed className="h-7 w-7" />
+      <DialogContent className="max-w-4xl rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white flex flex-col max-h-[90vh]" dir={dir}>
+        <DialogHeader className="bg-slate-50/80 p-6 text-slate-900 border-b flex flex-row items-center justify-between shrink-0">
+           <div className="flex items-center gap-4 text-start">
+              <div className="h-10 w-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary shadow-sm">
+                 <LocateFixed className="h-6 w-6" />
               </div>
               <div className="text-start">
-                 <DialogTitle className="text-2xl font-black font-headline text-start">{t('clients.form.locationRadar')}</DialogTitle>
-                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">{t('clients.form.openMap')}</p>
+                 <DialogTitle className="text-xl font-black font-headline">{t('clients.form.locationRadar')}</DialogTitle>
+                 <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{t('clients.form.openMap')}</p>
               </div>
            </div>
-           <Button variant="ghost" onClick={onClose} className="rounded-full h-10 w-10 text-slate-400 relative z-10"><X className="h-6 w-6" /></Button>
-        </div>
+           <Button variant="ghost" onClick={onClose} className="rounded-full h-8 w-8 text-slate-400"><X className="h-5 w-5" /></Button>
+        </DialogHeader>
 
-        <div className="p-8 space-y-6">
-           <div className="flex gap-3">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-white">
+           <div className="flex gap-2">
               <div className="relative flex-1">
-                 <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
+                 <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
                  <Input 
                    value={searchQuery}
                    onChange={e => setSearchQuery(e.target.value)}
                    onKeyDown={e => e.key === 'Enter' && handleSearch()}
                    placeholder={t('common.search')}
-                   className="h-12 rounded-2xl border-2 ps-12 font-bold text-lg bg-slate-50/50 focus:bg-white transition-all shadow-inner"
+                   className="h-10 rounded-xl border-2 ps-10 font-bold bg-slate-50 focus:bg-white transition-all shadow-inner"
                  />
-                 {isSearching && <Loader2 className="absolute end-4 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-primary" />}
+                 {isSearching && <Loader2 className="absolute end-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />}
               </div>
-              <Button onClick={handleSearch} disabled={isSearching} className="h-12 px-10 rounded-2xl bg-slate-900 text-white font-black shadow-xl hover:scale-105 transition-all">{t('common.search')}</Button>
+              <Button onClick={handleSearch} disabled={isSearching} className="h-10 px-6 rounded-xl font-bold">بحث</Button>
               <Button 
                 variant="outline" 
                 onClick={handleLocateMe} 
                 disabled={isLocating}
-                className="h-12 w-12 p-0 rounded-2xl border-2 text-blue-600 hover:bg-blue-50 bg-white shadow-sm shrink-0"
+                className="h-10 w-10 p-0 rounded-xl border-2 text-blue-600 shrink-0"
               >
-                 {isLocating ? <Loader2 className="h-6 w-6 animate-spin" /> : <Crosshair className="h-6 w-6" />}
+                 {isLocating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Crosshair className="h-5 w-5" />}
               </Button>
            </div>
 
-           <div className="h-[400px] w-full rounded-[2.5rem] overflow-hidden border-4 border-slate-50 shadow-2xl relative group bg-slate-100">
+           <div className="h-[400px] w-full rounded-2xl overflow-hidden border-2 border-slate-100 shadow-inner relative group bg-slate-100">
               {isOpen && <MapView position={position} setPosition={setPosition} />}
-              
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1000] pointer-events-none w-full px-10 flex justify-center">
-                 <div className="bg-slate-900/90 text-white backdrop-blur-md border-0 px-6 py-3 rounded-2xl font-mono text-xs shadow-3xl pointer-events-auto flex items-center gap-4 border border-white/10" dir="ltr">
-                    <div className="flex items-center gap-2 border-e border-white/10 pe-4">
-                       <MapPin className="h-3.5 w-3.5 text-primary" />
-                       <span className="font-black">LAT: {position[0].toFixed(6)}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                       <MapPin className="h-3.5 w-3.5 text-primary" />
-                       <span className="font-black">LNG: {position[1].toFixed(6)}</span>
-                    </div>
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000] flex justify-center">
+                 <div className="bg-slate-900/90 text-white backdrop-blur-md px-4 py-2 rounded-xl font-mono text-[9px] shadow-2xl flex items-center gap-4 border border-white/10" dir="ltr">
+                    <span className="flex items-center gap-1.5 border-e border-white/10 pe-3"><MapPin className="h-3 w-3 text-primary" /> {position[0].toFixed(6)}</span>
+                    <span className="flex items-center gap-1.5"><MapPin className="h-3 w-3 text-primary" /> {position[1].toFixed(6)}</span>
                  </div>
               </div>
            </div>
         </div>
 
-        <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4 shrink-0">
-           <Button variant="outline" onClick={onClose} className="flex-1 h-12 rounded-xl border-2 font-black text-lg bg-white shadow-sm">
-              {t('common.cancel')}
-           </Button>
-           <Button onClick={handleConfirm} className="flex-[2] h-12 rounded-xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-4 border-orange-700">
-              <CheckCircle2 className="h-7 w-7" />
+        <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row gap-4 shrink-0">
+           <Button variant="outline" onClick={onClose} className="flex-1 h-12 rounded-xl border-2 font-bold bg-white">{t('common.cancel')}</Button>
+           <Button onClick={handleConfirm} className="flex-[2] h-12 rounded-xl font-black shadow-xl shadow-primary/20 border-b-4 border-orange-700">
+              <CheckCircle2 className="h-5 w-5 me-2" />
               {t('common.confirm')}
            </Button>
         </DialogFooter>

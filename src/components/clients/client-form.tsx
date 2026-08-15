@@ -18,7 +18,7 @@ import {
 import { 
   UserPlus, Save, Loader2, 
   RefreshCw, Mail, Fingerprint, MapPinned,
-  Search, Globe, Briefcase, ShieldCheck, MapPin,
+  Briefcase, CheckCircle2,
   LocateFixed
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
@@ -127,7 +127,7 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 text-start pb-20 w-full max-w-[1600px] mx-auto">
-      <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/[0.02]">
+      <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/[0.02]">
         <div className="bg-primary/5 p-6 border-b flex items-center justify-between">
            <div className="flex items-center gap-3">
               <UserPlus className="h-5 w-5 text-primary" />
@@ -216,7 +216,7 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
         </CardContent>
       </Card>
 
-      <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/[0.02]">
+      <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/[0.02]">
         <div className="bg-blue-50/30 p-6 border-b flex items-center justify-between">
            <div className="flex items-center gap-3 text-start">
               <MapPinned className="h-6 w-6 text-blue-600" />
