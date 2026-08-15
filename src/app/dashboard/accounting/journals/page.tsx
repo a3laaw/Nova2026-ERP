@@ -29,10 +29,22 @@ import { cn } from '@/lib/utils';
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 
 /**
+ * دالة تطبيع النص العربي (Arabic Normalization)
+ * تقوم بتوحيد الحروف المتشابهة لاكتشاف التكرار المعنوي
+ */
+const normalizeArabic = (text: string): string => {
+  return text
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ة/g, 'ه')
+    .replace(/ى/g, 'ي')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+/**
  * شاشة قيود اليومية السيادية (Sovereign Journal Entries).
  * - التسجيل الحصري: يسمح بالاختيار فقط من الحسابات الفرعية (Leaf Accounts).
- * - محرك تجميع البيان: يصيغ البيان العام آلياً من تفاصيل السطور بدون تكرار.
- * - الفلترة الموجهة: يربط قائمة المشاريع بهوية الحساب المختار في السطر.
+ * - محرك تجميع البيان: يصيغ البيان العام آلياً مع تطهير لغوي لمنع تكرار الجمل المتشابهة.
  */
 export default function JournalEntriesPage() {
   const { globalUser, user } = useAuthContext();
@@ -77,27 +89,30 @@ export default function JournalEntriesPage() {
   const { data: costCenters } = useCollection<CostCenter>(costCentersQuery);
   const { data: profitCenters } = useCollection<ProfitCenter>(profitCentersQuery);
 
-  /**
-   * تطهير القائمة (Postable Accounts Filter):
-   * القاعدة السيادية: تظهر فقط الحسابات التي ليس لها أبناء (Leaf Nodes).
-   */
   const availableAccounts = useMemo(() => {
     return (accounts || []).filter(a => a.isGroup === false);
   }, [accounts]);
 
   /**
-   * محرك تجميع البيان الذكي (Auto-Narration Aggregator)
-   * يراقب سطور القيد، يجمع البيانات الفريدة، ويصيغها في البيان العام تلقائياً.
+   * محرك تجميع البيان الذكي مع التطهير اللغوي (Semantic Narration Aggregator)
+   * يكتشف التشابه بين "شركه" و "شركة" ويمنع تكرارهما في البيان العام.
    */
   useEffect(() => {
     if (isAdding) {
-       const uniqueMemos = Array.from(new Set(
-          form.lines
-            .map(l => l.memo?.trim())
-            .filter(m => !!m)
-       ));
+       const uniqueMemosMap = new Map<string, string>();
        
-       const aggregatedDescription = uniqueMemos.join(' - ');
+       form.lines.forEach(l => {
+          const rawMemo = l.memo?.trim();
+          if (!rawMemo) return;
+          
+          const normalized = normalizeArabic(rawMemo);
+          // إذا كان النص الموحد غير موجود، نضيف النص الأصلي (للحفاظ على جمالية النص المكتوب أولاً)
+          if (!uniqueMemosMap.has(normalized)) {
+             uniqueMemosMap.set(normalized, rawMemo);
+          }
+       });
+       
+       const aggregatedDescription = Array.from(uniqueMemosMap.values()).join(' - ');
        
        if (aggregatedDescription !== form.description) {
           setForm(prev => ({ ...prev, description: aggregatedDescription }));
@@ -105,7 +120,6 @@ export default function JournalEntriesPage() {
     }
   }, [form.lines, isAdding]);
 
-  // --- محرك الربط الصامت على مستوى السطر (Row-Level Silent Linker) ---
   const autoLinkLine = (idx: number, projectId: string, accId: string, currentLines: any[]) => {
     const lines = [...currentLines];
     const acc = accounts?.find(a => a.id === accId);
@@ -166,7 +180,6 @@ export default function JournalEntriesPage() {
        const acc = accounts?.find(a => a.id === val);
        newLines[idx].accountId = val;
        newLines[idx].accountName = isRtl ? acc?.nameAr || '' : acc?.nameEn || '';
-       // تصفير المشروع إذا تغير الحساب لضمان المزامنة
        newLines[idx].projectId = ''; 
        newLines = autoLinkLine(idx, '', val, newLines);
     }
@@ -235,7 +248,7 @@ export default function JournalEntriesPage() {
                  </div>
                  <div className="md:col-span-3 space-y-2">
                     <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
-                      <Sparkles className="h-3 w-3" /> {isRtl ? 'البيان العام للقيد (توليد تلقائي من السطور)' : 'Auto-Aggregated Narration'}
+                      <Sparkles className="h-3 w-3" /> {isRtl ? 'البيان العام للقيد (توليد تلقائي مطهر لغوياً)' : 'Auto-Aggregated & Normalized Narration'}
                     </Label>
                     <Input value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="..." className="h-12 border-2 rounded-xl font-bold bg-primary/[0.02] border-primary/10 shadow-inner" />
                  </div>
@@ -256,11 +269,8 @@ export default function JournalEntriesPage() {
                     <TableBody>
                        {form.lines.map((line, idx) => {
                          const acc = accounts?.find(a => a.id === line.accountId);
-                         
-                         // فلترة المشاريع بناءً على الحساب المختار
                          const filteredProjects = projects?.filter(p => {
                             if (!acc || !acc.referenceId) return true;
-                            // إذا كان الحساب مربوطاً بعميل (مثل ذمم 1202)، اظهر مشاريع هذا العميل فقط
                             if (acc.code.startsWith('1202')) return p.clientId === acc.referenceId;
                             return true;
                          });
@@ -408,7 +418,7 @@ export default function JournalEntriesPage() {
               <Table>
                  <TableHeader className="bg-slate-50/50">
                     <TableRow className="border-b-2">
-                       <TableHead className="py-4 ps-8 text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{tSafe('inline.entry_date', 'رقم القيد / التاريخ', 'Entry No. / Date')}</TableHead>
+                       <TableHead className="py-5 ps-8 text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{tSafe('inline.entry_date', 'رقم القيد / التاريخ', 'Entry No. / Date')}</TableHead>
                        <TableHead className="text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'البيان العام' : 'Narration'}</TableHead>
                        <TableHead className="text-end text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('common.amount')}</TableHead>
                        <TableHead className="text-center text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('common.status')}</TableHead>
@@ -452,3 +462,4 @@ export default function JournalEntriesPage() {
     </div>
   );
 }
+
