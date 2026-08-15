@@ -31,7 +31,7 @@ import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 /**
  * شاشة قيود اليومية السيادية (Sovereign Journal Entries).
  * تم تحديث محرك الربط ليكون ديناميكياً وصامتاً (Silent Row-Level Linking).
- * تم إضافة حقل "البيان" لكل سطر مع ميزة النسخ التلقائي للأسفل.
+ * تم تفعيل محرك تجميع البيان العام التلقائي من بيانات السطور (Narration Aggregator).
  */
 export default function JournalEntriesPage() {
   const { globalUser, user } = useAuthContext();
@@ -76,12 +76,39 @@ export default function JournalEntriesPage() {
   const { data: costCenters } = useCollection<CostCenter>(costCentersQuery);
   const { data: profitCenters } = useCollection<ProfitCenter>(profitCentersQuery);
 
-  const availableAccounts = useMemo(() => accounts?.filter(a => !a.isGroup), [accounts]);
+  /**
+   * تصفية الحسابات المالية:
+   * نظهر فقط الحسابات القياسية من شجرة الحسابات (التي لا تتبع لمشروع أو عميل محدد)
+   * لمنع تكرار أسماء المشاريع في القائمة المالية.
+   */
+  const availableAccounts = useMemo(() => {
+    return accounts?.filter(a => !a.isGroup && !(a as any).referenceId);
+  }, [accounts]);
+
+  /**
+   * محرك تجميع البيان العام (Narration Aggregator Engine)
+   * يجمع بيانات السطور الفريدة ويصيغها في البيان العام للقيد تلقائياً.
+   */
+  useEffect(() => {
+    if (isAdding) {
+       const uniqueMemos = Array.from(new Set(
+          form.lines
+            .map(l => l.memo?.trim())
+            .filter(m => !!m)
+       ));
+       
+       const aggregatedDescription = uniqueMemos.join(' - ');
+       
+       if (aggregatedDescription !== form.description) {
+          setForm(prev => ({ ...prev, description: aggregatedDescription }));
+       }
+    }
+  }, [form.lines, isAdding]);
 
   // --- محرك الربط الصامت على مستوى السطر (Row-Level Silent Linker) ---
   const autoLinkLine = (idx: number, projectId: string, accId: string, currentLines: any[]) => {
     const lines = [...currentLines];
-    const acc = availableAccounts?.find(a => a.id === accId);
+    const acc = accounts?.find(a => a.id === accId);
     
     let ccId = '';
     let pcId = '';
@@ -140,7 +167,7 @@ export default function JournalEntriesPage() {
     let newLines = [...form.lines];
     
     if (field === 'accountId') {
-       const acc = availableAccounts?.find(a => a.id === val);
+       const acc = accounts?.find(a => a.id === val);
        newLines[idx].accountId = val;
        newLines[idx].accountName = isRtl ? acc?.nameAr || '' : acc?.nameEn || '';
        newLines = autoLinkLine(idx, newLines[idx].projectId || '', val, newLines);
@@ -152,12 +179,12 @@ export default function JournalEntriesPage() {
     else if (field === 'debit') {
        const debitVal = Number(val) || 0;
        newLines[idx].debit = debitVal;
-       if (debitVal > 0) newLines[idx].credit = 0;
+       if (debitVal > 0) newLines[idx].credit = 0; // صرامة محاسبية: لا يجوز الجمع في سطر واحد
     }
     else if (field === 'credit') {
        const creditVal = Number(val) || 0;
        newLines[idx].credit = creditVal;
-       if (creditVal > 0) newLines[idx].debit = 0;
+       if (creditVal > 0) newLines[idx].debit = 0; // صرامة محاسبية
     }
     else {
        (newLines[idx] as any)[field] = val;
@@ -198,7 +225,7 @@ export default function JournalEntriesPage() {
       </header>
 
       {isAdding ? (
-        <Card className="rounded-[2rem] border-0 shadow-3xl bg-white overflow-hidden animate-in slide-in-from-bottom-4">
+        <Card className="rounded-[2.5rem] border-0 shadow-3xl bg-white overflow-hidden animate-in slide-in-from-bottom-4">
            <CardHeader className="bg-slate-50/50 p-8 border-b text-start">
               <CardTitle className="font-black text-slate-800 text-xl">{t('accounting.journals.draftTitle')}</CardTitle>
            </CardHeader>
@@ -209,8 +236,10 @@ export default function JournalEntriesPage() {
                     <Input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="h-12 border-2 rounded-xl font-bold" />
                  </div>
                  <div className="md:col-span-3 space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'البيان العام للقيد' : 'Main Narration'}</Label>
-                    <Input value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="..." className="h-12 border-2 rounded-xl font-bold bg-slate-50/30" />
+                    <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
+                      <Sparkles className="h-3 w-3" /> {isRtl ? 'البيان العام للقيد (توليد تلقائي)' : 'Aggregated Main Narration'}
+                    </Label>
+                    <Input value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="..." className="h-12 border-2 rounded-xl font-bold bg-primary/[0.02] border-primary/10 shadow-inner" />
                  </div>
               </div>
 
@@ -228,7 +257,7 @@ export default function JournalEntriesPage() {
                     </TableHeader>
                     <TableBody>
                        {form.lines.map((line, idx) => {
-                         const acc = availableAccounts?.find(a => a.id === line.accountId);
+                         const acc = accounts?.find(a => a.id === line.accountId);
                          const requiresCC = acc?.analyticalConfig?.costCenter === 'required';
                          const requiresPC = acc?.analyticalConfig?.profitCenter === 'required';
 
@@ -242,7 +271,7 @@ export default function JournalEntriesPage() {
                             : '--- No Project ---';
 
                          return (
-                           <TableRow key={idx} className="border-b-slate-50 hover:bg-primary/[0.01]">
+                           <TableRow key={idx} className="border-b-slate-100 hover:bg-primary/[0.01]">
                               <TableCell className="py-3 ps-6">
                                  <SearchableDropdown
                                    options={(availableAccounts || []).map(a => ({ id: a.id!, name: isRtl ? a.nameAr : a.nameEn, subText: a.code }))}
