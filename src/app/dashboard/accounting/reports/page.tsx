@@ -125,7 +125,7 @@ export default function FinancialProfitabilityPage() {
            <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit border border-primary/10 shadow-sm">
               <Sparkles className="h-3 w-3" /> {isRtl ? 'رادار الربحية السيادي' : 'Sovereign Profitability Radar'}
            </div>
-           <h1 className="text-4xl font-black font-headline text-slate-900">{isRtl ? 'تحليل مراكز التكلفة والربحية' : 'Cost & Profit Center Analysis'}</h1>
+           <h1 className="text-4xl font-black font-headline text-slate-800">{isRtl ? 'تحليل مراكز التكلفة والربحية' : 'Cost & Profit Center Analysis'}</h1>
            <p className="text-xs font-bold text-slate-400 italic text-start">{isRtl ? 'رقابة شاملة تربط مصروفات الميدان والعهد بالإيرادات المفوترة.' : 'Comprehensive control linking field spend and assets to revenue.'}</p>
         </div>
         <Button variant="outline" onClick={() => window.print()} className="rounded-xl border-2 h-11 px-6 font-black gap-2 bg-white shadow-sm hover:bg-slate-50 print:hidden">
@@ -156,7 +156,7 @@ export default function FinancialProfitabilityPage() {
 
             <div className="space-y-2 text-start">
                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                  <LayoutGrid className="h-3.5 w-3.5 text-blue-600" /> {isRtl ? 'مركز التكلفة (المصروفات)' : 'Cost Center'}
+                  <LayoutGrid className="h-3.5 w-3.5 text-[#2563EB]" /> {isRtl ? 'مركز التكلفة (المصروفات)' : 'Cost Center'}
                </Label>
                <SearchableDropdown
                  options={[
@@ -199,10 +199,10 @@ export default function FinancialProfitabilityPage() {
             <TabsTrigger value="projects" className="rounded-xl font-black text-xs px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2">
                <Target className="h-4 w-4" /> {isRtl ? 'ميزان ربحية المشاريع' : 'Project Profitability'}
             </TabsTrigger>
-            <TabsTrigger value="resources" className="rounded-xl font-black text-xs px-8 h-full data-[state=active]:bg-slate-900 data-[state=active]:text-white transition-all gap-2">
+            <TabsTrigger value="resources" className="rounded-xl font-black text-xs px-8 h-full data-[state=active]:bg-slate-800 data-[state=active]:text-white transition-all gap-2">
                <Users className="h-4 w-4" /> {isRtl ? 'كفاءة الموارد (ROI)' : 'Resource Efficiency'}
             </TabsTrigger>
-            <TabsTrigger value="registry" className="rounded-xl font-black text-xs px-8 h-full data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all gap-2">
+            <TabsTrigger value="registry" className="rounded-xl font-black text-xs px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2">
                <ListTree className="h-4 w-4" /> {tSafe('inline.centers.registry', 'سجل مراكز التكلفة والربحية', 'Centers Registry')}
             </TabsTrigger>
          </TabsList>
@@ -213,26 +213,26 @@ export default function FinancialProfitabilityPage() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                    <Card className="border-0 shadow-xl rounded-[2rem] bg-white p-8 border-b-8 border-primary ring-1 ring-black/5 text-start">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إيرادات محققة (مفلترة)' : 'Filtered Revenue'}</p>
-                      <h3 className="text-3xl font-black text-slate-900">{stats.totalRevenue.toLocaleString()} <span className="text-xs">KWD</span></h3>
+                      <h3 className="text-3xl font-black text-slate-800">{stats.totalRevenue.toLocaleString()} <span className="text-xs">KWD</span></h3>
                    </Card>
                    <Card className="border-0 shadow-xl rounded-[2rem] bg-white p-8 border-b-8 border-rose-500 ring-1 ring-black/5 text-start">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي التكاليف (مفلترة)' : 'Filtered Costs'}</p>
                       <h3 className="text-3xl font-black text-rose-600">{stats.totalCosts.toLocaleString()} <span className="text-xs">KWD</span></h3>
                    </Card>
-                   <Card className="border-0 shadow-xl rounded-[2.5rem] bg-slate-900 p-8 text-white relative overflow-hidden group text-start">
+                   <Card className="border-0 shadow-xl rounded-[2.5rem] bg-slate-800 p-8 text-white relative overflow-hidden group text-start">
                       <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><TrendingUp className="h-24 w-24 text-primary" /></div>
                       <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-2">{isRtl ? 'صافي هامش الربح' : 'Filtered Margin'}</p>
                       <h3 className="text-4xl font-black text-white">{stats.netMargin.toLocaleString()} <span className="text-xs text-primary">KWD</span></h3>
                    </Card>
-                   <Card className="border-0 shadow-xl rounded-[2rem] bg-white p-8 border-b-8 border-blue-500 ring-1 ring-black/5 text-start">
+                   <Card className="border-0 shadow-xl rounded-[2rem] bg-white p-8 border-b-8 border-[#2563EB] ring-1 ring-black/5 text-start">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'ميزانية المقايسات الكلية' : 'Total Budgets'}</p>
-                      <h3 className="text-3xl font-black text-blue-600">{stats.totalBudget.toLocaleString()} <span className="text-xs">KWD</span></h3>
+                      <h3 className="text-3xl font-black text-[#2563EB]">{stats.totalBudget.toLocaleString()} <span className="text-xs">KWD</span></h3>
                    </Card>
                 </div>
 
                 <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                    <CardHeader className="bg-slate-50/50 p-8 border-b">
-                      <CardTitle className="text-xl font-black font-headline flex items-center gap-3 text-start">
+                      <CardTitle className="text-xl font-black font-headline flex items-center gap-3 text-start text-slate-800">
                          <Scale className="h-6 w-6 text-primary" /> {isRtl ? 'كشف ربحية العملاء والمشاريع' : 'Project Profitability Ledger'}
                       </CardTitle>
                    </CardHeader>
@@ -254,7 +254,7 @@ export default function FinancialProfitabilityPage() {
                                      <p className="font-black text-slate-800 text-sm">{p.clientName}</p>
                                      <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">{p.projectName}</p>
                                   </td>
-                                  <td className="p-6 text-end font-mono font-bold text-slate-900">{p.totalRevenue.toLocaleString()}</td>
+                                  <td className="p-6 text-end font-mono font-bold text-slate-700">{p.totalRevenue.toLocaleString()}</td>
                                   <td className="p-6 text-end font-mono font-bold text-rose-500">{p.totalSpent.toLocaleString()}</td>
                                   <td className="p-6 text-end font-mono font-black text-emerald-600">{p.margin.toLocaleString()}</td>
                                   <td className="p-6 text-center pe-10">
@@ -276,7 +276,7 @@ export default function FinancialProfitabilityPage() {
               /* عرض تفصيلي لمشروع محدد */
               <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
                  <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
-                    <CardHeader className="bg-slate-900 p-10 text-white flex flex-row items-center justify-between">
+                    <CardHeader className="bg-slate-800 p-10 text-white flex flex-row items-center justify-between">
                        <div className="text-start space-y-2">
                           <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">{isRtl ? 'كشف الربحية الجزيئي للمشروع' : 'Project Molecular Profitability'}</p>
                           <CardTitle className="text-3xl font-black font-headline text-start">{allTransactions?.find(t => t.id === filters.projectId)?.clientName} - {allTransactions?.find(t => t.id === filters.projectId)?.subServiceName}</CardTitle>
@@ -348,8 +348,8 @@ export default function FinancialProfitabilityPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                   <CardHeader className="bg-slate-50/50 border-b p-8">
-                     <CardTitle className="text-lg font-black flex items-center gap-3 text-start">
-                        <UserCheck className="h-6 w-6 text-blue-600" /> {isRtl ? 'جدوى القوى العاملة (Labor ROI)' : 'Labor Efficiency (ROI)'}
+                     <CardTitle className="text-lg font-black flex items-center gap-3 text-start text-slate-800">
+                        <UserCheck className="h-6 w-6 text-[#2563EB]" /> {isRtl ? 'جدوى القوى العاملة (Labor ROI)' : 'Labor Efficiency (ROI)'}
                      </CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
@@ -382,7 +382,7 @@ export default function FinancialProfitabilityPage() {
 
                <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                   <CardHeader className="bg-slate-50/50 border-b p-8">
-                     <CardTitle className="text-lg font-black flex items-center gap-3 text-start">
+                     <CardTitle className="text-lg font-black flex items-center gap-3 text-start text-slate-800">
                         <Truck className="h-6 w-6 text-orange-600" /> {isRtl ? 'عائد استثمار المعدات' : 'Equipment ROI'}
                      </CardTitle>
                   </CardHeader>
@@ -419,10 +419,13 @@ export default function FinancialProfitabilityPage() {
          <TabsContent value="registry" className="space-y-8 animate-in slide-in-from-bottom-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-                  <CardHeader className="bg-slate-900 p-8 text-white text-start">
+                  <CardHeader className="bg-orange-50 p-8 border-b text-start">
                      <div className="flex items-center gap-4">
-                        <div className="h-11 w-11 rounded-xl bg-white/10 flex items-center justify-center text-primary"><LayoutGrid className="h-6 w-6" /></div>
-                        <CardTitle className="text-xl font-black">{tSafe('inline.cost.centers.list', 'سجل مراكز التكلفة (المصروفات)', 'Cost Centers Registry')}</CardTitle>
+                        <div className="h-11 w-11 rounded-xl bg-white border border-orange-100 flex items-center justify-center text-primary shadow-sm"><LayoutGrid className="h-6 w-6" /></div>
+                        <div className="text-start">
+                           <CardTitle className="text-xl font-black text-slate-800">{tSafe('inline.cost.centers.list', 'سجل مراكز التكلفة (المصروفات)', 'Cost Centers Registry')}</CardTitle>
+                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Operational Cost Structure</p>
+                        </div>
                      </div>
                   </CardHeader>
                   <CardContent className="p-0 overflow-x-auto">
@@ -437,8 +440,8 @@ export default function FinancialProfitabilityPage() {
                         <tbody className="divide-y divide-slate-50">
                            {costCenters?.map((cc: any) => (
                               <tr key={cc.id} className="hover:bg-slate-50 transition-colors">
-                                 <td className="p-5 ps-8"><Badge variant="outline" className="font-mono font-black text-[9px] border-primary/20 text-primary">{cc.code}</Badge></td>
-                                 <td className="p-5 font-black text-slate-800 text-sm">{cc.name}</td>
+                                 <td className="p-5 ps-8"><Badge variant="outline" className="font-mono font-black text-[9px] border-primary/20 text-primary bg-white">{cc.code}</Badge></td>
+                                 <td className="p-5 font-black text-slate-700 text-sm">{cc.name}</td>
                                  <td className="p-5 text-start">
                                     {cc.isAdministrative ? (
                                       <Badge className="bg-blue-50 text-blue-600 border-0 text-[8px] font-black uppercase">{isRtl ? 'إداري عام' : 'Administrative'}</Badge>
@@ -457,10 +460,13 @@ export default function FinancialProfitabilityPage() {
                </Card>
 
                <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-                  <CardHeader className="bg-emerald-900 p-8 text-white text-start">
+                  <CardHeader className="bg-blue-50 p-8 border-b text-start">
                      <div className="flex items-center gap-4">
-                        <div className="h-11 w-11 rounded-xl bg-white/10 flex items-center justify-center text-emerald-400"><DatabaseZap className="h-6 w-6" /></div>
-                        <CardTitle className="text-xl font-black">{tSafe('inline.profit.centers.list', 'سجل مراكز الربحية (الإيرادات)', 'Profit Centers Registry')}</CardTitle>
+                        <div className="h-11 w-11 rounded-xl bg-white border border-blue-100 flex items-center justify-center text-[#2563EB] shadow-sm"><DatabaseZap className="h-6 w-6" /></div>
+                        <div className="text-start">
+                           <CardTitle className="text-xl font-black text-slate-800">{tSafe('inline.profit.centers.list', 'سجل مراكز الربحية (الإيرادات)', 'Profit Centers Registry')}</CardTitle>
+                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Revenue Performance Nodes</p>
+                        </div>
                      </div>
                   </CardHeader>
                   <CardContent className="p-0 overflow-x-auto">
@@ -475,8 +481,8 @@ export default function FinancialProfitabilityPage() {
                         <tbody className="divide-y divide-slate-50">
                            {profitCenters?.map((pc: any) => (
                               <tr key={pc.id} className="hover:bg-slate-50 transition-colors">
-                                 <td className="p-5 ps-8"><Badge variant="outline" className="font-mono font-black text-[9px] border-emerald-200 text-emerald-600">{pc.code}</Badge></td>
-                                 <td className="p-5 font-black text-slate-800 text-sm">{pc.name}</td>
+                                 <td className="p-5 ps-8"><Badge variant="outline" className="font-mono font-black text-[9px] border-blue-200 text-[#2563EB] bg-white">{pc.code}</Badge></td>
+                                 <td className="p-5 font-black text-slate-700 text-sm">{pc.name}</td>
                                  <td className="p-5 text-start">
                                     <div className="flex items-center gap-2 text-slate-400 font-bold text-[10px]">
                                        <Target className="h-3 w-3 text-emerald-500" />
