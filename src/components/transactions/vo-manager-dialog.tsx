@@ -26,7 +26,7 @@ import {
   SelectItem, 
   SelectTrigger, 
   SelectValue 
-} from "@/components/ui/select";
+} from "@/select-primitive";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -101,21 +101,21 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
     if (field === 'sourceBoqItemId' && val && item.type !== 'new_item') {
       const source = boqItems.find(i => i.id === val);
       if (source) {
-        item.description = source.referenceTitle;
-        item.unitName = source.unitName;
-        item.unitSymbol = source.unitSymbol;
+        item.description = source.referenceTitle || '';
+        item.unitName = source.unitName || '';
+        item.unitSymbol = source.unitSymbol || '';
         item.rate = source.estimatedRate ?? 0;
         item.sourcePlannedQuantity = source.plannedQuantity || 0;
-        item.technicalStageId = source.technicalStageId;
+        item.technicalStageId = source.technicalStageId || '';
       }
     }
 
     if (field === 'boqReferenceNodeId' && val) {
        const node = val as any;
-       item.boqReferenceNodeId = node.id;
-       item.description = node.title; 
-       item.unitName = node.unitName;
-       item.unitSymbol = node.unitSymbol;
+       item.boqReferenceNodeId = node.id || '';
+       item.description = node.title || ''; 
+       item.unitName = node.unitName || '';
+       item.unitSymbol = node.unitSymbol || '';
        item.rate = node.estimatedRate ?? 0;
        item.technicalStageId = node.technicalStageId || '';
        item.technicalStageIds = node.technicalStageIds || [];
@@ -193,7 +193,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
            <div className="lg:col-span-3 space-y-6">
               <div className="space-y-1.5">
                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('projects.voManager.voTitle')}</Label>
-                 <Input value={title} onChange={e => setTitle(e.target.value)} className="h-9 rounded-lg border-2 font-bold text-xs" />
+                 <Input value={title} onChange={e => setTitle(e.target.value)} className="h-8 rounded-lg border-2 font-bold text-xs" />
               </div>
               <div className="space-y-1.5">
                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('projects.voManager.reason')}</Label>
@@ -221,9 +221,9 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                             <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
                                <div className="md:col-span-2 space-y-1.5">
                                   <Label className="text-[9px] font-black text-slate-400 uppercase">{t('projects.boqExplorer.action')}</Label>
-                                  <Select value={item.type} onValueChange={(v: any) => updateItem(idx, 'type', v)}>
+                                  <Select value={item.type || 'increase_quantity'} onValueChange={(v: any) => updateItem(idx, 'type', v)}>
                                      <SelectTrigger className="h-8 rounded-md border-2 font-black text-[9px]"><SelectValue /></SelectTrigger>
-                                     <SelectContent className="rounded-lg">
+                                     <SelectContent className="max-h-[300px] overflow-y-auto rounded-lg">
                                         <SelectItem value="increase_quantity" className="font-bold text-emerald-600 text-xs">{t('projects.voManager.increase')}</SelectItem>
                                         <SelectItem value="decrease_quantity" className="font-bold text-rose-600 text-xs">{t('projects.voManager.decrease')}</SelectItem>
                                         <SelectItem value="omit_item" className="font-bold text-slate-500 text-xs">{t('projects.voManager.omit')}</SelectItem>
@@ -239,9 +239,9 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                        <BOQReferenceSelector onSelect={(node) => updateItem(idx, 'boqReferenceNodeId', node)} className="grid-cols-1 gap-2" />
                                      </div>
                                   ) : (
-                                     <Select value={item.sourceBoqItemId} onValueChange={v => updateItem(idx, 'sourceBoqItemId', v)}>
+                                     <Select value={item.sourceBoqItemId || ''} onValueChange={v => updateItem(idx, 'sourceBoqItemId', v)}>
                                         <SelectTrigger className="h-8 rounded-md border-2 font-bold text-[9px] bg-white"><SelectValue placeholder="..." /></SelectTrigger>
-                                        <SelectContent className="rounded-lg z-[160]">
+                                        <SelectContent className="max-h-[300px] overflow-y-auto rounded-lg z-[160]">
                                           {boqItems.map(i => (
                                             <SelectItem key={i.id} value={i.id!} className="font-bold text-[10px] py-2 border-b last:border-0 border-slate-50">
                                               <div className="flex flex-col text-start">
@@ -257,13 +257,13 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
 
                                <div className="md:col-span-2 space-y-1.5">
                                   <Label className="text-[9px] font-black uppercase text-primary">{t('projects.voManager.deltaQty')}</Label>
-                                  <Input type="number" value={item.quantityDelta} onChange={e => updateItem(idx, 'quantityDelta', e.target.value)} className="h-8 rounded-md border-2 font-black text-center text-xs" />
+                                  <Input type="number" value={item.quantityDelta || 0} onChange={e => updateItem(idx, 'quantityDelta', e.target.value)} className="h-8 rounded-md border-2 font-black text-center text-xs" />
                                </div>
 
                                <div className="md:col-span-3 space-y-1.5">
                                   <Label className="text-[9px] font-black text-slate-400">{t('projects.boqExplorer.rate')}</Label>
                                   <div className="flex items-center gap-2">
-                                     <Input type="number" step="0.001" value={item.rate} onChange={e => updateItem(idx, 'rate', e.target.value)} className="h-8 rounded-md border-2 font-black text-emerald-600 text-xs text-center" />
+                                     <Input type="number" step="0.001" value={item.rate || 0} onChange={e => updateItem(idx, 'rate', e.target.value)} className="h-8 rounded-md border-2 font-black text-emerald-600 text-xs text-center" />
                                      <div className="text-end min-w-[60px]"><p className={cn("text-[10px] font-black", (Number(item.total) || 0) >= 0 ? "text-emerald-500" : "text-rose-500")}>{(Number(item.total) || 0).toLocaleString()}</p></div>
                                   </div>
                                </div>
@@ -278,7 +278,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                       <Label className="text-[9px] font-black uppercase text-primary tracking-widest">{t('projects.voManager.financialSection')}:</Label>
                                       <Select value={item.targetSectionId || ''} onValueChange={v => updateItem(idx, 'targetSectionId', v)}>
                                          <SelectTrigger className="h-8 rounded-md border-2 font-black text-[10px] bg-primary/5 border-primary/10"><SelectValue placeholder="..." /></SelectTrigger>
-                                         <SelectContent className="rounded-lg">
+                                         <SelectContent className="max-h-[300px] overflow-y-auto rounded-lg">
                                             {boqSections.map(s => <SelectItem key={s.id} value={s.id} className="font-bold text-xs">{s.title}</SelectItem>)}
                                          </SelectContent>
                                       </Select>
@@ -287,7 +287,7 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                       <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{t('projects.voManager.executionPath')}:</Label>
                                       <Select value={item.stageMode || 'existing_stage'} onValueChange={(v: VOStageMode) => updateItem(idx, 'stageMode', v)}>
                                          <SelectTrigger className="h-8 rounded-md border-2 font-bold text-[9px]"><SelectValue /></SelectTrigger>
-                                         <SelectContent className="rounded-lg">
+                                         <SelectContent className="max-h-[300px] overflow-y-auto rounded-lg">
                                             <SelectItem value="existing_stage" className="font-bold text-xs">{t('projects.voManager.linkExisting')}</SelectItem>
                                             <SelectItem value="new_local_stage" className="font-bold text-primary text-xs">{t('projects.voManager.injectNew')}</SelectItem>
                                          </SelectContent>
@@ -300,9 +300,9 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                       <Label className="text-[9px] font-black uppercase text-secondary flex items-center gap-2">
                                          <Workflow className="h-3 w-3" /> {t('projects.voManager.linkExisting')}
                                       </Label>
-                                      <Select value={item.technicalStageId} onValueChange={v => updateItem(idx, 'technicalStageId', v)}>
+                                      <Select value={item.technicalStageId || ''} onValueChange={v => updateItem(idx, 'technicalStageId', v)}>
                                          <SelectTrigger className="h-8 rounded-md border-2 font-bold bg-secondary/5 border-secondary/20"><SelectValue placeholder="..." /></SelectTrigger>
-                                         <SelectContent className="rounded-lg z-[160]">
+                                         <SelectContent className="max-h-[300px] overflow-y-auto rounded-lg z-[160]">
                                             {availableStages.map(s => (
                                                <SelectItem key={s.id} value={s.technicalStageId} className="font-bold text-[10px] py-1.5">
                                                   <span className="flex items-center gap-2">
@@ -313,37 +313,6 @@ export function VOManagerDialog({ isOpen, onClose, boqId, transactionId, boqNumb
                                             ))}
                                          </SelectContent>
                                       </Select>
-                                   </div>
-                                )}
-
-                                {item.stageMode === 'new_local_stage' && (
-                                   <div className="p-4 bg-slate-50 rounded-lg border-2 border-white shadow-inner space-y-4 animate-in slide-in-from-top-4 duration-500 text-start">
-                                      <div className="grid grid-cols-2 gap-4">
-                                         <div className="space-y-1">
-                                            <Label className="text-[9px] font-bold text-slate-500">{t('projects.voManager.stageName')}</Label>
-                                            <Input value={item.localStageName} onChange={e => updateItem(idx, 'localStageName', e.target.value)} className="h-8 rounded-md border-2 font-bold text-[10px] bg-white" />
-                                         </div>
-                                         <div className="space-y-1">
-                                            <Label className="text-[9px] font-bold text-slate-500">{t('projects.voManager.stageCode')}</Label>
-                                            <Input value={item.localStageCode} onChange={e => updateItem(idx, 'localStageCode', e.target.value.toUpperCase())} className="h-8 rounded-md border-2 font-mono text-[9px] bg-white" placeholder="VO_CODE" />
-                                         </div>
-                                      </div>
-
-                                      <div className="grid grid-cols-2 gap-6 items-center">
-                                         <div className="space-y-1">
-                                            <Label className="text-[9px] font-bold text-slate-500">{t('projects.voManager.insertAfter')}</Label>
-                                            <Select value={item.insertAfterStageId} onValueChange={v => updateItem(idx, 'insertAfterStageId', v)}>
-                                               <SelectTrigger className="h-8 rounded-md border-2 font-bold bg-white text-[9px]"><SelectValue placeholder="..." /></SelectTrigger>
-                                               <SelectContent className="rounded-lg z-[160]">
-                                                  {availableStages.map(s => <SelectItem key={s.id} value={s.id} className="font-bold text-xs py-1.5">{s.name}</SelectItem>)}
-                                               </SelectContent>
-                                            </Select>
-                                         </div>
-                                         <div className="flex items-center justify-between p-3 bg-white rounded-lg border-2">
-                                            <Label className="font-black text-[9px] uppercase">{t('projects.voManager.parallel')}</Label>
-                                            <Switch checked={item.isComplementary} onCheckedChange={v => updateItem(idx, 'isComplementary', v)} className="scale-75" />
-                                         </div>
-                                      </div>
                                    </div>
                                 )}
                               </div>

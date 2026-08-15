@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
 import { ContractMilestone, SubConContractTemplate, PricingMode } from '@/types/templates';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/select-primitive";
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 
 function NewSubConContractContent() {
@@ -39,9 +39,9 @@ function NewSubConContractContent() {
   const companyId = globalUser?.companyId;
 
   const [loading, setLoading] = useState(false);
-  const [checkingEligibility, setCheckingEligibility] = useState(false);
   const [eligibilityError, setEligibilityError] = useState<string | null>(null);
 
+  // تأمين القيم الافتراضية لمنع خطأ Controlled Input
   const [form, setForm] = useState<any>({
     subcontractorId: '',
     subcontractorName: '',
@@ -89,7 +89,6 @@ function NewSubConContractContent() {
         setEligibilityError(null);
         return;
       }
-      setCheckingEligibility(true);
       try {
         const contractsPath = paths.contracts(companyId);
         const q = query(
@@ -108,8 +107,6 @@ function NewSubConContractContent() {
         }
       } catch (e) {
         console.error("Eligibility check failed", e);
-      } finally {
-        setCheckingEligibility(false);
       }
     }
     checkClientEligibility();
@@ -121,7 +118,7 @@ function NewSubConContractContent() {
       if (template) {
         setForm(prev => ({
           ...prev,
-          templateName: template.name,
+          templateName: template.name || '',
           milestones: template.defaultMilestones || [],
           legalText: template.legalText || '',
           pricingMode: template.pricingMode || 'percentage',
@@ -136,7 +133,7 @@ function NewSubConContractContent() {
     if (db && companyId && form.transactionId) {
        const trans = transactions?.find(t => t.id === form.transactionId);
        if (trans) {
-          setForm(prev => ({ ...prev, transactionName: trans.subServiceName, transactionNumber: trans.transactionNumber, clientName: trans.clientName, clientId: trans.clientId }));
+          setForm(prev => ({ ...prev, transactionName: trans.subServiceName || '', transactionNumber: trans.transactionNumber || '', clientName: trans.clientName || '', clientId: trans.clientId || '' }));
           getDocs(query(collection(db, paths.transactionStages(companyId, trans.id)), orderBy('order')))
             .then(snap => setPathStages(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
             .catch(() => setPathStages([]));
@@ -190,7 +187,7 @@ function NewSubConContractContent() {
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-white/95 backdrop-blur-md px-8 shadow-sm">
         <div className="flex items-center gap-4 text-start">
            <button onClick={() => router.back()} className="h-10 w-10 border-2 rounded-xl flex items-center justify-center hover:bg-slate-50 transition-colors text-slate-400 shadow-sm"><ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} /></button>
-           <h1 className="text-xl font-black font-headline text-slate-900">{tSafe('subcon.contracts.new', 'تأسيس اتفاقية باطن جديدة', 'New SubCon Award')}</h1>
+           <h1 className="text-xl font-black font-headline text-slate-900">تأسيس اتفاقية باطن جديدة</h1>
         </div>
         <div className="flex items-center gap-4">
            <Button 
@@ -198,34 +195,34 @@ function NewSubConContractContent() {
             disabled={loading || !form.subcontractorId || !form.transactionId || !!eligibilityError} 
             className="h-12 px-10 rounded-xl bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-4 border-orange-700"
            >
-              {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />} {tSafe('subcon.contracts.issueNow', 'إصدار الاتفاقية الآن', 'Issue Award Now')}
+              {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />} إصدار الاتفاقية الآن
            </Button>
         </div>
       </header>
 
       <div className="px-8 pb-20">
-         <PrintWrapper title={tSafe('subcon.details.official', 'اتفاقية تنفيذ أعمال باطن', 'SubCon Services Agreement')} fullWidth={true}>
+         <PrintWrapper title="اتفاقية تنفيذ أعمال باطن" fullWidth={true}>
             <div className="space-y-12 text-start">
                
                {eligibilityError && (
                  <div className="p-6 rounded-[2rem] bg-rose-50 border-4 border-rose-100 flex items-start gap-4 animate-in shake-in duration-500">
                     <ShieldAlert className="h-10 w-10 text-rose-600 shrink-0 mt-1" />
                     <div className="text-start">
-                       <h4 className="font-black text-rose-900 text-lg uppercase tracking-tight">{tSafe('inline.restriction', 'قيد إداري سيادي', 'Management Restriction')}</h4>
+                       <h4 className="font-black text-rose-900 text-lg uppercase tracking-tight">قيد إداري سيادي</h4>
                        <p className="text-sm font-bold text-rose-700 leading-relaxed mt-1">{eligibilityError}</p>
                     </div>
                  </div>
                )}
 
                <div className="space-y-6">
-                  <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em] border-b-2 border-primary/10 pb-2">{tSafe('subcon.legal.parties', 'أولاً: أطراف التعاقد', 'Parties of the Agreement')}</h3>
+                  <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em] border-b-2 border-primary/10 pb-2">أولاً: أطراف التعاقد</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                      <div className="p-8 rounded-[2.5rem] bg-slate-50 border-2 border-white shadow-inner text-start space-y-4">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{tSafe('subcon.first.party', 'الطرف الأول (المقاول الرئيسي)', 'First Party')}</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">الطرف الأول (المقاول الرئيسي)</p>
                         <h4 className="text-xl font-black text-slate-900">{globalUser?.companyName || 'NovaFlow ERP'}</h4>
                      </div>
                      <div className="p-8 rounded-[2.5rem] bg-primary/5 border-2 border-primary/10 shadow-sm space-y-4">
-                        <Label className="text-[10px] font-black text-primary uppercase">{tSafe('subcon.second.party', 'الطرف الثاني (مقاول الباطن)', 'Second Party')}</Label>
+                        <Label className="text-[10px] font-black text-primary uppercase">الطرف الثاني (مقاول الباطن)</Label>
                         <SearchableDropdown
                           options={(subcontractors || []).map(s => ({ id: s.id, name: s.name }))}
                           value={form.subcontractorId}
@@ -233,19 +230,19 @@ function NewSubConContractContent() {
                             const selected = subcontractors?.find(s => s.id === val);
                             setForm({...form, subcontractorId: val as string, subcontractorName: selected?.name || ''});
                           }}
-                          placeholder={tSafe('subcon.form.vendor', 'اختر المقاول...', 'Choose Contractor')}
+                          placeholder="اختر المقاول..."
                         />
                      </div>
                   </div>
                </div>
 
                <div className="space-y-6">
-                  <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em] border-b-2 border-primary/10 pb-2">{tSafe('subcon.legal.subject', 'ثانياً: موضوع التعاقد والميزانية', 'Contract Subject & Budget')}</h3>
+                  <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em] border-b-2 border-primary/10 pb-2">ثانياً: موضوع التعاقد والميزانية</h3>
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
                      <div className="lg:col-span-8 space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                            <div className="space-y-2">
-                              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('common.targetClient', 'العميل المستهدف (المالك)', 'Target Client')}</Label>
+                              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">العميل المستهدف (المالك)</Label>
                               <SearchableDropdown
                                 options={(clients || []).map(c => ({ id: c.id, name: c.nameAr, subText: c.fileNumber }))}
                                 value={form.clientId}
@@ -253,11 +250,11 @@ function NewSubConContractContent() {
                                   const selected = clients?.find(c => c.id === val);
                                   setForm({...form, clientId: val as string, clientName: selected?.nameAr || '', transactionId: '', transactionName: '', transactionNumber: ''});
                                 }}
-                                placeholder={tSafe('subcon.form.client', 'اختر العميل...', 'Choose Client')}
+                                placeholder="اختر العميل..."
                               />
                            </div>
                            <div className="space-y-2">
-                              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('common.targetTransaction', 'المشروع / المعاملة', 'Target Project')}</Label>
+                              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">المشروع / المعاملة</Label>
                               <SearchableDropdown
                                 disabled={!form.clientId || !!eligibilityError}
                                 options={(transactions || []).filter(t_item => t_item.clientId === form.clientId).map(t_item => ({ id: t_item.id, name: t_item.subServiceName, subText: `#${t_item.transactionNumber}` }))}
@@ -266,12 +263,12 @@ function NewSubConContractContent() {
                                   const selected = transactions?.find(t_item => t_item.id === val);
                                   setForm({...form, transactionId: val as string, transactionNumber: selected?.transactionNumber || '', transactionName: selected?.subServiceName || ''});
                                 }}
-                                placeholder={!form.clientId ? tSafe('inline.choose.client.first', 'اختر العميل أولاً...', 'Choose Client First') : tSafe('subcon.form.project', 'اختر المشروع...', 'Choose Project')}
+                                placeholder="اختر المشروع..."
                               />
                            </div>
                         </div>
                         <div className="space-y-2">
-                           <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('subcon.form.template', 'القالب القانوني لتعاقد الباطن', 'Legal SubCon Template')}</Label>
+                           <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">القالب القانوني لتعاقد الباطن</Label>
                            <SearchableDropdown
                              options={(templates || []).map(temp => ({ id: temp.id, name: temp.name }))}
                              value={form.templateId}
@@ -279,7 +276,7 @@ function NewSubConContractContent() {
                                const selected = templates?.find(temp => temp.id === val);
                                setForm({...form, templateId: val as string, templateName: selected?.name || ''});
                              }}
-                             placeholder={tSafe('subcon.form.template', 'اختر القالب...', 'Choose Template')}
+                             placeholder="اختر القالب..."
                            />
                         </div>
                      </div>
@@ -287,14 +284,13 @@ function NewSubConContractContent() {
                         <div className="absolute top-0 right-0 p-8 opacity-10"><Calculator className="h-32 w-32" /></div>
                         <div className="relative z-10 space-y-4 text-start">
                            <div className="space-y-1">
-                              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">{tSafe('subcon.form.targetBudget', 'إجمالي قيمة العقد', 'Contract Value')}</p>
-                              <Input type="number" value={form.totalAmount === 0 ? "" : form.totalAmount} onChange={e => setForm({...form, totalAmount: Number(e.target.value)})} className="h-10 bg-white border-2 border-primary/10 rounded-2xl text-2xl font-black text-center text-slate-900 shadow-inner" />
+                              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">إجمالي قيمة العقد</p>
+                              <Input type="number" value={form.totalAmount || 0} onChange={e => setForm({...form, totalAmount: Number(e.target.value)})} className="h-10 bg-white border-2 border-primary/10 rounded-2xl text-2xl font-black text-center text-slate-900 shadow-inner" />
                            </div>
                            <div className="space-y-1">
-                              <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'نسبة المحتجزات' : 'Retention %'}</Label>
+                              <Label className="text-[9px] font-black uppercase text-slate-400">نسبة المحتجزات %</Label>
                               <div className="relative">
-                                 <Input type="number" value={form.retentionRate} onChange={e => setForm({...form, retentionRate: Number(e.target.value)})} className="h-10 bg-white border-2 rounded-xl text-lg font-black text-center pr-10" />
-                                 <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+                                 <Input type="number" value={form.retentionRate ?? 0} onChange={e => setForm({...form, retentionRate: Number(e.target.value)})} className="h-10 bg-white border-2 rounded-xl text-lg font-black text-center" />
                               </div>
                            </div>
                         </div>
@@ -304,7 +300,7 @@ function NewSubConContractContent() {
 
                <div className="space-y-6">
                   <div className="flex justify-between items-center border-b-2 border-primary/10 pb-2">
-                     <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em]">{tSafe('subcon.legal.milestones', 'ثالثاً: جدول استحقاق الدفعات', 'Payment Milestones')}</h3>
+                     <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em]">ثالثاً: جدول استحقاق الدفعات</h3>
                   </div>
                   
                   <div className="border-2 border-slate-100 rounded-[2.5rem] overflow-hidden bg-white shadow-xl ring-1 ring-black/[0.02]">
@@ -312,11 +308,11 @@ function NewSubConContractContent() {
                         <thead className="bg-slate-50 border-b-2 text-slate-600 font-black uppercase text-[10px] tracking-widest">
                            <tr>
                               <th className="p-8 w-14 text-start">#</th>
-                              <th className="p-8 text-start">{tSafe('name', 'الوصف', 'Description')}</th>
+                              <th className="p-8 text-start">مسمى الدفعة</th>
                               {form.pricingMode === 'percentage' && <th className="p-8 text-center w-32">%</th>}
-                              <th className="p-8 text-center w-32">{tSafe('timing', 'التوقيت', 'Timing')}</th>
-                              <th className="p-8 text-start w-56">{tSafe('technicalLink', 'الارتباط الميداني', 'Execution Link')}</th>
-                              <th className="p-8 text-end pe-12 w-48">{t('common.amount')}</th>
+                              <th className="p-8 text-center w-32">التوقيت</th>
+                              <th className="p-8 text-start w-56">الارتباط الميداني</th>
+                              <th className="p-8 text-end pe-12 w-48">القيمة</th>
                               <th className="p-8 w-14"></th>
                            </tr>
                         </thead>
@@ -327,64 +323,48 @@ function NewSubConContractContent() {
                                <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                                   <td className="p-8 font-black text-slate-300">{idx + 1}</td>
                                   <td className="p-4">
-                                     <Input value={m.name} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-10 border-2 rounded-xl font-bold bg-white" />
+                                     <Input value={m.name || ''} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-8 rounded-xl border-2 font-bold bg-white" />
                                   </td>
                                   {form.pricingMode === 'percentage' && (
                                     <td className="p-4 text-center">
                                        <div className="relative w-24 mx-auto">
-                                          <Input type="number" value={m.percentage === 0 ? "" : (m.percentage || "")} onChange={e => updateMilestone(idx, 'percentage', e.target.value)} className="h-10 rounded-xl border-2 font-black text-center pe-6" />
-                                          <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
+                                          <Input type="number" value={m.percentage || 0} onChange={e => updateMilestone(idx, 'percentage', Number(e.target.value))} className="h-8 rounded-xl border-2 font-black text-center" />
                                        </div>
                                     </td>
                                   )}
                                   <td className="p-4 text-center">
                                       <Select value={m.timing || 'at'} onValueChange={v => updateMilestone(idx, 'timing', v)}>
-                                         <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs bg-white"><SelectValue placeholder="..." /></SelectTrigger>
-                                         <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
-                                            <SelectItem value="at" className="font-bold text-xs">{isRtl ? 'عند' : 'At'}</SelectItem>
-                                            <SelectItem value="before" className="font-bold text-xs">{isRtl ? 'قبل' : 'Before'}</SelectItem>
-                                            <SelectItem value="during" className="font-bold text-xs">{isRtl ? 'أثناء' : 'During'}</SelectItem>
-                                            <SelectItem value="after" className="font-bold text-xs">{isRtl ? 'بعد' : 'After'}</SelectItem>
+                                         <SelectTrigger className="h-8 rounded-xl border-2 font-bold text-xs bg-white"><SelectValue /></SelectTrigger>
+                                         <SelectContent className="max-h-[300px] overflow-y-auto rounded-xl border-2 shadow-2xl z-[160]">
+                                            <SelectItem value="at" className="font-bold text-xs">عند</SelectItem>
+                                            <SelectItem value="before" className="font-bold text-xs">قبل</SelectItem>
+                                            <SelectItem value="during" className="font-bold text-xs">أثناء</SelectItem>
+                                            <SelectItem value="after" className="font-bold text-xs">بعد</SelectItem>
                                          </SelectContent>
                                       </Select>
                                   </td>
                                   <td className="p-4 text-start">
                                       <Select value={m.technicalStageId || ''} onValueChange={v => updateMilestone(idx, 'technicalStageId', v)}>
-                                         <SelectTrigger className={cn(
-                                           "h-10 rounded-xl border-2 font-black text-xs min-w-[180px] max-w-[220px]",
-                                           m.technicalStageId ? "bg-primary/5 text-primary border-primary/20" : "bg-white"
-                                         )}>
-                                           <SelectValue placeholder="...">
-                                              <span className="truncate block">
-                                                {m.technicalStageId === 'SIGNING' ? t('contractSigning') : (linkedStageName || '...')}
-                                              </span>
-                                           </SelectValue>
+                                         <SelectTrigger className={cn("h-8 rounded-xl border-2 font-black text-xs min-w-[180px]", m.technicalStageId ? "bg-primary/5 text-primary border-primary/20" : "bg-white")}>
+                                           <SelectValue placeholder="..." />
                                          </SelectTrigger>
-                                         <SelectContent className="rounded-xl border-2 shadow-2xl z-[160] min-w-[200px]">
-                                            <SelectItem value="SIGNING" className="font-black text-[10px] py-3 border-b border-slate-50">
-                                               <span className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-emerald-500" /> {t('contractSigning')}</span>
-                                            </SelectItem>
+                                         <SelectContent className="max-h-[300px] overflow-y-auto rounded-xl border-2 shadow-2xl z-[160]">
+                                            <SelectItem value="SIGNING" className="font-black text-[10px] py-3 border-b">توقيع العقد</SelectItem>
                                             {pathStages.map(s => (
-                                              <SelectItem key={s.id} value={s.technicalStageId || s.id} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
-                                                 <span className="flex items-center gap-2 truncate max-w-[220px]">
-                                                   <Workflow className="h-3.5 w-3.5 text-primary shrink-0" /> 
-                                                   <span className="truncate">{s.name}</span>
-                                                 </span>
-                                              </SelectItem>
+                                              <SelectItem key={s.id} value={s.technicalStageId || s.id} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">{s.name}</SelectItem>
                                             ))}
                                          </SelectContent>
                                       </Select>
                                   </td>
                                   <td className="p-4 text-end pe-12">
                                      <div className="flex items-center gap-2 justify-end">
-                                        <span className="text-[9px] font-bold text-slate-300">KWD</span>
                                         <Input 
                                           type="number" 
                                           step="0.001" 
                                           readOnly={form.pricingMode === 'percentage'}
-                                          value={m.amount === 0 ? "" : (m.amount || "")} 
-                                          onChange={e => updateMilestone(idx, 'amount', e.target.value)} 
-                                          className="h-10 w-32 text-end font-black text-emerald-600 text-sm bg-slate-50 border-2 rounded-xl" 
+                                          value={m.amount || 0} 
+                                          onChange={e => updateMilestone(idx, 'amount', Number(e.target.value))} 
+                                          className="h-8 w-32 text-end font-black text-emerald-600 text-sm bg-slate-50 border-2 rounded-xl" 
                                         />
                                      </div>
                                   </td>
@@ -395,40 +375,13 @@ function NewSubConContractContent() {
                              );
                            })}
                         </tbody>
-                        <tfoot className="bg-slate-50 border-t-8 border-primary">
-                           <tr>
-                              <td colSpan={form.pricingMode === 'percentage' ? 5 : 4} className="p-10 text-start">
-                                 <h3 className="text-xl font-black font-headline uppercase tracking-tighter text-slate-800">{tSafe('subcon.totalPayable', 'إجمالي قيمة عقد الباطن', 'Total SubCon Value')}</h3>
-                                 <Badge className={cn("mt-3 border-0 text-[10px] font-black h-7 px-5 shadow-lg", stats.isValid ? "bg-emerald-600 text-white" : "bg-rose-600 text-white")}>
-                                    {stats.isValid ? `BALANCED: 100%` : `MISMATCH: ${stats.totalPercentage}%`}
-                                 </Badge>
-                              </td>
-                              <td colSpan={2} className="p-10 text-end pe-12">
-                                 <div className="space-y-1">
-                                    <h2 className="text-5xl font-black font-headline text-primary">{form.totalAmount.toLocaleString()}</h2>
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em]">{tSafe('currency.kwdOnly', 'دينار كويتي لا غير', 'KUWAITI DINARS ONLY')}</p>
-                                 </div>
-                              </td>
-                           </tr>
-                        </tfoot>
                      </table>
                   </div>
                </div>
 
                <div className="space-y-6">
-                  <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em] border-b-2 border-primary/10 pb-2">{tSafe('subcon.legalTerms', 'رابعاً: الشروط والأحكام القانونية', 'Legal Terms & Conditions')}</h3>
-                  <Textarea value={form.legalText} onChange={e => setForm({...form, legalText: e.target.value})} className="min-h-[300px] rounded-[3rem] border-2 p-12 text-base font-bold leading-relaxed bg-slate-50/50 shadow-inner focus:bg-white transition-all" />
-               </div>
-
-               <div className="pt-20 grid grid-cols-2 gap-20 opacity-30">
-                  <div className="text-center space-y-4">
-                     <div className="h-32 border-b-2 border-slate-100" />
-                     <p className="text-[10px] font-black text-slate-400 uppercase">{tSafe('subcon.first.party.sign', 'توقيع الطرف الأول', 'First Party Signature')}</p>
-                  </div>
-                  <div className="text-center space-y-4">
-                     <div className="h-32 border-b-2 border-slate-100" />
-                     <p className="text-[10px] font-black text-slate-400 uppercase">{tSafe('subcon.second.party.sign', 'توقيع الطرف الثاني', 'Second Party Signature')}</p>
-                  </div>
+                  <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em] border-b-2 border-primary/10 pb-2">رابعاً: الشروط والأحكام القانونية</h3>
+                  <Textarea value={form.legalText || ''} onChange={e => setForm({...form, legalText: e.target.value})} className="min-h-[300px] rounded-[3rem] border-2 p-12 text-base font-bold leading-relaxed bg-slate-50/50 shadow-inner focus:bg-white transition-all" />
                </div>
             </div>
          </PrintWrapper>

@@ -35,7 +35,7 @@ import { toast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/select-primitive";
 
 export default function ContractViewPage() {
   const params = useParams();
@@ -52,7 +52,17 @@ export default function ContractViewPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [hasAutoOpened, setHasAutoOpened] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [editData, setEditForm] = useState<Partial<Contract>>({});
+  
+  // تأمين القيم الافتراضية لمنع خطأ Controlled Input
+  const [editData, setEditForm] = useState<Partial<Contract>>({
+    name: '',
+    totalAmount: 0,
+    retentionRate: 5,
+    milestones: [],
+    legalText: '',
+    pricingMode: 'percentage',
+    status: 'draft'
+  });
 
   const contractRef = useMemo(() => 
     companyId && db ? doc(db, paths.contracts(companyId), contractId) : null, 
@@ -62,13 +72,17 @@ export default function ContractViewPage() {
 
   useEffect(() => {
     if (contract && !hasAutoOpened) {
-      const baseMilestones = (contract as any).milestones || (contract as any).defaultMilestones || [];
-      const baseAmount = contract.totalAmount || (contract as any).baseAmount || 0;
+      const baseMilestones = contract.milestones || [];
+      const baseAmount = contract.totalAmount || 0;
 
       const initializedData = {
         ...contract,
+        name: contract.name || '',
         milestones: baseMilestones,
-        totalAmount: baseAmount
+        totalAmount: baseAmount,
+        retentionRate: contract.retentionRate ?? 5,
+        pricingMode: contract.pricingMode || 'percentage',
+        legalText: contract.legalText || ''
       };
 
       setEditForm(initializedData);
@@ -106,7 +120,7 @@ export default function ContractViewPage() {
       toast({ 
         variant: "destructive", 
         title: t('common.error'), 
-        description: tSafe('inline.percentage.error', `يجب أن يكون مجموع الحصص 100% (الحالي: ${stats.totalPercentage}%)`, `Total percentage must be 100% (Current: ${stats.totalPercentage}%)`)
+        description: tSafe('inline.percentage.error', `يجب أن يكون مجموع الحصص 100% (الحالي: ${stats.totalPercentage}%)`, `Total percentage must be 100%`)
       });
       return;
     }
@@ -125,7 +139,7 @@ export default function ContractViewPage() {
         ...sanitizedData,
         status: newStatus,
         totalAmount: finalAmount,
-        updatedBy: globalUser?.username || user.displayName || 'Admin'
+        updatedBy: user.uid
       }, user.uid);
       
       toast({ title: t('common.saved') });
@@ -150,7 +164,6 @@ export default function ContractViewPage() {
     const newM = [...(editData.milestones || [])];
     const item = { ...newM[idx], [field]: value };
 
-    // ربط تفاعلي للنسبة
     if (editData.pricingMode === 'percentage' && (field === 'percentage' || field === 'amount')) {
        const total = editData.totalAmount || 0;
        if (field === 'percentage') {
@@ -179,22 +192,8 @@ export default function ContractViewPage() {
     });
   };
 
-  const handleMarkAsPaid = async (docId: string) => {
-    if (!db || !companyId || !user) return;
-    setSaving(true);
-    try {
-      const service = new DocumentService(db, companyId, permissions);
-      await service.updateContract(contractId, { status: 'paid', isPaid: true } as any, user.uid);
-      toast({ title: t('common.saved') });
-    } catch (e) {
-      toast({ variant: "destructive", title: t('common.error') });
-    } finally {
-      setSaving(false);
-    }
-  };
-
   if (loading) return <div className="h-[60vh] flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
-  if (!contract) return <div className="p-20 text-center font-black">{tSafe('inline.not.found', '404 - غير موجود', '404 - Not Found')}</div>;
+  if (!contract) return <div className="p-20 text-center font-black">404 - Not Found</div>;
 
   const currentDisplayAmount = editData.pricingMode === 'itemized' 
     ? stats.totalItemizedAmount 
@@ -202,12 +201,12 @@ export default function ContractViewPage() {
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-700 bg-white" dir={dir}>
-      <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 print:hidden px-6 pt-6 text-start">
+      <div className="max-w-[1600px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4 print:hidden px-6 pt-6 text-start">
         <div className="flex items-center gap-4">
            <Button 
              variant="ghost" 
              onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${contract.transactionId}`)} 
-             className="h-10 w-10 p-0 rounded-xl border-2 bg-white text-slate-400 hover:text-slate-900 transition-all shadow-sm shrink-0"
+             className="h-10 w-10 p-0 rounded-xl border-2 bg-white text-slate-400 hover:text-slate-900 shadow-sm shrink-0"
            >
               <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
            </Button>
@@ -225,17 +224,12 @@ export default function ContractViewPage() {
            </div>
         </div>
         <div className="flex gap-2">
-           {!isEditing && contract.status !== 'paid' && isAdmin && (
-              <Button onClick={() => handleMarkAsPaid(contract.id)} disabled={saving} variant="outline" className="rounded-xl h-10 px-6 font-black gap-2 bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100">
-                 <Wallet className="h-4 w-4" /> {isRtl ? 'توثيق سداد' : 'Mark Paid'}
-              </Button>
-           )}
            {isEditing ? (
               <>
-                <Button onClick={handleCancel} variant="outline" size="sm" className="rounded-xl h-10 px-6 font-bold bg-white border-2">
+                <Button onClick={handleCancel} variant="outline" size="sm" className="h-10 px-6 font-bold bg-white border-2">
                    {t('common.cancel')}
                 </Button>
-                <Button onClick={handleSave} disabled={saving} size="sm" className="rounded-xl h-10 px-8 font-black gap-2 shadow-xl border-b-4 border-orange-700">
+                <Button onClick={handleSave} disabled={saving} size="sm" className="h-10 px-8 font-black gap-2 shadow-xl border-b-4 border-orange-700">
                    {saving ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
                    {contract.status === 'draft' && !contract.isHistoryRecorded ? t('contracts.commitAndSave') : t('common.saveChanges')}
                 </Button>
@@ -262,8 +256,8 @@ export default function ContractViewPage() {
                     <p className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'نمط التسعير' : 'Pricing Mode'}</p>
                     {isEditing ? (
                       <Select value={editData.pricingMode || 'percentage'} onValueChange={(v: PricingMode) => setEditForm({...editData, pricingMode: v})}>
-                         <SelectTrigger className="h-10 w-40 rounded-xl border-2 bg-white text-slate-900 font-black text-xs mt-1"><SelectValue /></SelectTrigger>
-                         <SelectContent className="rounded-xl border-2 shadow-2xl">
+                         <SelectTrigger className="h-8 w-40 rounded-xl border-2 bg-white text-slate-900 font-black text-xs mt-1"><SelectValue /></SelectTrigger>
+                         <SelectContent className="max-h-[300px] overflow-y-auto rounded-xl border-2 shadow-2xl z-[200]">
                             <SelectItem value="itemized" className="font-bold text-xs">{t('itemized')}</SelectItem>
                             <SelectItem value="fixed" className="font-bold text-xs">{t('fixed')}</SelectItem>
                             <SelectItem value="percentage" className="font-bold text-xs">{t('percentage')}</SelectItem>
@@ -278,26 +272,24 @@ export default function ContractViewPage() {
                    <div className="flex items-center gap-3">
                      {isEditing ? (
                        <div className="relative w-24">
-                          <Input type="number" value={editData.retentionRate} onChange={e => setEditForm({...editData, retentionRate: Number(e.target.value)})} className="h-10 rounded-xl border-2 font-black text-center" />
-                          <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
+                          <Input type="number" value={editData.retentionRate ?? 0} onChange={e => setEditForm({...editData, retentionRate: Number(e.target.value)})} className="h-8 rounded-xl border-2 font-black text-center" />
+                          <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-300" />
                        </div>
                      ) : <Badge className="bg-slate-900 text-white font-black">{editData.retentionRate}%</Badge>}
-                     <p className="text-[9px] font-bold text-slate-400 italic">يتم خصمها آلياً من كل دفعة.</p>
                    </div>
                 </div>
                 
                 {(editData.pricingMode === 'percentage' || editData.pricingMode === 'fixed') && (
                   <div className="space-y-1 text-start w-48">
-                     <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{tSafe('inline.target.budget', 'الميزانية المستهدفة', 'Target Budget')}</Label>
+                     <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'الميزانية المستهدفة' : 'Target Budget'}</Label>
                      {isEditing ? (
                        <div className="relative">
                           <Input 
                             type="number" 
-                            value={editData.totalAmount === 0 ? "" : (editData.totalAmount || "")} 
-                            onChange={e => setEditForm({...editData, totalAmount: e.target.value === "" ? 0 : Number(e.target.value)})} 
+                            value={editData.totalAmount || 0} 
+                            onChange={e => setEditForm({...editData, totalAmount: Number(e.target.value)})} 
                             className="h-10 rounded-xl border-2 bg-white text-slate-900 font-black text-xl text-center shadow-inner" 
                           />
-                          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-300">KWD</div>
                        </div>
                      ) : <p className="font-black text-2xl text-slate-900">{(editData.totalAmount || 0).toLocaleString()} <span className="text-xs text-slate-400">KWD</span></p>}
                   </div>
@@ -307,13 +299,13 @@ export default function ContractViewPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b-4 border-primary/20 pb-8">
                <div className="text-start space-y-4">
                   <div className="space-y-1">
-                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{tSafe('inline.first.party', 'الطرف الأول (العميل)', 'First Party:')}</p>
+                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">الطرف الأول (العميل):</p>
                      <p className="text-xl font-black text-slate-900">{contract.clientName}</p>
                   </div>
                   <div className="space-y-1">
-                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{tSafe('inline.subject', 'الموضوع /', 'Subject:')}</p>
+                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">الموضوع /</p>
                      {isEditing ? (
-                        <Input value={editData.name || ''} onChange={e => setEditForm({...editData, name: e.target.value})} className="font-bold border-2 h-12 rounded-xl text-sm" />
+                        <Input value={editData.name || ''} onChange={e => setEditForm({...editData, name: e.target.value})} className="font-bold border-2 h-10 rounded-xl text-sm" />
                      ) : (
                         <p className="text-base font-black text-primary">{contract.name}</p>
                      )}
@@ -328,7 +320,7 @@ export default function ContractViewPage() {
                   </h4>
                   {isEditing && (
                     <Button variant="outline" size="sm" onClick={addMilestone} className="rounded-xl font-black text-[10px] border-2 h-9 px-6 gap-2 bg-white hover:bg-primary/5">
-                       <Plus className="h-4 w-4" /> {tSafe('inline.add.payment', 'إضافة دفعة', 'Add Payment')}
+                       <Plus className="h-3 w-3" /> {tSafe('inline.add.payment', 'إضافة دفعة', 'Add Payment')}
                     </Button>
                   )}
                </div>
@@ -361,31 +353,16 @@ export default function ContractViewPage() {
                                    {isEditing ? (
                                       <div className="space-y-2">
                                          <Input value={m.name || ''} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-10 rounded-xl font-bold text-sm bg-white" />
-                                         {m.technicalStageId && m.technicalStageId !== 'NONE' && (
-                                            <p className="text-[8px] font-black text-primary/60 italic flex items-center gap-1 mt-1">
-                                               <Clock className="h-3 w-3" />
-                                               {t(m.timing || 'at')} {m.technicalStageId === 'SIGNING' ? t('contractSigning') : linkedStageName}
-                                            </p>
-                                         )}
                                       </div>
                                    ) : (
-                                      <div className="space-y-1">
-                                         <span className="font-black text-slate-800 text-sm block">{m.name}</span>
-                                         {m.technicalStageId && m.technicalStageId !== 'NONE' && (
-                                            <p className="text-[10px] font-black text-primary/60 italic flex items-center gap-1">
-                                               <Clock className="h-3 w-3" />
-                                               {t(m.timing || 'at')} {m.technicalStageId === 'SIGNING' ? t('contractSigning') : linkedStageName}
-                                            </p>
-                                         )}
-                                      </div>
+                                      <span className="font-black text-slate-800 text-sm block">{m.name}</span>
                                    )}
                                 </td>
                                 {editData.pricingMode === 'percentage' && (
                                    <td className="p-5 text-center">
                                       {isEditing ? (
                                          <div className="relative w-20 mx-auto">
-                                            <Input type="number" value={m.percentage === 0 ? "" : (m.percentage || "")} onChange={e => updateMilestone(idx, 'percentage', e.target.value === "" ? 0 : Number(e.target.value))} className="h-10 rounded-xl border-2 font-black text-center pe-6 text-sm" />
-                                            <Percent className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
+                                            <Input type="number" value={m.percentage || 0} onChange={e => updateMilestone(idx, 'percentage', Number(e.target.value))} className="h-8 rounded-xl border-2 font-black text-center pe-6 text-sm" />
                                          </div>
                                       ) : <span className="font-black text-slate-900 text-lg">{m.percentage}%</span>}
                                    </td>
@@ -393,8 +370,8 @@ export default function ContractViewPage() {
                                 {isEditing && (
                                    <td className="p-2">
                                       <Select value={m.timing || 'at'} onValueChange={v => updateMilestone(idx, 'timing', v)}>
-                                         <SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs bg-white"><SelectValue /></SelectTrigger>
-                                         <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
+                                         <SelectTrigger className="h-8 rounded-xl border-2 font-black text-xs bg-white"><SelectValue /></SelectTrigger>
+                                         <SelectContent className="max-h-[300px] overflow-y-auto rounded-xl border-2 shadow-2xl z-[160]">
                                             <SelectItem value="at" className="font-bold text-xs">{t('at')}</SelectItem>
                                             <SelectItem value="before" className="font-bold text-xs">{t('before')}</SelectItem>
                                             <SelectItem value="during" className="font-bold text-xs">{t('during')}</SelectItem>
@@ -406,8 +383,8 @@ export default function ContractViewPage() {
                                 <td className="p-5 text-start">
                                    {isEditing ? (
                                       <Select value={m.technicalStageId || 'SIGNING'} onValueChange={v => updateMilestone(idx, 'technicalStageId', v)}>
-                                         <SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs bg-white"><SelectValue placeholder="..." /></SelectTrigger>
-                                         <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
+                                         <SelectTrigger className="h-8 rounded-xl border-2 font-black text-xs bg-white"><SelectValue placeholder="..." /></SelectTrigger>
+                                         <SelectContent className="max-h-[300px] overflow-y-auto rounded-xl border-2 shadow-2xl z-[160]">
                                             <SelectItem value="SIGNING" className="font-bold text-xs">{t('contractSigning')}</SelectItem>
                                             {stages?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50 text-start">
                                                <span className="flex items-center gap-2"><Workflow className="h-3 w-3 text-primary" /> {s.name}</span>
@@ -425,14 +402,14 @@ export default function ContractViewPage() {
                                 </td>
                                 <td className="p-5 text-end pe-10 w-40">
                                    {isEditing && editData.pricingMode !== 'percentage' ? (
-                                      <Input type="number" step="0.001" value={m.amount === 0 ? "" : (m.amount || "")} onChange={e => updateMilestone(idx, 'amount', e.target.value)} className="h-10 w-32 ms-auto text-end font-black text-emerald-600 text-sm bg-slate-50 border-2" />
+                                      <Input type="number" step="0.001" value={m.amount || 0} onChange={e => updateMilestone(idx, 'amount', Number(e.target.value))} className="h-8 w-32 ms-auto text-end font-black text-emerald-600 text-sm bg-slate-50 border-2" />
                                    ) : (
                                       <span className="font-mono font-black text-emerald-600 text-lg">{(lineAmount || 0).toLocaleString()} <span className="text-[10px] opacity-40">KWD</span></span>
                                    )}
                                 </td>
                                 {isEditing && (
                                    <td className="p-5 text-center">
-                                      <button type="button" onClick={() => setEditForm({...editData, milestones: editData.milestones?.filter((_, i) => i !== idx)})} className="text-rose-300 hover:text-rose-600 transition-colors"><Trash2 className="h-5 w-5" /></button>
+                                      <button type="button" onClick={() => setEditForm({...editData, milestones: editData.milestones?.filter((_, i) => i !== idx)})} className="text-rose-300 hover:text-rose-600 transition-colors"><Trash2 className="h-4 w-4" /></button>
                                    </td>
                                 )}
                              </tr>
@@ -443,11 +420,6 @@ export default function ContractViewPage() {
                         <tr>
                            <td colSpan={editData.pricingMode === 'percentage' ? (isEditing ? 5 : 4) : (isEditing ? 4 : 3)} className="p-8 text-start">
                               <h3 className="text-base font-black font-headline uppercase tracking-widest text-slate-900">{tSafe('inline.total.contract.value', 'إجمالي قيمة العقد', 'Total Contract Value')}</h3>
-                              {editData.pricingMode === 'percentage' && (
-                                 <Badge className={cn("mt-2 border-0 text-[10px] font-black h-6 px-4 shadow-sm", stats.isValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>
-                                    {stats.isValid ? `${tSafe('inline.balanced', 'متوازن', 'BALANCED')}: 100%` : `${tSafe('inline.mismatch', 'غير متوازن', 'MISMATCH')}: ${stats.totalPercentage}%`}
-                                 </Badge>
-                              )}
                            </td>
                            <td colSpan={2} className="p-8 text-end pe-10">
                               <div className="space-y-1">

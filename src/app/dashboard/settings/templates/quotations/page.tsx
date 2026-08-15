@@ -81,7 +81,7 @@ export default function QuotationTemplatesPage() {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 max-w-full" dir={dir}>
+    <div className="space-y-8 animate-in fade-in duration-500 max-w-[1600px] mx-auto" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="text-start space-y-2">
           <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit border border-primary/10">
@@ -98,10 +98,10 @@ export default function QuotationTemplatesPage() {
 
         <Button 
           onClick={() => setEditingTemplate('new')}
-          className="bg-primary text-white font-black rounded-2xl px-10 py-7 text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-8 border-orange-700"
+          className="bg-primary text-white font-black rounded-xl h-11 px-8 shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-2 border-b-4 border-orange-700"
         >
-          <Plus className="h-7 w-7" />
-          {isRtl ? 'قالب عرض سعر جديد' : 'New Quote Template'}
+          <Plus className="h-5 w-5" />
+          {isRtl ? 'قالب جديد' : 'New Template'}
         </Button>
       </div>
 
@@ -111,7 +111,7 @@ export default function QuotationTemplatesPage() {
               <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <Input 
                 placeholder={t('common.search')} 
-                className="ps-12 rounded-2xl h-14 bg-white border-2 border-slate-100 font-bold text-lg" 
+                className="ps-12 rounded-2xl h-11 bg-white border-2 border-slate-100 font-bold" 
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
@@ -124,21 +124,20 @@ export default function QuotationTemplatesPage() {
                 <TableHead className="py-8 ps-10 text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'مسمى القالب' : 'Template Name'}</TableHead>
                 <TableHead className="text-start text-xs font-black uppercase tracking-widest">{isRtl ? 'المسار المرتبط' : 'Associated Path'}</TableHead>
                 <TableHead className="text-center text-xs font-black uppercase tracking-widest">{isRtl ? 'نمط التسعير' : 'Pricing'}</TableHead>
-                <TableHead className="text-center text-xs font-black uppercase tracking-widest">{isRtl ? 'افتراضي' : 'Default'}</TableHead>
                 <TableHead className="pe-10 text-end text-xs font-black uppercase tracking-widest">{isRtl ? 'إجراءات' : 'Actions'}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-32"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/20" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={4} className="text-center py-32"><Loader2 className="animate-spin h-12 w-12 mx-auto text-primary/20" /></TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-32 text-slate-400 font-bold italic">{isRtl ? 'لا يوجد قوالب مسجلة.' : 'No templates found.'}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={4} className="text-center py-32 text-slate-400 font-bold italic">{isRtl ? 'لا يوجد قوالب مسجلة.' : 'No templates found.'}</TableCell></TableRow>
               ) : (
                 filtered.map((temp) => (
-                  <TableRow key={temp.id} className="hover:bg-slate-50/50 transition-colors group border-b-slate-50 cursor-pointer" onClick={() => setEditingTemplate(temp)}>
+                  <TableRow key={temp.id} className="hover:bg-slate-50/50 transition-colors group border-b-slate-100 cursor-pointer" onClick={() => setEditingTemplate(temp)}>
                     <TableCell className="py-8 ps-10 text-start">
                        <div className="flex items-center gap-5">
-                          <div className="h-14 w-14 rounded-2xl bg-white shadow-lg flex items-center justify-center text-primary font-black text-xl border-2 border-orange-50 group-hover:scale-110 transition-transform">
+                          <div className="h-14 w-14 rounded-2xl bg-white shadow-lg flex items-center justify-center text-primary font-black text-xl border-2 border-orange-50">
                              <FileText className="h-7 w-7" />
                           </div>
                           <div className="text-start">
@@ -154,26 +153,21 @@ export default function QuotationTemplatesPage() {
                        </div>
                     </TableCell>
                     <TableCell className="text-center">
-                       <Badge variant="outline" className="font-black text-[9px] px-3 border-2 uppercase">
+                       <Badge variant="outline" className="font-black text-[10px] px-4 border-2 h-7 rounded-xl uppercase">
                           {t(temp.pricingMode)}
                        </Badge>
                     </TableCell>
-                    <TableCell className="text-center">
-                       {temp.isDefault ? (
-                         <ShieldCheck className="h-5 w-5 text-emerald-500 mx-auto" />
-                       ) : <span className="text-slate-200">-</span>}
-                    </TableCell>
                     <TableCell className="pe-10 text-end" onClick={e => e.stopPropagation()}>
                        <div className="flex justify-end gap-3">
-                          <Button variant="outline" size="icon" onClick={() => setEditingTemplate(temp)} className="rounded-xl h-12 w-12 text-primary border-primary/20 hover:bg-primary hover:text-white shadow-sm transition-all">
-                             <Edit3 className="h-4 w-4" />
+                          <Button variant="outline" size="icon" onClick={() => setEditingTemplate(temp)} className="rounded-xl h-11 w-11 text-primary border-primary/20 hover:bg-primary hover:text-white shadow-sm transition-all">
+                             <Edit3 className="h-5 w-5" />
                           </Button>
                           {isAdmin && (
                             <Button 
                               variant="ghost" 
                               size="icon" 
                               onClick={() => setDeletingId(temp.id!)}
-                              className="rounded-xl h-12 w-12 text-rose-300 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                              className="rounded-xl h-11 w-11 text-rose-500 hover:bg-rose-50 transition-all"
                             >
                                <Trash2 className="h-5 w-5" />
                             </Button>
@@ -187,32 +181,6 @@ export default function QuotationTemplatesPage() {
           </Table>
         </CardContent>
       </Card>
-
-      <AlertDialog open={!!deletingId} onOpenChange={(v) => { if(!v) setDeletingId(null); }}>
-        <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white z-[200]" dir={dir}>
-          <AlertDialogHeader>
-             <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
-                <AlertTriangle className="h-10 w-10" />
-             </div>
-             <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">{t('common.confirmDelete')}</AlertDialogTitle>
-             <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
-                {isRtl 
-                  ? 'هل أنت متأكد؟ سيتم حذف هذا القالب المرجعي نهائياً من مكتبة عروض الأسعار. لن يتأثر المشاريع القائمة بهذا الإجراء.' 
-                  : 'Are you sure? This quotation template will be permanently removed. Existing projects won\'t be affected.'}
-             </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="mt-12 gap-4 flex flex-row items-center justify-center">
-            <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDelete} 
-              disabled={isDeleting}
-              className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200"
-            >
-               {isDeleting ? <Loader2 className="animate-spin h-5 w-5" /> : (isRtl ? 'نعم، احذف القالب' : 'Confirm Delete')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
