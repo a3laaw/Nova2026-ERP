@@ -28,3 +28,9 @@ UI Styling (Shapes & Shadows):
 Use heavily rounded corners: rounded-[2rem] or rounded-[2.5rem] for main cards, rounded-xl or rounded-2xl for buttons and inputs.
 Use thick borders for emphasis: border-2 border-slate-100.
 Buttons must have a bottom border shadow effect using the secondary color: border-b-4 border-[#FF5722].
+5. UI Sizing & Layout Standards (CRITICAL)
+Full-Width Layouts: Forms and pages MUST utilize the full width of the screen. Avoid restrictive containers like max-w-md or max-w-2xl for main page layouts. Use w-full or max-w-[1600px] mx-auto.
+Print Wrapper: The PrintWrapper component must expand to fullWidth when used in contract/quotation pages.
+Dropdowns & Selects: SelectContent and PopoverContent MUST have a max-height constraint. Always use max-h-[300px] and overflow-y-auto for any list containing more than 3 items.
+Buttons: Standard buttons MUST be h-10. Primary CTAs (Save) can be h-12. NEVER use h-14, h-16, or larger. Font size must be text-sm or text-xs. NEVER text-xl.
+Inputs: Standard inputs MUST be h-10. NEVER use h-14 for standard inputs.

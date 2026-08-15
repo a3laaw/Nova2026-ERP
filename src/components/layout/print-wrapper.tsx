@@ -10,12 +10,12 @@ interface PrintWrapperProps {
   children: React.ReactNode;
   title?: string;
   className?: string;
-  fullWidth?: boolean; // خاصية جديدة لدعم العرض الكامل
+  fullWidth?: boolean; 
 }
 
 /**
  * غطاء الطباعة السيادي (Sovereign Print Wrapper).
- * تم تحديثه ليدعم العرض الكامل (Full Width) وتطهير الألوان الداكنة.
+ * تم تحديثه ليعتمد على العرض الكامل في المتصفح ويتقيد بالقياس الورقي عند الطباعة فقط.
  */
 export function PrintWrapper({ children, title, className, fullWidth = false }: PrintWrapperProps) {
   const { company } = useCompanyContext();
@@ -28,7 +28,7 @@ export function PrintWrapper({ children, title, className, fullWidth = false }: 
       {/* المستند الفعلي المصمم كـ "ورقة" */}
       <div className={cn(
         "mx-auto bg-white shadow-[0_0_50px_rgba(0,0,0,0.05)] print:shadow-none min-h-[297mm] p-8 md:p-12 border-2 border-slate-100 print:border-0 rounded-sm print:rounded-none relative overflow-hidden",
-        fullWidth ? "max-w-full" : "max-w-[210mm]"
+        fullWidth ? "w-full max-w-[1600px]" : "w-full max-w-[1400px] print:max-w-[210mm]"
       )}>
         
         {/* شريط زينة علوي سيادي بالألوان الجديدة */}

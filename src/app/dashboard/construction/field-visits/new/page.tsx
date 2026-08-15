@@ -56,11 +56,11 @@ function SearchablePicker({ value, onSelect, items, search, onSearchChange, icon
         variant="outline"
         disabled={disabled}
         onClick={() => setOpen(!open)}
-        className="w-full h-12 rounded-xl border-2 font-bold justify-between bg-white px-4 shadow-sm text-start"
+        className="w-full h-10 rounded-xl border-2 font-bold justify-between bg-white px-4 shadow-sm text-start"
       >
         <div className="flex items-center gap-3 overflow-hidden text-start">
            <Icon className="h-4 w-4 text-primary opacity-40" />
-           <span className="truncate">{isLoading ? '...' : (value || placeholder)}</span>
+           <span className="truncate text-xs">{isLoading ? '...' : (value || placeholder)}</span>
         </div>
         <ChevronDown className="h-4 w-4 opacity-20" />
       </Button>
@@ -77,7 +77,7 @@ function SearchablePicker({ value, onSelect, items, search, onSearchChange, icon
               className="h-10 ps-10 rounded-xl border-2 font-bold focus:border-primary"
             />
           </div>
-          <ScrollArea className="max-h-60 overflow-y-auto p-2">
+          <ScrollArea className="max-h-[300px] overflow-y-auto p-2">
             <div className="space-y-1">
               {isLoading ? (
                 <div className="py-10 text-center"><Loader2 className="animate-spin h-6 w-6 mx-auto text-primary/20" /></div>
@@ -162,7 +162,6 @@ export default function NewStructuredFieldVisitPage() {
         const q = query(collection(db, paths.transactions(companyId)), where('clientId', '==', formData.clientId));
         const snap = await getDocs(q);
         const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        // الفلترة برمجياً لتجنب مشاكل الفهارس في Firebase
         setClientTransactions(list.filter(t => t.status !== 'completed'));
       } finally {
         setTransLoadingLocal(false);
@@ -263,7 +262,7 @@ export default function NewStructuredFieldVisitPage() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 text-start bg-[#fdfaf3] min-h-screen" dir={dir}>
+    <div className="space-y-8 animate-in fade-in duration-500 text-start bg-[#fdfaf3] min-h-screen w-full max-w-[1600px] mx-auto" dir={dir}>
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-white/90 backdrop-blur-md px-8 shadow-sm">
         <div className="flex items-center gap-4 text-start">
            <button onClick={() => router.back()} className="h-10 w-10 border-2 rounded-xl flex items-center justify-center hover:bg-slate-50 transition-colors text-slate-400 shrink-0">
@@ -271,7 +270,7 @@ export default function NewStructuredFieldVisitPage() {
            </button>
            <h1 className="text-xl font-black font-headline text-slate-900">{isRtl ? 'توثيق سجل ميداني سيادي' : 'Sovereign Field Documentation'}</h1>
         </div>
-        <Button onClick={handleSave} disabled={loading || !formData.transactionId || !formData.activeStageId} className="h-12 px-10 rounded-xl bg-primary text-white font-black shadow-xl border-b-4 border-orange-700">
+        <Button onClick={handleSave} disabled={loading || !formData.transactionId || !formData.activeStageId} className="h-12 px-10 rounded-xl bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 border-b-4 border-orange-700">
            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} {t('common.confirm')}
         </Button>
       </header>
@@ -322,10 +321,10 @@ export default function NewStructuredFieldVisitPage() {
                            const s = stages.find(x => x.id === v);
                            setFormData({...formData, activeStageId: v, activeStageName: s?.name || ''});
                         }}>
-                           <SelectTrigger className="h-12 rounded-xl border-2 font-black bg-primary/5 border-primary/20 text-primary">
+                           <SelectTrigger className="h-10 rounded-xl border-2 font-black bg-primary/5 border-primary/20 text-primary">
                               <SelectValue placeholder="..." />
                            </SelectTrigger>
-                           <SelectContent className="rounded-xl border shadow-2xl z-[160]">
+                           <SelectContent>
                               {stages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">{s.name}</SelectItem>)}
                               {stages.length === 0 && <div className="p-4 text-center text-xs font-bold text-slate-400 italic">لا توجد مراحل نشطة (قيد التنفيذ) في رادار المشاريع حالياً.</div>}
                            </SelectContent>
@@ -376,7 +375,7 @@ export default function NewStructuredFieldVisitPage() {
                                     <Input 
                                       type="number" 
                                       step="0.01"
-                                      className="h-12 rounded-xl border-2 text-center font-black text-primary text-xl bg-white shadow-inner" 
+                                      className="h-10 rounded-xl border-2 text-center font-black text-primary text-xl bg-white shadow-inner" 
                                       onChange={e => {
                                         const newItems = [...boqItems];
                                         newItems[idx].quantity = Number(e.target.value) || 0;
@@ -427,12 +426,12 @@ export default function NewStructuredFieldVisitPage() {
                               <TableCell className="ps-8 py-4">
                                  <Select value={`${row.resourceType === 'work_group' ? 'GROUP_' : row.resourceType === 'employee' ? 'EMP_' : 'SUB_'}${row.resourceId}`} onValueChange={v => updateStaffRow(idx, v)}>
                                     <SelectTrigger className={cn(
-                                      "h-11 rounded-xl border-2 font-black text-sm",
+                                      "h-10 rounded-xl border-2 font-black text-xs",
                                       row.resourceType === 'employee' ? "bg-blue-50 text-blue-600 border-blue-100" : (row.resourceType === 'subcontractor' ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-white")
                                     )}>
                                        <SelectValue placeholder="اختر المورد..." />
                                     </SelectTrigger>
-                                    <SelectContent className="rounded-xl border shadow-2xl z-[160] max-h-80">
+                                    <SelectContent className="max-h-[300px] overflow-y-auto">
                                        {row.resourceType === 'subcontractor' ? (
                                           <SelectGroup>
                                              <SelectLabel className="font-black text-[10px] text-slate-400 uppercase bg-slate-50 py-2">مقاولون مرتبطون مالياً بالمشروع</SelectLabel>
@@ -493,7 +492,7 @@ export default function NewStructuredFieldVisitPage() {
                                       nr[idx].count = Number(e.target.value) || 0;
                                       setStaffRows(nr);
                                    }} 
-                                   className={cn("h-11 rounded-xl border-2 text-center font-black text-xl", row.resourceType === 'employee' ? "bg-slate-100 text-slate-400 border-0" : "bg-slate-50 shadow-inner")} 
+                                   className={cn("h-10 rounded-xl border-2 text-center font-black text-lg", row.resourceType === 'employee' ? "bg-slate-100 text-slate-400 border-0" : "bg-slate-50 shadow-inner")} 
                                  />
                               </TableCell>
                               <TableCell className="py-4 text-start">
@@ -505,7 +504,7 @@ export default function NewStructuredFieldVisitPage() {
                                       setStaffRows(nr);
                                    }}
                                    placeholder={isRtl ? "بيان العمل (نظافة، فك، صب...)" : "Work desc..."}
-                                   className="h-11 rounded-xl border-2 font-bold text-xs bg-white" 
+                                   className="h-10 rounded-xl border-2 font-bold text-xs bg-white" 
                                  />
                               </TableCell>
                               <TableCell className="pe-8">
@@ -550,7 +549,7 @@ export default function NewStructuredFieldVisitPage() {
                                     setEquipRows(nr);
                                  }}>
                                     <SelectTrigger className="h-10 rounded-xl border-2 font-bold text-xs bg-white shadow-sm"><SelectValue placeholder="..." /></SelectTrigger>
-                                    <SelectContent className="rounded-xl border shadow-2xl z-[160]">
+                                    <SelectContent className="max-h-[300px] overflow-y-auto">
                                        {allEquipment?.map((e: any) => {
                                           const isDuplicate = equipRows.some((er, i) => er.equipmentId === e.id && i !== idx);
                                           return (

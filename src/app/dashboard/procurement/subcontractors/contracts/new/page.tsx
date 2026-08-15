@@ -57,7 +57,7 @@ function NewSubConContractContent() {
     milestones: [] as ContractMilestone[],
     legalText: '',
     pricingMode: 'percentage',
-    retentionRate: 5 // القيمة الافتراضية السيادية لمقاول الباطن
+    retentionRate: 5 
   });
 
   const [pathStages, setPathStages] = useState<any[]>([]);
@@ -83,7 +83,6 @@ function NewSubConContractContent() {
   const { data: transactions } = useCollection<any>(transQuery);
   const { data: templates } = useCollection<SubConContractTemplate>(templatesQuery);
 
-  // حارس الأهلية: فحص وجود عقد معتمد للمالك قبل السماح بتعاقد الباطن
   useEffect(() => {
     async function checkClientEligibility() {
       if (!db || !companyId || !form.clientId) {
@@ -187,7 +186,7 @@ function NewSubConContractContent() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700 bg-white" dir={dir}>
+    <div className="space-y-8 animate-in fade-in duration-700 bg-white w-full max-w-[1600px] mx-auto" dir={dir}>
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-white/95 backdrop-blur-md px-8 shadow-sm">
         <div className="flex items-center gap-4 text-start">
            <button onClick={() => router.back()} className="h-10 w-10 border-2 rounded-xl flex items-center justify-center hover:bg-slate-50 transition-colors text-slate-400 shadow-sm"><ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} /></button>
@@ -197,7 +196,7 @@ function NewSubConContractContent() {
            <Button 
             onClick={handleSave} 
             disabled={loading || !form.subcontractorId || !form.transactionId || !!eligibilityError} 
-            className="h-12 px-10 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-4 border-orange-700"
+            className="h-12 px-10 rounded-xl bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-4 border-orange-700"
            >
               {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />} {tSafe('subcon.contracts.issueNow', 'إصدار الاتفاقية الآن', 'Issue Award Now')}
            </Button>
@@ -289,7 +288,7 @@ function NewSubConContractContent() {
                         <div className="relative z-10 space-y-4 text-start">
                            <div className="space-y-1">
                               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">{tSafe('subcon.form.targetBudget', 'إجمالي قيمة العقد', 'Contract Value')}</p>
-                              <Input type="number" value={form.totalAmount === 0 ? "" : form.totalAmount} onChange={e => setForm({...form, totalAmount: Number(e.target.value)})} className="h-14 bg-white border-2 border-primary/10 rounded-2xl text-4xl font-black text-center text-slate-900 shadow-inner" />
+                              <Input type="number" value={form.totalAmount === 0 ? "" : form.totalAmount} onChange={e => setForm({...form, totalAmount: Number(e.target.value)})} className="h-10 bg-white border-2 border-primary/10 rounded-2xl text-2xl font-black text-center text-slate-900 shadow-inner" />
                            </div>
                            <div className="space-y-1">
                               <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'نسبة المحتجزات' : 'Retention %'}</Label>
