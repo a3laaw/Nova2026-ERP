@@ -31,7 +31,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from "@/components/ui/label";
 import { ContractMilestone } from '@/types/templates';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/select-primitive";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 
 export default function SubConContractViewPage() {
   const params = useParams();
@@ -46,7 +52,6 @@ export default function SubConContractViewPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   
-  // تأمين القيم الافتراضية لمنع خطأ Controlled Input
   const [editData, setEditForm] = useState<any>({
     name: '',
     totalAmount: 0,

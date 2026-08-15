@@ -35,7 +35,13 @@ import { toast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/select-primitive";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 
 export default function ContractViewPage() {
   const params = useParams();
@@ -53,7 +59,6 @@ export default function ContractViewPage() {
   const [hasAutoOpened, setHasAutoOpened] = useState(false);
   const [saving, setSaving] = useState(false);
   
-  // تأمين القيم الافتراضية لمنع خطأ Controlled Input
   const [editData, setEditForm] = useState<Partial<Contract>>({
     name: '',
     totalAmount: 0,

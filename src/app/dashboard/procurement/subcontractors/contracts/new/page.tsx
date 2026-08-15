@@ -25,7 +25,13 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
 import { ContractMilestone, SubConContractTemplate, PricingMode } from '@/types/templates';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/select-primitive";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 
 function NewSubConContractContent() {
@@ -41,7 +47,6 @@ function NewSubConContractContent() {
   const [loading, setLoading] = useState(false);
   const [eligibilityError, setEligibilityError] = useState<string | null>(null);
 
-  // تأمين القيم الافتراضية لمنع خطأ Controlled Input
   const [form, setForm] = useState<any>({
     subcontractorId: '',
     subcontractorName: '',
@@ -290,7 +295,7 @@ function NewSubConContractContent() {
                            <div className="space-y-1">
                               <Label className="text-[9px] font-black uppercase text-slate-400">نسبة المحتجزات %</Label>
                               <div className="relative">
-                                 <Input type="number" value={form.retentionRate ?? 0} onChange={e => setForm({...form, retentionRate: Number(e.target.value)})} className="h-10 bg-white border-2 rounded-xl text-lg font-black text-center" />
+                                 <Input type="number" value={form.retentionRate} onChange={e => setForm({...form, retentionRate: Number(e.target.value)})} className="h-10 rounded-xl border-2 bg-white text-lg font-black text-center" />
                               </div>
                            </div>
                         </div>

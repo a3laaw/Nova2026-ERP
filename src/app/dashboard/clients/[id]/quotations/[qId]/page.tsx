@@ -37,7 +37,13 @@ import { toast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/select-primitive";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 
 export default function QuotationViewPage() {
   const params = useParams();
@@ -56,7 +62,6 @@ export default function QuotationViewPage() {
   const [saving, setSaving] = useState(false);
   const [converting, setConverting] = useState(false);
 
-  // تأمين القيم الافتراضية لمنع خطأ Controlled Input
   const [editData, setEditForm] = useState<Partial<Quotation>>({
     name: '',
     totalAmount: 0,
