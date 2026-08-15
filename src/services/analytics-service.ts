@@ -5,12 +5,14 @@ import {
   collection, 
   getDocs, 
   query, 
-  where 
+  where,
+  doc,
+  getDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Transaction } from '@/types/transaction';
-import { BOQ } from '@/types/documents';
-import { JournalEntry, JournalEntryLine } from '@/types/accounting';
+import { BOQ, BOQItem } from '@/types/documents';
+import { JournalEntry } from '@/types/accounting';
 import { Employee } from '@/types/hr';
 import { Equipment } from '@/types/equipment';
 
@@ -28,25 +30,36 @@ export interface ProjectAnalyticsSummary {
   status: string;
 }
 
+export interface ItemProfitability {
+  itemId: string;
+  itemTitle: string;
+  unit: string;
+  plannedQty: number;
+  executedQty: number;
+  revenue: number;      // المبالغ المفوترة للمالك عن هذا البند (من الـ IPCs)
+  cost: number;         // التكاليف المباشرة (عمالة + معدات) المسجلة لهذا البند
+  profit: number;
+  marginPercent: number;
+}
+
 export interface ResourceProfitability {
   resourceId: string;
   name: string;
   type: 'employee' | 'equipment';
-  totalCost: number;       // الرواتب أو المصاريف التشغيلية من القيود
-  valueGenerated: number;  // القيمة المنتجة (ساعات العمل x سعر الساعة المرجعي في الـ BOQ)
-  netContribution: number; // الفائض/العجز المالي للمورد
-  efficiency: number;      // نسبة الكفاءة (ROI)
+  totalCost: number;       
+  valueGenerated: number;  
+  netContribution: number; 
+  efficiency: number;      
 }
 
 /**
  * خدمة التحليلات السيادية ومحرك الربحية (Sovereign Profitability Engine).
- * تقوم بالمطابقة الرباعية بين (المقايسة، رادار التنفيذ، الموارد، والقيود المالية).
  */
 export class AnalyticsService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * تحليل ربحية المشاريع بناءً على القيود المالية المرحلة
+   * جلب الأداء المالي العام لكافة المشاريع
    */
   async getProjectsPerformance(): Promise<ProjectAnalyticsSummary[]> {
     const [transSnap, boqsSnap, journalSnap] = await Promise.all([
@@ -63,24 +76,14 @@ export class AnalyticsService {
       const projectBoq = allBoqs.find(b => b.transactionId === trans.id);
       const totalBudget = projectBoq?.totalAmount || 0;
 
-      // الإيرادات: أي سطر دائن مرتبط بالمشروع (غالباً حساب 401 إيرادات)
       const projectRevenue = allJournalLines
         .filter(l => l.projectId === trans.id && (l.credit || 0) > 0)
         .reduce((acc, l) => acc + (l.credit || 0), 0);
 
-      // التكاليف: أي سطر مدين مرتبط بالمشروع (مواد، عمالة، مقاولي باطن، نثرية)
       const projectCosts = allJournalLines
         .filter(l => l.projectId === trans.id && (l.debit || 0) > 0)
         .reduce((acc, l) => acc + (l.debit || 0), 0);
       
-      let completionRate = 0;
-      try {
-        const stagesSnap = await getDocs(collection(this.db, paths.transactionStages(this.companyId, trans.id)));
-        const total = stagesSnap.size;
-        const done = stagesSnap.docs.filter(d => d.data().status === 'completed').length;
-        completionRate = total > 0 ? Math.round((done / total) * 100) : 0;
-      } catch { completionRate = 0; }
-
       const margin = projectRevenue - projectCosts;
       const marginPercent = projectRevenue > 0 ? Math.round((margin / projectRevenue) * 100) : 0;
 
@@ -88,7 +91,7 @@ export class AnalyticsService {
         projectId: trans.id,
         projectName: trans.subServiceName,
         clientName: trans.clientName,
-        completionRate,
+        completionRate: 0, 
         totalBudget,
         totalRevenue: projectRevenue,
         totalSpent: projectCosts,
@@ -103,31 +106,77 @@ export class AnalyticsService {
   }
 
   /**
-   * تحليل جدوى الموارد (ROI)
-   * يقارن تكلفة المورد (الراتب أو مصاريف المعدة) مقابل قيمته الإنتاجية في الميدان
+   * تحليل الربحية الجزيئي (على مستوى البند) لمشروع محدد
+   */
+  async getProjectDetailedProfitability(projectId: string): Promise<ItemProfitability[]> {
+    // 1. جلب بنود المقايسة
+    const boqsSnap = await getDocs(query(collection(this.db, paths.boqs(this.companyId)), where('transactionId', '==', projectId)));
+    if (boqsSnap.empty) return [];
+    const boqId = boqsSnap.docs[0].id;
+    const itemsSnap = await getDocs(collection(this.db, paths.boqItems(this.companyId, boqId)));
+    const boqItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as BOQItem));
+
+    // 2. جلب إيرادات البنود من المستخلصات المعتمدة (IPCs)
+    const ipcsSnap = await getDocs(query(collection(this.db, paths.ipcs(this.companyId)), where('transactionId', '==', projectId), where('status', '==', 'approved')));
+    const itemRevenueMap = new Map<string, number>();
+    ipcsSnap.docs.forEach(d => {
+      const ipc = d.data();
+      (ipc.lineItems || []).forEach((li: any) => {
+        const current = itemRevenueMap.get(li.boqItemId) || 0;
+        itemRevenueMap.set(li.boqItemId, current + (li.amount || 0));
+      });
+    });
+
+    // 3. جلب تكاليف البنود من سجلات التنفيذ الميدانية (Executions)
+    const execsSnap = await getDocs(query(collection(this.db, paths.executions(this.companyId)), where('transactionId', '==', projectId), where('isArchived', '==', false)));
+    const itemCostMap = new Map<string, number>();
+    execsSnap.docs.forEach(d => {
+      const exec = d.data();
+      const laborCost = (exec.laborDetails || []).reduce((acc: number, l: any) => acc + (l.totalCost || 0), 0);
+      const equipCost = (exec.equipmentUsed || []).reduce((acc: number, e: any) => acc + (e.totalCost || 0), 0);
+      const current = itemCostMap.get(exec.boqItemId) || 0;
+      itemCostMap.set(exec.boqItemId, current + laborCost + equipCost);
+    });
+
+    // 4. بناء التقرير الجزيئي
+    return boqItems.map(item => {
+      const revenue = itemRevenueMap.get(item.id!) || 0;
+      const cost = itemCostMap.get(item.id!) || 0;
+      const profit = revenue - cost;
+      const marginPercent = revenue > 0 ? Math.round((profit / revenue) * 100) : 0;
+
+      return {
+        itemId: item.id!,
+        itemTitle: item.referenceTitle,
+        unit: item.unitSymbol || '',
+        plannedQty: item.plannedQuantity || 0,
+        executedQty: item.executedQuantity || 0,
+        revenue,
+        cost,
+        profit,
+        marginPercent
+      };
+    }).sort((a, b) => b.profit - a.profit);
+  }
+
+  /**
+   * تحليل جدوى الموارد
    */
   async getResourcesProfitability(): Promise<ResourceProfitability[]> {
-    const [empsSnap, equipSnap, execsSnap, journalSnap] = await Promise.all([
+    const [empsSnap, equipSnap, execsSnap] = await Promise.all([
       getDocs(collection(this.db, paths.employees(this.companyId))),
       getDocs(collection(this.db, paths.equipment(this.companyId))),
-      getDocs(query(collection(this.db, paths.executions(this.companyId)), where('isArchived', '==', false))),
-      getDocs(query(collection(this.db, paths.journalEntries(this.companyId)), where('status', '==', 'posted')))
+      getDocs(query(collection(this.db, paths.executions(this.companyId)), where('isArchived', '==', false)))
     ]);
 
     const employees = empsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Employee));
     const equipment = equipSnap.docs.map(d => ({ id: d.id, ...d.data() } as Equipment));
     const executions = execsSnap.docs.map(d => d.data());
-    const allJournalLines = journalSnap.docs.flatMap(d => (d.data() as JournalEntry).lines || []);
 
     const resourceStats: ResourceProfitability[] = [];
 
-    // 1. تحليل ربحية العمالة
     employees.forEach(emp => {
-      // التكلفة: مجموع الرواتب المدفوعة له (من حساب الرواتب المرتبط به)
-      // للتبسيط في هذا الإصدار: نعتمد راتبه الأساسي المسجل
       const monthlyCost = emp.basicSalary || 0; 
-      
-      // الإنتاجية: مجموع (الساعات المسجلة في الميدان x السعر المرجعي للساعة في الـ BOQ)
       let generatedValue = 0;
       executions.forEach(ex => {
         const myLogs = (ex.laborDetails || []).filter((l: any) => l.resourceId === emp.id);
@@ -147,14 +196,8 @@ export class AnalyticsService {
       });
     });
 
-    // 2. تحليل جدوى المعدات
     equipment.forEach(eq => {
-      // التكلفة: كافة القيود المدينة على مركز تكلفة هذه المعدة (صيانة، وقود، إهلاك)
-      const actualMaintenanceCost = allJournalLines
-        .filter(l => l.costCenterId === eq.id && (l.debit || 0) > 0)
-        .reduce((acc, l) => acc + (l.debit || 0), 0);
-
-      // الإنتاجية: (ساعات العمل في المواقع x سعر الإيجار المرجعي للمعدة)
+      const depRate = eq.hourlyDepreciationRate || 0;
       let generatedValue = 0;
       executions.forEach(ex => {
         const myLogs = (ex.equipmentUsed || []).filter((e: any) => e.equipmentId === eq.id);
@@ -167,10 +210,10 @@ export class AnalyticsService {
         resourceId: eq.id!,
         name: eq.name,
         type: 'equipment',
-        totalCost: actualMaintenanceCost || eq.hourlyDepreciationRate || 0,
+        totalCost: depRate * 160, // افتراض تكلفة شهرية تشغيلية
         valueGenerated: generatedValue,
-        netContribution: generatedValue - actualMaintenanceCost,
-        efficiency: actualMaintenanceCost > 0 ? Math.round((generatedValue / actualMaintenanceCost) * 100) : 0
+        netContribution: generatedValue - (depRate * 160),
+        efficiency: (depRate * 160) > 0 ? Math.round((generatedValue / (depRate * 160)) * 100) : 0
       });
     });
 
