@@ -19,7 +19,8 @@ import {
   Handshake, Calculator, ShieldCheck,
   Target, Percent, Workflow,
   LayoutGrid, Clock, Info, Landmark,
-  Hammer, ListChecks, CheckCircle2, AlertTriangle, X
+  Hammer, ListChecks, CheckCircle2, AlertTriangle, X,
+  ShieldAlert
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useAuthContext } from '@/context/auth-context';
@@ -199,7 +200,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
     : stats.totalItemizedAmount;
 
   return (
-    <div className="space-y-6 pb-20 animate-in fade-in duration-500 bg-white min-h-screen" dir={dir}>
+    <div className="space-y-6 pb-20 animate-in fade-in duration-500 bg-white min-h-screen text-start" dir={dir}>
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-white/95 backdrop-blur-md px-8 shadow-sm">
         <div className="flex items-center gap-4 text-start">
           <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 border-2 rounded-xl hover:bg-slate-50 transition-all text-slate-400">
@@ -242,15 +243,13 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                         <Label className="text-[10px] font-black uppercase text-slate-400">النشاط</Label>
                         <Select value={formData.activityTypeId || ''} onValueChange={v => setFormData({...formData, activityTypeId: v, serviceId: '', subServiceId: ''})}>
                            <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
-                           <SelectContent className="rounded-xl">{activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent>
-                        </Select>
+                           <SelectContent className="rounded-xl">{activities?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}</SelectContent></Select>
                      </div>
                      <div className="space-y-1.5">
                         <Label className="text-[10px] font-black uppercase text-slate-400">الخدمة</Label>
                         <Select disabled={!formData.activityTypeId} value={formData.serviceId || ''} onValueChange={v => setFormData({...formData, serviceId: v, subServiceId: ''})}>
                            <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
-                           <SelectContent className="rounded-xl">{services?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
-                        </Select>
+                           <SelectContent className="rounded-xl">{services?.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold">{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent></Select>
                      </div>
                      <div className="space-y-1.5">
                         <Label className="text-[10px] font-black uppercase text-slate-400">المسار</Label>
@@ -259,8 +258,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                            setFormData({...formData, subServiceId: v, subServiceName: sub?.name || ''});
                         }}>
                            <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-white"><SelectValue placeholder="..." /></SelectTrigger>
-                           <SelectContent className="rounded-xl">{activeSubs.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs">{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent>
-                        </Select>
+                           <SelectContent className="rounded-xl">{activeSubs.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs">{isRtl ? s.name : s.nameEn}</SelectItem>)}</SelectContent></Select>
                      </div>
                   </div>
                </CardContent>
@@ -373,7 +371,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                                          </SelectTrigger>
                                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
                                             {pathStages.map(s => <SelectItem key={s.id} value={s.technicalStageId || s.id} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">
-                                               <span className="flex items-center gap-2"><Workflow className="h-3.5 w-3.5 text-primary" /> {s.name}</span>
+                                               <span className="flex items-center gap-2"><Workflow className="h-3 w-3 text-primary" /> {s.name}</span>
                                             </SelectItem>)}
                                          </SelectContent>
                                       </Select>

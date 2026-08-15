@@ -21,7 +21,7 @@ import { nextSequential } from '@/lib/counters';
 
 /**
  * محرك الفوترة السيادي المطور (Sovereign Billing Engine V4).
- * تم تحديثه ليدعم حساب المحتجزات (Retention) بنسبة 5% آلياً وبدقة مطلقة.
+ * تم تحديثه ليدعم حساب المحتجزات (Retention) بنسبة 5% آلياً وبدقة مطلقة للمالك والباطن.
  */
 export class BillingService {
   constructor(private db: Firestore, private companyId: string) {}

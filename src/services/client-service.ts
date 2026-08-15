@@ -21,7 +21,7 @@ import { nextSequential } from '@/lib/counters';
 
 /**
  * خدمة إدارة العملاء السيادية (Sovereign Client Service).
- * تحتوي على محرك المزامنة المتسلسل (Cascading Sync Engine) لضمان وحدة البيانات.
+ * تحتوي على محرك المزامنة المتسلسل الشامل لضمان وحدة البيانات وتطهير السجلات.
  */
 export class ClientService {
   constructor(private db: Firestore, private companyId: string) {}
@@ -70,7 +70,7 @@ export class ClientService {
 
   /**
    * تحديث بيانات العميل مع محرك المزامنة الشامل (Universal Cascading Update)
-   * هذا المحرك يطارد اسم العميل في كل خانة ومستند داخل النظام.
+   * هذا المحرك يطارد اسم العميل في كل خانة ومستند داخل النظام لضمان النزاهة الرقمية.
    */
   async updateClient(clientId: string, data: Partial<Client>, userId: string, userName: string) {
     const clientRef = doc(this.db, paths.clients(this.companyId), clientId);
@@ -87,9 +87,9 @@ export class ClientService {
       updatedAt: serverTimestamp(),
     });
 
-    // 2. تفعيل بروتوكول المزامنة إذا تغير الاسم (Cascading Protocol)
+    // 2. تفعيل بروتوكول المزامنة الشامل إذا تغير الاسم (Universal Cascading Sync)
     if (data.nameAr && data.nameAr !== oldData.nameAr) {
-      console.log(`[Cascading Sync] Updating client name from ${oldData.nameAr} to ${data.nameAr} across all records.`);
+      console.log(`[Universal Sync] Cascading name change from ${oldData.nameAr} to ${data.nameAr}`);
 
       // أ. مزامنة المعاملات الفنية (Technical Path)
       const transSnap = await getDocs(query(collection(this.db, paths.transactions(this.companyId)), where('clientId', '==', clientId)));
@@ -107,11 +107,11 @@ export class ClientService {
       const boqsSnap = await getDocs(query(collection(this.db, paths.boqs(this.companyId)), where('clientId', '==', clientId)));
       boqsSnap.docs.forEach(d => batch.update(d.ref, { clientName: data.nameAr, updatedAt: serverTimestamp() }));
 
-      // هـ. مزامنة المستخلصات المالية (IPCs)
+      // هـ. مزامنة المستخلصات المالية للمالك (IPCs)
       const ipcsSnap = await getDocs(query(collection(this.db, paths.ipcs(this.companyId)), where('clientId', '==', clientId)));
       ipcsSnap.docs.forEach(d => batch.update(d.ref, { clientName: data.nameAr, updatedAt: serverTimestamp() }));
 
-      // و. مزامنة عقود مقاولي الباطن (SubCon Contracts) - تحديث الاسم وإعادة صياغة مسمى المشروع
+      // و. مزامنة عقود مقاولي الباطن (SubCon Contracts) - تحديث الاسم وإعادة بناء مسمى المشروع
       const subconSnap = await getDocs(query(collection(this.db, paths.subconContracts(this.companyId)), where('clientId', '==', clientId)));
       subconSnap.docs.forEach(d => {
          const subData = d.data();
@@ -136,7 +136,7 @@ export class ClientService {
       batch.set(historyRef, {
         clientId,
         type: 'status_change',
-        content: `[مزامنة سيادية شاملة] تم تغيير الاسم الرسمي للعميل من [${oldData.nameAr}] إلى [${data.nameAr}]. تم تحديث كافة العقود، المعاملات، المقايسات، وسجلات الميدان آلياً.`,
+        content: `[مزامنة سيادية شاملة] تم تغيير الاسم الرسمي للعميل من [${oldData.nameAr}] إلى [${data.nameAr}]. تم تحديث كافة العقود، المعاملات، المقايسات، وسجلات الميدان آلياً لضمان وحدة البيانات.`,
         userId,
         userName,
         companyId: this.companyId,
