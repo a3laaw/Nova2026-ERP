@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { 
   Wallet, Plus, Loader2, Save, 
   ArrowRight, Landmark, User, Briefcase, LayoutGrid,
-  AlertTriangle, Sparkles, FileText, X
+  AlertTriangle, Sparkles, FileText, X, Zap
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -28,6 +28,7 @@ import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 /**
  * شاشة سندات الصرف السيادية (Payment Vouchers).
  * تم تفعيل "الوضع الصامت" لإخفاء مراكز التكلفة عند وجود ربط تلقائي.
+ * تم استخدام SearchableDropdown لكافة الاختيارات.
  */
 export default function PaymentVouchersPage() {
   const { globalUser, user } = useAuthContext();
@@ -92,13 +93,12 @@ export default function PaymentVouchersPage() {
            setForm(prev => ({ ...prev, costCenterId: '' }));
         }
      } else {
-        setAutoLinkedCC(false);
+        setAutoLinkedPC(false);
      }
   }, [form.projectId, costCenters, selectedAccount]);
 
   const showCostCenterPicker = useMemo(() => {
      if (!selectedAccount || selectedAccount.analyticalConfig?.costCenter === 'not_allowed') return false;
-     // قاعدة الإخفاء الصامت: إذا وجد الربط الأوتوماتيكي للمشروع المختار، نخفي الحقل فوراً.
      if (form.projectId && form.projectId !== 'GENERAL' && autoLinkedCC && form.costCenterId) return false;
      return true;
   }, [selectedAccount, autoLinkedCC, form.costCenterId, form.projectId]);
@@ -195,12 +195,13 @@ export default function PaymentVouchersPage() {
                     </div>
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'من حساب الخزينة' : 'Pay From'}</Label>
-                       <Select disabled={!form.paymentMethod} value={form.cashAccountId} onValueChange={v => setForm({...form, cashAccountId: v})}>
-                          <SelectTrigger className="h-16 rounded-2xl border-2 font-black text-rose-600 bg-white"><SelectValue placeholder="..." /></SelectTrigger>
-                          <SelectContent className="rounded-2xl border-0 shadow-3xl">
-                             {cashAccounts?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">{isRtl ? a.nameAr : a.nameEn}</SelectItem>)}
-                          </SelectContent>
-                       </Select>
+                       <SearchableDropdown
+                         disabled={!form.paymentMethod}
+                         options={(cashAccounts || []).map(a => ({ id: a.id!, name: isRtl ? a.nameAr : a.nameEn, subText: a.code }))}
+                         value={form.cashAccountId}
+                         onChange={v => setForm({...form, cashAccountId: v as string})}
+                         placeholder="..."
+                       />
                     </div>
                  </div>
 
@@ -220,42 +221,30 @@ export default function PaymentVouchersPage() {
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-top-2">
                           <div className="space-y-1.5 text-start">
                              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">المشروع المستهدف</Label>
-                             <Select value={form.projectId} onValueChange={v => setForm({...form, projectId: v})}>
-                                <SelectTrigger className={cn("h-12 rounded-xl border-2 font-black text-sm transition-all", form.projectId && form.projectId !== 'GENERAL' ? "bg-primary/5 border-primary/20 text-primary" : "bg-white")}>
-                                   <SelectValue placeholder={isRtl ? "اختيار المشروع..." : "Project..."} />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl border-0 shadow-3xl z-[160]">
-                                   <SelectItem value="GENERAL" className="italic text-slate-400 py-3 border-b border-slate-50">--- {isRtl ? 'مصروف إداري عام' : 'General Admin'} ---</SelectItem>
-                                   {projects?.map(p => (
-                                     <SelectItem key={p.id} value={p.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">
-                                        <div className="flex flex-col text-start">
-                                           <span>{p.subServiceName}</span>
-                                           <span className="text-[8px] text-slate-400 uppercase">#{p.transactionNumber}</span>
-                                        </div>
-                                     </SelectItem>
-                                   ))}
-                                </SelectContent>
-                             </Select>
+                             <SearchableDropdown
+                                options={[
+                                   { id: 'GENERAL', name: isRtl ? '--- مصروف إداري عام ---' : '--- General Admin ---' },
+                                   ...(projects || []).map(p => ({ 
+                                      id: p.id!, 
+                                      name: p.clientName, 
+                                      subText: `${p.subServiceName} (#${p.transactionNumber})` 
+                                   }))
+                                ]}
+                                value={form.projectId}
+                                onChange={v => setForm({...form, projectId: v as string})}
+                                placeholder={isRtl ? "اختيار المشروع..." : "Project..."}
+                             />
                           </div>
 
                           {showCostCenterPicker && (
                             <div className="space-y-1.5 animate-in zoom-in-95 text-start">
                                <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5"><LayoutGrid className="h-4 w-4" /> {isRtl ? 'مركز التكلفة' : 'Cost Center'}</Label>
-                               <div className="relative">
-                                  <Select 
-                                    value={form.costCenterId} 
-                                    onValueChange={v => setForm({...form, costCenterId: v})}
-                                  >
-                                     <SelectTrigger className="h-12 rounded-xl border-2 font-black text-sm bg-white shadow-sm">
-                                        <SelectValue placeholder="..." />
-                                     </SelectTrigger>
-                                     <SelectContent className="rounded-xl z-[160] border-0 shadow-3xl">
-                                        {costCenters?.filter(cc => cc.isAdministrative || (form.projectId && cc.projectId === form.projectId)).map(cc => (
-                                          <SelectItem key={cc.id} value={cc.id!} className="font-bold text-xs py-3 border-b last:border-0 border-slate-50">{cc.name}</SelectItem>
-                                        ))}
-                                     </SelectContent>
-                                  </Select>
-                               </div>
+                               <SearchableDropdown
+                                  options={costCenters?.filter(cc => cc.isAdministrative || (form.projectId && cc.projectId === form.projectId)).map(cc => ({ id: cc.id, name: cc.name, subText: cc.code })) || []}
+                                  value={form.costCenterId}
+                                  onChange={v => setForm({...form, costCenterId: v as string})}
+                                  placeholder="..."
+                               />
                                
                                {selectedAccount?.analyticalConfig?.costCenter === 'required' && !form.costCenterId && form.projectId && (
                                  <p className="text-[8px] font-bold text-rose-500 mt-2 animate-pulse flex items-center gap-1.5">
@@ -282,7 +271,7 @@ export default function PaymentVouchersPage() {
 
                  <div className="flex justify-end gap-4 pt-8">
                     <Button variant="outline" onClick={() => setIsAdding(false)} className="h-16 rounded-2xl px-10 font-black border-2 border-slate-100">{t('common.cancel')}</Button>
-                    <Button onClick={handleSave} disabled={loading} className="h-16 rounded-2xl px-16 bg-rose-600 text-white font-black text-xl shadow-2xl shadow-rose-200 hover:scale-[1.02] transition-all gap-3 border-b-8 border-rose-800">
+                    <Button onClick={handleSave} disabled={loading} className="h-16 rounded-2xl px-16 bg-rose-600 text-white font-black text-xl shadow-xl shadow-rose-200 hover:scale-[1.02] transition-all gap-3 border-b-8 border-rose-800">
                        {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
                        {tSafe('inline.confirm.issue', 'تأكيد وإصدار السند', 'Confirm & Issue')}
                     </Button>
@@ -319,7 +308,7 @@ export default function PaymentVouchersPage() {
                        <TableHead className="py-5 ps-8 text-start text-[10px] font-black uppercase tracking-widest">{isRtl ? 'رقم السند / التاريخ' : 'Voucher No. / Date'}</TableHead>
                        <TableHead className="text-start text-[10px] font-black uppercase tracking-widest">{isRtl ? 'يصرف للسيد' : 'Paid To'}</TableHead>
                        <TableHead className="text-end text-[10px] font-black uppercase tracking-widest">{t('common.amount')}</TableHead>
-                       <TableHead className="text-center text-[10px] font-black uppercase tracking-widest">{isRtl ? 'طريقة الدفع' : 'Payment Method'}</TableHead>
+                       <TableHead className="text-center text-[10px) font-black uppercase tracking-widest">{isRtl ? 'طريقة الدفع' : 'Payment Method'}</TableHead>
                        <TableHead className="pe-8"></TableHead>
                     </TableRow>
                  </TableHeader>
@@ -354,3 +343,4 @@ export default function PaymentVouchersPage() {
     </div>
   );
 }
+

@@ -35,6 +35,7 @@ import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 /**
  * شاشة سندات القبض السيادية (Receipt Vouchers).
  * تم تفعيل "الوضع الصامت" لإخفاء مراكز الربحية عند وجود ربط تلقائي.
+ * تم استخدام SearchableDropdown لكافة الاختيارات.
  */
 export default function ReceiptVouchersPage() {
   const { globalUser, user } = useAuthContext();
@@ -118,7 +119,6 @@ export default function ReceiptVouchersPage() {
 
   const showProfitCenterPicker = useMemo(() => {
      if (!selectedAccount || selectedAccount.analyticalConfig?.profitCenter === 'not_allowed') return false;
-     // الإخفاء الصامت: إذا وجد الربط الأوتوماتيكي، لا نعرض الحقل أبداً.
      if (form.transactionId && autoLinkedPC && form.profitCenterId) return false;
      return true;
   }, [selectedAccount, autoLinkedPC, form.profitCenterId, form.transactionId]);
@@ -255,16 +255,12 @@ export default function ReceiptVouchersPage() {
                       {contracts.length === 0 ? (
                         <div className="p-5 bg-rose-50 border-2 border-rose-100 rounded-2xl text-rose-600 font-bold text-xs shadow-inner">{tSafe('inline.no.approved.contract', 'تنبيه: لا يوجد عقد معتمد لهذه المعاملة لبدء التحصيل.', 'No approved contract found.')}</div>
                       ) : (
-                        <Select value={form.contractId} onValueChange={v => setForm({ ...form, contractId: v })}>
-                           <SelectTrigger className="h-12 rounded-xl border-2 font-black bg-white shadow-sm"><SelectValue placeholder="..." /></SelectTrigger>
-                           <SelectContent className="rounded-xl border-0 shadow-3xl z-[160]">
-                              {contracts.map(c => (
-                                <SelectItem key={c.id} value={c.id} className="font-bold py-3 border-b last:border-0 border-slate-50">
-                                   <div className="flex justify-between items-center gap-10"><span>{c.name}</span><Badge variant="outline" className="h-5 px-2 bg-emerald-50 text-emerald-600 border-emerald-100">{c.totalAmount.toLocaleString()} KWD</Badge></div>
-                                </SelectItem>
-                              ))}
-                           </SelectContent>
-                        </Select>
+                        <SearchableDropdown
+                           options={contracts.map(c => ({ id: c.id, name: c.name, subText: `${c.totalAmount.toLocaleString()} KWD` }))}
+                           value={form.contractId}
+                           onChange={v => setForm({ ...form, contractId: v as string })}
+                           placeholder={tSafe('inline.select.contract', 'اختر العقد...', 'Select Contract...')}
+                        />
                       )}
                    </div>
                  )}
@@ -281,7 +277,7 @@ export default function ReceiptVouchersPage() {
                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('paymentMethods')}</Label>
                        <Select value={form.paymentMethod} onValueChange={v => setForm({...form, paymentMethod: v, cashAccountId: ''})}>
                           <SelectTrigger className="h-16 rounded-2xl border-2 font-black"><SelectValue /></SelectTrigger>
-                          <SelectContent className="rounded-2xl border-0 shadow-3xl z-[160]">
+                          <SelectContent className="rounded-xl border-0 shadow-3xl z-[160]">
                              {paymentMethods?.map((pm: any) => (
                                <SelectItem key={pm.code} value={pm.code} className="font-bold py-3 text-xs border-b last:border-0 border-slate-50">{tSafe('data.pm.name', pm.name, pm.nameEn || pm.name)}</SelectItem>
                              ))}
@@ -290,12 +286,13 @@ export default function ReceiptVouchersPage() {
                     </div>
                     <div className="space-y-2 text-start">
                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('inline.deposit.to', 'إيداع في حساب', 'Deposit To')}</Label>
-                       <Select disabled={!form.paymentMethod} value={form.cashAccountId} onValueChange={v => setForm({...form, cashAccountId: v})}>
-                          <SelectTrigger className="h-16 rounded-2xl border-2 font-black text-blue-600 bg-white"><SelectValue placeholder="..." /></SelectTrigger>
-                          <SelectContent className="rounded-2xl border-0 shadow-3xl z-[160]">
-                             {cashAccounts?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">{a.code} - {tSafe('data.account.name', a.nameAr, a.nameEn)}</SelectItem>)}
-                          </SelectContent>
-                       </Select>
+                       <SearchableDropdown
+                         disabled={!form.paymentMethod}
+                         options={(cashAccounts || []).map(a => ({ id: a.id!, name: isRtl ? a.nameAr : a.nameEn, subText: a.code }))}
+                         value={form.cashAccountId}
+                         onChange={v => setForm({...form, cashAccountId: v as string})}
+                         placeholder="..."
+                       />
                     </div>
                     <div className="space-y-2 text-start">
                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('inline.net.deposit', 'صافي الإيداع البنكي', 'Net Deposit')}</Label>
@@ -319,18 +316,12 @@ export default function ReceiptVouchersPage() {
                        {showProfitCenterPicker && (
                          <div className="space-y-2 animate-in zoom-in-95">
                             <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5"><DatabaseZap className="h-3.5 w-3.5" /> {isRtl ? 'مركز الربحية' : 'Profit Center'}</Label>
-                            <div className="relative">
-                               <Select value={form.profitCenterId} onValueChange={v => setForm({...form, profitCenterId: v})}>
-                                  <SelectTrigger className="h-12 rounded-xl border-2 font-black bg-white">
-                                     <SelectValue placeholder="..." />
-                                  </SelectTrigger>
-                                  <SelectContent className="rounded-xl border-0 shadow-3xl z-[160]">
-                                     {profitCenters?.filter(pc => pc.projectId === form.transactionId || !pc.projectId).map(pc => (
-                                        <SelectItem key={pc.id} value={pc.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">{pc.name}</SelectItem>
-                                     ))}
-                                  </SelectContent>
-                               </Select>
-                            </div>
+                            <SearchableDropdown
+                               options={profitCenters?.filter(pc => pc.projectId === form.transactionId || !pc.projectId).map(pc => ({ id: pc.id, name: pc.name, subText: pc.code })) || []}
+                               value={form.profitCenterId}
+                               onChange={v => setForm({...form, profitCenterId: v as string})}
+                               placeholder="..."
+                            />
                             {selectedAccount?.type === 'revenue' && !form.profitCenterId && form.transactionId && (
                               <p className="text-[8px] font-bold text-rose-500 mt-2 flex items-center gap-1.5 animate-pulse">
                                  <AlertTriangle className="h-3.5 w-3.5" /> لم يتم العور على مركز ربحية مرتبط آلياً، يرجى الاختيار يدوياً لضمان سلامة التحليل المالي.
@@ -355,7 +346,7 @@ export default function ReceiptVouchersPage() {
 
                  <div className="flex justify-end gap-4 pt-8">
                     <Button variant="outline" onClick={() => setIsAdding(false)} className="h-16 rounded-2xl px-12 font-black border-2">{t('common.cancel')}</Button>
-                    <Button onClick={handleSave} disabled={loading || !form.contractId} className="h-16 rounded-2xl px-20 bg-emerald-600 text-white font-black text-xl shadow-2xl shadow-emerald-100 border-b-8 border-emerald-800 hover:scale-[1.02] transition-all">
+                    <Button onClick={handleSave} disabled={loading || !form.contractId} className="h-16 rounded-2xl px-20 bg-emerald-600 text-white font-black text-xl shadow-xl shadow-emerald-100 border-b-8 border-emerald-800 hover:scale-[1.02] transition-all">
                        {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />} {tSafe('inline.confirm_issue_btn', 'تأكيد وإصدار السند', 'Confirm & Issue')}
                     </Button>
                  </div>
@@ -412,3 +403,4 @@ export default function ReceiptVouchersPage() {
     </div>
   );
 }
+

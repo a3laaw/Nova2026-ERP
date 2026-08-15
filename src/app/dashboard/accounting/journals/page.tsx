@@ -31,6 +31,7 @@ import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
  * شاشة قيود اليومية السيادية (Sovereign Journal Entries).
  * تم تحديث محرك الربط ليكون ديناميكياً وصامتاً (Silent Row-Level Linking).
  * تم فرض قاعدة منع الجمع بين المدين والدائن في سطر واحد (Strict Mutual Exclusion).
+ * تم استخدام SearchableDropdown لكافة الاختيارات.
  */
 export default function JournalEntriesPage() {
   const { globalUser, user } = useAuthContext();
@@ -135,27 +136,22 @@ export default function JournalEntriesPage() {
        const acc = availableAccounts?.find(a => a.id === val);
        newLines[idx].accountId = val;
        newLines[idx].accountName = isRtl ? acc?.nameAr || '' : acc?.nameEn || '';
+       // تصفية المشروع التلقائي إذا لم يعد الحساب تابعاً للعميل المختار
        newLines = autoLinkLine(idx, newLines[idx].projectId || '', val, newLines);
     }
     else if (field === 'projectId') {
-       newLines[idx].projectId = val;
-       newLines = autoLinkLine(idx, val, newLines[idx].accountId, newLines);
+       newLines[idx].projectId = val === 'NONE' ? '' : val;
+       newLines = autoLinkLine(idx, newLines[idx].projectId, newLines[idx].accountId, newLines);
     }
     else if (field === 'debit') {
        const debitVal = Number(val) || 0;
        newLines[idx].debit = debitVal;
-       // القانون المحاسبي: إذا وجد مدين، يتم تصفير الدائن فوراً في نفس السطر
-       if (debitVal > 0) {
-          newLines[idx].credit = 0;
-       }
+       if (debitVal > 0) newLines[idx].credit = 0;
     }
     else if (field === 'credit') {
        const creditVal = Number(val) || 0;
        newLines[idx].credit = creditVal;
-       // القانون المحاسبي: إذا وجد دائن، يتم تصفير المدين فوراً في نفس السطر
-       if (creditVal > 0) {
-          newLines[idx].debit = 0;
-       }
+       if (creditVal > 0) newLines[idx].debit = 0;
     }
     else {
        (newLines[idx] as any)[field] = val;
@@ -216,8 +212,8 @@ export default function JournalEntriesPage() {
                  <Table>
                     <TableHeader className="bg-slate-50">
                        <TableRow className="hover:bg-slate-50 border-0">
-                          <TableHead className="py-4 ps-6 text-[10px] font-black uppercase w-[250px]">{isRtl ? 'الحساب المالي' : 'Account'}</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase w-[220px]">{isRtl ? 'المشروع المرتبط' : 'Project'}</TableHead>
+                          <TableHead className="py-4 ps-6 text-[10px] font-black uppercase w-[280px]">{isRtl ? 'الحساب المالي' : 'Account'}</TableHead>
+                          <TableHead className="text-[10px] font-black uppercase w-[240px]">{isRtl ? 'المشروع المرتبط' : 'Project'}</TableHead>
                           <TableHead className="text-center text-[10px] font-black uppercase w-[120px]">{isRtl ? 'مدين' : 'Debit'}</TableHead>
                           <TableHead className="text-center text-[10px] font-black uppercase w-[120px]">{isRtl ? 'دائن' : 'Credit'}</TableHead>
                           <TableHead className="w-[50px]"></TableHead>
@@ -229,6 +225,7 @@ export default function JournalEntriesPage() {
                          const requiresCC = acc?.analyticalConfig?.costCenter === 'required';
                          const requiresPC = acc?.analyticalConfig?.profitCenter === 'required';
 
+                         // تصفية المشاريع ديناميكياً بناءً على العميل المربوط بالحساب (إن وجد)
                          const dynamicProjects = (projects || []).filter((p: any) => {
                             if (!acc?.referenceId) return true;
                             return p.clientId === acc.referenceId;
@@ -246,25 +243,23 @@ export default function JournalEntriesPage() {
                               </TableCell>
                               <TableCell className="py-3">
                                  <div className="flex flex-col gap-2">
-                                    <Select value={line.projectId || 'NONE'} onValueChange={v => updateLine(idx, 'projectId', v)}>
-                                       <SelectTrigger className={cn("h-11 rounded-xl border-2 font-bold text-[11px]", line.projectId && line.projectId !== 'NONE' ? "bg-primary/5 border-primary/20" : "bg-white")}>
-                                          <SelectValue placeholder={isRtl ? "اختيار المشروع..." : "Project..."} />
-                                       </SelectTrigger>
-                                       <SelectContent className="rounded-xl border shadow-2xl z-[160]">
-                                          <SelectItem value="NONE" className="italic text-slate-400 py-3">--- {isRtl ? 'مصروف إداري عام' : 'No Project'} ---</SelectItem>
-                                          {dynamicProjects?.map(p => (
-                                             <SelectItem key={p.id} value={p.id!} className="font-bold text-[11px] py-3 border-b last:border-0">
-                                                <div className="flex flex-col text-start">
-                                                   <span>{p.subServiceName}</span>
-                                                   <span className="text-[8px] text-slate-400 uppercase">#{p.transactionNumber}</span>
-                                                </div>
-                                             </SelectItem>
-                                          ))}
-                                       </SelectContent>
-                                    </Select>
+                                    <SearchableDropdown
+                                      options={[
+                                         { id: 'NONE', name: isRtl ? '--- مصروف إداري عام ---' : '--- No Project ---' },
+                                         ...(dynamicProjects || []).map(p => ({ 
+                                            id: p.id!, 
+                                            name: p.clientName, 
+                                            subText: `${p.subServiceName} (#${p.transactionNumber})` 
+                                         }))
+                                      ]}
+                                      value={line.projectId || 'NONE'}
+                                      onChange={v => updateLine(idx, 'projectId', v)}
+                                      placeholder={isRtl ? "اختيار المشروع..." : "Project..."}
+                                      disabled={!line.accountId}
+                                    />
                                     
                                     {line.projectId && line.projectId !== 'NONE' && (requiresCC || requiresPC) && !line.isAutoLinked && (
-                                       <div className="animate-in slide-in-from-top-1">
+                                       <div className="animate-in slide-in-from-top-1 space-y-2">
                                           {requiresCC && (
                                              <Select value={line.costCenterId} onValueChange={v => updateLine(idx, 'costCenterId', v)}>
                                                 <SelectTrigger className="h-8 rounded-lg border-2 border-rose-100 bg-rose-50 text-[10px] font-black text-rose-600"><SelectValue placeholder={isRtl ? "اختر مركز التكلفة..." : "Select Cost Center..."} /></SelectTrigger>
@@ -283,7 +278,7 @@ export default function JournalEntriesPage() {
                                     {line.isAutoLinked && (
                                        <div className="flex items-center gap-2 text-emerald-600 animate-in fade-in">
                                           <Zap className="h-3 w-3 fill-current" />
-                                          <span className="text-[8px] font-black uppercase tracking-widest">{isRtl ? 'ربط تحليل سيادي نشط' : 'Sovereign Auto-Link Active'}</span>
+                                          <span className="text-[8px] font-black uppercase tracking-widest">{isRtl ? 'تم الربط آلياً' : 'Auto Linked'}</span>
                                        </div>
                                     )}
                                  </div>
@@ -399,3 +394,4 @@ export default function JournalEntriesPage() {
     </div>
   );
 }
+
