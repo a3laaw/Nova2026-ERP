@@ -12,7 +12,7 @@ import {
 import { paths } from '@/firebase/multi-tenant';
 import { Transaction } from '@/types/transaction';
 import { BOQ, BOQItem } from '@/types/documents';
-import { JournalEntry } from '@/types/accounting';
+import { JournalEntry, JournalEntryLine } from '@/types/accounting';
 import { Employee } from '@/types/hr';
 import { Equipment } from '@/types/equipment';
 
@@ -36,8 +36,8 @@ export interface ItemProfitability {
   unit: string;
   plannedQty: number;
   executedQty: number;
-  revenue: number;      // المبالغ المفوترة للمالك عن هذا البند (من الـ IPCs)
-  cost: number;         // التكاليف المباشرة (عمالة + معدات) المسجلة لهذا البند
+  revenue: number;      
+  cost: number;         
   profit: number;
   marginPercent: number;
 }
@@ -52,16 +52,23 @@ export interface ResourceProfitability {
   efficiency: number;      
 }
 
+export interface GlobalFilters {
+  projectId: string;
+  costCenterId: string;
+  profitCenterId: string;
+  searchTerm: string;
+}
+
 /**
- * خدمة التحليلات السيادية ومحرك الربحية (Sovereign Profitability Engine).
+ * خدمة التحليلات السيادية المحدثة - تدعم الفلترة الشمولية المتقاطعة.
  */
 export class AnalyticsService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * جلب الأداء المالي العام لكافة المشاريع
+   * جلب الأداء المالي المفلتر
    */
-  async getProjectsPerformance(): Promise<ProjectAnalyticsSummary[]> {
+  async getFilteredPerformance(filters: GlobalFilters): Promise<ProjectAnalyticsSummary[]> {
     const [transSnap, boqsSnap, journalSnap] = await Promise.all([
       getDocs(query(collection(this.db, paths.transactions(this.companyId)))),
       getDocs(query(collection(this.db, paths.boqs(this.companyId)))),
@@ -73,15 +80,26 @@ export class AnalyticsService {
     const allJournalLines = journalSnap.docs.flatMap(d => (d.data() as JournalEntry).lines || []);
 
     const summaries = await Promise.all(allTrans.map(async (trans) => {
+      // تطبيق فلتر المشروع
+      if (filters.projectId !== 'all' && trans.id !== filters.projectId) return null;
+
       const projectBoq = allBoqs.find(b => b.transactionId === trans.id);
       const totalBudget = projectBoq?.totalAmount || 0;
 
-      const projectRevenue = allJournalLines
-        .filter(l => l.projectId === trans.id && (l.credit || 0) > 0)
+      // تصفية أسطر القيود بناءً على الفلاتر الشمولية (مركز تكلفة / مركز ربحية)
+      const filteredLines = allJournalLines.filter(l => {
+        const matchProject = l.projectId === trans.id;
+        const matchCC = filters.costCenterId === 'all' || l.costCenterId === filters.costCenterId;
+        const matchPC = filters.profitCenterId === 'all' || l.profitCenterId === filters.profitCenterId;
+        return matchProject && matchCC && matchPC;
+      });
+
+      const projectRevenue = filteredLines
+        .filter(l => (l.credit || 0) > 0)
         .reduce((acc, l) => acc + (l.credit || 0), 0);
 
-      const projectCosts = allJournalLines
-        .filter(l => l.projectId === trans.id && (l.debit || 0) > 0)
+      const projectCosts = filteredLines
+        .filter(l => (l.debit || 0) > 0)
         .reduce((acc, l) => acc + (l.debit || 0), 0);
       
       const margin = projectRevenue - projectCosts;
@@ -102,12 +120,83 @@ export class AnalyticsService {
       };
     }));
 
-    return summaries.sort((a, b) => b.totalRevenue - a.totalRevenue);
+    return (summaries.filter(s => s !== null) as ProjectAnalyticsSummary[])
+      .sort((a, b) => b.totalRevenue - a.totalRevenue);
   }
 
   /**
-   * تحليل الربحية الجزيئي (على مستوى البند) لمشروع محدد
+   * تحليل جدوى الموارد المفلتر (ROI)
    */
+  async getFilteredResourcesProfitability(filters: GlobalFilters): Promise<ResourceProfitability[]> {
+    const [empsSnap, equipSnap, execsSnap] = await Promise.all([
+      getDocs(collection(this.db, paths.employees(this.companyId))),
+      getDocs(collection(this.db, paths.equipment(this.companyId))),
+      getDocs(query(collection(this.db, paths.executions(this.companyId)), where('isArchived', '==', false)))
+    ]);
+
+    const employees = empsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Employee));
+    const equipment = equipSnap.docs.map(d => ({ id: d.id, ...d.data() } as Equipment));
+    const allExecutions = execsSnap.docs.map(d => d.data());
+
+    // تصفية الزيارات بناءً على فلتر المشروع
+    const executions = allExecutions.filter(ex => 
+       filters.projectId === 'all' || ex.transactionId === filters.projectId
+    );
+
+    const resourceStats: ResourceProfitability[] = [];
+
+    employees.forEach(emp => {
+      const monthlyCost = emp.basicSalary || 0; 
+      let generatedValue = 0;
+
+      executions.forEach(ex => {
+        const myLogs = (ex.laborDetails || []).filter((l: any) => l.resourceId === emp.id);
+        myLogs.forEach((log: any) => {
+          generatedValue += (log.hours || 0) * (log.hourlyCostRef || 0);
+        });
+      });
+
+      if (generatedValue > 0 || monthlyCost > 0) {
+        resourceStats.push({
+          resourceId: emp.id!,
+          name: emp.fullName,
+          type: 'employee',
+          totalCost: monthlyCost,
+          valueGenerated: generatedValue,
+          netContribution: generatedValue - monthlyCost,
+          efficiency: monthlyCost > 0 ? Math.round((generatedValue / monthlyCost) * 100) : 0
+        });
+      }
+    });
+
+    equipment.forEach(eq => {
+      const baseHourlyCost = eq.ownershipType === 'owned' ? (eq.hourlyDepreciationRate || 0) : (eq.hourlyRentalRate || 0);
+      const totalCost = baseHourlyCost * 160; 
+      let generatedValue = 0;
+
+      executions.forEach(ex => {
+        const myLogs = (ex.equipmentUsed || []).filter((e: any) => e.equipmentId === eq.id);
+        myLogs.forEach((log: any) => {
+          generatedValue += (log.hours || log.hoursUsed || 0) * (log.hourlyRateRef || 0);
+        });
+      });
+
+      if (generatedValue > 0 || totalCost > 0) {
+        resourceStats.push({
+          resourceId: eq.id!,
+          name: eq.name,
+          type: 'equipment',
+          totalCost: totalCost,
+          valueGenerated: generatedValue,
+          netContribution: generatedValue - totalCost,
+          efficiency: totalCost > 0 ? Math.round((generatedValue / totalCost) * 100) : 0
+        });
+      }
+    });
+
+    return resourceStats.sort((a, b) => b.efficiency - a.efficiency);
+  }
+
   async getProjectDetailedProfitability(projectId: string): Promise<ItemProfitability[]> {
     const boqsSnap = await getDocs(query(collection(this.db, paths.boqs(this.companyId)), where('transactionId', '==', projectId)));
     if (boqsSnap.empty) return [];
@@ -153,80 +242,5 @@ export class AnalyticsService {
         marginPercent
       };
     }).sort((a, b) => b.profit - a.profit);
-  }
-
-  /**
-   * تحليل جدوى الموارد (ROI)
-   * يتم استخراج "القيمة المنتجة" من ساعات العمل الميدانية الفعلية مضروبة في سعر الساعة المرجعي في الـ BOQ
-   */
-  async getResourcesProfitability(): Promise<ResourceProfitability[]> {
-    const [empsSnap, equipSnap, execsSnap] = await Promise.all([
-      getDocs(collection(this.db, paths.employees(this.companyId))),
-      getDocs(collection(this.db, paths.equipment(this.companyId))),
-      getDocs(query(collection(this.db, paths.executions(this.companyId)), where('isArchived', '==', false)))
-    ]);
-
-    const employees = empsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Employee));
-    const equipment = equipSnap.docs.map(d => ({ id: d.id, ...d.data() } as Equipment));
-    const executions = execsSnap.docs.map(d => d.data());
-
-    const resourceStats: ResourceProfitability[] = [];
-
-    // تحليل الموظفين
-    employees.forEach(emp => {
-      const monthlyCost = emp.basicSalary || 0; 
-      let generatedValue = 0;
-
-      executions.forEach(ex => {
-        // البحث عن هذا الموظف في تفاصيل العمالة لكل سجل تنفيذ
-        const myLogs = (ex.laborDetails || []).filter((l: any) => l.resourceId === emp.id);
-        myLogs.forEach((log: any) => {
-          // القيمة المنتجة = الساعات × سعر الساعة المرجعي الموثق وقت الإنجاز
-          generatedValue += (log.hours || 0) * (log.hourlyCostRef || 0);
-        });
-      });
-
-      resourceStats.push({
-        resourceId: emp.id!,
-        name: emp.fullName,
-        type: 'employee',
-        totalCost: monthlyCost,
-        valueGenerated: generatedValue,
-        netContribution: generatedValue - monthlyCost,
-        efficiency: monthlyCost > 0 ? Math.round((generatedValue / monthlyCost) * 100) : 0
-      });
-    });
-
-    // تحليل المعدات
-    equipment.forEach(eq => {
-      // تكلفة المعدة التقديرية (الإهلاك الشهري أو الإيجار الثابت)
-      const depRate = eq.hourlyDepreciationRate || 0;
-      const rentalRate = eq.hourlyRentalRate || 0;
-      const baseHourlyCost = eq.ownershipType === 'owned' ? depRate : rentalRate;
-      
-      const totalCost = baseHourlyCost * 160; // افتراض 160 ساعة تشغيل شهرية كقاعدة تكلفة
-      let generatedValue = 0;
-
-      executions.forEach(ex => {
-        // البحث عن هذه المعدة في سجلات التنفيذ
-        const myLogs = (ex.equipmentUsed || []).filter((e: any) => e.equipmentId === eq.id);
-        myLogs.forEach((log: any) => {
-          // القيمة المنتجة للمعدة = الساعات × سعر ساعة التشغيل المرجعي في المقايسة
-          generatedValue += (log.hours || log.hoursUsed || 0) * (log.hourlyRateRef || 0);
-        });
-      });
-
-      resourceStats.push({
-        resourceId: eq.id!,
-        name: eq.name,
-        type: 'equipment',
-        totalCost: totalCost,
-        valueGenerated: generatedValue,
-        netContribution: generatedValue - totalCost,
-        efficiency: totalCost > 0 ? Math.round((generatedValue / totalCost) * 100) : 0
-      });
-    });
-
-    return resourceStats;
   }
 }
