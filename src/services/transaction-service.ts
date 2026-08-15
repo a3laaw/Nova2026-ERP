@@ -97,9 +97,14 @@ export class TransactionService {
     
     // --- الأتمتة المالية السيادية للمشروع ---
     // 1. إنشاء حساب "أعمال تحت التنفيذ - WIP" مخصص للمشروع تحت كود (1205)
-    // هذا الحساب مخصص لتراكم التكاليف الميدانية (مواد، عمالة)
+    // التعديل السيادي: إضافة اسم العميل لمطلع الحساب لسهولة التعرف عليه في القيود
     await accService.ensureControlAccount('1205', 'أعمال تحت التنفيذ (WIP)', 'Work In Progress', 'asset');
-    await accService.createAutomaticSubAccount('1205', transactionId, `مشروع: ${data.subServiceName} (${transactionNumber})`, 'asset');
+    await accService.createAutomaticSubAccount(
+      '1205', 
+      transactionId, 
+      `مشروع: ${data.clientName} - ${data.subServiceName} (${transactionNumber})`, 
+      'asset'
+    );
 
     // 2. إنشاء مركز ربحية آلي للمشروع لمطابقة الميدان بالمالية
     await accService.createAutomaticProfitCenter(

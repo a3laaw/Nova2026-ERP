@@ -86,6 +86,7 @@ export default function JournalEntriesPage() {
     return (accounts || []).filter(a => a.isGroup === false);
   }, [accounts]);
 
+  // محرك تجميع البيان العام الذكي
   useEffect(() => {
     if (isAdding) {
        const uniqueMemosMap = new Map<string, string>();
@@ -114,8 +115,11 @@ export default function JournalEntriesPage() {
     if (projectId && projectId !== 'NONE') {
        const matchedCC = costCenters?.find(cc => cc.projectId === projectId || cc.id === `cc_${projectId}`);
        const matchedPC = profitCenters?.find(pc => pc.projectId === projectId || pc.id === `pc_${projectId}`);
+       
        if (acc?.type === 'expense' && matchedCC) { ccId = matchedCC.id; isAuto = true; }
        if (acc?.type === 'revenue' && matchedPC) { pcId = matchedPC.id; isAuto = true; }
+       // حالة حساب WIP (1205)
+       if (acc?.code.startsWith('1205') && matchedCC) { ccId = matchedCC.id; isAuto = true; }
     }
 
     lines[idx].costCenterId = ccId;
@@ -151,15 +155,34 @@ export default function JournalEntriesPage() {
 
   const updateLine = (idx: number, field: keyof (JournalEntryLine & { isAutoLinked: boolean }), val: any) => {
     let newLines = [...form.lines];
+    
     if (field === 'accountId') {
        const acc = accounts?.find(a => a.id === val);
        newLines[idx].accountId = val;
        newLines[idx].accountName = isRtl ? acc?.nameAr || '' : acc?.nameEn || '';
-       newLines[idx].projectId = ''; 
-       newLines = autoLinkLine(idx, '', val, newLines);
+       
+       // إذا كان الحساب مرتبط بمشروع محدد (WIP أو عميل)، نقوم باختيار المشروع تلقائياً
+       if (acc?.referenceId) {
+          const matchProj = projects?.find(p => p.id === acc.referenceId);
+          if (matchProj) {
+             newLines[idx].projectId = matchProj.id;
+          }
+       }
+       
+       newLines = autoLinkLine(idx, newLines[idx].projectId, val, newLines);
     }
     else if (field === 'projectId') {
        newLines[idx].projectId = val === 'NONE' ? '' : val;
+       
+       // الربط الذكي العكسي: إذا اخترت المشروع والحساب فارغ، نبحث عن حساب الـ WIP الخاص به
+       if (!newLines[idx].accountId && val !== 'NONE') {
+          const wipAcc = availableAccounts.find(a => a.code.startsWith('1205') && a.referenceId === val);
+          if (wipAcc) {
+             newLines[idx].accountId = wipAcc.id!;
+             newLines[idx].accountName = isRtl ? wipAcc.nameAr : wipAcc.nameEn;
+          }
+       }
+       
        newLines = autoLinkLine(idx, newLines[idx].projectId, newLines[idx].accountId, newLines);
     }
     else if (field === 'debit') {
@@ -199,14 +222,16 @@ export default function JournalEntriesPage() {
           </h1>
           <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">{t('accounting.journals.desc')}</p>
         </div>
-        <Button onClick={() => setIsAdding(!isAdding)} size="sm" className="h-11 px-8 font-black rounded-xl shadow-lg gap-2">
-           {isAdding ? <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} /> : <Plus className="h-4 w-4" />}
-           {isAdding ? t('common.back') : t('accounting.journals.newEntry')}
-        </Button>
+        <div className="flex gap-3">
+           <Button onClick={() => setIsAdding(!isAdding)} size="sm" className="h-10 px-8 font-black rounded-xl shadow-lg gap-2">
+              {isAdding ? <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} /> : <Plus className="h-4 w-4" />}
+              {isAdding ? t('common.back') : t('accounting.journals.newEntry')}
+           </Button>
+        </div>
       </header>
 
       {isAdding ? (
-        <Card className="max-w-[1600px] mx-auto rounded-[2.5rem] border-0 shadow-3xl bg-white overflow-hidden animate-in slide-in-from-bottom-4">
+        <Card className="max-w-[1600px] mx-auto rounded-[2rem] border-0 shadow-3xl bg-white overflow-hidden animate-in slide-in-from-bottom-4">
            <CardHeader className="bg-slate-50/50 p-8 border-b text-start">
               <CardTitle className="font-black text-slate-800 text-xl">{t('accounting.journals.draftTitle')}</CardTitle>
            </CardHeader>
@@ -228,8 +253,8 @@ export default function JournalEntriesPage() {
                  <Table>
                     <TableHeader className="bg-slate-50">
                        <TableRow className="hover:bg-slate-50 border-0">
-                          <TableHead className="py-4 ps-6 text-[10px] font-black uppercase w-[240px]">{isRtl ? 'الحساب المالي' : 'Account'}</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase w-[200px]">{isRtl ? 'المشروع' : 'Project'}</TableHead>
+                          <TableHead className="py-4 ps-6 text-[10px] font-black uppercase w-[280px]">{isRtl ? 'الحساب المالي (فرعي)' : 'Postable Account'}</TableHead>
+                          <TableHead className="text-[10px] font-black uppercase w-[240px]">{isRtl ? 'المشروع المرتبط' : 'Project Link'}</TableHead>
                           <TableHead className="text-[10px] font-black uppercase w-[220px]">{isRtl ? 'بيان السطر' : 'Line Memo'}</TableHead>
                           <TableHead className="text-center text-[10px] font-black uppercase w-[100px]">{isRtl ? 'مدين' : 'Debit'}</TableHead>
                           <TableHead className="text-center text-[10px] font-black uppercase w-[100px]">{isRtl ? 'دائن' : 'Credit'}</TableHead>
@@ -239,9 +264,7 @@ export default function JournalEntriesPage() {
                     <TableBody>
                        {form.lines.map((line, idx) => {
                          const acc = accounts?.find(a => a.id === line.accountId);
-                         const filteredProjects = projects?.filter(p => !acc?.referenceId || (acc.code.startsWith('1202') ? p.clientId === acc.referenceId : true));
-                         const requiresCC = acc?.analyticalConfig?.costCenter === 'required';
-                         const requiresPC = acc?.analyticalConfig?.profitCenter === 'required';
+                         const filteredProjects = projects?.filter(p => !acc?.referenceId || p.id === acc.referenceId);
                          const noneLabel = isRtl ? (acc?.type === 'expense' ? '--- مصروف إداري ---' : '--- بدون مشروع ---') : '--- No Project ---';
 
                          return (
@@ -257,11 +280,11 @@ export default function JournalEntriesPage() {
                               <TableCell className="py-3">
                                  <div className="flex flex-col gap-2">
                                     <SearchableDropdown
-                                      options={[{ id: 'NONE', name: noneLabel }, ...(filteredProjects || []).map(p => ({ id: p.id!, name: p.clientName, subText: `${p.subServiceName}` }))]}
+                                      options={[{ id: 'NONE', name: noneLabel }, ...(filteredProjects || []).map(p => ({ id: p.id!, name: p.clientName, subText: p.subServiceName }))]}
                                       value={line.projectId || (line.accountId ? 'NONE' : '')}
                                       onChange={v => updateLine(idx, 'projectId', v)}
                                       placeholder={isRtl ? "المشروع..." : "Project..."}
-                                      disabled={!line.accountId}
+                                      disabled={!line.accountId && !isAdmin}
                                     />
                                     {line.isAutoLinked && <div className="flex items-center gap-2 text-emerald-600 animate-in fade-in"><Zap className="h-3 w-3 fill-current" /><span className="text-[8px] font-black uppercase">{isRtl ? 'تم الربط آلياً' : 'Auto'}</span></div>}
                                  </div>
@@ -301,7 +324,7 @@ export default function JournalEntriesPage() {
                     {isBalanced ? <CheckCircle2 className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
                     {isBalanced ? t('accounting.journals.balanced') : t('accounting.journals.unbalanced')}
                  </div>
-                 <Button onClick={handleSave} disabled={loading || !isBalanced} className="h-12 rounded-[1.5rem] px-16 bg-primary text-white font-black text-sm shadow-xl border-b-4 border-orange-700">
+                 <Button onClick={handleSave} disabled={loading || !isBalanced} className="h-12 rounded-xl px-16 bg-primary text-white font-black text-sm shadow-xl border-b-4 border-orange-700 transition-all">
                     {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
                     {t('accounting.journals.postToLedger')}
                  </Button>
