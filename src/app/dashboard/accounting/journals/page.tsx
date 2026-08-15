@@ -10,7 +10,8 @@ import {
   Trash2, ArrowRight, Calculator,
   LayoutGrid, DatabaseZap, Briefcase,
   Zap, Search, Check, ChevronDown, X,
-  AlertTriangle, CheckCircle2, ArrowDown
+  AlertTriangle, CheckCircle2, ArrowDown,
+  Sparkles
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, getDocs } from 'firebase/firestore';
