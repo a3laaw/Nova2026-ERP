@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -10,7 +9,7 @@ import {
   User, Calendar, FileText, Briefcase,
   CheckCircle2, Sparkles, LayoutGrid, DatabaseZap, Gavel, Info,
   History, Percent, Calculator, ChevronDown, Search, Check,
-  Workflow, Hash
+  Workflow, Hash, UserCircle, AlertTriangle
 } from "lucide-react";
 import { 
   Popover,
@@ -38,10 +37,6 @@ import { Contract } from '@/types/documents';
 import { useRouter } from 'next/navigation';
 import { Textarea } from '@/components/ui/textarea';
 
-/**
- * مكون البحث الذكي المستقر لسندات القبض.
- * تم إصلاح مشكلة عدم الإغلاق بعد الاختيار.
- */
 function SearchablePicker({ value, onSelect, items, search, onSearchChange, icon: Icon, placeholder, type, disabled = false, isRtl }: any) {
   const [open, setOpen] = useState(false);
 
@@ -122,6 +117,7 @@ export default function ReceiptVouchersPage() {
   const [loading, setLoading] = useState(false);
   const [milestonesLoading, setMilestonesLoading] = useState(false);
   const [milestonesStatus, setMilestonesStatus] = useState<MilestonePaymentStatus[]>([]);
+  const [autoLinkedPC, setAutoLinkedPC] = useState(false);
 
   const [clientSearch, setClientSearch] = useState("");
   const [transSearch, setTransSearch] = useState("");
@@ -140,7 +136,8 @@ export default function ReceiptVouchersPage() {
     transactionName: '',
     contractId: '',
     notes: '',
-    appliedMilestoneName: ''
+    appliedMilestoneName: '',
+    profitCenterId: ''
   });
 
   const vouchersQuery = useMemo(() => 
@@ -163,11 +160,34 @@ export default function ReceiptVouchersPage() {
     companyId && db ? query(collection(db, paths.paymentMethods(companyId)), orderBy('order')) : null, 
   [db, companyId]);
 
+  const pcQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.profitCenters(companyId))) : null, 
+  [db, companyId]);
+
   const { data: vouchers, loading: vouchersLoading } = useCollection<Voucher>(vouchersQuery);
   const { data: accounts } = useCollection<Account>(accountsQuery);
   const { data: clients } = useCollection<any>(clientsQuery);
   const { data: allTransactions } = useCollection<Transaction>(projectsQuery);
   const { data: paymentMethods } = useCollection<any>(pmQuery);
+  const { data: profitCenters } = useCollection<any>(pcQuery);
+
+  const selectedAccount = useMemo(() => accounts?.find(a => a.id === form.accountId), [accounts, form.accountId]);
+
+  // --- محرك الربط التلقائي لمركز الربحية (PC Auto-Linking) ---
+  useEffect(() => {
+     if (form.transactionId && profitCenters && selectedAccount?.type === 'revenue') {
+        const matchedPC = profitCenters.find(pc => pc.projectId === form.transactionId || pc.id === `pc_${form.transactionId}`);
+        if (matchedPC) {
+           setForm(prev => ({ ...prev, profitCenterId: matchedPC.id }));
+           setAutoLinkedPC(true);
+        } else {
+           setAutoLinkedPC(false);
+           setForm(prev => ({ ...prev, profitCenterId: '' }));
+        }
+     } else {
+        setAutoLinkedPC(false);
+     }
+  }, [form.transactionId, profitCenters, selectedAccount]);
 
   const filteredClients = useMemo(() => {
     return (clients || []).filter(c => c.nameAr.toLowerCase().includes(clientSearch.toLowerCase()) || c.mobile?.includes(clientSearch) || c.fileNumber?.includes(clientSearch));
@@ -240,7 +260,7 @@ export default function ReceiptVouchersPage() {
     setLoading(true);
     try {
       const service = new AccountingService(db, companyId);
-      const voucherId = await service.createVoucher({ ...form, type: 'receipt' }, user.uid);
+      const voucherId = await service.createVoucher({ ...form, type: 'receipt', projectId: form.transactionId }, user.uid);
       toast({ title: t('common.saved') });
       setIsAdding(false);
       router.push(`/dashboard/accounting/vouchers/receipt/${voucherId}`);
@@ -368,15 +388,43 @@ export default function ReceiptVouchersPage() {
                  </div>
 
                  <div className="space-y-4 pt-6 border-t text-start">
-                    <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{tSafe('inline.against.income', 'مقابل حساب (إيراد)', 'Against Account (Income)')}</Label>
-                       <Select value={form.accountId} onValueChange={v => setForm({...form, accountId: v})}>
-                          <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
-                          <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
-                             {incomeAccounts?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">{a.code} - {tSafe('data.account.name', a.nameAr, a.nameEn)}</SelectItem>)}
-                          </SelectContent>
-                       </Select>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       <div className="space-y-2">
+                          <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{tSafe('inline.against.income', 'مقابل حساب (إيراد)', 'Against Account (Income)')}</Label>
+                          <Select value={form.accountId} onValueChange={v => setForm({...form, accountId: v})}>
+                             <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/50"><SelectValue placeholder="..." /></SelectTrigger>
+                             <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
+                                {incomeAccounts?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold py-3 border-b last:border-0 border-slate-50">{a.code} - {tSafe('data.account.name', a.nameAr, a.nameEn)}</SelectItem>)}
+                             </SelectContent>
+                          </Select>
+                       </div>
+
+                       <div className="space-y-2">
+                          <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5"><DatabaseZap className="h-3.5 w-3.5" /> {isRtl ? 'مركز الربحية' : 'Profit Center'}</Label>
+                          <div className="relative">
+                             <Select value={form.profitCenterId} onValueChange={v => setForm({...form, profitCenterId: v})}>
+                                <SelectTrigger className={cn(
+                                  "h-12 rounded-xl border-2 font-black transition-all",
+                                  autoLinkedPC ? "bg-emerald-50 border-emerald-200 text-emerald-600" : "bg-white"
+                                )}>
+                                   <SelectValue placeholder="..." />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl border shadow-2xl z-[160]">
+                                   {profitCenters?.filter(pc => pc.projectId === form.transactionId || !pc.projectId).map(pc => (
+                                      <SelectItem key={pc.id} value={pc.id!} className="font-bold py-3">{pc.name}</SelectItem>
+                                   ))}
+                                </SelectContent>
+                             </Select>
+                             {autoLinkedPC && <Badge className="absolute -top-2 -right-2 bg-emerald-600 text-white border-0 text-[7px] font-black h-4 px-1.5 shadow-sm">AUTO</Badge>}
+                          </div>
+                          {selectedAccount?.type === 'revenue' && !form.profitCenterId && form.transactionId && (
+                            <p className="text-[8px] font-bold text-rose-500 mt-1 flex items-center gap-1">
+                               <AlertTriangle className="h-2.5 w-2.5" /> لم يتم العور على مركز ربحية مرتبط آلياً، يرجى الاختيار يدوياً.
+                            </p>
+                          )}
+                       </div>
                     </div>
+
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.generated.notes', 'البيان (توليد آلي)', 'Statement (Auto)')}</Label>
                        <Textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} className="min-h-[100px] rounded-2xl border-2 p-5 text-sm font-bold bg-slate-50/30" placeholder="..." />
@@ -395,8 +443,8 @@ export default function ReceiptVouchersPage() {
               <Card className="rounded-[2rem] border shadow-sm p-8 bg-primary/5 text-slate-900 space-y-6 overflow-hidden relative border-2 border-primary/10">
                  <div className="absolute top-0 right-0 p-6 opacity-5"><Landmark className="h-32 w-32 text-primary" /></div>
                  <div className="relative z-10">
-                    <h4 className="font-black text-sm uppercase tracking-widest text-primary mb-2">{tSafe('inline.financial.trace', 'التتبع المالي السيادي', 'Financial Traceability')}</h4>
-                    <p className="text-xs font-bold text-slate-500 leading-relaxed">{tSafe('inline.trace.desc', 'عند حفظ هذا السند، سيقوم النظام بتوليد قيد مزدوج يربط النقدية بالإيراد، مع توثيق الأثر المالي آلياً.', 'System will auto-generate a journal entry, updating project radar and client dossier.')}</p>
+                    <h4 className="font-black text-sm uppercase tracking-widest text-primary mb-2 flex items-center gap-2"><Sparkles className="h-4 w-4" /> {tSafe('inline.financial.trace', 'الأتمتة المالية السيادية', 'Sovereign Financial AI')}</h4>
+                    <p className="text-xs font-bold text-slate-500 leading-relaxed">{tSafe('inline.trace.desc', 'عند اختيار المشروع، يقوم النظام آلياً بربط الإيراد بمركز الربحية المخصص لضمان دقة تقارير الجدوى والتحصيل.', 'System auto-links revenue to profit centers based on project selection.')}</p>
                  </div>
                  {form.contractId && milestonesStatus.length > 0 && (
                    <div className="relative z-10 pt-6 border-t border-primary/10 space-y-4">

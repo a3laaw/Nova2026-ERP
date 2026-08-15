@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
   Wallet, Plus, Loader2, Save, 
   ArrowRight, Landmark, User, FileText, Briefcase, LayoutGrid, DatabaseZap,
-  Split, Trash2, CheckCircle2, History
+  Split, Trash2, CheckCircle2, History, AlertTriangle, Sparkles
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where } from 'firebase/firestore';
@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { cn } from '@/lib/utils';
 
 export default function PaymentVouchersPage() {
   const { globalUser, user } = useAuthContext();
@@ -33,6 +34,7 @@ export default function PaymentVouchersPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isDistOpen, setIsDistOpen] = useState(false);
+  const [autoLinkedCC, setAutoLinkedCC] = useState(false);
 
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -79,14 +81,31 @@ export default function PaymentVouchersPage() {
   const { data: profitCenters } = useCollection<ProfitCenter>(profitCentersQuery);
   const { data: paymentMethods } = useCollection<any>(pmQuery);
 
+  const selectedAccount = useMemo(() => accounts?.find(a => a.id === form.accountId), [accounts, form.accountId]);
+
+  // --- محرك الربط التلقائي للأبعاد (Auto-Linking Engine) ---
+  useEffect(() => {
+     if (form.projectId && costCenters && selectedAccount?.type === 'expense') {
+        const matchedCC = costCenters.find(cc => cc.projectId === form.projectId || cc.id === `cc_${form.projectId}`);
+        if (matchedCC) {
+           setForm(prev => ({ ...prev, costCenterId: matchedCC.id }));
+           setAutoLinkedCC(true);
+        } else {
+           setAutoLinkedCC(false);
+           // تصفير إذا لم يجد تطابق لضمان سلامة الاختيار اليدوي
+           setForm(prev => ({ ...prev, costCenterId: '' }));
+        }
+     } else {
+        setAutoLinkedCC(false);
+     }
+  }, [form.projectId, costCenters, selectedAccount]);
+
   const cashAccounts = useMemo(() => {
     if (!accounts || !form.paymentMethod) return [];
     return accounts.filter(a => !a.isGroup && a.allowedPaymentMethods?.includes(form.paymentMethod));
   }, [accounts, form.paymentMethod]);
 
   const expenseAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.type === 'expense' || a.type === 'liability')), [accounts]);
-
-  const selectedAccount = useMemo(() => accounts?.find(a => a.id === form.accountId), [accounts, form.accountId]);
 
   const handleSave = async () => {
     if (!db || !companyId || !user) return;
@@ -116,10 +135,6 @@ export default function PaymentVouchersPage() {
 
   const distSum = form.distributions.reduce((acc, d) => acc + d.amount, 0);
   const isDistBalanced = Math.abs(distSum - form.amount) < 0.001;
-
-  const handleAddDist = () => {
-     setForm({ ...form, distributions: [...form.distributions, { amount: 0, projectId: '', costCenterId: '', profitCenterId: '' }] });
-  };
 
   return (
     <div className="space-y-4 animate-in fade-in" dir={dir}>
@@ -184,11 +199,6 @@ export default function PaymentVouchersPage() {
                           <SelectTrigger className="h-14 rounded-xl border-2 font-black text-rose-600"><SelectValue placeholder="..." /></SelectTrigger>
                           <SelectContent className="rounded-xl">
                              {cashAccounts?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.nameAr : a.nameEn}</SelectItem>)}
-                             {cashAccounts.length === 0 && form.paymentMethod && (
-                               <div className="p-4 text-center text-rose-500 text-[10px] font-bold">
-                                  لا يوجد حساب مفعل لطريقة الدفع هذه في دليل الحسابات.
-                               </div>
-                             )}
                           </SelectContent>
                        </Select>
                     </div>
@@ -200,7 +210,7 @@ export default function PaymentVouchersPage() {
                        {selectedAccount?.analyticalConfig?.distributionAllowed && (
                          <button 
                            type="button" 
-                           onClick={() => { setIsDistOpen(true); if(form.distributions.length === 0) handleAddDist(); }} 
+                           onClick={() => { setIsDistOpen(true); if(form.distributions.length === 0) setForm({...form, distributions: [{ amount: 0, projectId: '', costCenterId: '' }]}); }} 
                            className="flex items-center gap-2 text-primary font-black text-[10px] uppercase hover:underline"
                          >
                             <Split className="h-3 w-3" /> {tSafe('inline.distribute.expense', 'توزيع المصروف', 'Distribute Expense')}
@@ -216,38 +226,47 @@ export default function PaymentVouchersPage() {
                           </SelectContent>
                        </Select>
 
-                       {form.distributions.length > 0 ? (
-                         <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl flex items-center justify-between">
-                            <span className="text-[10px] font-black text-primary uppercase">{isRtl ? `موزع على ${form.distributions.length} مشاريع` : `Distributed across ${form.distributions.length} projects`}</span>
-                            <Badge className={isDistBalanced ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"}>{isDistBalanced ? 'BALANCED' : 'MISMATCH'}</Badge>
-                         </div>
-                       ) : (
-                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {selectedAccount?.analyticalConfig?.project !== 'not_allowed' && (
-                              <Select value={form.projectId} onValueChange={v => setForm({...form, projectId: v, costCenterId: '', profitCenterId: ''})}>
-                                 <SelectTrigger className="h-10 rounded-lg border-2 font-bold bg-slate-50/50 text-[10px]"><SelectValue placeholder={isRtl ? "المشروع..." : "Project..."} /></SelectTrigger>
-                                 <SelectContent className="rounded-xl">
-                                    <SelectItem value="GENERAL" className="italic text-slate-400">--- {isRtl ? 'عام' : 'General'} ---</SelectItem>
-                                    {projects?.map(p => <SelectItem key={p.id} value={p.id!} className="font-bold text-xs">{p.subServiceName}</SelectItem>)}
-                                 </SelectContent>
-                              </Select>
-                            )}
-                            {selectedAccount?.analyticalConfig?.costCenter !== 'not_allowed' && (
-                              <Select value={form.costCenterId} onValueChange={v => setForm({...form, costCenterId: v})}>
-                                 <SelectTrigger className="h-10 rounded-lg border-2 font-bold bg-slate-50/50 text-[10px]"><SelectValue placeholder={isRtl ? "مركز تكلفة..." : "Cost Center..."} /></SelectTrigger>
-                                 <SelectContent className="rounded-xl">
-                                    {costCenters?.filter(cc => cc.isAdministrative || (form.projectId && cc.projectId === form.projectId)).map(cc => <SelectItem key={cc.id} value={cc.id!} className="font-bold text-xs">{cc.name}</SelectItem>)}
-                                 </SelectContent>
-                              </Select>
-                            )}
-                            {selectedAccount?.analyticalConfig?.profitCenter !== 'not_allowed' && (
-                              <Select value={form.profitCenterId} onValueChange={v => setForm({...form, profitCenterId: v})}>
-                                 <SelectTrigger className="h-10 rounded-lg border-2 font-bold bg-slate-50/50 text-[10px]"><SelectValue placeholder={isRtl ? "مركز ربحية..." : "Profit Center..."} /></SelectTrigger>
-                                 <SelectContent className="rounded-xl">
-                                    {profitCenters?.filter(pc => form.projectId && pc.projectId === form.projectId).map(pc => <SelectItem key={pc.id} value={pc.id!} className="font-bold text-xs">{pc.name}</SelectItem>)}
-                                 </SelectContent>
-                              </Select>
-                            )}
+                       {form.distributions.length === 0 && (
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in slide-in-from-top-2">
+                            <div className="space-y-1">
+                               <Label className="text-[9px] font-black uppercase text-slate-400">المشروع</Label>
+                               <Select value={form.projectId} onValueChange={v => setForm({...form, projectId: v})}>
+                                  <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-slate-50/50 text-[10px]"><SelectValue placeholder={isRtl ? "اختيار المشروع..." : "Project..."} /></SelectTrigger>
+                                  <SelectContent className="rounded-xl">
+                                     <SelectItem value="GENERAL" className="italic text-slate-400">--- {isRtl ? 'مصروف إداري عام' : 'General Admin'} ---</SelectItem>
+                                     {projects?.map(p => <SelectItem key={p.id} value={p.id!} className="font-bold text-xs">{p.subServiceName}</SelectItem>)}
+                                  </SelectContent>
+                               </Select>
+                            </div>
+
+                            <div className="space-y-1">
+                               <Label className="text-[9px] font-black uppercase text-slate-400">مركز التكلفة</Label>
+                               <div className="relative">
+                                  <Select 
+                                    value={form.costCenterId} 
+                                    onValueChange={v => setForm({...form, costCenterId: v})}
+                                  >
+                                     <SelectTrigger className={cn(
+                                       "h-10 rounded-xl border-2 font-black text-xs transition-all",
+                                       autoLinkedCC ? "bg-emerald-50 border-emerald-200 text-emerald-600" : "bg-white"
+                                     )}>
+                                        <SelectValue placeholder="..." />
+                                     </SelectTrigger>
+                                     <SelectContent className="rounded-xl z-[160]">
+                                        {costCenters?.filter(cc => cc.isAdministrative || (form.projectId && cc.projectId === form.projectId)).map(cc => (
+                                          <SelectItem key={cc.id} value={cc.id!} className="font-bold text-xs py-3">{cc.name}</SelectItem>
+                                        ))}
+                                     </SelectContent>
+                                  </Select>
+                                  {autoLinkedCC && <Badge className="absolute -top-2 -right-2 bg-emerald-600 text-white border-0 text-[7px] font-black h-4 px-1.5 shadow-sm">AUTO</Badge>}
+                               </div>
+                               
+                               {selectedAccount?.analyticalConfig?.costCenter === 'required' && !form.costCenterId && form.projectId && (
+                                 <p className="text-[8px] font-bold text-rose-500 mt-1 animate-pulse flex items-center gap-1">
+                                    <AlertTriangle className="h-2.5 w-2.5" /> لم يتم العور على مركز تكلفة مرتبط آلياً، يرجى الاختيار يدوياً.
+                                 </p>
+                               )}
+                            </div>
                          </div>
                        )}
                     </div>
@@ -270,9 +289,9 @@ export default function PaymentVouchersPage() {
            <aside className="lg:col-span-4 space-y-6 text-start">
               <Card className="rounded-2xl border-2 border-primary/10 shadow-sm p-6 bg-primary/5 text-slate-900 space-y-4 overflow-hidden relative">
                  <div className="absolute top-0 right-0 p-6 opacity-5"><Landmark className="h-24 w-24" /></div>
-                 <h4 className="font-black text-xs uppercase tracking-widest text-primary">{isRtl ? 'التحكم التحليلي الذكي' : 'Analytical Control'}</h4>
+                 <h4 className="font-black text-xs uppercase tracking-widest text-primary flex items-center gap-2"><Sparkles className="h-4 w-4" /> {isRtl ? 'الأتمتة المحاسبية' : 'Accounting AI'}</h4>
                  <p className="text-[10px] font-bold text-slate-500 leading-relaxed italic">
-                    {isRtl ? 'يقوم النظام تلقائياً بطلب مركز التكلفة أو الربحية بناءً على نوع الحساب المختار في شجرة الحسابات لضمان دقة التقارير.' : 'System auto-requests centers based on account configuration in COA for report accuracy.'}
+                    {isRtl ? 'يقوم النظام بربط المصروف بمركز التكلفة آلياً بناءً على المشروع المختار لضمان دقة رادار الربحية بدون تدخل بشري.' : 'System auto-links expenses to cost centers based on project selection for margin radar accuracy.'}
                  </p>
               </Card>
            </aside>
@@ -316,95 +335,6 @@ export default function PaymentVouchersPage() {
            </CardContent>
         </Card>
       )}
-
-      {/* نافذة توزيع المصروف */}
-      <Dialog open={isDistOpen} onOpenChange={setIsDistOpen}>
-        <DialogContent className="max-w-3xl rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white">
-           <div className="bg-primary p-8 text-white text-start">
-              <div className="flex justify-between items-center">
-                 <div>
-                    <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3"><Split className="h-8 w-8" /> {tSafe('inline.joint.dist', 'توزيع المصروف المشترك', 'Joint Expense Distribution')}</DialogTitle>
-                    <p className="text-white/60 font-bold text-xs mt-2 uppercase tracking-widest">{tSafe('inline.voucher.total', 'إجمالي السند:', 'Voucher Total:')} {form.amount.toLocaleString()} KWD</p>
-                 </div>
-                 <div className="text-end">
-                    <p className="text-[10px] font-black text-white/40 uppercase">{tSafe('inline.total.dist', 'إجمالي التوزيع', 'Total Distributed')}</p>
-                    <h3 className={cn("text-3xl font-black", isDistBalanced ? "text-emerald-300" : "text-rose-300")}>{distSum.toLocaleString()}</h3>
-                 </div>
-              </div>
-           </div>
-
-           <div className="p-8 space-y-4 max-h-[50vh] overflow-y-auto scrollbar-hide bg-white text-start">
-              {form.distributions.map((dist, idx) => (
-                <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end p-4 rounded-2xl bg-slate-50 border-2 border-white shadow-inner">
-                   <div className="md:col-span-3 space-y-1">
-                      <Label className="text-[9px] font-black uppercase text-slate-400">المشروع</Label>
-                      <Select value={dist.projectId} onValueChange={v => {
-                         const nd = [...form.distributions];
-                         nd[idx] = { ...nd[idx], projectId: v, costCenterId: '', profitCenterId: '' };
-                         setForm({ ...form, distributions: nd });
-                      }}>
-                         <SelectTrigger className="h-9 rounded-lg border-2 bg-white font-bold text-[10px]"><SelectValue placeholder="..." /></SelectTrigger>
-                         <SelectContent className="rounded-xl z-[170]">
-                            {projects?.map(p => <SelectItem key={p.id} value={p.id!} className="font-bold text-xs">{p.subServiceName}</SelectItem>)}
-                         </SelectContent>
-                      </Select>
-                   </div>
-                   <div className="md:col-span-3 space-y-1">
-                      <Label className="text-[9px] font-black uppercase text-slate-400">مركز التكلفة</Label>
-                      <Select value={dist.costCenterId} onValueChange={v => {
-                         const nd = [...form.distributions];
-                         nd[idx].costCenterId = v;
-                         setForm({ ...form, distributions: nd });
-                      }}>
-                         <SelectTrigger className="h-9 rounded-lg border-2 bg-white font-bold text-[10px]"><SelectValue placeholder="..." /></SelectTrigger>
-                         <SelectContent className="rounded-xl z-[170]">
-                            {costCenters?.filter(cc => cc.isAdministrative || (dist.projectId && cc.projectId === dist.projectId)).map(cc => <SelectItem key={cc.id} value={cc.id!} className="font-bold text-xs">{cc.name}</SelectItem>)}
-                         </SelectContent>
-                      </Select>
-                   </div>
-                   <div className="md:col-span-3 space-y-1">
-                      <Label className="text-[9px] font-black uppercase text-slate-400">مركز الربحية</Label>
-                      <Select value={dist.profitCenterId} onValueChange={v => {
-                         const nd = [...form.distributions];
-                         nd[idx].profitCenterId = v;
-                         setForm({ ...form, distributions: nd });
-                      }}>
-                         <SelectTrigger className="h-9 rounded-lg border-2 bg-white font-bold text-[10px]"><SelectValue placeholder="..." /></SelectTrigger>
-                         <SelectContent className="rounded-xl z-[170]">
-                            {profitCenters?.filter(pc => dist.projectId && pc.projectId === dist.projectId).map(pc => <SelectItem key={pc.id} value={pc.id!} className="font-bold text-xs">{pc.name}</SelectItem>)}
-                         </SelectContent>
-                      </Select>
-                   </div>
-                   <div className="md:col-span-2 space-y-1">
-                      <Label className="text-[9px] font-black uppercase text-slate-400">المبلغ</Label>
-                      <Input 
-                        type="number" 
-                        step="0.001" 
-                        value={dist.amount === 0 ? "" : dist.amount} 
-                        onChange={e => {
-                           const nd = [...form.distributions];
-                           nd[idx].amount = e.target.value === '' ? 0 : Number(e.target.value);
-                           setForm({ ...form, distributions: nd });
-                        }}
-                        className="h-9 rounded-lg border-2 font-black text-xs text-center" 
-                      />
-                   </div>
-                   <div className="md:col-span-1 flex justify-end">
-                      <Button variant="ghost" size="icon" onClick={() => setForm({ ...form, distributions: form.distributions.filter((_, i) => i !== idx) })} className="h-9 w-9 text-rose-300 hover:text-rose-600"><Trash2 className="h-4 w-4" /></Button>
-                   </div>
-                </div>
-              ))}
-              <Button variant="outline" onClick={handleAddDist} className="w-full h-12 rounded-xl border-dashed border-2 font-black text-xs gap-2"><Plus className="h-4 w-4" /> {isRtl ? 'إضافة مشروع آخر' : 'Add Project'}</Button>
-           </div>
-
-           <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4">
-              <Button variant="ghost" onClick={() => { setForm({...form, distributions: []}); setIsDistOpen(false); }} className="flex-1 font-bold text-slate-400">{tSafe('inline.cancel.dist', 'إلغاء التوزيع', 'Cancel Distribution')}</Button>
-              <Button onClick={() => setIsDistOpen(false)} disabled={!isDistBalanced} className="flex-[2] h-14 rounded-2xl bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 gap-3 border-b-8 border-orange-700">
-                 <CheckCircle2 className="h-6 w-6" /> {tSafe('inline.confirm.dist', 'اعتماد التوزيع', 'Confirm Distribution')}
-              </Button>
-           </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
