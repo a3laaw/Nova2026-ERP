@@ -11,11 +11,6 @@ import {
   History, Percent, Calculator, ChevronDown, Search, Check,
   Workflow, Hash, UserCircle, AlertTriangle
 } from "lucide-react";
-import { 
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, getDocs } from 'firebase/firestore';
@@ -36,75 +31,7 @@ import { Transaction } from '@/types/transaction';
 import { Contract } from '@/types/documents';
 import { useRouter } from 'next/navigation';
 import { Textarea } from '@/components/ui/textarea';
-
-function SearchablePicker({ value, onSelect, items, search, onSearchChange, icon: Icon, placeholder, type, disabled = false, isRtl }: any) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild disabled={disabled}>
-        <Button variant="outline" className="w-full h-12 rounded-xl border-2 font-bold justify-between bg-white px-4">
-          <div className="flex items-center gap-3 overflow-hidden">
-             <Icon className={cn("h-4 w-4 opacity-40", !disabled && "text-primary")} />
-             <span className="truncate">{value || placeholder}</span>
-          </div>
-          <ChevronDown className="h-4 w-4 opacity-20" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent 
-        className="w-[400px] p-0 rounded-2xl shadow-3xl border-2 z-[200]" 
-        align="start" 
-        onOpenAutoFocus={e => e.preventDefault()}
-        onInteractOutside={e => e.preventDefault()}
-      >
-         <div className="p-3 bg-slate-50 border-b">
-            <div className="relative">
-               <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-               <Input 
-                 placeholder="بحث..." 
-                 className="h-9 ps-9 rounded-lg border-2 bg-white text-xs font-bold"
-                 value={search}
-                 onChange={e => onSearchChange(e.target.value)}
-               />
-            </div>
-         </div>
-         <ScrollArea className="h-64">
-            <div className="p-2 space-y-1">
-               {items.map((item: any) => {
-                 const isTransaction = type === 'transaction';
-                 const isClient = type === 'client';
-                 const mainTitle = isClient ? item.nameAr : (isTransaction ? item.subServiceName : item.name);
-                 const subTitle = isClient ? item.fileNumber : (isTransaction ? item.transactionNumber : null);
-                 
-                 return (
-                   <div 
-                     key={item.id} 
-                     onClick={(e) => { 
-                       e.stopPropagation(); 
-                       onSelect(item); 
-                       setOpen(false); 
-                     }}
-                     className={cn(
-                       "p-3 rounded-xl cursor-pointer transition-all flex items-center justify-between border-2 border-transparent",
-                       (value === mainTitle) ? "bg-primary/5 border-primary/20 text-primary" : "hover:bg-slate-50"
-                     )}
-                   >
-                      <div className="text-start min-w-0 flex-1">
-                         <p className="font-black text-xs text-slate-900 truncate">{mainTitle}</p>
-                         {subTitle && (
-                           <p className="text-[8px] font-mono text-slate-400 mt-1 uppercase" dir="ltr">#{subTitle}</p>
-                         )}
-                      </div>
-                      {(value === mainTitle) && <Check className="h-3.5 w-3.5 shrink-0" />}
-                   </div>
-                 );
-               })}
-            </div>
-         </ScrollArea>
-      </PopoverContent>
-    </Popover>
-  );
-}
+import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 
 export default function ReceiptVouchersPage() {
   const { globalUser, user } = useAuthContext();
@@ -118,9 +45,6 @@ export default function ReceiptVouchersPage() {
   const [milestonesLoading, setMilestonesLoading] = useState(false);
   const [milestonesStatus, setMilestonesStatus] = useState<MilestonePaymentStatus[]>([]);
   const [autoLinkedPC, setAutoLinkedPC] = useState(false);
-
-  const [clientSearch, setClientSearch] = useState("");
-  const [transSearch, setTransSearch] = useState("");
 
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -153,8 +77,8 @@ export default function ReceiptVouchersPage() {
   [db, companyId]);
 
   const projectsQuery = useMemo(() => 
-    companyId && db && form.personName ? query(collection(db, paths.transactions(companyId)), where('status', '!=', 'completed')) : null, 
-  [db, companyId, form.personName]);
+    companyId && db ? query(collection(db, paths.transactions(companyId)), where('status', '!=', 'completed')) : null, 
+  [db, companyId]);
 
   const pmQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.paymentMethods(companyId)), orderBy('order')) : null, 
@@ -173,7 +97,7 @@ export default function ReceiptVouchersPage() {
 
   const selectedAccount = useMemo(() => accounts?.find(a => a.id === form.accountId), [accounts, form.accountId]);
 
-  // --- محرك الربط التلقائي لمركز الربحية (PC Auto-Linking) ---
+  // --- محرك الربط التلقائي لمركز الربحية الخفي (Silent PC Auto-Linking) ---
   useEffect(() => {
      if (form.transactionId && profitCenters && selectedAccount?.type === 'revenue') {
         const matchedPC = profitCenters.find(pc => pc.projectId === form.transactionId || pc.id === `pc_${form.transactionId}`);
@@ -189,13 +113,12 @@ export default function ReceiptVouchersPage() {
      }
   }, [form.transactionId, profitCenters, selectedAccount]);
 
-  const filteredClients = useMemo(() => {
-    return (clients || []).filter(c => c.nameAr.toLowerCase().includes(clientSearch.toLowerCase()) || c.mobile?.includes(clientSearch) || c.fileNumber?.includes(clientSearch));
-  }, [clients, clientSearch]);
-
-  const filteredTrans = useMemo(() => {
-    return (allTransactions || []).filter(t_item => t_item.clientName === form.personName && (t_item.subServiceName.toLowerCase().includes(transSearch.toLowerCase()) || t_item.transactionNumber.toLowerCase().includes(transSearch.toLowerCase())));
-  }, [allTransactions, transSearch, form.personName]);
+  const showProfitCenterPicker = useMemo(() => {
+     if (!selectedAccount || selectedAccount.analyticalConfig?.profitCenter === 'not_allowed') return false;
+     // نخفي الحقل تماماً إذا تم الربط التلقائي بنجاح
+     if (form.transactionId && autoLinkedPC && form.profitCenterId) return false;
+     return true;
+  }, [selectedAccount, autoLinkedPC, form.profitCenterId, form.transactionId]);
 
   const [contracts, setContracts] = useState<Contract[]>([]);
 
@@ -271,10 +194,6 @@ export default function ReceiptVouchersPage() {
     }
   };
 
-  const sortedVouchers = useMemo(() => {
-    return [...(vouchers || [])].sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
-  }, [vouchers]);
-
   return (
     <div className="space-y-4 animate-in fade-in" dir={dir}>
       <header className="flex justify-between items-center text-start">
@@ -282,7 +201,7 @@ export default function ReceiptVouchersPage() {
           <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2 text-slate-900">
             <Receipt className="h-6 w-6 text-emerald-600" /> {tSafe('accounting.vouchers.receiptTitle', 'سندات القبض الذكية', 'Smart Receipt Vouchers')}
           </h1>
-          <p className="text-muted-foreground text-xs font-medium">{tSafe('inline.receipt.desc', 'إدارة التحصيل المالي وربطه بالعقود والدفعات آلياً', 'Manage revenue collection and link to contracts automatically')}</p>
+          <p className="text-muted-foreground text-xs font-medium">{tSafe('inline.receipt.desc', 'إدارة التحصيل المالي وربطها بالعقود والدفعات آلياً', 'Manage revenue collection and link to contracts automatically')}</p>
         </div>
         <Button onClick={() => setIsAdding(!isAdding)} size="sm" className="h-9 px-6 font-bold gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
           {isAdding ? <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} /> : <Plus className="h-4 w-4" />}
@@ -302,31 +221,27 @@ export default function ReceiptVouchersPage() {
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('inline.received.from', 'المقبوض من السيد (العميل)', 'Received From')}</Label>
-                       <SearchablePicker 
-                         type="client"
-                         value={form.personName}
-                         onSelect={(c: any) => setForm({ ...form, personName: c.nameAr, transactionId: '', transactionName: '', contractId: '', notes: '' })}
-                         items={filteredClients}
-                         search={clientSearch}
-                         onSearchChange={setClientSearch}
-                         icon={UserCircle}
+                       <SearchableDropdown
+                         options={(clients || []).map(c => ({ id: c.id, name: c.nameAr, subText: c.fileNumber }))}
+                         value={form.clientId}
+                         onChange={(val) => {
+                            const c = clients?.find(x => x.id === val);
+                            setForm({ ...form, clientId: val as string, personName: c?.nameAr || '', transactionId: '', transactionName: '', contractId: '', notes: '' });
+                         }}
                          placeholder={tSafe('common.search', 'بحث عن عميل...', 'Search Client...')}
-                         isRtl={isRtl}
                        />
                     </div>
                     <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('inline.related.transaction', 'المعاملة الفنية المرتبطة', 'Related Transaction')}</Label>
-                       <SearchablePicker 
-                         type="transaction"
-                         disabled={!form.personName}
-                         value={form.transactionName}
-                         onSelect={(t_row: any) => setForm({ ...form, transactionId: t_row.id, transactionName: t_row.subServiceName, transactionNumber: t_row.transactionNumber, contractId: '', notes: '' })}
-                         items={filteredTrans}
-                         search={transSearch}
-                         onSearchChange={setTransSearch}
-                         icon={Workflow}
+                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tSafe('inline.related.transaction', 'المعاملة الفنية المرتبطة', 'Related Project')}</Label>
+                       <SearchableDropdown
+                         disabled={!form.clientId}
+                         options={(allTransactions || []).filter(t => t.clientId === form.clientId).map(t => ({ id: t.id, name: t.subServiceName, subText: `#${t.transactionNumber}` }))}
+                         value={form.transactionId}
+                         onChange={(val) => {
+                            const t_row = allTransactions?.find(x => x.id === val);
+                            setForm({ ...form, transactionId: val as string, transactionName: t_row?.subServiceName || '', transactionNumber: t_row?.transactionNumber || '', contractId: '', notes: '' });
+                         }}
                          placeholder={tSafe('common.search', 'بحث في المشاريع...', 'Search Project...')}
-                         isRtl={isRtl}
                        />
                     </div>
                  </div>
@@ -399,30 +314,28 @@ export default function ReceiptVouchersPage() {
                           </Select>
                        </div>
 
-                       <div className="space-y-2">
-                          <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5"><DatabaseZap className="h-3.5 w-3.5" /> {isRtl ? 'مركز الربحية' : 'Profit Center'}</Label>
-                          <div className="relative">
-                             <Select value={form.profitCenterId} onValueChange={v => setForm({...form, profitCenterId: v})}>
-                                <SelectTrigger className={cn(
-                                  "h-12 rounded-xl border-2 font-black transition-all",
-                                  autoLinkedPC ? "bg-emerald-50 border-emerald-200 text-emerald-600" : "bg-white"
-                                )}>
-                                   <SelectValue placeholder="..." />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl border shadow-2xl z-[160]">
-                                   {profitCenters?.filter(pc => pc.projectId === form.transactionId || !pc.projectId).map(pc => (
-                                      <SelectItem key={pc.id} value={pc.id!} className="font-bold py-3">{pc.name}</SelectItem>
-                                   ))}
-                                </SelectContent>
-                             </Select>
-                             {autoLinkedPC && <Badge className="absolute -top-2 -right-2 bg-emerald-600 text-white border-0 text-[7px] font-black h-4 px-1.5 shadow-sm">AUTO</Badge>}
-                          </div>
-                          {selectedAccount?.type === 'revenue' && !form.profitCenterId && form.transactionId && (
-                            <p className="text-[8px] font-bold text-rose-500 mt-1 flex items-center gap-1">
-                               <AlertTriangle className="h-2.5 w-2.5" /> لم يتم العور على مركز ربحية مرتبط آلياً، يرجى الاختيار يدوياً.
-                            </p>
-                          )}
-                       </div>
+                       {showProfitCenterPicker && (
+                         <div className="space-y-2 animate-in zoom-in-95">
+                            <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5"><DatabaseZap className="h-3.5 w-3.5" /> {isRtl ? 'مركز الربحية' : 'Profit Center'}</Label>
+                            <div className="relative">
+                               <Select value={form.profitCenterId} onValueChange={v => setForm({...form, profitCenterId: v})}>
+                                  <SelectTrigger className="h-12 rounded-xl border-2 font-black bg-white">
+                                     <SelectValue placeholder="..." />
+                                  </SelectTrigger>
+                                  <SelectContent className="rounded-xl border shadow-2xl z-[160]">
+                                     {profitCenters?.filter(pc => pc.projectId === form.transactionId || !pc.projectId).map(pc => (
+                                        <SelectItem key={pc.id} value={pc.id!} className="font-bold py-3">{pc.name}</SelectItem>
+                                     ))}
+                                  </SelectContent>
+                               </Select>
+                            </div>
+                            {selectedAccount?.type === 'revenue' && !form.profitCenterId && form.transactionId && (
+                              <p className="text-[8px] font-bold text-rose-500 mt-1 flex items-center gap-1 animate-pulse">
+                                 <AlertTriangle className="h-2.5 w-2.5" /> لم يتم العور على مركز ربحية مرتبط آلياً، يرجى الاختيار يدوياً.
+                              </p>
+                            )}
+                         </div>
+                       )}
                     </div>
 
                     <div className="space-y-2">
@@ -444,21 +357,8 @@ export default function ReceiptVouchersPage() {
                  <div className="absolute top-0 right-0 p-6 opacity-5"><Landmark className="h-32 w-32 text-primary" /></div>
                  <div className="relative z-10">
                     <h4 className="font-black text-sm uppercase tracking-widest text-primary mb-2 flex items-center gap-2"><Sparkles className="h-4 w-4" /> {tSafe('inline.financial.trace', 'الأتمتة المالية السيادية', 'Sovereign Financial AI')}</h4>
-                    <p className="text-xs font-bold text-slate-500 leading-relaxed">{tSafe('inline.trace.desc', 'عند اختيار المشروع، يقوم النظام آلياً بربط الإيراد بمركز الربحية المخصص لضمان دقة تقارير الجدوى والتحصيل.', 'System auto-links revenue to profit centers based on project selection.')}</p>
+                    <p className="text-xs font-bold text-slate-500 leading-relaxed">{tSafe('inline.trace.desc', 'النظام يعمل في صمت لربط الإيرادات والمصروفات بمراكزها الصحيحة فور اختيار المشروع، مما يضمن دقة تقارير الربحية دون تعقيد إداري.', 'The system silently links revenue to profit centers for reporting accuracy.')}</p>
                  </div>
-                 {form.contractId && milestonesStatus.length > 0 && (
-                   <div className="relative z-10 pt-6 border-t border-primary/10 space-y-4">
-                      <h5 className="text-[10px] font-black text-primary uppercase tracking-widest flex items-center gap-2"><History className="h-3.5 w-3.5" /> {tSafe('inline.contract.snapshot', 'حالة دفعات العقد الحالية', 'Contract Snapshot')}</h5>
-                      <div className="space-y-2">
-                         {milestonesStatus.map((m, i) => (
-                           <div key={i} className="flex justify-between items-center text-[10px]">
-                              <span className="text-slate-500 font-bold truncate max-w-[140px]">{m.milestone.name}</span>
-                              <Badge className={cn("text-[8px] font-black h-4 px-1.5 border-0 shadow-sm", m.remaining === 0 ? "bg-emerald-50 text-white" : "bg-primary/10 text-primary")}>{m.remaining === 0 ? 'PAID' : `${m.paidToDate}/${m.milestoneAmount}`}</Badge>
-                           </div>
-                         ))}
-                      </div>
-                   </div>
-                 )}
               </Card>
            </aside>
         </div>
@@ -478,8 +378,8 @@ export default function ReceiptVouchersPage() {
                  <TableBody>
                     {vouchersLoading ? (
                       <TableRow><TableCell colSpan={5} className="text-center py-20"><Loader2 className="animate-spin h-8 w-8 mx-auto text-primary/20" /></TableCell></TableRow>
-                    ) : sortedVouchers.map(v => (
-                      <TableRow key={v.id} className="hover:bg-slate-50 transition-colors border-b-slate-100 group" onClick={() => router.push(`/dashboard/accounting/vouchers/receipt/${v.id}`)}>
+                    ) : (vouchers || []).sort((a:any, b:any) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)).map((v:any) => (
+                      <TableRow key={v.id} className="hover:bg-slate-50 transition-colors border-b-slate-100 group cursor-pointer" onClick={() => router.push(`/dashboard/accounting/vouchers/receipt/${v.id}`)}>
                          <TableCell className="py-4 ps-8 text-start font-black text-slate-800">
                             <div className="flex flex-col"><span>{v.voucherNumber}</span><span className="text-[9px] text-slate-400 font-mono">{v.date}</span></div>
                          </TableCell>

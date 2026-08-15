@@ -5,11 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
   Wallet, Plus, Loader2, Save, 
-  ArrowRight, Landmark, User, FileText, Briefcase, LayoutGrid, DatabaseZap,
-  Split, Trash2, CheckCircle2, History, AlertTriangle, Sparkles
+  ArrowRight, Landmark, User, Briefcase, LayoutGrid,
+  AlertTriangle, Sparkles
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, where } from 'firebase/firestore';
+import { collection, query, orderBy, where, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
@@ -22,7 +22,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { cn } from '@/lib/utils';
 
 export default function PaymentVouchersPage() {
@@ -33,7 +32,6 @@ export default function PaymentVouchersPage() {
 
   const [isAdding, setIsAdding] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [isDistOpen, setIsDistOpen] = useState(false);
   const [autoLinkedCC, setAutoLinkedCC] = useState(false);
 
   const [form, setForm] = useState({
@@ -45,7 +43,6 @@ export default function PaymentVouchersPage() {
     cashAccountId: '',
     projectId: '',
     costCenterId: '',
-    profitCenterId: '',
     notes: '',
     distributions: [] as VoucherDistribution[]
   });
@@ -66,10 +63,6 @@ export default function PaymentVouchersPage() {
     companyId && db ? query(collection(db, paths.costCenters(companyId))) : null, 
   [db, companyId]);
 
-  const profitCentersQuery = useMemo(() => 
-    companyId && db ? query(collection(db, paths.profitCenters(companyId))) : null, 
-  [db, companyId]);
-
   const pmQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.paymentMethods(companyId)), orderBy('order')) : null, 
   [db, companyId]);
@@ -78,12 +71,11 @@ export default function PaymentVouchersPage() {
   const { data: accounts } = useCollection<Account>(accountsQuery);
   const { data: projects } = useCollection<any>(projectsQuery);
   const { data: costCenters } = useCollection<CostCenter>(costCentersQuery);
-  const { data: profitCenters } = useCollection<ProfitCenter>(profitCentersQuery);
   const { data: paymentMethods } = useCollection<any>(pmQuery);
 
   const selectedAccount = useMemo(() => accounts?.find(a => a.id === form.accountId), [accounts, form.accountId]);
 
-  // --- محرك الربط التلقائي للأبعاد (Auto-Linking Engine) ---
+  // --- محرك الربط التلقائي "الخفي" (Silent Auto-Linking) ---
   useEffect(() => {
      if (form.projectId && costCenters && selectedAccount?.type === 'expense') {
         const matchedCC = costCenters.find(cc => cc.projectId === form.projectId || cc.id === `cc_${form.projectId}`);
@@ -92,13 +84,19 @@ export default function PaymentVouchersPage() {
            setAutoLinkedCC(true);
         } else {
            setAutoLinkedCC(false);
-           // تصفير إذا لم يجد تطابق لضمان سلامة الاختيار اليدوي
            setForm(prev => ({ ...prev, costCenterId: '' }));
         }
      } else {
         setAutoLinkedCC(false);
      }
   }, [form.projectId, costCenters, selectedAccount]);
+
+  const showCostCenterPicker = useMemo(() => {
+     if (!selectedAccount || selectedAccount.analyticalConfig?.costCenter === 'not_allowed') return false;
+     // إذا تم الربط تلقائياً بنجاح، نخفي الحقل لتقليل التشتيت (إلا لو لم يجد ربط)
+     if (form.projectId && autoLinkedCC && form.costCenterId) return false;
+     return true;
+  }, [selectedAccount, autoLinkedCC, form.costCenterId, form.projectId]);
 
   const cashAccounts = useMemo(() => {
     if (!accounts || !form.paymentMethod) return [];
@@ -123,7 +121,7 @@ export default function PaymentVouchersPage() {
       setForm({ 
         date: new Date().toISOString().split('T')[0], 
         amount: 0, personName: '', paymentMethod: '', 
-        accountId: '', cashAccountId: '', projectId: '', costCenterId: '', profitCenterId: '', notes: '',
+        accountId: '', cashAccountId: '', projectId: '', costCenterId: '', notes: '',
         distributions: []
       });
     } catch (e: any) {
@@ -132,9 +130,6 @@ export default function PaymentVouchersPage() {
       setLoading(false);
     }
   };
-
-  const distSum = form.distributions.reduce((acc, d) => acc + d.amount, 0);
-  const isDistBalanced = Math.abs(distSum - form.amount) < 0.001;
 
   return (
     <div className="space-y-4 animate-in fade-in" dir={dir}>
@@ -207,15 +202,6 @@ export default function PaymentVouchersPage() {
                  <div className="pt-6 border-t space-y-4">
                     <div className="flex justify-between items-center mb-2">
                        <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'مقابل حساب (مصروف)' : 'Against Account (Expense)'}</Label>
-                       {selectedAccount?.analyticalConfig?.distributionAllowed && (
-                         <button 
-                           type="button" 
-                           onClick={() => { setIsDistOpen(true); if(form.distributions.length === 0) setForm({...form, distributions: [{ amount: 0, projectId: '', costCenterId: '' }]}); }} 
-                           className="flex items-center gap-2 text-primary font-black text-[10px] uppercase hover:underline"
-                         >
-                            <Split className="h-3 w-3" /> {tSafe('inline.distribute.expense', 'توزيع المصروف', 'Distribute Expense')}
-                         </button>
-                       )}
                     </div>
 
                     <div className="space-y-4">
@@ -226,30 +212,27 @@ export default function PaymentVouchersPage() {
                           </SelectContent>
                        </Select>
 
-                       {form.distributions.length === 0 && (
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in slide-in-from-top-2">
-                            <div className="space-y-1">
-                               <Label className="text-[9px] font-black uppercase text-slate-400">المشروع</Label>
-                               <Select value={form.projectId} onValueChange={v => setForm({...form, projectId: v})}>
-                                  <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-slate-50/50 text-[10px]"><SelectValue placeholder={isRtl ? "اختيار المشروع..." : "Project..."} /></SelectTrigger>
-                                  <SelectContent className="rounded-xl">
-                                     <SelectItem value="GENERAL" className="italic text-slate-400">--- {isRtl ? 'مصروف إداري عام' : 'General Admin'} ---</SelectItem>
-                                     {projects?.map(p => <SelectItem key={p.id} value={p.id!} className="font-bold text-xs">{p.subServiceName}</SelectItem>)}
-                                  </SelectContent>
-                               </Select>
-                            </div>
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in slide-in-from-top-2">
+                          <div className="space-y-1">
+                             <Label className="text-[9px] font-black uppercase text-slate-400">المشروع</Label>
+                             <Select value={form.projectId} onValueChange={v => setForm({...form, projectId: v})}>
+                                <SelectTrigger className="h-10 rounded-xl border-2 font-bold bg-slate-50/50 text-[10px]"><SelectValue placeholder={isRtl ? "اختيار المشروع..." : "Project..."} /></SelectTrigger>
+                                <SelectContent className="rounded-xl">
+                                   <SelectItem value="GENERAL" className="italic text-slate-400">--- {isRtl ? 'مصروف إداري عام' : 'General Admin'} ---</SelectItem>
+                                   {projects?.map(p => <SelectItem key={p.id} value={p.id!} className="font-bold text-xs">{p.subServiceName}</SelectItem>)}
+                                </SelectContent>
+                             </Select>
+                          </div>
 
-                            <div className="space-y-1">
+                          {showCostCenterPicker && (
+                            <div className="space-y-1 animate-in zoom-in-95">
                                <Label className="text-[9px] font-black uppercase text-slate-400">مركز التكلفة</Label>
                                <div className="relative">
                                   <Select 
                                     value={form.costCenterId} 
                                     onValueChange={v => setForm({...form, costCenterId: v})}
                                   >
-                                     <SelectTrigger className={cn(
-                                       "h-10 rounded-xl border-2 font-black text-xs transition-all",
-                                       autoLinkedCC ? "bg-emerald-50 border-emerald-200 text-emerald-600" : "bg-white"
-                                     )}>
+                                     <SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs bg-white">
                                         <SelectValue placeholder="..." />
                                      </SelectTrigger>
                                      <SelectContent className="rounded-xl z-[160]">
@@ -258,7 +241,6 @@ export default function PaymentVouchersPage() {
                                         ))}
                                      </SelectContent>
                                   </Select>
-                                  {autoLinkedCC && <Badge className="absolute -top-2 -right-2 bg-emerald-600 text-white border-0 text-[7px] font-black h-4 px-1.5 shadow-sm">AUTO</Badge>}
                                </div>
                                
                                {selectedAccount?.analyticalConfig?.costCenter === 'required' && !form.costCenterId && form.projectId && (
@@ -267,8 +249,8 @@ export default function PaymentVouchersPage() {
                                  </p>
                                )}
                             </div>
-                         </div>
-                       )}
+                          )}
+                       </div>
                     </div>
 
                     <div className="space-y-2 pt-4">
@@ -278,7 +260,7 @@ export default function PaymentVouchersPage() {
                  </div>
 
                  <div className="flex justify-end gap-3 pt-6">
-                    <Button onClick={handleSave} disabled={loading || (form.distributions.length > 0 && !isDistBalanced)} className="h-14 rounded-2xl px-12 bg-rose-600 text-white font-black text-lg shadow-xl shadow-rose-100 hover:scale-[1.02] transition-all gap-2 border-b-4 border-rose-800">
+                    <Button onClick={handleSave} disabled={loading} className="h-14 rounded-2xl px-12 bg-rose-600 text-white font-black text-lg shadow-xl shadow-rose-100 hover:scale-[1.02] transition-all gap-2 border-b-4 border-rose-800">
                        {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
                        {tSafe('inline.confirm.issue', 'تأكيد وإصدار السند', 'Confirm & Issue')}
                     </Button>
@@ -291,7 +273,7 @@ export default function PaymentVouchersPage() {
                  <div className="absolute top-0 right-0 p-6 opacity-5"><Landmark className="h-24 w-24" /></div>
                  <h4 className="font-black text-xs uppercase tracking-widest text-primary flex items-center gap-2"><Sparkles className="h-4 w-4" /> {isRtl ? 'الأتمتة المحاسبية' : 'Accounting AI'}</h4>
                  <p className="text-[10px] font-bold text-slate-500 leading-relaxed italic">
-                    {isRtl ? 'يقوم النظام بربط المصروف بمركز التكلفة آلياً بناءً على المشروع المختار لضمان دقة رادار الربحية بدون تدخل بشري.' : 'System auto-links expenses to cost centers based on project selection for margin radar accuracy.'}
+                    {isRtl ? 'يقوم النظام بالخلفية بربط المصروف بمركز التكلفة المخصص للمشروع لضمان دقة التقارير دون إزعاج المستخدم.' : 'The system automatically links expenses to project cost centers in the background for reporting accuracy.'}
                  </p>
               </Card>
            </aside>
