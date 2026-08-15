@@ -20,6 +20,7 @@ import { paths } from '@/firebase/multi-tenant';
 import { Client, ClientHistory } from '@/types/client';
 import { Transaction } from '@/types/transaction';
 import { TransactionService } from '@/services/transaction-service';
+import { ClientService } from '@/services/client-service';
 import { cn } from '@/lib/utils';
 import dynamic from 'next/dynamic';
 import { toast } from '@/hooks/use-toast';
@@ -53,11 +54,14 @@ export default function ClientDetailsPage() {
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [deletingTransId, setDeletingTransId] = useState<string | null>(null);
+  const [isDeletingTrans, setIsDeletingTrans] = useState(false);
+  const [isDeletingClient, setIsDeletingClient] = useState(false);
+  const [clientDeleteDialogOpen, setClientDeleteDialogOpen] = useState(false);
 
   const canEditClient = check('crm', 'edit').can;
   const canOpenTransaction = check('projects', 'create').can;
+  const canDeleteClient = isAdmin;
 
   const clientRef = useMemo(() => companyId && db ? doc(db, paths.clients(companyId), clientId) : null, [db, companyId, clientId]);
   const historyQuery = useMemo(() => companyId && db ? query(collection(db, paths.clientHistory(companyId, clientId))) : null, [db, companyId, clientId]);
@@ -74,17 +78,32 @@ export default function ClientDetailsPage() {
   }, [client?.locationUrl]);
 
   const handleDeleteTransaction = async () => {
-    if (!db || !companyId || !deletingId) return;
-    setIsDeleting(true);
+    if (!db || !companyId || !deletingTransId) return;
+    setIsDeletingTrans(true);
     try {
       const service = new TransactionService(db, companyId, permissions);
-      await service.deleteTransaction(deletingId);
+      await service.deleteTransaction(deletingTransId);
       toast({ title: t('common.deleted') });
-      setDeletingId(null);
+      setDeletingTransId(null);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
-      setIsDeleting(false);
+      setIsDeletingTrans(false);
+    }
+  };
+
+  const handleDeleteClient = async () => {
+    if (!db || !companyId || !clientId) return;
+    setIsDeletingClient(true);
+    try {
+      const service = new ClientService(db, companyId);
+      await service.deleteClient(clientId);
+      toast({ title: t('common.deleted') });
+      router.push('/dashboard/clients');
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('common.error'), description: e.message });
+    } finally {
+      setIsDeletingClient(false);
     }
   };
 
@@ -92,8 +111,8 @@ export default function ClientDetailsPage() {
   if (!client) return <div className="p-20 text-center font-black">404 - Not Found</div>;
 
   return (
-    <div className="space-y-4 w-full px-4 md:px-6 animate-in fade-in" dir={dir}>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4 border-slate-100">
+    <div className="space-y-4 w-full px-4 md:px-6 animate-in fade-in max-w-[1600px] mx-auto" dir={dir}>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4 border-slate-100 text-start">
         <div className="flex items-center gap-3">
           <div className="text-start">
              <div className="flex items-center gap-3 flex-wrap">
@@ -107,8 +126,13 @@ export default function ClientDetailsPage() {
         </div>
         
         <div className="flex gap-2">
+           {canDeleteClient && (
+              <Button onClick={() => setClientDeleteDialogOpen(true)} variant="ghost" size="sm" className="h-9 px-4 rounded-md font-bold text-xs gap-2 text-rose-600 hover:bg-rose-50">
+                <Trash2 className="h-3.5 w-3.5" /> {t('common.delete')}
+              </Button>
+           )}
            {canEditClient && (
-             <Button onClick={() => router.push(`/dashboard/clients/${clientId}/edit`)} variant="outline" size="sm" className="h-9 px-4 rounded-md font-bold text-xs gap-2">
+             <Button onClick={() => router.push(`/dashboard/clients/${clientId}/edit`)} variant="outline" size="sm" className="h-9 px-4 rounded-md font-bold text-xs gap-2 border-2">
                <Edit3 className="h-3.5 w-3.5" /> {t('common.edit')}
              </Button>
            )}
@@ -160,7 +184,7 @@ export default function ClientDetailsPage() {
                                variant="ghost" 
                                size="icon" 
                                className="h-8 w-8 rounded-md text-slate-300 hover:text-rose-600 hover:bg-rose-50"
-                               onClick={(e) => { e.stopPropagation(); setDeletingId(t_row.id); }}
+                               onClick={(e) => { e.stopPropagation(); setDeletingTransId(t_row.id); }}
                             >
                                <Trash2 className="h-3.5 w-3.5" />
                             </Button>
@@ -226,7 +250,8 @@ export default function ClientDetailsPage() {
         </Card>
       </div>
 
-      <AlertDialog open={!!deletingId} onOpenChange={(v) => !v && setDeletingId(null)}>
+      {/* حوار حذف المعاملة */}
+      <AlertDialog open={!!deletingTransId} onOpenChange={(v) => !v && setDeletingTransId(null)}>
          <AlertDialogContent className="rounded-xl p-10 border-0 shadow-3xl bg-white" dir={dir}>
             <AlertDialogHeader>
                <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
@@ -240,13 +265,40 @@ export default function ClientDetailsPage() {
                </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
-               <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white">{t('common.cancel')}</AlertDialogCancel>
+               <AlertDialogCancel className="flex-1 h-14 rounded-2xl font-bold border-2 bg-white">{t('common.cancel')}</AlertDialogCancel>
                <AlertDialogAction 
                  onClick={handleDeleteTransaction} 
-                 disabled={isDeleting}
-                 className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200"
+                 disabled={isDeletingTrans}
+                 className="flex-[2] h-14 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200"
                >
-                  {isDeleting ? <Loader2 className="animate-spin h-5 w-5" /> : t('common.delete')}
+                  {isDeletingTrans ? <Loader2 className="animate-spin h-5 w-5" /> : t('common.delete')}
+               </AlertDialogAction>
+            </AlertDialogFooter>
+         </AlertDialogContent>
+      </AlertDialog>
+
+      {/* حوار حذف العميل */}
+      <AlertDialog open={clientDeleteDialogOpen} onOpenChange={setClientDeleteDialogOpen}>
+         <AlertDialogContent className="rounded-xl p-10 border-0 shadow-3xl bg-white" dir={dir}>
+            <AlertDialogHeader>
+               <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
+                  <AlertTriangle className="h-10 w-10" />
+               </div>
+               <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">
+                 {tSafe('inline.confirm.delete.client', 'تأكيد حذف ملف العميل', 'Confirm Delete Client')}
+               </AlertDialogTitle>
+               <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
+                  {tSafe('inline.delete.client.desc', 'هل أنت متأكد؟ سيتم حذف العميل نهائياً من النظام. هذا الإجراء سيؤدي لفقدان تتبع كافة السجلات المرتبطة بهذا الملف.', 'Are you sure? This will permanently delete the client and all associated tracking data.')}
+               </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
+               <AlertDialogCancel className="flex-1 h-14 rounded-2xl font-bold border-2 bg-white">{t('common.cancel')}</AlertDialogCancel>
+               <AlertDialogAction 
+                 onClick={handleDeleteClient} 
+                 disabled={isDeletingClient}
+                 className="flex-[2] h-14 rounded-2xl font-black bg-rose-600 text-white shadow-xl shadow-rose-200"
+               >
+                  {isDeletingClient ? <Loader2 className="animate-spin h-5 w-5" /> : t('common.delete')}
                </AlertDialogAction>
             </AlertDialogFooter>
          </AlertDialogContent>

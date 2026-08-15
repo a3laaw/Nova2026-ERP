@@ -6,6 +6,7 @@ import {
   doc, 
   setDoc,
   updateDoc, 
+  deleteDoc,
   serverTimestamp,
   getDoc,
   getDocs,
@@ -21,7 +22,7 @@ import { nextSequential } from '@/lib/counters';
 
 /**
  * خدمة إدارة العملاء السيادية (Sovereign Client Service).
- * تم تحديثها لضمان وحدانية رقم الملف ومنع التكرار عبر العمليات الذرية (Batches).
+ * تم تحديثها لضمان وحدانية رقم الملف ومنع التكرار ودعم الحذف النهائي.
  */
 export class ClientService {
   constructor(private db: Firestore, private companyId: string) {}
@@ -89,7 +90,7 @@ export class ClientService {
   }
 
   /**
-   * تحديث بيانات العميل مع محرك المزامنة الشامل (Universal Cascading Update)
+   * تحديث بيانات العميل مع محرك المزامنة الشامل
    */
   async updateClient(clientId: string, data: Partial<Client>, userId: string, userName: string) {
     const clientRef = doc(this.db, paths.clients(this.companyId), clientId);
@@ -130,6 +131,20 @@ export class ClientService {
     await batch.commit().catch((err) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: clientRef.path, operation: 'update', requestResourceData: data
+      }));
+      throw err;
+    });
+  }
+
+  /**
+   * حذف عميل نهائياً (تطهير قاعدة البيانات)
+   */
+  async deleteClient(clientId: string) {
+    const clientRef = doc(this.db, paths.clients(this.companyId), clientId);
+    // ملاحظة: في الأنظمة الضخمة نفضل الأرشفة، ولكن بناءً على طلبك قمنا بالتنفيذ للحذف النهائي.
+    await deleteDoc(clientRef).catch(err => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: clientRef.path, operation: 'delete'
       }));
       throw err;
     });
