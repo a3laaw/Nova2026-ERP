@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -17,16 +17,15 @@ import {
 } from "@/components/ui/select";
 import { 
   UserPlus, Save, Loader2, 
-  RefreshCw, Mail, Fingerprint, MapPinned,
+  Mail, Fingerprint, MapPinned,
   Briefcase, CheckCircle2,
-  LocateFixed
+  LocateFixed, Sparkles
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { usePermissions } from '@/hooks/use-permissions';
-import { ClientService } from '@/services/client-service';
 import { paths } from '@/firebase/multi-tenant';
 import { Governorate, Area } from '@/types/reference';
 import { Employee } from '@/types/hr';
@@ -35,7 +34,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 
 const clientFormSchema = z.object({
-  fileNumber: z.string().min(1, "رقم الملف مطلوب"),
+  fileNumber: z.string().optional(), // يتم توليده في السيرفر
   nameAr: z.string().min(3, "يجب أن يكون الاسم 3 حروف على الأقل"),
   nameEn: z.string().default(''),
   mobile: z.string().min(8, "رقم الهاتف غير صحيح"),
@@ -61,7 +60,7 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
   
-  const { register, handleSubmit, formState: { errors }, setValue, watch, getValues } = useForm({
+  const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm({
     resolver: zodResolver(clientFormSchema),
     defaultValues: initialData || { 
       fileNumber: '', nameAr: '', nameEn: '', mobile: '', email: '', civilId: '',
@@ -70,7 +69,6 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
     }
   });
 
-  const [generating, setGenerating] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
   
   const selectedGovId = watch('governorateId');
@@ -93,71 +91,67 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
     );
   }, [employees]);
 
-  useEffect(() => {
-    if (!initialData && db && companyId && !getValues('fileNumber')) {
-      setGenerating(true);
-      const service = new ClientService(db, companyId);
-      service.getNextFileNumber().then(num => {
-        setValue('fileNumber', num);
-        setGenerating(false);
-      });
-    }
-  }, [db, companyId, initialData, setValue, getValues]);
+  const handleGovChange = (v: string) => {
+    const gov = governorates?.find(g => g.id === v);
+    setValue('governorateId', v, { shouldValidate: true });
+    setValue('governorateName', gov ? (isRtl ? gov.name : gov.nameEn) : '');
+    setValue('areaId', '');
+    setValue('areaName', '');
+  };
 
-  useEffect(() => {
-    if (selectedGovId && governorates) {
-      const gov = governorates.find(g => g.id === selectedGovId);
-      if (gov) setValue('governorateName', isRtl ? gov.name : gov.nameEn);
-    }
-  }, [selectedGovId, governorates, isRtl, setValue]);
+  const handleAreaChange = (v: string) => {
+    const area = areas?.find(a => a.id === v);
+    setValue('areaId', v, { shouldValidate: true });
+    setValue('areaName', area ? (isRtl ? area.name : area.nameEn) : '');
+  };
 
-  useEffect(() => {
-    if (assignedEngineerId && engineers) {
-      const eng = engineers.find(e => e.id === assignedEngineerId);
-      if (eng) setValue('assignedEngineerName', eng.fullName);
-    }
-  }, [assignedEngineerId, engineers, setValue]);
-
-  useEffect(() => {
-    if (selectedAreaId && areas) {
-      const area = areas.find(a => a.id === selectedAreaId);
-      if (area) setValue('areaName', isRtl ? area.name : area.nameEn);
-    }
-  }, [selectedAreaId, areas, isRtl, setValue]);
+  const handleEngineerChange = (v: string) => {
+    const eng = engineers.find(e => e.id === v);
+    setValue('assignedEngineerId', v, { shouldValidate: true });
+    setValue('assignedEngineerName', eng?.fullName || '');
+  };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 text-start pb-20 w-full max-w-[1600px] mx-auto">
       <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/[0.02]">
         <div className="bg-primary/5 p-6 border-b flex items-center justify-between">
-           <div className="flex items-center gap-3">
+           <div className="flex items-center gap-3 text-start">
               <UserPlus className="h-5 w-5 text-primary" />
-              <h3 className="text-base font-black font-headline text-slate-800">{t('clients.form.identity')}</h3>
+              <div>
+                <h3 className="text-base font-black font-headline text-slate-800">{t('clients.form.identity')}</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase">{tSafe('clients.id.note', 'تحديد هوية العميل والارتباطات القانونية', 'Client Identity & Legal Links')}</p>
+              </div>
            </div>
         </div>
         <CardContent className="p-8 space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.fileNumber')} <span className="text-rose-500">*</span></Label>
+            <div className="space-y-1.5 text-start">
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.fileNumber')}</Label>
               <div className="relative">
-                <Input {...register('fileNumber')} readOnly className="h-10 rounded-xl border-2 font-mono font-black bg-slate-50 text-primary border-slate-100 cursor-not-allowed" />
-                {generating && <RefreshCw className="absolute end-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-primary/40" />}
+                <Input 
+                  value={initialData?.fileNumber || ""} 
+                  readOnly 
+                  placeholder={isRtl ? "توليد آلي عند الحفظ" : "Auto-Generated"}
+                  className="h-10 rounded-xl border-2 font-mono font-black bg-slate-50 text-primary border-slate-100 italic" 
+                />
+                {!initialData && <Sparkles className="absolute end-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-primary/30" />}
               </div>
-              {errors.fileNumber && <p className="text-[10px] text-rose-500 font-bold mt-1">{errors.fileNumber.message as string}</p>}
+              {!initialData && <p className="text-[9px] text-slate-400 font-bold mt-1 px-1">{isRtl ? "سيتم حجز رقم متسلسل جديد فور الحفظ الناجح." : "A sequence number will be assigned upon successful save."}</p>}
             </div>
 
             <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
-               <div className="space-y-1.5">
+               <div className="space-y-1.5 text-start">
                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.nameAr')} <span className="text-rose-500">*</span></Label>
                   <Input {...register('nameAr')} className={cn("h-10 rounded-xl border-2 font-bold focus:bg-white bg-slate-50/30", errors.nameAr && "border-rose-200 bg-rose-50/20")} />
                   {errors.nameAr && <p className="text-[10px] text-rose-500 font-bold mt-1">{errors.nameAr.message as string}</p>}
                </div>
-               <div className="space-y-1.5">
+               <div className="space-y-1.5 text-start">
                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.nameEn')}</Label>
                   <Input {...register('nameEn')} className="h-10 rounded-xl border-2 font-bold text-start bg-slate-50/30" dir="ltr" />
                </div>
             </div>
             
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 text-start">
               <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.civilId')}</Label>
               <div className="relative">
                  <Fingerprint className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
@@ -165,13 +159,13 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
               </div>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 text-start">
               <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.mobile')} <span className="text-rose-500">*</span></Label>
               <Input {...register('mobile')} className={cn("h-10 rounded-xl border-2 font-bold bg-slate-50/30", errors.mobile && "border-rose-200 bg-rose-50/20")} placeholder="+965" />
               {errors.mobile && <p className="text-[10px] text-rose-500 font-bold mt-1">{errors.mobile.message as string}</p>}
             </div>
 
-            <div className="md:col-span-2 space-y-1.5">
+            <div className="md:col-span-2 space-y-1.5 text-start">
               <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.email')}</Label>
               <div className="relative">
                  <Mail className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
@@ -196,7 +190,7 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
                    <Select 
                      disabled={!isAdmin && !!initialData} 
                      value={assignedEngineerId} 
-                     onValueChange={(v) => setValue('assignedEngineerId', v, { shouldValidate: true })}
+                     onValueChange={handleEngineerChange}
                    >
                       <SelectTrigger className={cn("h-11 rounded-xl border-2 bg-white font-bold", errors.assignedEngineerId && "border-rose-200 bg-rose-50")}>
                          <SelectValue placeholder={t('common.search')} />
@@ -236,7 +230,7 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
               <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-8">
                  <div className="space-y-1.5 text-start">
                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.governorate')} <span className="text-rose-500">*</span></Label>
-                   <Select value={selectedGovId} onValueChange={(v) => { setValue('governorateId', v, { shouldValidate: true }); setValue('areaId', ''); }}>
+                   <Select value={selectedGovId} onValueChange={handleGovChange}>
                       <SelectTrigger className={cn("h-10 rounded-xl border-2 font-bold bg-slate-50/30", errors.governorateId && "border-rose-200 bg-rose-50")}><SelectValue placeholder="..." /></SelectTrigger>
                       <SelectContent className="rounded-xl border-2 shadow-2xl z-[200] max-h-[300px] overflow-y-auto">
                          {governorates?.map(g => <SelectItem key={g.id} value={g.id!} className="font-bold">{isRtl ? g.name : g.nameEn}</SelectItem>)}
@@ -247,7 +241,7 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
                  
                  <div className="space-y-1.5 text-start">
                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.area')} <span className="text-rose-500">*</span></Label>
-                   <Select disabled={!selectedGovId} value={selectedAreaId} onValueChange={(v) => setValue('areaId', v, { shouldValidate: true })}>
+                   <Select disabled={!selectedGovId} value={selectedAreaId} onValueChange={handleAreaChange}>
                       <SelectTrigger className={cn("h-10 rounded-xl border-2 font-bold bg-slate-50/30", errors.areaId && "border-rose-200 bg-rose-50")}><SelectValue placeholder="..." /></SelectTrigger>
                       <SelectContent className="rounded-xl border-2 shadow-2xl z-[200] max-h-[300px] overflow-y-auto">
                          {areas?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}
@@ -295,7 +289,7 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
       <div className="flex justify-end pt-6">
         <Button 
           type="submit" 
-          disabled={loading || generating} 
+          disabled={loading} 
           className="h-12 rounded-xl px-24 bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all gap-4 border-b-4 border-orange-700"
         >
           {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}

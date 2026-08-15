@@ -6,87 +6,91 @@ import {
   doc, 
   setDoc,
   updateDoc, 
-  deleteDoc,
+  deleteDoc, 
   serverTimestamp,
   getDoc,
   getDocs,
   query,
   where,
-  writeBatch
+  writeBatch,
+  runTransaction
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Client, ClientHistory } from '@/types/client';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { nextSequential } from '@/lib/counters';
 
 /**
  * خدمة إدارة العملاء السيادية (Sovereign Client Service).
- * تم تحديثها لضمان وحدانية رقم الملف ومنع التكرار ودعم الحذف النهائي.
+ * تم تحديثها لضمان توليد الرقم المتسلسل في لحظة الحفظ فقط لمنع "تسريب" الأرقام.
  */
 export class ClientService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * توليد رقم الملف التلقائي التالي بصيغة C-0001/2026 عبر عداد ذري
-   */
-  async getNextFileNumber(): Promise<string> {
-    const year = new Date().getFullYear();
-    const num = await nextSequential(this.db, this.companyId, 'client', `C-`, 4);
-    return `${num}/${year}`;
-  }
-
-  /**
-   * تسجيل عميل جديد في النظام مع فحص الوحدانية والعملية الذرية
+   * تسجيل عميل جديد في النظام باستخدام عملية ذرية (Transaction)
+   * تضمن توليد الرقم المتسلسل وحفظ العميل في "نبضة واحدة"
    */
   async addClient(data: Partial<Client>, userId: string, userName: string) {
-    // 1. تحصين الوحدانية: التأكد من عدم وجود رقم الملف مسبقاً في هذه الشركة
-    const q = query(
-      collection(this.db, paths.clients(this.companyId)), 
-      where('fileNumber', '==', data.fileNumber)
-    );
-    const existing = await getDocs(q);
-    if (!existing.empty) {
-      throw new Error(`رقم الملف [${data.fileNumber}] مسجل مسبقاً لعميل آخر. يرجى تحديث الصفحة للحصول على رقم جديد.`);
-    }
+    if (!this.db || !this.companyId) throw new Error("Database context missing");
 
-    const batch = writeBatch(this.db);
-    const clientRef = doc(collection(this.db, paths.clients(this.companyId)));
-    const historyRef = doc(collection(this.db, paths.clientHistory(this.companyId, clientRef.id)));
+    return await runTransaction(this.db, async (transaction) => {
+      const year = new Date().getFullYear();
+      const counterKey = 'client';
+      const counterRef = doc(this.db, 'companies', this.companyId, 'counters', counterKey);
+      
+      // 1. جلب قيمة العداد الحالية داخل الترانسكشن
+      const counterSnap = await transaction.get(counterRef);
+      const currentSeq = counterSnap.exists() ? (counterSnap.data().seq as number) : 0;
+      const nextSeq = currentSeq + 1;
+      
+      // 2. توليد رقم الملف المعتمد
+      const fileNumber = `C-${String(nextSeq).padStart(4, '0')}/${year}`;
 
-    const clientData = {
-      ...data,
-      id: clientRef.id,
-      companyId: this.companyId,
-      transactionCounter: 0,
-      isActive: true,
-      status: 'new',
-      createdBy: userId,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    };
+      // 3. التحقق من الوحدانية (لزيادة الأمان السيادي)
+      const q = query(
+        collection(this.db, paths.clients(this.companyId)), 
+        where('fileNumber', '==', fileNumber)
+      );
+      const existing = await getDocs(q);
+      if (!existing.empty) {
+        throw new Error(`رقم الملف [${fileNumber}] مسجل مسبقاً. يرجى المحاولة مرة أخرى.`);
+      }
 
-    // 2. التنفيذ الذري: حفظ العميل وسجله التاريخي معاً
-    batch.set(clientRef, clientData);
-    batch.set(historyRef, {
-      clientId: clientRef.id,
-      type: 'system_log',
-      content: `تم فتح ملف عميل جديد برقم: ${data.fileNumber}`,
-      userId, 
-      userName, 
-      companyId: this.companyId,
-      createdAt: serverTimestamp()
-    });
+      const clientRef = doc(collection(this.db, paths.clients(this.companyId)));
+      const historyRef = doc(collection(this.db, paths.clientHistory(this.companyId, clientRef.id)));
 
-    try {
-      await batch.commit();
+      const now = new Date();
+      const clientData = {
+        ...data,
+        fileNumber, // الرقم المولد فعلياً في هذه اللحظة
+        id: clientRef.id,
+        companyId: this.companyId,
+        transactionCounter: 0,
+        isActive: true,
+        status: 'new',
+        createdBy: userId,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      // 4. تنفيذ العمليات مجتمعة
+      transaction.set(clientRef, clientData);
+      transaction.set(historyRef, {
+        clientId: clientRef.id,
+        type: 'system_log',
+        content: `تم فتح ملف عميل جديد برقم: ${fileNumber}`,
+        userId, 
+        userName, 
+        companyId: this.companyId,
+        createdAt: now
+      });
+      
+      // تحديث العداد
+      transaction.set(counterRef, { seq: nextSeq, updatedAt: now }, { merge: true });
+
       return clientRef.id;
-    } catch (err: any) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: clientRef.path, operation: 'create', requestResourceData: clientData
-      }));
-      throw err;
-    }
+    });
   }
 
   /**
@@ -141,7 +145,6 @@ export class ClientService {
    */
   async deleteClient(clientId: string) {
     const clientRef = doc(this.db, paths.clients(this.companyId), clientId);
-    // ملاحظة: في الأنظمة الضخمة نفضل الأرشفة، ولكن بناءً على طلبك قمنا بالتنفيذ للحذف النهائي.
     await deleteDoc(clientRef).catch(err => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: clientRef.path, operation: 'delete'
@@ -153,5 +156,17 @@ export class ClientService {
   async addHistory(clientId: string, history: Omit<ClientHistory, 'id' | 'createdAt' | 'clientId'>) {
     const historyPath = paths.clientHistory(this.companyId, clientId);
     await addDoc(collection(this.db, historyPath), { ...history, clientId, createdAt: serverTimestamp() });
+  }
+
+  /**
+   * هذه الدالة بقيت للتوافق ولكن لم نعد نستخدمها في النموذج لضمان عدم ضياع الأرقام
+   */
+  async getNextFileNumber(): Promise<string> {
+    const year = new Date().getFullYear();
+    const counterKey = 'client';
+    const counterRef = doc(this.db, 'companies', this.companyId, 'counters', counterKey);
+    const snap = await getDoc(counterRef);
+    const current = snap.exists() ? (snap.data().seq as number) : 0;
+    return `C-${String(current + 1).padStart(4, '0')}/${year}`;
   }
 }
