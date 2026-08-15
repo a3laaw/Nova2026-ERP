@@ -18,8 +18,7 @@ import {
 import { 
   UserPlus, Save, Loader2, 
   RefreshCw, Mail, Fingerprint, MapPinned,
-  Search, Globe, Briefcase, ShieldCheck,
-  AlertCircle
+  Search, Globe, Briefcase, ShieldCheck
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
@@ -34,7 +33,6 @@ import { LocationPickerDialog } from './location-picker-dialog';
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 
-// تعريف المخطط مع رسائل خطأ عربية واضحة
 const clientFormSchema = z.object({
   fileNumber: z.string().min(1, "رقم الملف مطلوب"),
   nameAr: z.string().min(3, "يجب أن يكون الاسم 3 حروف على الأقل"),
@@ -65,22 +63,9 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
   const { register, handleSubmit, formState: { errors }, setValue, watch, getValues } = useForm({
     resolver: zodResolver(clientFormSchema),
     defaultValues: initialData || { 
-      fileNumber: '', 
-      nameAr: '', 
-      nameEn: '', 
-      mobile: '', 
-      email: '', 
-      civilId: '',
-      governorateId: '',
-      governorateName: '',
-      areaId: '',
-      areaName: '',
-      block: '',
-      street: '',
-      houseNumber: '',
-      locationUrl: '',
-      assignedEngineerId: globalUser?.employeeId || '',
-      assignedEngineerName: globalUser?.fullName || globalUser?.username || ''
+      fileNumber: '', nameAr: '', nameEn: '', mobile: '', email: '', civilId: '',
+      governorateId: '', areaId: '', block: '', street: '', houseNumber: '', locationUrl: '',
+      assignedEngineerId: globalUser?.employeeId || ''
     }
   });
 
@@ -101,10 +86,8 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
 
   const engineers = useMemo(() => {
     return (employees || []).filter(e => 
-      e.departmentName?.includes('معماري') || 
-      e.departmentName?.includes('Arch') ||
-      e.jobTitle?.includes('معماري') ||
-      e.jobTitle?.includes('Arch')
+      e.departmentName?.includes('معماري') || e.departmentName?.includes('Arch') ||
+      e.jobTitle?.includes('معماري') || e.jobTitle?.includes('Arch')
     );
   }, [employees]);
 
@@ -140,13 +123,8 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
     }
   }, [selectedAreaId, areas, isRtl, setValue]);
 
-  const handleLocationSelect = (url: string) => {
-    setValue('locationUrl', url);
-  };
-
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 text-start pb-20 w-full max-w-[1600px] mx-auto">
-      
       <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/[0.02]">
         <div className="bg-primary/5 p-6 border-b flex items-center justify-between">
            <div className="flex items-center gap-3">
@@ -162,7 +140,7 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
                 <Input {...register('fileNumber')} readOnly className="h-10 rounded-xl border-2 font-mono font-black bg-slate-50 text-primary border-slate-100 cursor-not-allowed" />
                 {generating && <RefreshCw className="absolute end-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-primary/40" />}
               </div>
-              {errors.fileNumber && <p className="text-[10px] text-rose-500 font-bold mt-1 animate-in slide-in-from-top-1">{errors.fileNumber.message as string}</p>}
+              {errors.fileNumber && <p className="text-[10px] text-rose-500 font-bold mt-1">{errors.fileNumber.message as string}</p>}
             </div>
 
             <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -197,7 +175,6 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
                  <Mail className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
                  <Input {...register('email')} type="email" className="h-10 rounded-xl border-2 ps-11 font-bold text-start bg-slate-50/30" dir="ltr" />
               </div>
-              {errors.email && <p className="text-[10px] text-rose-500 font-bold mt-1">{errors.email.message as string}</p>}
             </div>
           </div>
 
@@ -222,7 +199,7 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
                       <SelectTrigger className={cn("h-11 rounded-xl border-2 bg-white font-bold", errors.assignedEngineerId && "border-rose-200 bg-rose-50")}>
                          <SelectValue placeholder={t('common.search')} />
                       </SelectTrigger>
-                      <SelectContent className="rounded-xl border-2 shadow-2xl z-[200]">
+                      <SelectContent className="rounded-xl border-2 shadow-2xl z-[200] max-h-[300px] overflow-y-auto">
                          {engineers.map(eng => (
                            <SelectItem key={eng.id} value={eng.id!} className="font-bold py-3">
                               {eng.fullName}
@@ -232,19 +209,12 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
                    </Select>
                    {errors.assignedEngineerId && <p className="text-[10px] text-rose-500 font-bold mt-1">{errors.assignedEngineerId.message as string}</p>}
                 </div>
-
-                {!isAdmin && (
-                  <Badge className="bg-slate-900 text-white border-0 font-black text-[9px] px-4 py-2 rounded-xl uppercase shrink-0 gap-2 h-11">
-                     <ShieldCheck className="h-3 w-3 text-primary" />
-                     {t('clients.form.autoAssigned')}
-                  </Badge>
-                )}
              </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/[0.02]">
+      <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/[0.02]">
         <div className="bg-blue-50/30 p-6 border-b flex items-center justify-between">
            <div className="flex items-center gap-3">
               <MapPinned className="h-5 w-5 text-blue-600" />
@@ -252,37 +222,12 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
            </div>
         </div>
         <CardContent className="p-8 space-y-10">
-           <div className="p-10 bg-slate-50/50 rounded-[3rem] border-2 border-dashed border-blue-100 relative">
-              <Label className="absolute top-4 right-10 text-[10px] font-black uppercase text-blue-400 tracking-[0.1em]">
-                {t('clients.form.mapLink')}
-              </Label>
-              <div className={cn("flex items-center gap-4 pt-4", isRtl ? "flex-row" : "flex-row-reverse")}>
-                 <div className="relative flex-1">
-                    <Input 
-                      {...register('locationUrl')} 
-                      placeholder="https://www.google.com/maps?q=..." 
-                      className="h-12 rounded-2xl border-2 border-slate-200 ps-6 pe-12 font-mono text-[11px] bg-white focus:border-primary/40 transition-all shadow-inner" 
-                      dir="ltr"
-                    />
-                    <Globe className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-200" />
-                 </div>
-                 <Button 
-                   type="button"
-                   onClick={() => setIsMapOpen(true)}
-                   className="h-12 px-8 rounded-xl bg-slate-900 text-white font-black text-sm gap-3 hover:bg-slate-800 transition-all shadow-xl shrink-0"
-                 >
-                    <Search className="h-4 w-4 text-primary" />
-                    {t('clients.form.openMap')}
-                 </Button>
-              </div>
-           </div>
-
-           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pt-4">
+           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
               <div className="space-y-1.5 text-start">
                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.governorate')} <span className="text-rose-500">*</span></Label>
                 <Select value={selectedGovId} onValueChange={(v) => { setValue('governorateId', v, { shouldValidate: true }); setValue('areaId', ''); }}>
                    <SelectTrigger className={cn("h-10 rounded-xl border-2 font-bold bg-slate-50/30", errors.governorateId && "border-rose-200 bg-rose-50")}><SelectValue placeholder="..." /></SelectTrigger>
-                   <SelectContent className="rounded-xl border-2 shadow-2xl z-[200]">
+                   <SelectContent className="rounded-xl border-2 shadow-2xl z-[200] max-h-[300px] overflow-y-auto">
                       {governorates?.map(g => <SelectItem key={g.id} value={g.id!} className="font-bold">{isRtl ? g.name : g.nameEn}</SelectItem>)}
                    </SelectContent>
                 </Select>
@@ -293,7 +238,7 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.area')} <span className="text-rose-500">*</span></Label>
                 <Select disabled={!selectedGovId} value={selectedAreaId} onValueChange={(v) => setValue('areaId', v, { shouldValidate: true })}>
                    <SelectTrigger className={cn("h-10 rounded-xl border-2 font-bold bg-slate-50/30", errors.areaId && "border-rose-200 bg-rose-50")}><SelectValue placeholder="..." /></SelectTrigger>
-                   <SelectContent className="rounded-xl border-2 shadow-2xl z-[200]">
+                   <SelectContent className="rounded-xl border-2 shadow-2xl z-[200] max-h-[300px] overflow-y-auto">
                       {areas?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}
                    </SelectContent>
                 </Select>
@@ -322,9 +267,9 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
         <Button 
           type="submit" 
           disabled={loading || generating} 
-          className="h-14 rounded-2xl px-24 bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all gap-4 border-b-8 border-orange-700"
+          className="h-12 rounded-xl px-24 bg-primary text-white font-black text-sm shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all gap-4 border-b-4 border-orange-700"
         >
-          {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
+          {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
           {initialData ? tSafe('common.saveChanges', 'حفظ التعديلات', 'Save Changes') : tSafe('common.confirm', 'تأكيد وحفظ العميل', 'Confirm & Save')}
         </Button>
       </div>
@@ -332,7 +277,7 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
       <LocationPickerDialog 
         isOpen={isMapOpen} 
         onClose={() => setIsMapOpen(false)}
-        onSelect={handleLocationSelect}
+        onSelect={(url) => setValue('locationUrl', url)}
         initialUrl={watch('locationUrl')}
       />
     </form>

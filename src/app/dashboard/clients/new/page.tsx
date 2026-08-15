@@ -36,10 +36,15 @@ export default function NewClientPage() {
       router.push(`/dashboard/clients/${clientId}`);
     } catch (e: any) {
       console.error("Registration error:", e);
+      // معالجة الخطأ لعرض رسالة مفسرة للمستخدم
+      const errorMsg = e.message?.includes('DUPLICATE_FILE') 
+        ? e.message 
+        : tSafe('common.unexpectedError', 'حدث خطأ غير متوقع، يرجى مراجعة البيانات.', 'Unexpected error occurred.');
+
       toast({ 
         variant: "destructive", 
         title: tSafe('common.error', 'خطأ في عملية التسجيل', 'Registration Error'),
-        description: e.message || tSafe('common.unexpectedError', 'حدث خطأ غير متوقع، يرجى مراجعة البيانات.', 'Unexpected error occurred.')
+        description: errorMsg
       });
     } finally {
       setLoading(false);
@@ -47,7 +52,7 @@ export default function NewClientPage() {
   };
 
   return (
-    <div className="space-y-6 w-full animate-in fade-in duration-500" dir={dir}>
+    <div className="space-y-6 w-full max-w-[1600px] mx-auto animate-in fade-in duration-500 text-start" dir={dir}>
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-6 text-start">
         <div className="flex items-center gap-4 text-start">
           <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/5">
@@ -60,7 +65,7 @@ export default function NewClientPage() {
             </p>
           </div>
         </div>
-        <Button variant="ghost" onClick={() => router.back()} className="h-11 px-6 rounded-xl border-2 font-black gap-2 bg-white shadow-sm hover:bg-slate-50">
+        <Button variant="ghost" onClick={() => router.back()} className="h-10 px-6 rounded-xl border-2 font-black gap-2 bg-white shadow-sm hover:bg-slate-50">
            <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
            {t('common.back')}
         </Button>
