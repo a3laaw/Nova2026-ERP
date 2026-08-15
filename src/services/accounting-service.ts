@@ -127,6 +127,9 @@ export class AccountingService {
     return ref.id;
   }
 
+  /**
+   * إصدار سند مالي مع دعم توزيع التكلفة والربحية آلياً
+   */
   async createVoucher(data: Partial<Voucher>, userId: string) {
     const batch = writeBatch(this.db);
     const voucherRef = doc(collection(this.db, paths.vouchers(this.companyId)));
@@ -141,22 +144,16 @@ export class AccountingService {
     const netAmount = (data.amount || 0) - feeAmount;
 
     if (data.type === 'receipt') {
+        // الطرف المدين: النقدية أو البنك (بالصافي)
         lines.push({ accountId: data.cashAccountId!, accountName: 'حساب البنك/النقدية (صافي)', debit: netAmount, credit: 0 });
         
+        // حساب العمولات إذا وجد
         if (feeAmount > 0) {
-            const chargesAccQuery = query(collection(this.db, paths.accounts(this.companyId)), where('code', '==', '50203'), limit(1));
-            const chargesSnap = await getDocs(chargesAccQuery);
-            const chargesAccId = !chargesSnap.empty ? chargesSnap.docs[0].id : await this.ensureControlAccount('50203', 'عمولات ومصاريف بنكية', 'Bank Charges & Commissions', 'expense');
-            
-            lines.push({ 
-              accountId: chargesAccId, 
-              accountName: 'عمولات بنكية مخصومة آلياً', 
-              debit: feeAmount, 
-              credit: 0,
-              memo: `عمولة معاملة رقم ${voucherNumber}`
-            });
+            const chargesAccId = await this.ensureControlAccount('50203', 'عمولات ومصاريف بنكية', 'Bank Charges', 'expense');
+            lines.push({ accountId: chargesAccId, accountName: 'عمولات بنكية', debit: feeAmount, credit: 0, memo: `عمولة سند ${voucherNumber}` });
         }
 
+        // الطرف الدائن: حساب الإيراد أو ذمم العملاء (موزع أو مفرد)
         if (data.distributions && data.distributions.length > 0) {
           data.distributions.forEach(d => {
             lines.push({ 
@@ -181,11 +178,12 @@ export class AccountingService {
           });
         }
     } else {
+        // سند صرف: الطرف المدين هو المصروف أو مركز التكلفة
         if (data.distributions && data.distributions.length > 0) {
           data.distributions.forEach(d => {
             lines.push({ 
               accountId: data.accountId!, 
-              accountName: 'حساب الطرف الآخر (موزع)', 
+              accountName: 'حساب المصروف (موزع)', 
               debit: d.amount, 
               credit: 0, 
               projectId: d.projectId,
@@ -193,72 +191,58 @@ export class AccountingService {
               profitCenterId: d.profitCenterId
             });
           });
-          lines.push({ accountId: data.cashAccountId!, accountName: 'حساب النقدية', debit: 0, credit: data.amount! });
         } else {
           lines.push({ 
             accountId: data.accountId!, 
-            accountName: 'حساب الطرف الآخر', 
+            accountName: 'حساب المصروف', 
             debit: data.amount!, 
             credit: 0, 
             projectId: data.projectId,
             costCenterId: data.costCenterId,
             profitCenterId: data.profitCenterId
           });
-          lines.push({ accountId: data.cashAccountId!, accountName: 'حساب النقدية', debit: 0, credit: data.amount! });
         }
+        // الطرف الدائن: النقدية أو البنك
+        lines.push({ accountId: data.cashAccountId!, accountName: 'حساب النقدية', debit: 0, credit: data.amount! });
     }
 
-    const voucherData = {
+    batch.set(voucherRef, {
       ...data,
       id: voucherRef.id,
       voucherNumber,
       journalEntryId: journalRef.id,
-      feeAmount,
-      netAmount,
       companyId: this.companyId,
       createdAt: serverTimestamp(),
       createdBy: userId
-    };
+    });
 
-    const journalData = {
+    batch.set(journalRef, {
       id: journalRef.id,
       entryNumber,
       date: data.date,
       description: `${data.type === 'receipt' ? 'سند قبض' : 'سند صرف'} رقم ${voucherNumber}: ${data.notes}`,
-      status: 'draft', // القيد المولد آلياً يبدأ دائماً كـ "مسودة" بانتظار المراجعة والترحيل
+      status: 'draft', 
       lines,
       sourceType: data.type,
       sourceId: voucherRef.id,
       companyId: this.companyId,
       createdAt: serverTimestamp(),
       createdBy: userId
-    };
-
-    batch.set(voucherRef, voucherData);
-    batch.set(journalRef, journalData);
+    });
 
     await batch.commit();
     return voucherRef.id;
   }
 
-  async ensureControlAccount(code: string, nameAr: string, nameEn: string, type: any, parentId: string | null = null) {
+  async ensureControlAccount(code: string, nameAr: string, nameEn: string, type: any) {
     const q = query(collection(this.db, paths.accounts(this.companyId)), where('code', '==', code), limit(1));
     const snap = await getDocs(q);
     if (!snap.empty) return snap.docs[0].id;
 
     const ref = doc(collection(this.db, paths.accounts(this.companyId)));
     await setDoc(ref, {
-      id: ref.id,
-      code,
-      nameAr,
-      nameEn,
-      type,
-      parentId,
-      isGroup: parentId === null,
-      level: parentId ? 2 : 1,
-      isActive: true,
-      companyId: this.companyId,
-      createdAt: serverTimestamp()
+      id: ref.id, code, nameAr, nameEn, type,
+      isActive: true, companyId: this.companyId, createdAt: serverTimestamp()
     });
     return ref.id;
   }
@@ -268,31 +252,14 @@ export class AccountingService {
     const snap = await getDocs(q);
     if (!snap.empty) return snap.docs[0].id;
 
-    const parentQuery = query(collection(this.db, paths.accounts(this.companyId)), where('code', '==', parentCode), limit(1));
-    const parentSnap = await getDocs(parentQuery);
-    const parent = parentSnap.empty ? null : parentSnap.docs[0].data() as Account;
-
     const subCode = await nextSequential(this.db, this.companyId, `acc_${parentCode}`, parentCode, 4);
-
     const ref = doc(collection(this.db, paths.accounts(this.companyId)));
-    const accountData = {
-      id: ref.id,
-      code: subCode,
-      nameAr: referenceName,
-      nameEn: referenceName,
-      type,
-      parentId: parentSnap.empty ? null : parentSnap.docs[0].id,
-      isGroup: false,
-      level: parent ? (parent.level + 1) : 1,
-      isActive: true,
-      referenceId: referenceId,
-      companyId: this.companyId,
-      analyticalConfig: this.getDefaultAnalyticalConfig(type),
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    };
-
-    await setDoc(ref, accountData);
+    
+    await setDoc(ref, {
+      id: ref.id, code: subCode, nameAr: referenceName, nameEn: referenceName,
+      type, isActive: true, referenceId: referenceId, companyId: this.companyId,
+      createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+    });
     return ref.id;
   }
 }

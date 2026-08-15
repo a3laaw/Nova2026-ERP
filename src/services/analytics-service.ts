@@ -32,36 +32,10 @@ export interface ResourceProfitability {
   resourceId: string;
   name: string;
   type: 'employee' | 'equipment';
-  totalCost: number;       // الرواتب أو المصاريف التشغيلية
-  valueGenerated: number;  // القيمة المنتجة في المشاريع (بناءً على الساعات المسجلة x فئة الـ BOQ)
-  netContribution: number; // الفرق بين القيمة والتكلفة
-  efficiency: number;      // نسبة الكفاءة
-}
-
-export interface ExecutiveSummary {
-  crm: {
-    totalClients: number;
-    activeTransactions: number;
-  };
-  projects: {
-    total: number;
-    active: number;
-    completed: number;
-    constructionCount: number;
-    consultingCount: number;
-  };
-  finance: {
-    totalBudget: number;
-    totalRevenue: number;
-    totalSpent: number;
-    remaining: number;
-    globalMargin: number;
-  };
-  hr: {
-    totalStaff: number;
-    activeField: number;
-    onLeave: number;
-  };
+  totalCost: number;       // الرواتب أو المصاريف التشغيلية من القيود
+  valueGenerated: number;  // القيمة المنتجة (ساعات العمل x سعر الساعة المرجعي في الـ BOQ)
+  netContribution: number; // الفائض/العجز المالي للمورد
+  efficiency: number;      // نسبة الكفاءة (ROI)
 }
 
 /**
@@ -72,7 +46,7 @@ export class AnalyticsService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * تحليل أداء المشاريع المالي
+   * تحليل ربحية المشاريع بناءً على القيود المالية المرحلة
    */
   async getProjectsPerformance(): Promise<ProjectAnalyticsSummary[]> {
     const [transSnap, boqsSnap, journalSnap] = await Promise.all([
@@ -89,10 +63,12 @@ export class AnalyticsService {
       const projectBoq = allBoqs.find(b => b.transactionId === trans.id);
       const totalBudget = projectBoq?.totalAmount || 0;
 
+      // الإيرادات: أي سطر دائن مرتبط بالمشروع (غالباً حساب 401 إيرادات)
       const projectRevenue = allJournalLines
         .filter(l => l.projectId === trans.id && (l.credit || 0) > 0)
         .reduce((acc, l) => acc + (l.credit || 0), 0);
 
+      // التكاليف: أي سطر مدين مرتبط بالمشروع (مواد، عمالة، مقاولي باطن، نثرية)
       const projectCosts = allJournalLines
         .filter(l => l.projectId === trans.id && (l.debit || 0) > 0)
         .reduce((acc, l) => acc + (l.debit || 0), 0);
@@ -102,7 +78,7 @@ export class AnalyticsService {
         const stagesSnap = await getDocs(collection(this.db, paths.transactionStages(this.companyId, trans.id)));
         const total = stagesSnap.size;
         const done = stagesSnap.docs.filter(d => d.data().status === 'completed').length;
-        completionRate = total > 0 ? Math.round((done / total) ? (done / total) * 100 : 0) : 0;
+        completionRate = total > 0 ? Math.round((done / total) * 100) : 0;
       } catch { completionRate = 0; }
 
       const margin = projectRevenue - projectCosts;
@@ -123,12 +99,12 @@ export class AnalyticsService {
       };
     }));
 
-    return summaries;
+    return summaries.sort((a, b) => b.totalRevenue - a.totalRevenue);
   }
 
   /**
-   * تحليل ربحية الموارد (عمالة ومعدات)
-   * يقارن التكلفة (الراتب/الإهلاك) مقابل القيمة المنتجة في المشاريع
+   * تحليل جدوى الموارد (ROI)
+   * يقارن تكلفة المورد (الراتب أو مصاريف المعدة) مقابل قيمته الإنتاجية في الميدان
    */
   async getResourcesProfitability(): Promise<ResourceProfitability[]> {
     const [empsSnap, equipSnap, execsSnap, journalSnap] = await Promise.all([
@@ -145,11 +121,13 @@ export class AnalyticsService {
 
     const resourceStats: ResourceProfitability[] = [];
 
-    // 1. تحليل العمالة
+    // 1. تحليل ربحية العمالة
     employees.forEach(emp => {
-      const actualCost = emp.basicSalary || 0; // التكلفة الشهرية
+      // التكلفة: مجموع الرواتب المدفوعة له (من حساب الرواتب المرتبط به)
+      // للتبسيط في هذا الإصدار: نعتمد راتبه الأساسي المسجل
+      const monthlyCost = emp.basicSalary || 0; 
       
-      // حساب القيمة المنتجة: الساعات المسجلة في الميدان x سعر الساعة المرجعي
+      // الإنتاجية: مجموع (الساعات المسجلة في الميدان x السعر المرجعي للساعة في الـ BOQ)
       let generatedValue = 0;
       executions.forEach(ex => {
         const myLogs = (ex.laborDetails || []).filter((l: any) => l.resourceId === emp.id);
@@ -162,21 +140,21 @@ export class AnalyticsService {
         resourceId: emp.id!,
         name: emp.fullName,
         type: 'employee',
-        totalCost: actualCost,
+        totalCost: monthlyCost,
         valueGenerated: generatedValue,
-        netContribution: generatedValue - actualCost,
-        efficiency: actualCost > 0 ? Math.round((generatedValue / actualCost) * 100) : 0
+        netContribution: generatedValue - monthlyCost,
+        efficiency: monthlyCost > 0 ? Math.round((generatedValue / monthlyCost) * 100) : 0
       });
     });
 
-    // 2. تحليل المعدات
+    // 2. تحليل جدوى المعدات
     equipment.forEach(eq => {
-      // تكلفة المعدة من القيود (صيانة، وقود، إهلاك)
-      const actualCost = allJournalLines
+      // التكلفة: كافة القيود المدينة على مركز تكلفة هذه المعدة (صيانة، وقود، إهلاك)
+      const actualMaintenanceCost = allJournalLines
         .filter(l => l.costCenterId === eq.id && (l.debit || 0) > 0)
         .reduce((acc, l) => acc + (l.debit || 0), 0);
 
-      // القيمة المنتجة من سجلات التشغيل الميدانية
+      // الإنتاجية: (ساعات العمل في المواقع x سعر الإيجار المرجعي للمعدة)
       let generatedValue = 0;
       executions.forEach(ex => {
         const myLogs = (ex.equipmentUsed || []).filter((e: any) => e.equipmentId === eq.id);
@@ -189,54 +167,13 @@ export class AnalyticsService {
         resourceId: eq.id!,
         name: eq.name,
         type: 'equipment',
-        totalCost: actualCost,
+        totalCost: actualMaintenanceCost || eq.hourlyDepreciationRate || 0,
         valueGenerated: generatedValue,
-        netContribution: generatedValue - actualCost,
-        efficiency: actualCost > 0 ? Math.round((generatedValue / actualCost) * 100) : 0
+        netContribution: generatedValue - actualMaintenanceCost,
+        efficiency: actualMaintenanceCost > 0 ? Math.round((generatedValue / actualMaintenanceCost) * 100) : 0
       });
     });
 
     return resourceStats;
-  }
-
-  async getGlobalExecutiveSummary(): Promise<ExecutiveSummary> {
-    const summaries = await this.getProjectsPerformance();
-    const [clients, trans, employees] = await Promise.all([
-      getDocs(collection(this.db, paths.clients(this.companyId))),
-      getDocs(collection(this.db, paths.transactions(this.companyId))),
-      getDocs(collection(this.db, paths.employees(this.companyId)))
-    ]);
-
-    const transactions = trans.docs.map(d => d.data() as Transaction);
-    
-    const totalBudget = summaries.reduce((acc, s) => acc + s.totalBudget, 0);
-    const totalRevenue = summaries.reduce((acc, s) => acc + s.totalRevenue, 0);
-    const totalSpent = summaries.reduce((acc, s) => acc + s.totalSpent, 0);
-
-    return {
-      crm: {
-        totalClients: clients.size,
-        activeTransactions: transactions.filter(t => t.status !== 'completed').length
-      },
-      projects: {
-        total: transactions.length,
-        active: transactions.filter(t => t.status !== 'completed').length,
-        completed: transactions.filter(t => t.status === 'completed').length,
-        constructionCount: transactions.filter(t => t.activityTypeName?.includes('مقاولات') || t.activityTypeName?.includes('Construction')).length,
-        consultingCount: transactions.filter(t => t.activityTypeName?.includes('استشارات') || t.activityTypeName?.includes('Consulting')).length,
-      },
-      finance: {
-        totalBudget,
-        totalRevenue,
-        totalSpent,
-        remaining: totalBudget - totalSpent,
-        globalMargin: totalRevenue - totalSpent
-      },
-      hr: {
-        totalStaff: employees.size,
-        activeField: employees.docs.filter(d => (d.data() as Employee).status === 'active').length,
-        onLeave: employees.docs.filter(d => (d.data() as Employee).status === 'on-leave').length,
-      }
-    };
   }
 }

@@ -4,31 +4,19 @@ import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, 
-  Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend,
-  LineChart, Line
-} from 'recharts';
-import { 
-  Calculator, Loader2, Printer, LayoutGrid, DatabaseZap, Activity,
-  TrendingUp, Wallet, Receipt, Briefcase, FileText, Target,
-  History,
-  TrendingDown,
-  Sparkles,
-  ShieldCheck,
-  Scale,
-  Users,
-  Truck,
-  ArrowUpRight,
-  UserCheck,
-  Zap
+  Calculator, Loader2, Printer, LayoutGrid, DatabaseZap, 
+  TrendingUp, Wallet, Receipt, Target, 
+  History, TrendingDown, Sparkles, ShieldCheck, 
+  Scale, Users, Truck, ArrowUpRight, UserCheck, Zap,
+  BarChart3, Activity
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { AnalyticsService, ProjectAnalyticsSummary, ResourceProfitability } from '@/services/analytics-service';
 import { cn } from '@/lib/utils';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function FinancialProfitabilityPage() {
   const { globalUser } = useAuthContext();
@@ -43,7 +31,6 @@ export default function FinancialProfitabilityPage() {
   useEffect(() => {
     async function loadReport() {
       if (!db || !companyId) return;
-      
       try {
         const service = new AnalyticsService(db, companyId);
         const [pData, rData] = await Promise.all([
@@ -76,10 +63,10 @@ export default function FinancialProfitabilityPage() {
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-6">
         <div className="text-start space-y-1">
            <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit border border-primary/10 shadow-sm">
-              <Sparkles className="h-3 w-3" /> {isRtl ? 'محرك الربحية السيادي' : 'Sovereign Profitability Engine'}
+              <Sparkles className="h-3 w-3" /> {isRtl ? 'محرك الربحية والجدوى السيادي' : 'Sovereign Profitability Engine'}
            </div>
            <h1 className="text-4xl font-black font-headline text-slate-900">{isRtl ? 'تحليل الربحية ومراكز التكلفة' : 'Profitability & Cost Centers'}</h1>
-           <p className="text-xs font-bold text-slate-400 italic">{isRtl ? 'مطابقة حية بين إيرادات المالك وتكاليف الموارد (عمالة ومعدات).' : 'Real-time matching between revenue and resource costs.'}</p>
+           <p className="text-xs font-bold text-slate-400 italic">{isRtl ? 'مطابقة ذكية بين إيرادات المالك وتكاليف الموارد (العمالة والمعدات والعهد).' : 'Intelligent matching between revenue and direct resource costs.'}</p>
         </div>
         <Button variant="outline" onClick={() => window.print()} className="rounded-xl border-2 h-12 px-6 font-black gap-2 bg-white shadow-sm hover:bg-slate-50 print:hidden">
            <Printer className="h-4 w-4" /> {t('common.print')}
@@ -92,21 +79,21 @@ export default function FinancialProfitabilityPage() {
                <Target className="h-4 w-4" /> {isRtl ? 'ربحية المشاريع' : 'Project Profits'}
             </TabsTrigger>
             <TabsTrigger value="resources" className="rounded-xl font-black text-xs px-8 h-full data-[state=active]:bg-slate-900 data-[state=active]:text-white transition-all gap-2">
-               <Users className="h-4 w-4" /> {isRtl ? 'تحليل أداء الموارد' : 'Resource ROI'}
+               <Users className="h-4 w-4" /> {isRtl ? 'تحليل كفاءة المورد (ROI)' : 'Resource ROI'}
             </TabsTrigger>
          </TabsList>
 
          <TabsContent value="projects" className="space-y-8 animate-in slide-in-from-bottom-4">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-               <Card className="border-0 shadow-xl rounded-[2rem] bg-white p-8 border-b-8 border-primary ring-1 ring-black/5">
+               <Card className="border-0 shadow-xl rounded-[2rem] bg-white p-8 border-b-8 border-primary ring-1 ring-black/5 text-start">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إيرادات محققة (IPCs)' : 'Realized Revenue'}</p>
                   <h3 className="text-3xl font-black text-slate-900">{stats.totalRevenue.toLocaleString()} <span className="text-xs">KWD</span></h3>
                </Card>
-               <Card className="border-0 shadow-xl rounded-[2rem] bg-white p-8 border-b-8 border-rose-500 ring-1 ring-black/5">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي التكاليف المباشرة' : 'Direct Project Costs'}</p>
+               <Card className="border-0 shadow-xl rounded-[2rem] bg-white p-8 border-b-8 border-rose-500 ring-1 ring-black/5 text-start">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي تكاليف المشروع' : 'Total Project Costs'}</p>
                   <h3 className="text-3xl font-black text-rose-600">{stats.totalCosts.toLocaleString()} <span className="text-xs">KWD</span></h3>
                </Card>
-               <Card className="border-0 shadow-xl rounded-[2.5rem] bg-slate-900 p-8 text-white relative overflow-hidden group">
+               <Card className="border-0 shadow-xl rounded-[2.5rem] bg-slate-900 p-8 text-white relative overflow-hidden group text-start">
                   <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><TrendingUp className="h-24 w-24 text-primary" /></div>
                   <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-2">{isRtl ? 'صافي هامش الربح' : 'Net Gross Margin'}</p>
                   <h3 className="text-4xl font-black text-white">{stats.netMargin.toLocaleString()} <span className="text-xs text-primary">KWD</span></h3>
@@ -114,19 +101,17 @@ export default function FinancialProfitabilityPage() {
                      <Badge className="bg-emerald-600 text-white border-0 font-black px-4">{stats.avgMarginPercent}% MARGIN</Badge>
                   </div>
                </Card>
-               <Card className="border-0 shadow-xl rounded-[2rem] bg-white p-8 border-b-8 border-blue-500 ring-1 ring-black/5">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'المحفظة (Budget)' : 'Total Budget'}</p>
+               <Card className="border-0 shadow-xl rounded-[2rem] bg-white p-8 border-b-8 border-blue-500 ring-1 ring-black/5 text-start">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي الميزانيات (BOQs)' : 'Total Budgets'}</p>
                   <h3 className="text-3xl font-black text-blue-600">{stats.totalBudget.toLocaleString()} <span className="text-xs">KWD</span></h3>
                </Card>
             </div>
 
             <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                <CardHeader className="bg-slate-50/50 p-8 border-b flex flex-row items-center justify-between">
-                  <div>
-                     <CardTitle className="text-xl font-black font-headline flex items-center gap-3">
-                        <Scale className="h-6 w-6 text-primary" /> {isRtl ? 'ميزان ربحية المشاريع' : 'Project Profitability Ledger'}
-                     </CardTitle>
-                  </div>
+                  <CardTitle className="text-xl font-black font-headline flex items-center gap-3">
+                     <Scale className="h-6 w-6 text-primary" /> {isRtl ? 'ميزان ربحية المشاريع' : 'Project Profitability Ledger'}
+                  </CardTitle>
                   <Badge variant="outline" className="border-primary/20 text-primary font-black uppercase text-[10px] h-6 px-4">AUDITED BY NOVAFlow</Badge>
                </CardHeader>
                <CardContent className="p-0 overflow-x-auto text-start">
@@ -134,9 +119,9 @@ export default function FinancialProfitabilityPage() {
                      <thead className="bg-muted/10 border-b">
                         <tr className="font-black text-slate-500 uppercase text-[10px] tracking-widest">
                            <th className="p-6 ps-10 text-start">{isRtl ? 'المشروع' : 'Project'}</th>
-                           <th className="p-6 text-end">{isRtl ? 'الإيراد' : 'Revenue'}</th>
-                           <th className="p-6 text-end">{isRtl ? 'التكلفة' : 'Spent'}</th>
-                           <th className="p-6 text-end">{isRtl ? 'الربح' : 'Net'}</th>
+                           <th className="p-6 text-end">{isRtl ? 'الإيراد المحقق' : 'Revenue'}</th>
+                           <th className="p-6 text-end">{isRtl ? 'التكلفة الفعلية' : 'Actual Cost'}</th>
+                           <th className="p-6 text-end">{isRtl ? 'الربح الصافي' : 'Net Profit'}</th>
                            <th className="p-6 text-center pe-10">{isRtl ? 'الهامش %' : 'Margin %'}</th>
                         </tr>
                      </thead>
@@ -171,17 +156,17 @@ export default function FinancialProfitabilityPage() {
                <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                   <CardHeader className="bg-slate-50/50 border-b p-8 flex items-center justify-between">
                      <CardTitle className="text-lg font-black flex items-center gap-3">
-                        <UserCheck className="h-6 w-6 text-blue-600" /> {isRtl ? 'كفاءة العمالة (ROI)' : 'Labor Efficiency (ROI)'}
+                        <UserCheck className="h-6 w-6 text-blue-600" /> {isRtl ? 'جدوى القوى العاملة (Labor ROI)' : 'Labor Efficiency (ROI)'}
                      </CardTitle>
-                     <Badge className="bg-blue-50 text-blue-600 font-black border-0">TOP PERFORMERS</Badge>
+                     <Badge className="bg-blue-50 text-blue-600 font-black border-0 uppercase text-[10px]">Staff Efficiency</Badge>
                   </CardHeader>
                   <CardContent className="p-0">
                      <table className="w-full text-start">
                         <thead className="bg-muted/10 border-b">
                            <tr className="font-black text-slate-500 uppercase text-[9px] tracking-widest">
                               <th className="p-4 ps-8 text-start">{isRtl ? 'الموظف' : 'Staff'}</th>
-                              <th className="p-4 text-end">{isRtl ? 'التكلفة' : 'Cost'}</th>
-                              <th className="p-4 text-end">{isRtl ? 'القيمة' : 'Value'}</th>
+                              <th className="p-4 text-end">{isRtl ? 'التكلفة (الراتب)' : 'Cost'}</th>
+                              <th className="p-4 text-end">{isRtl ? 'القيمة المنتجة' : 'Output Value'}</th>
                               <th className="p-4 text-center pe-8">{isRtl ? 'الكفاءة' : 'ROI'}</th>
                            </tr>
                         </thead>
@@ -192,7 +177,7 @@ export default function FinancialProfitabilityPage() {
                                  <td className="p-4 text-end font-mono text-xs text-rose-500">{r.totalCost.toLocaleString()}</td>
                                  <td className="p-4 text-end font-mono text-xs text-emerald-600">{r.valueGenerated.toLocaleString()}</td>
                                  <td className="p-4 text-center pe-8">
-                                    <Badge className={cn("font-black text-[9px]", r.efficiency > 100 ? "bg-emerald-500 text-white" : "bg-rose-500 text-white")}>
+                                    <Badge className={cn("font-black text-[9px]", r.efficiency >= 100 ? "bg-emerald-500 text-white" : "bg-rose-500 text-white")}>
                                        {r.efficiency}%
                                     </Badge>
                                  </td>
@@ -206,17 +191,18 @@ export default function FinancialProfitabilityPage() {
                <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                   <CardHeader className="bg-slate-50/50 border-b p-8 flex items-center justify-between">
                      <CardTitle className="text-lg font-black flex items-center gap-3">
-                        <Truck className="h-6 w-6 text-orange-600" /> {isRtl ? 'عائد استثمار المعدات' : 'Equipment ROI Radar'}
+                        <Truck className="h-6 w-6 text-orange-600" /> {isRtl ? 'عائد استثمار المعدات' : 'Equipment ROI'}
                      </CardTitle>
+                     <Badge className="bg-orange-50 text-orange-600 font-black border-0 uppercase text-[10px]">Machinery Yield</Badge>
                   </CardHeader>
                   <CardContent className="p-0">
                      <table className="w-full text-start">
                         <thead className="bg-muted/10 border-b">
                            <tr className="font-black text-slate-500 uppercase text-[9px] tracking-widest">
                               <th className="p-4 ps-8 text-start">{isRtl ? 'المعدة' : 'Machine'}</th>
-                              <th className="p-4 text-end">{isRtl ? 'التكلفة' : 'Maint/Ops'}</th>
-                              <th className="p-4 text-end">{isRtl ? 'العائد' : 'Income'}</th>
-                              <th className="p-4 text-center pe-8">{isRtl ? 'المساهمة' : 'Net'}</th>
+                              <th className="p-4 text-end">{isRtl ? 'التكلفة (تشغيل)' : 'Operating Cost'}</th>
+                              <th className="p-4 text-end">{isRtl ? 'القيمة المنتجة' : 'Production Value'}</th>
+                              <th className="p-4 text-center pe-8">{isRtl ? 'المساهمة' : 'Net Contribution'}</th>
                            </tr>
                         </thead>
                         <tbody>
@@ -242,11 +228,11 @@ export default function FinancialProfitabilityPage() {
                <div className="absolute top-0 right-0 p-10 opacity-5"><Zap className="h-40 w-40 text-primary" /></div>
                <div className="h-16 w-16 rounded-2xl bg-primary/20 flex items-center justify-center text-primary shrink-0"><ShieldCheck className="h-10 w-10" /></div>
                <div className="space-y-3 relative z-10 text-start">
-                  <h4 className="text-xl font-black font-headline text-primary">{isRtl ? 'نظام الرقابة التشغيلية الذري' : 'Atomic Operational Control System'}</h4>
+                  <h4 className="text-xl font-black font-headline text-primary">{isRtl ? 'نظام الرقابة التشغيلية والربحية الذري' : 'Atomic Profitability Control System'}</h4>
                   <p className="text-sm font-bold text-slate-400 leading-relaxed max-w-3xl">
                      {isRtl 
-                       ? 'يتم احتساب الربحية بناءً على المطابقة بين القيود المالية المرحلة وسجلات الإنجاز الميدانية الموثقة. إذا لم يقم المهندس بتسجيل ساعات العمل، لن تظهر مساهمة المورد في هذا الرادار.' 
-                       : 'Profitability is calculated by matching posted ledger entries with verified field logs. If an engineer fails to log work hours, resource contribution will not reflect in this radar.'}
+                       ? 'يتم احتساب هذه البيانات لحظياً بناءً على المطابقة بين القيود المالية المرحلة وسجلات الإنجاز الميدانية. أي عهدة أو مصروف يتم ربطه بمركز تكلفة المشروع يظهر هنا فوراً كخصم من الربحية.' 
+                       : 'Profitability is calculated by matching posted financial entries with actual field logs. Any project-linked expense or asset assignment reflects immediately as a cost reduction.'}
                   </p>
                </div>
             </div>
