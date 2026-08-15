@@ -16,9 +16,10 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { 
-  UserPlus, MapPin, Save, Loader2, 
+  UserPlus, Save, Loader2, 
   RefreshCw, Mail, Fingerprint, MapPinned,
-  Search, Globe, Briefcase, ShieldCheck
+  Search, Globe, Briefcase, ShieldCheck,
+  AlertCircle
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
@@ -33,34 +34,35 @@ import { LocationPickerDialog } from './location-picker-dialog';
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 
+// تعريف المخطط مع رسائل خطأ عربية واضحة
 const clientFormSchema = z.object({
-  fileNumber: z.string().min(1),
-  nameAr: z.string().min(3),
+  fileNumber: z.string().min(1, "رقم الملف مطلوب"),
+  nameAr: z.string().min(3, "يجب أن يكون الاسم 3 حروف على الأقل"),
   nameEn: z.string().optional(),
-  mobile: z.string().min(8),
-  email: z.string().email().optional().or(z.literal('')),
+  mobile: z.string().min(8, "رقم الهاتف غير صحيح"),
+  email: z.string().email("البريد الإلكتروني غير صحيح").optional().or(z.literal('')),
   civilId: z.string().optional(),
-  governorateId: z.string().min(1),
+  governorateId: z.string().min(1, "يرجى اختيار المحافظة"),
   governorateName: z.string().optional(),
-  areaId: z.string().min(1),
+  areaId: z.string().min(1, "يرجى اختيار المنطقة"),
   areaName: z.string().optional(),
   block: z.string().optional(),
   street: z.string().optional(),
   houseNumber: z.string().optional(),
   locationUrl: z.string().optional(),
-  assignedEngineerId: z.string().min(1),
+  assignedEngineerId: z.string().min(1, "يجب تعيين مهندس مسؤول"),
   assignedEngineerName: z.string().optional()
 });
 
 export function ClientForm({ initialData, onSubmit, loading }: { initialData?: any, onSubmit: (data: any) => void, loading?: boolean }) {
-  const { dir, lang, t } = useLanguage();
+  const { dir, lang, t, tSafe } = useLanguage();
   const { globalUser } = useAuthContext();
   const { isAdmin } = usePermissions();
   const db = useFirestore();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
   
-  const form = useForm({
+  const { register, handleSubmit, formState: { errors }, setValue, watch, getValues } = useForm({
     resolver: zodResolver(clientFormSchema),
     defaultValues: initialData || { 
       fileNumber: '', 
@@ -85,128 +87,142 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
   const [generating, setGenerating] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
   
-  const selectedGovId = form.watch('governorateId');
-  const selectedAreaId = form.watch('areaId');
-  const assignedEngineerId = form.watch('assignedEngineerId');
+  const selectedGovId = watch('governorateId');
+  const selectedAreaId = watch('areaId');
+  const assignedEngineerId = watch('assignedEngineerId');
 
   const govsQuery = useMemo(() => companyId && db ? query(collection(db, paths.governorates(companyId)), orderBy('order')) : null, [db, companyId]);
   const areasQuery = useMemo(() => companyId && db && selectedGovId ? query(collection(db, paths.areas(companyId, selectedGovId)), orderBy('order')) : null, [db, companyId, selectedGovId]);
-  const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), where('isActive', '==', true)) : null, [db, companyId]);
+  const empsQuery = useMemo(() => companyId && db ? query(collection(db, paths.employees(companyId)), where('status', '==', 'active')) : null, [db, companyId]);
 
   const { data: governorates } = useCollection<Governorate>(govsQuery);
   const { data: areas } = useCollection<Area>(areasQuery);
   const { data: employees } = useCollection<Employee>(empsQuery);
 
   const engineers = useMemo(() => {
-    return (employees || []).filter(e => e.departmentName?.includes('معماري') || e.departmentName?.includes('Arch'));
+    return (employees || []).filter(e => 
+      e.departmentName?.includes('معماري') || 
+      e.departmentName?.includes('Arch') ||
+      e.jobTitle?.includes('معماري') ||
+      e.jobTitle?.includes('Arch')
+    );
   }, [employees]);
 
   useEffect(() => {
-    if (!initialData && db && companyId && !form.getValues('fileNumber')) {
+    if (!initialData && db && companyId && !getValues('fileNumber')) {
       setGenerating(true);
       const service = new ClientService(db, companyId);
       service.getNextFileNumber().then(num => {
-        form.setValue('fileNumber', num);
+        setValue('fileNumber', num);
         setGenerating(false);
       });
     }
-  }, [db, companyId, initialData, form]);
+  }, [db, companyId, initialData, setValue, getValues]);
 
   useEffect(() => {
     if (selectedGovId && governorates) {
       const gov = governorates.find(g => g.id === selectedGovId);
-      if (gov) form.setValue('governorateName', isRtl ? gov.name : gov.nameEn);
+      if (gov) setValue('governorateName', isRtl ? gov.name : gov.nameEn);
     }
-  }, [selectedGovId, governorates, isRtl, form]);
+  }, [selectedGovId, governorates, isRtl, setValue]);
 
   useEffect(() => {
     if (assignedEngineerId && engineers) {
       const eng = engineers.find(e => e.id === assignedEngineerId);
-      if (eng) form.setValue('assignedEngineerName', eng.fullName);
+      if (eng) setValue('assignedEngineerName', eng.fullName);
     }
-  }, [assignedEngineerId, engineers, form]);
+  }, [assignedEngineerId, engineers, setValue]);
 
   useEffect(() => {
     if (selectedAreaId && areas) {
       const area = areas.find(a => a.id === selectedAreaId);
-      if (area) form.setValue('areaName', isRtl ? area.name : area.nameEn);
+      if (area) setValue('areaName', isRtl ? area.name : area.nameEn);
     }
-  }, [selectedAreaId, areas, isRtl, form]);
+  }, [selectedAreaId, areas, isRtl, setValue]);
 
   const handleLocationSelect = (url: string) => {
-    form.setValue('locationUrl', url);
+    setValue('locationUrl', url);
   };
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 text-start pb-20">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 text-start pb-20 w-full max-w-[1600px] mx-auto">
       
-      <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/[0.02]">
+      <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/[0.02]">
         <div className="bg-primary/5 p-6 border-b flex items-center justify-between">
-           <h3 className="text-base font-black font-headline text-slate-800">{t('clients.form.identity')}</h3>
-           <UserPlus className="h-5 w-5 text-primary" />
+           <div className="flex items-center gap-3">
+              <UserPlus className="h-5 w-5 text-primary" />
+              <h3 className="text-base font-black font-headline text-slate-800">{t('clients.form.identity')}</h3>
+           </div>
         </div>
         <CardContent className="p-8 space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.fileNumber')}</Label>
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.fileNumber')} <span className="text-rose-500">*</span></Label>
               <div className="relative">
-                <Input {...form.register('fileNumber')} readOnly className="h-12 rounded-2xl border-2 font-mono font-black bg-slate-50 text-primary border-slate-100 cursor-not-allowed" />
-                {generating && <RefreshCw className="absolute end-4 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary/40" />}
+                <Input {...register('fileNumber')} readOnly className="h-10 rounded-xl border-2 font-mono font-black bg-slate-50 text-primary border-slate-100 cursor-not-allowed" />
+                {generating && <RefreshCw className="absolute end-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-primary/40" />}
               </div>
+              {errors.fileNumber && <p className="text-[10px] text-rose-500 font-bold mt-1 animate-in slide-in-from-top-1">{errors.fileNumber.message as string}</p>}
             </div>
+
             <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
-               <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.nameAr')}</Label>
-                  <Input {...form.register('nameAr')} className="h-12 rounded-2xl border-2 font-bold focus:bg-white bg-slate-50/30" />
+               <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.nameAr')} <span className="text-rose-500">*</span></Label>
+                  <Input {...register('nameAr')} className={cn("h-10 rounded-xl border-2 font-bold focus:bg-white bg-slate-50/30", errors.nameAr && "border-rose-200 bg-rose-50/20")} />
+                  {errors.nameAr && <p className="text-[10px] text-rose-500 font-bold mt-1">{errors.nameAr.message as string}</p>}
                </div>
-               <div className="space-y-2">
+               <div className="space-y-1.5">
                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.nameEn')}</Label>
-                  <Input {...form.register('nameEn')} className="h-12 rounded-2xl border-2 font-bold text-start bg-slate-50/30" dir="ltr" />
+                  <Input {...register('nameEn')} className="h-10 rounded-xl border-2 font-bold text-start bg-slate-50/30" dir="ltr" />
                </div>
             </div>
             
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.civilId')}</Label>
               <div className="relative">
                  <Fingerprint className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
-                 <Input {...form.register('civilId')} maxLength={12} className="h-12 rounded-2xl border-2 ps-11 font-mono font-bold bg-slate-50/30" />
+                 <Input {...register('civilId')} maxLength={12} className="h-10 rounded-xl border-2 ps-11 font-mono font-bold bg-slate-50/30" />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.mobile')}</Label>
-              <Input {...form.register('mobile')} className="h-12 rounded-2xl border-2 font-bold bg-slate-50/30" placeholder="+965" />
+
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.mobile')} <span className="text-rose-500">*</span></Label>
+              <Input {...register('mobile')} className={cn("h-10 rounded-xl border-2 font-bold bg-slate-50/30", errors.mobile && "border-rose-200 bg-rose-50/20")} placeholder="+965" />
+              {errors.mobile && <p className="text-[10px] text-rose-500 font-bold mt-1">{errors.mobile.message as string}</p>}
             </div>
-            <div className="md:col-span-2 space-y-2">
+
+            <div className="md:col-span-2 space-y-1.5">
               <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.email')}</Label>
               <div className="relative">
                  <Mail className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
-                 <Input {...form.register('email')} type="email" className="h-12 rounded-2xl border-2 ps-11 font-bold text-start bg-slate-50/30" dir="ltr" />
+                 <Input {...register('email')} type="email" className="h-10 rounded-xl border-2 ps-11 font-bold text-start bg-slate-50/30" dir="ltr" />
               </div>
+              {errors.email && <p className="text-[10px] text-rose-500 font-bold mt-1">{errors.email.message as string}</p>}
             </div>
           </div>
 
           <div className="pt-6 border-t border-slate-50">
              <div className="bg-orange-50/50 p-6 rounded-3xl border-2 border-orange-100 flex flex-col md:flex-row items-center gap-6">
                 <div className="flex items-center gap-4 shrink-0 text-start">
-                   <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center text-[#e87c24] shadow-sm border border-orange-100">
-                      <Briefcase className="h-6 w-6" />
+                   <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-[#e87c24] shadow-sm border border-orange-100">
+                      <Briefcase className="h-5 w-5" />
                    </div>
                    <div className="text-start">
-                      <h4 className="font-black text-sm text-slate-800">{t('clients.form.engineer')}</h4>
+                      <h4 className="font-black text-sm text-slate-800">{t('clients.form.engineer')} <span className="text-rose-500">*</span></h4>
                       <p className="text-[9px] font-bold text-slate-400 uppercase">{t('clients.form.assignment')}</p>
                    </div>
                 </div>
                 
                 <div className="flex-1 w-full text-start">
                    <Select 
-                     disabled={!isAdmin} 
+                     disabled={!isAdmin && !initialData} 
                      value={assignedEngineerId} 
-                     onValueChange={(v) => form.setValue('assignedEngineerId', v)}
+                     onValueChange={(v) => setValue('assignedEngineerId', v, { shouldValidate: true })}
                    >
-                      <SelectTrigger className="h-12 rounded-xl border-2 bg-white font-bold">
+                      <SelectTrigger className={cn("h-11 rounded-xl border-2 bg-white font-bold", errors.assignedEngineerId && "border-rose-200 bg-rose-50")}>
                          <SelectValue placeholder={t('common.search')} />
                       </SelectTrigger>
-                      <SelectContent className="rounded-2xl border-0 shadow-2xl">
+                      <SelectContent className="rounded-xl border-2 shadow-2xl z-[200]">
                          {engineers.map(eng => (
                            <SelectItem key={eng.id} value={eng.id!} className="font-bold py-3">
                               {eng.fullName}
@@ -214,10 +230,11 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
                          ))}
                       </SelectContent>
                    </Select>
+                   {errors.assignedEngineerId && <p className="text-[10px] text-rose-500 font-bold mt-1">{errors.assignedEngineerId.message as string}</p>}
                 </div>
 
                 {!isAdmin && (
-                  <Badge className="bg-[#1e1b4b] text-white border-0 font-black text-[9px] px-4 py-2 rounded-xl uppercase shrink-0 gap-2">
+                  <Badge className="bg-slate-900 text-white border-0 font-black text-[9px] px-4 py-2 rounded-xl uppercase shrink-0 gap-2 h-11">
                      <ShieldCheck className="h-3 w-3 text-primary" />
                      {t('clients.form.autoAssigned')}
                   </Badge>
@@ -229,66 +246,72 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
 
       <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/[0.02]">
         <div className="bg-blue-50/30 p-6 border-b flex items-center justify-between">
-           <h3 className="text-base font-black font-headline text-slate-800">{t('clients.form.locationRadar')}</h3>
-           <MapPinned className="h-5 w-5 text-blue-600" />
+           <div className="flex items-center gap-3">
+              <MapPinned className="h-5 w-5 text-blue-600" />
+              <h3 className="text-base font-black font-headline text-slate-800">{t('clients.form.locationRadar')}</h3>
+           </div>
         </div>
         <CardContent className="p-8 space-y-10">
            <div className="p-10 bg-slate-50/50 rounded-[3rem] border-2 border-dashed border-blue-100 relative">
               <Label className="absolute top-4 right-10 text-[10px] font-black uppercase text-blue-400 tracking-[0.1em]">
                 {t('clients.form.mapLink')}
               </Label>
-              <div className={cn("flex items-center gap-4 pt-4", isRtl ? "flex-row-reverse" : "flex-row")}>
-                 <Button 
-                   type="button"
-                   onClick={() => setIsMapOpen(true)}
-                   className="h-14 px-8 rounded-2xl bg-[#1e1b4b] text-white font-black text-sm gap-3 hover:bg-slate-800 transition-all shadow-2xl shadow-indigo-900/20 shrink-0"
-                 >
-                    <Search className="h-5 w-5 text-[#e87c24]" />
-                    {t('clients.form.openMap')}
-                 </Button>
+              <div className={cn("flex items-center gap-4 pt-4", isRtl ? "flex-row" : "flex-row-reverse")}>
                  <div className="relative flex-1">
                     <Input 
-                      {...form.register('locationUrl')} 
+                      {...register('locationUrl')} 
                       placeholder="https://www.google.com/maps?q=..." 
-                      className="h-14 rounded-2xl border-2 border-orange-100 ps-6 pe-12 font-mono text-[11px] bg-white focus:border-primary/40 transition-all shadow-inner" 
+                      className="h-12 rounded-2xl border-2 border-slate-200 ps-6 pe-12 font-mono text-[11px] bg-white focus:border-primary/40 transition-all shadow-inner" 
                       dir="ltr"
                     />
                     <Globe className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-200" />
                  </div>
+                 <Button 
+                   type="button"
+                   onClick={() => setIsMapOpen(true)}
+                   className="h-12 px-8 rounded-xl bg-slate-900 text-white font-black text-sm gap-3 hover:bg-slate-800 transition-all shadow-xl shrink-0"
+                 >
+                    <Search className="h-4 w-4 text-primary" />
+                    {t('clients.form.openMap')}
+                 </Button>
               </div>
            </div>
 
            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pt-4">
-              <div className="space-y-2 text-start">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.governorate')}</Label>
-                <Select value={selectedGovId} onValueChange={(v) => { form.setValue('governorateId', v); form.setValue('areaId', ''); }}>
-                   <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/30"><SelectValue placeholder="..." /></SelectTrigger>
-                   <SelectContent className="rounded-2xl">
+              <div className="space-y-1.5 text-start">
+                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.governorate')} <span className="text-rose-500">*</span></Label>
+                <Select value={selectedGovId} onValueChange={(v) => { setValue('governorateId', v, { shouldValidate: true }); setValue('areaId', ''); }}>
+                   <SelectTrigger className={cn("h-10 rounded-xl border-2 font-bold bg-slate-50/30", errors.governorateId && "border-rose-200 bg-rose-50")}><SelectValue placeholder="..." /></SelectTrigger>
+                   <SelectContent className="rounded-xl border-2 shadow-2xl z-[200]">
                       {governorates?.map(g => <SelectItem key={g.id} value={g.id!} className="font-bold">{isRtl ? g.name : g.nameEn}</SelectItem>)}
                    </SelectContent>
                 </Select>
+                {errors.governorateId && <p className="text-[10px] text-rose-500 font-bold mt-1">{errors.governorateId.message as string}</p>}
               </div>
-              <div className="space-y-2 text-start">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.area')}</Label>
-                <Select disabled={!selectedGovId} value={selectedAreaId} onValueChange={(v) => form.setValue('areaId', v)}>
-                   <SelectTrigger className="h-12 rounded-xl border-2 font-bold bg-slate-50/30"><SelectValue placeholder="..." /></SelectTrigger>
-                   <SelectContent className="rounded-2xl">
+              
+              <div className="space-y-1.5 text-start">
+                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.area')} <span className="text-rose-500">*</span></Label>
+                <Select disabled={!selectedGovId} value={selectedAreaId} onValueChange={(v) => setValue('areaId', v, { shouldValidate: true })}>
+                   <SelectTrigger className={cn("h-10 rounded-xl border-2 font-bold bg-slate-50/30", errors.areaId && "border-rose-200 bg-rose-50")}><SelectValue placeholder="..." /></SelectTrigger>
+                   <SelectContent className="rounded-xl border-2 shadow-2xl z-[200]">
                       {areas?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}
                    </SelectContent>
                 </Select>
+                {errors.areaId && <p className="text-[10px] text-rose-500 font-bold mt-1">{errors.areaId.message as string}</p>}
               </div>
+
               <div className="grid grid-cols-3 md:col-span-2 gap-4">
-                 <div className="space-y-2 text-start">
+                 <div className="space-y-1.5 text-start">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.block')}</Label>
-                    <Input {...form.register('block')} className="h-12 rounded-xl border-2 font-bold text-center bg-slate-50/30" />
+                    <Input {...register('block')} className="h-10 rounded-xl border-2 font-bold text-center bg-slate-50/30" />
                  </div>
-                 <div className="space-y-2 text-start">
+                 <div className="space-y-1.5 text-start">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.street')}</Label>
-                    <Input {...form.register('street')} className="h-12 rounded-xl border-2 font-bold text-center bg-slate-50/30" />
+                    <Input {...register('street')} className="h-10 rounded-xl border-2 font-bold text-center bg-slate-50/30" />
                  </div>
-                 <div className="space-y-2 text-start">
+                 <div className="space-y-1.5 text-start">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.house')}</Label>
-                    <Input {...form.register('houseNumber')} className="h-12 rounded-xl border-2 font-bold text-center bg-slate-50/30" />
+                    <Input {...register('houseNumber')} className="h-10 rounded-xl border-2 font-bold text-center bg-slate-50/30" />
                  </div>
               </div>
            </div>
@@ -299,10 +322,10 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
         <Button 
           type="submit" 
           disabled={loading || generating} 
-          className="h-20 rounded-[2.5rem] px-16 bg-primary text-white font-black text-2xl shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all gap-4 border-b-8 border-orange-700"
+          className="h-14 rounded-2xl px-24 bg-primary text-white font-black text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all gap-4 border-b-8 border-orange-700"
         >
-          {loading ? <Loader2 className="animate-spin h-8 w-8" /> : <Save className="h-8 w-8" />}
-          {initialData ? t('common.saveChanges') : t('common.confirm')}
+          {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
+          {initialData ? tSafe('common.saveChanges', 'حفظ التعديلات', 'Save Changes') : tSafe('common.confirm', 'تأكيد وحفظ العميل', 'Confirm & Save')}
         </Button>
       </div>
 
@@ -310,7 +333,7 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
         isOpen={isMapOpen} 
         onClose={() => setIsMapOpen(false)}
         onSelect={handleLocationSelect}
-        initialUrl={form.watch('locationUrl')}
+        initialUrl={watch('locationUrl')}
       />
     </form>
   );
