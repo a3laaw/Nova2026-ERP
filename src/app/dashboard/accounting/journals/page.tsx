@@ -10,7 +10,7 @@ import {
   Trash2, ArrowRight, Calculator,
   LayoutGrid, DatabaseZap, Briefcase,
   Zap, Search, Check, ChevronDown, X,
-  AlertTriangle, CheckCircle2
+  AlertTriangle, CheckCircle2, ArrowDown
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, getDocs } from 'firebase/firestore';
@@ -31,8 +31,7 @@ import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 /**
  * شاشة قيود اليومية السيادية (Sovereign Journal Entries).
  * تم تحديث محرك الربط ليكون ديناميكياً وصامتاً (Silent Row-Level Linking).
- * تم فرض قاعدة منع الجمع بين المدين والدائن في سطر واحد (Strict Mutual Exclusion).
- * تم إصلاح ظهور "مصروف إداري عام" ليكون مشروطاً بنوع الحساب فقط.
+ * تم إضافة حقل "البيان" لكل سطر مع ميزة النسخ التلقائي للأسفل.
  */
 export default function JournalEntriesPage() {
   const { globalUser, user } = useAuthContext();
@@ -126,6 +125,17 @@ export default function JournalEntriesPage() {
     setForm({ ...form, lines: form.lines.filter((_, i) => i !== idx) });
   };
 
+  /**
+   * نسخ البيان للسطر التالي (Smart Memo Downloader)
+   */
+  const copyMemoToNext = (idx: number) => {
+    if (idx >= form.lines.length - 1) return;
+    const newLines = [...form.lines];
+    newLines[idx + 1].memo = newLines[idx].memo;
+    setForm({ ...form, lines: newLines });
+    toast({ title: isRtl ? 'تم النسخ للأسفل' : 'Memo copied down' });
+  };
+
   const updateLine = (idx: number, field: keyof (JournalEntryLine & { isAutoLinked: boolean }), val: any) => {
     let newLines = [...form.lines];
     
@@ -133,7 +143,6 @@ export default function JournalEntriesPage() {
        const acc = availableAccounts?.find(a => a.id === val);
        newLines[idx].accountId = val;
        newLines[idx].accountName = isRtl ? acc?.nameAr || '' : acc?.nameEn || '';
-       // تصفير الربط التلقائي عند تغيير الحساب
        newLines = autoLinkLine(idx, newLines[idx].projectId || '', val, newLines);
     }
     else if (field === 'projectId') {
@@ -200,7 +209,7 @@ export default function JournalEntriesPage() {
                     <Input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="h-12 border-2 rounded-xl font-bold" />
                  </div>
                  <div className="md:col-span-3 space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.notes')}</Label>
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'البيان العام للقيد' : 'Main Narration'}</Label>
                     <Input value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="..." className="h-12 border-2 rounded-xl font-bold bg-slate-50/30" />
                  </div>
               </div>
@@ -209,10 +218,11 @@ export default function JournalEntriesPage() {
                  <Table>
                     <TableHeader className="bg-slate-50">
                        <TableRow className="hover:bg-slate-50 border-0">
-                          <TableHead className="py-4 ps-6 text-[10px] font-black uppercase w-[280px]">{isRtl ? 'الحساب المالي' : 'Account'}</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase w-[240px]">{isRtl ? 'المشروع المرتبط' : 'Project'}</TableHead>
-                          <TableHead className="text-center text-[10px] font-black uppercase w-[120px]">{isRtl ? 'مدين' : 'Debit'}</TableHead>
-                          <TableHead className="text-center text-[10px] font-black uppercase w-[120px]">{isRtl ? 'دائن' : 'Credit'}</TableHead>
+                          <TableHead className="py-4 ps-6 text-[10px] font-black uppercase w-[240px]">{isRtl ? 'الحساب المالي' : 'Account'}</TableHead>
+                          <TableHead className="text-[10px] font-black uppercase w-[200px]">{isRtl ? 'المشروع المرتبط' : 'Project'}</TableHead>
+                          <TableHead className="text-[10px] font-black uppercase w-[220px]">{isRtl ? 'بيان السطر' : 'Line Memo'}</TableHead>
+                          <TableHead className="text-center text-[10px] font-black uppercase w-[100px]">{isRtl ? 'مدين' : 'Debit'}</TableHead>
+                          <TableHead className="text-center text-[10px] font-black uppercase w-[100px]">{isRtl ? 'دائن' : 'Credit'}</TableHead>
                           <TableHead className="w-[50px]"></TableHead>
                        </TableRow>
                     </TableHeader>
@@ -222,13 +232,11 @@ export default function JournalEntriesPage() {
                          const requiresCC = acc?.analyticalConfig?.costCenter === 'required';
                          const requiresPC = acc?.analyticalConfig?.profitCenter === 'required';
 
-                         // تصفية المشاريع ديناميكياً بناءً على العميل المربوط بالحساب
                          const dynamicProjects = (projects || []).filter((p: any) => {
                             if (!acc?.referenceId) return true;
                             return p.clientId === acc.referenceId;
                          });
 
-                         // منطق مسمى الخيار التلقائي (NONE): هل هو مصروف إداري أم مجرد بدون مشروع؟
                          const noneLabel = isRtl 
                             ? (acc?.type === 'expense' ? '--- مصروف إداري عام ---' : '--- بدون مشروع ---')
                             : '--- No Project ---';
@@ -256,7 +264,7 @@ export default function JournalEntriesPage() {
                                       ]}
                                       value={line.projectId || (line.accountId ? 'NONE' : '')}
                                       onChange={v => updateLine(idx, 'projectId', v)}
-                                      placeholder={isRtl ? "اختيار المشروع..." : "Project..."}
+                                      placeholder={isRtl ? "المشروع..." : "Project..."}
                                       disabled={!line.accountId}
                                     />
                                     
@@ -264,13 +272,13 @@ export default function JournalEntriesPage() {
                                        <div className="animate-in slide-in-from-top-1 space-y-2">
                                           {requiresCC && (
                                              <Select value={line.costCenterId} onValueChange={v => updateLine(idx, 'costCenterId', v)}>
-                                                <SelectTrigger className="h-8 rounded-lg border-2 border-rose-100 bg-rose-50 text-[10px] font-black text-rose-600"><SelectValue placeholder={isRtl ? "اختر مركز التكلفة..." : "Select Cost Center..."} /></SelectTrigger>
+                                                <SelectTrigger className="h-8 rounded-lg border-2 border-rose-100 bg-rose-50 text-[10px] font-black text-rose-600"><SelectValue placeholder={isRtl ? "مركز التكلفة..." : "Cost Center..."} /></SelectTrigger>
                                                 <SelectContent className="z-[161]">{costCenters?.filter(cc => cc.isAdministrative || cc.projectId === line.projectId).map(cc => <SelectItem key={cc.id} value={cc.id!} className="text-[10px] font-bold">{cc.name}</SelectItem>)}</SelectContent>
                                              </Select>
                                           )}
                                           {requiresPC && (
                                              <Select value={line.profitCenterId} onValueChange={v => updateLine(idx, 'profitCenterId', v)}>
-                                                <SelectTrigger className="h-8 rounded-lg border-2 border-rose-100 bg-rose-50 text-[10px] font-black text-rose-600"><SelectValue placeholder={isRtl ? "اختر مركز الربحية..." : "Select Profit Center..."} /></SelectTrigger>
+                                                <SelectTrigger className="h-8 rounded-lg border-2 border-rose-100 bg-rose-50 text-[10px] font-black text-rose-600"><SelectValue placeholder={isRtl ? "مركز الربحية..." : "Profit Center..."} /></SelectTrigger>
                                                 <SelectContent className="z-[161]">{profitCenters?.filter(pc => pc.projectId === line.projectId).map(pc => <SelectItem key={pc.id} value={pc.id!} className="text-[10px] font-bold">{pc.name}</SelectItem>)}</SelectContent>
                                              </Select>
                                           )}
@@ -285,13 +293,34 @@ export default function JournalEntriesPage() {
                                     )}
                                  </div>
                               </TableCell>
+                              <TableCell className="py-3">
+                                 <div className="flex items-center gap-1.5">
+                                    <Input 
+                                      value={line.memo || ''} 
+                                      onChange={e => updateLine(idx, 'memo', e.target.value)} 
+                                      placeholder={isRtl ? "بيان السطر..." : "Line memo..."}
+                                      className="h-9 text-[10px] font-bold border-2 rounded-xl bg-slate-50/20"
+                                    />
+                                    {idx < form.lines.length - 1 && (
+                                       <Button 
+                                         variant="ghost" 
+                                         size="icon" 
+                                         onClick={() => copyMemoToNext(idx)}
+                                         className="h-8 w-8 rounded-xl text-slate-300 hover:text-primary hover:bg-primary/5 transition-all shrink-0"
+                                         title={isRtl ? "نسخ للسطر التالي" : "Copy to next line"}
+                                       >
+                                          <ArrowDown className="h-4 w-4" />
+                                       </Button>
+                                    )}
+                                 </div>
+                              </TableCell>
                               <TableCell className="p-3">
                                  <Input 
                                    type="number" 
                                    step="0.001" 
                                    value={line.debit === 0 ? '' : line.debit} 
                                    onChange={e => updateLine(idx, 'debit', e.target.value)} 
-                                   className="h-11 text-center font-black text-blue-600 text-lg border-2 rounded-xl bg-slate-50/30" 
+                                   className="h-10 text-center font-black text-blue-600 border-2 rounded-xl bg-slate-50/30" 
                                  />
                               </TableCell>
                               <TableCell className="p-3">
@@ -300,7 +329,7 @@ export default function JournalEntriesPage() {
                                    step="0.001" 
                                    value={line.credit === 0 ? '' : line.credit} 
                                    onChange={e => updateLine(idx, 'credit', e.target.value)} 
-                                   className="h-11 text-center font-black text-rose-600 text-lg border-2 rounded-xl bg-slate-50/30" 
+                                   className="h-10 text-center font-black text-rose-600 border-2 rounded-xl bg-slate-50/30" 
                                  />
                               </TableCell>
                               <TableCell className="pe-4 text-center">
@@ -312,13 +341,13 @@ export default function JournalEntriesPage() {
                     </TableBody>
                     <tfoot className="bg-slate-50/80 border-t-4 border-slate-100">
                        <tr>
-                          <td className="p-6 ps-8" colSpan={2}>
+                          <td className="p-6 ps-8" colSpan={3}>
                              <Button variant="outline" size="sm" onClick={handleAddLine} className="font-black text-[10px] h-10 px-8 rounded-xl border-2 bg-white hover:bg-slate-100 gap-2">
                                 <Plus className="h-4 w-4" /> {t('common.add')}
                              </Button>
                           </td>
-                          <td className="p-6 text-center font-black text-blue-600 text-2xl border-x border-white shadow-inner">{totals.debit.toLocaleString()}</td>
-                          <td className="p-6 text-center font-black text-rose-600 text-2xl shadow-inner">{totals.credit.toLocaleString()}</td>
+                          <td className="p-6 text-center font-black text-blue-600 text-xl border-x border-white shadow-inner">{totals.debit.toLocaleString()}</td>
+                          <td className="p-6 text-center font-black text-rose-600 text-xl shadow-inner">{totals.credit.toLocaleString()}</td>
                           <td className="pe-4"></td>
                        </tr>
                     </tfoot>
@@ -353,7 +382,7 @@ export default function JournalEntriesPage() {
                  <TableHeader className="bg-slate-50/50">
                     <TableRow className="border-b-2">
                        <TableHead className="py-4 ps-8 text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{tSafe('inline.entry_date', 'رقم القيد / التاريخ', 'Entry No. / Date')}</TableHead>
-                       <TableHead className="text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('common.notes')}</TableHead>
+                       <TableHead className="text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'البيان العام' : 'Narration'}</TableHead>
                        <TableHead className="text-end text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('common.amount')}</TableHead>
                        <TableHead className="text-center text-[10px] font-black uppercase text-slate-500 tracking-widest">{t('common.status')}</TableHead>
                        <TableHead className="pe-8"></TableHead>
