@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -19,7 +19,7 @@ import {
   UserPlus, Save, Loader2, 
   Mail, Fingerprint, MapPinned,
   Briefcase, CheckCircle2,
-  LocateFixed, Sparkles
+  LocateFixed, Sparkles, Clock
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
@@ -30,11 +30,12 @@ import { paths } from '@/firebase/multi-tenant';
 import { Governorate, Area } from '@/types/reference';
 import { Employee } from '@/types/hr';
 import { LocationPickerDialog } from './location-picker-dialog';
+import { ClientService } from '@/services/client-service';
 import { cn } from '@/lib/utils';
 import { Badge } from "@/components/ui/badge";
 
 const clientFormSchema = z.object({
-  fileNumber: z.string().optional(), // يتم توليده في السيرفر
+  fileNumber: z.string().optional(), 
   nameAr: z.string().min(3, "يجب أن يكون الاسم 3 حروف على الأقل"),
   nameEn: z.string().default(''),
   mobile: z.string().min(8, "رقم الهاتف غير صحيح"),
@@ -60,6 +61,9 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
   
+  const [projectedNumber, setProjectedNumber] = useState("");
+  const [fetchingNumber, setFetchingNumber] = useState(false);
+
   const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm({
     resolver: zodResolver(clientFormSchema),
     defaultValues: initialData || { 
@@ -75,6 +79,18 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
   const selectedAreaId = watch('areaId');
   const assignedEngineerId = watch('assignedEngineerId');
   const locationUrl = watch('locationUrl');
+
+  // جلب الرقم المتوقع دون حجزه (للمعاينة فقط)
+  useEffect(() => {
+    if (!initialData && db && companyId) {
+      setFetchingNumber(true);
+      const service = new ClientService(db, companyId);
+      service.getProjectedNextNumber().then(num => {
+        setProjectedNumber(num);
+        setFetchingNumber(false);
+      });
+    }
+  }, [db, companyId, initialData]);
 
   const govsQuery = useMemo(() => companyId && db ? query(collection(db, paths.governorates(companyId)), orderBy('order')) : null, [db, companyId]);
   const areasQuery = useMemo(() => companyId && db && selectedGovId ? query(collection(db, paths.areas(companyId, selectedGovId)), orderBy('order')) : null, [db, companyId, selectedGovId]);
@@ -129,14 +145,19 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
               <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.fileNumber')}</Label>
               <div className="relative">
                 <Input 
-                  value={initialData?.fileNumber || ""} 
+                  value={initialData?.fileNumber || projectedNumber} 
                   readOnly 
-                  placeholder={isRtl ? "توليد آلي عند الحفظ" : "Auto-Generated"}
+                  placeholder={isRtl ? "جاري الحساب..." : "Fetching..."}
                   className="h-10 rounded-xl border-2 font-mono font-black bg-slate-50 text-primary border-slate-100 italic" 
                 />
-                {!initialData && <Sparkles className="absolute end-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-primary/30" />}
+                {!initialData && (fetchingNumber ? <Loader2 className="absolute end-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-primary/30" /> : <Clock className="absolute end-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-500/50" />)}
               </div>
-              {!initialData && <p className="text-[9px] text-slate-400 font-bold mt-1 px-1">{isRtl ? "سيتم حجز رقم متسلسل جديد فور الحفظ الناجح." : "A sequence number will be assigned upon successful save."}</p>}
+              {!initialData && (
+                <div className="mt-1 px-1 flex items-center gap-1.5">
+                   <div className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
+                   <p className="text-[9px] text-emerald-600 font-bold uppercase tracking-tight">{isRtl ? "رقم محجوز مؤقتاً" : "Provisionally Reserved"}</p>
+                </div>
+              )}
             </div>
 
             <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
