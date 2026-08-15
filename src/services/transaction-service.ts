@@ -97,8 +97,8 @@ export class TransactionService {
     const accService = new AccountingService(this.db, this.companyId);
     
     // --- الأتمتة المالية السيادية للمشروع (WIP) ---
-    // التعديل السيادي: المسمى يبدأ باسم العميل + نوع المشروع + رقم التسلسل (مثلاً: أحمد علي - هيكل 01)
-    const shortProjectName = `${data.clientName} - ${data.subServiceName} (${seqStr})`;
+    // التسمية السيادية: اسم العميل - اسم الخدمة (WIP)
+    const shortProjectName = `${data.clientName} - ${data.subServiceName} (WIP)`;
     
     await accService.ensureControlAccount('1205', 'أعمال تحت التنفيذ (WIP)', 'Work In Progress', 'asset');
     await accService.createAutomaticSubAccount(
@@ -113,6 +113,14 @@ export class TransactionService {
       transactionId, 
       shortProjectName, 
       `PC-${transactionNumber}`
+    );
+
+    // إنشاء مركز تكلفة آلي للمشروع (للمصاريف المباشرة)
+    await accService.createAutomaticCostCenter(
+       transactionId,
+       shortProjectName,
+       `CC-${transactionNumber}`,
+       transactionId
     );
 
     const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));

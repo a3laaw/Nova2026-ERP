@@ -17,7 +17,9 @@ import {
   Plus,
   X,
   Workflow,
-  Clock
+  Clock,
+  Banknote,
+  CheckCircle2
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, where, orderBy } from 'firebase/firestore';
@@ -156,6 +158,24 @@ export default function ContractViewPage() {
     }
   };
 
+  const handleMarkAsPaid = async () => {
+    if (!db || !companyId || !user) return;
+    setSaving(true);
+    try {
+      const service = new DocumentService(db, companyId, permissions);
+      await service.updateContract(contractId, {
+        status: 'paid',
+        isPaid: true,
+        updatedBy: user.uid
+      }, user.uid);
+      toast({ title: tSafe('inline.payment.documented', 'تم توثيق السداد وتفعيل الحسابات', 'Payment documented & Accounts activated') });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('common.error') });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleCancel = () => {
     if (contract && !contract.isHistoryRecorded) {
       router.push(`/dashboard/clients/${clientId}/transactions/${contract.transactionId}`);
@@ -241,6 +261,11 @@ export default function ContractViewPage() {
               </>
            ) : (
              <>
+               {isAdmin && (contract.status === 'approved' || contract.status === 'signed') && !contract.isPaid && (
+                  <Button onClick={handleMarkAsPaid} disabled={saving} size="sm" className="rounded-xl h-10 px-6 font-black gap-2 bg-emerald-600 text-white shadow-lg border-b-4 border-emerald-800">
+                     {saving ? <Loader2 className="animate-spin h-4 w-4" /> : <Banknote className="h-4 w-4" />} {tSafe('inline.mark.as.paid', 'توثيق السداد', 'Mark as Paid')}
+                  </Button>
+               )}
                <Button onClick={() => setIsEditing(true)} variant="outline" size="sm" className="rounded-xl h-10 px-6 font-black gap-2 border-2 bg-white text-primary hover:bg-primary/5">
                   <Edit3 className="h-4 w-4" /> {tSafe('inline.edit.contract', 'تعديل البنود', 'Edit Contract')}
                </Button>
@@ -252,7 +277,7 @@ export default function ContractViewPage() {
         </div>
       </div>
 
-      <PrintWrapper title={t('contracts.officialTitle')} className="mt-2">
+      <PrintWrapper title={t('contracts.officialTitle')} className="mt-2" fullWidth={true}>
          <div className="space-y-10 text-start">
             <div className="p-6 bg-primary/5 rounded-[2rem] border-2 border-dashed border-primary/20 flex flex-col md:flex-row items-center justify-between gap-8 shadow-sm print:hidden">
                 <div className="flex items-center gap-4 text-start">
@@ -407,7 +432,7 @@ export default function ContractViewPage() {
                                 </td>
                                 <td className="p-5 text-end pe-10 w-40">
                                    {isEditing && editData.pricingMode !== 'percentage' ? (
-                                      <Input type="number" step="0.001" value={m.amount || 0} onChange={e => updateMilestone(idx, 'amount', Number(e.target.value))} className="h-8 w-32 ms-auto text-end font-black text-emerald-600 text-sm bg-slate-50 border-2" />
+                                      <Input type="number" step="0.001" value={m.amount || 0} onChange={e => updateMilestone(idx, 'amount', Number(e.target.value))} className="h-8 w-32 ms-auto text-end font-black text-emerald-600 text-sm bg-slate-50 border-2 rounded-xl" />
                                    ) : (
                                       <span className="font-mono font-black text-emerald-600 text-lg">{(lineAmount || 0).toLocaleString()} <span className="text-[10px] opacity-40">KWD</span></span>
                                    )}

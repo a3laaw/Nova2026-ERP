@@ -32,6 +32,7 @@ export class DocumentService {
 
   /**
    * تحديث بيانات العقد واعتماده مالياً
+   * يقوم بتأسيس حسابات الذمم (1202) آلياً
    */
   async updateContract(id: string, data: Partial<Contract>, userId: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
@@ -51,7 +52,7 @@ export class DocumentService {
 
     const finalStatus = data.status || currentData.status;
     
-    // عند اعتماد العقد، نقوم بتأسيس حساب العميل المالي (ذمم - 1202)
+    // عند اعتماد العقد أو توقيع السداد، نقوم بتأسيس حساب العميل المالي (ذمم - 1202)
     if (['approved', 'paid', 'active', 'signed'].includes(finalStatus)) {
        const clientRef = doc(this.db, paths.clients(this.companyId), currentData.clientId);
        await updateDoc(clientRef, { status: 'contracted', updatedAt: serverTimestamp() });
@@ -59,17 +60,20 @@ export class DocumentService {
        const accService = new AccountingService(this.db, this.companyId);
        
        // تأسيس حساب العميل (Accounts Receivable) تحت الكود المرجعي 1202
-       // التعديل السيادي: الاسم يبدأ باسم العميل لسهولة البحث (مثلاً: فلان الفلاني - ذمم)
+       // التسمية السيادية: اسم العميل - ذمم (AR)
        await accService.ensureControlAccount('1202', 'ذمم العملاء', 'Accounts Receivable', 'asset');
        await accService.createAutomaticSubAccount(
          '1202', 
          currentData.clientId, 
-         `${currentData.clientName} (#${currentData.fileNumber})`, 
+         `${currentData.clientName} - ذمم (AR)`, 
          'asset'
        );
 
        const billing = new BillingService(this.db, this.companyId);
-       await billing.triggerMilestoneBilling(currentData.transactionId || '', 'SIGNING', 'at', userId, 'System Finance');
+       // إذا تم تغيير الحالة إلى مدفوع، نطلق مطالبة سداد توقيع العقد فوراً
+       if (finalStatus === 'paid' || data.isPaid) {
+          await billing.triggerMilestoneBilling(currentData.transactionId || '', 'SIGNING', 'at', userId, 'Finance Auto-Pilot');
+       }
     }
   }
 
