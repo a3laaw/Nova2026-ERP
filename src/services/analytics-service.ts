@@ -109,14 +109,12 @@ export class AnalyticsService {
    * تحليل الربحية الجزيئي (على مستوى البند) لمشروع محدد
    */
   async getProjectDetailedProfitability(projectId: string): Promise<ItemProfitability[]> {
-    // 1. جلب بنود المقايسة
     const boqsSnap = await getDocs(query(collection(this.db, paths.boqs(this.companyId)), where('transactionId', '==', projectId)));
     if (boqsSnap.empty) return [];
     const boqId = boqsSnap.docs[0].id;
     const itemsSnap = await getDocs(collection(this.db, paths.boqItems(this.companyId, boqId)));
     const boqItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as BOQItem));
 
-    // 2. جلب إيرادات البنود من المستخلصات المعتمدة (IPCs)
     const ipcsSnap = await getDocs(query(collection(this.db, paths.ipcs(this.companyId)), where('transactionId', '==', projectId), where('status', '==', 'approved')));
     const itemRevenueMap = new Map<string, number>();
     ipcsSnap.docs.forEach(d => {
@@ -127,7 +125,6 @@ export class AnalyticsService {
       });
     });
 
-    // 3. جلب تكاليف البنود من سجلات التنفيذ الميدانية (Executions)
     const execsSnap = await getDocs(query(collection(this.db, paths.executions(this.companyId)), where('transactionId', '==', projectId), where('isArchived', '==', false)));
     const itemCostMap = new Map<string, number>();
     execsSnap.docs.forEach(d => {
@@ -138,7 +135,6 @@ export class AnalyticsService {
       itemCostMap.set(exec.boqItemId, current + laborCost + equipCost);
     });
 
-    // 4. بناء التقرير الجزيئي
     return boqItems.map(item => {
       const revenue = itemRevenueMap.get(item.id!) || 0;
       const cost = itemCostMap.get(item.id!) || 0;
@@ -160,7 +156,8 @@ export class AnalyticsService {
   }
 
   /**
-   * تحليل جدوى الموارد
+   * تحليل جدوى الموارد (ROI)
+   * يتم استخراج "القيمة المنتجة" من ساعات العمل الميدانية الفعلية مضروبة في سعر الساعة المرجعي في الـ BOQ
    */
   async getResourcesProfitability(): Promise<ResourceProfitability[]> {
     const [empsSnap, equipSnap, execsSnap] = await Promise.all([
@@ -175,12 +172,16 @@ export class AnalyticsService {
 
     const resourceStats: ResourceProfitability[] = [];
 
+    // تحليل الموظفين
     employees.forEach(emp => {
       const monthlyCost = emp.basicSalary || 0; 
       let generatedValue = 0;
+
       executions.forEach(ex => {
+        // البحث عن هذا الموظف في تفاصيل العمالة لكل سجل تنفيذ
         const myLogs = (ex.laborDetails || []).filter((l: any) => l.resourceId === emp.id);
         myLogs.forEach((log: any) => {
+          // القيمة المنتجة = الساعات × سعر الساعة المرجعي الموثق وقت الإنجاز
           generatedValue += (log.hours || 0) * (log.hourlyCostRef || 0);
         });
       });
@@ -196,13 +197,22 @@ export class AnalyticsService {
       });
     });
 
+    // تحليل المعدات
     equipment.forEach(eq => {
+      // تكلفة المعدة التقديرية (الإهلاك الشهري أو الإيجار الثابت)
       const depRate = eq.hourlyDepreciationRate || 0;
+      const rentalRate = eq.hourlyRentalRate || 0;
+      const baseHourlyCost = eq.ownershipType === 'owned' ? depRate : rentalRate;
+      
+      const totalCost = baseHourlyCost * 160; // افتراض 160 ساعة تشغيل شهرية كقاعدة تكلفة
       let generatedValue = 0;
+
       executions.forEach(ex => {
+        // البحث عن هذه المعدة في سجلات التنفيذ
         const myLogs = (ex.equipmentUsed || []).filter((e: any) => e.equipmentId === eq.id);
         myLogs.forEach((log: any) => {
-          generatedValue += (log.hoursUsed || 0) * (log.hourlyRateRef || 0);
+          // القيمة المنتجة للمعدة = الساعات × سعر ساعة التشغيل المرجعي في المقايسة
+          generatedValue += (log.hours || log.hoursUsed || 0) * (log.hourlyRateRef || 0);
         });
       });
 
@@ -210,10 +220,10 @@ export class AnalyticsService {
         resourceId: eq.id!,
         name: eq.name,
         type: 'equipment',
-        totalCost: depRate * 160, // افتراض تكلفة شهرية تشغيلية
+        totalCost: totalCost,
         valueGenerated: generatedValue,
-        netContribution: generatedValue - (depRate * 160),
-        efficiency: (depRate * 160) > 0 ? Math.round((generatedValue / (depRate * 160)) * 100) : 0
+        netContribution: generatedValue - totalCost,
+        efficiency: totalCost > 0 ? Math.round((generatedValue / totalCost) * 100) : 0
       });
     });
 
