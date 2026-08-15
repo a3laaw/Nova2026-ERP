@@ -8,10 +8,9 @@ import { Input } from "@/components/ui/input";
 import { 
   FileText, Plus, Loader2, Save, 
   Trash2, ArrowRight, Calculator,
-  LayoutGrid, DatabaseZap, Briefcase,
   Zap, Search, Check, ChevronDown, X,
   AlertTriangle, CheckCircle2, ArrowDown,
-  Sparkles
+  Sparkles, Hash
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, getDocs } from 'firebase/firestore';
@@ -31,9 +30,9 @@ import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 
 /**
  * شاشة قيود اليومية السيادية (Sovereign Journal Entries).
- * - تطهير الحساب المالي (COA Purity): يظهر فقط حسابات الشجرة الأصلية.
- * - محرك تجميع البيان (Narration Aggregator): يصيغ البيان العام آلياً من السطور.
- * - الربط الصامت (Silent Row Linker): يربط مراكز التكلفة آلياً بالمشروع.
+ * - التسجيل الحصري: يسمح بالاختيار فقط من الحسابات الفرعية (Leaf Accounts).
+ * - محرك تجميع البيان: يصيغ البيان العام آلياً من تفاصيل السطور بدون تكرار.
+ * - الفلترة الموجهة: يربط قائمة المشاريع بهوية الحساب المختار في السطر.
  */
 export default function JournalEntriesPage() {
   const { globalUser, user } = useAuthContext();
@@ -79,16 +78,15 @@ export default function JournalEntriesPage() {
   const { data: profitCenters } = useCollection<ProfitCenter>(profitCentersQuery);
 
   /**
-   * تصفية الحسابات المالية (COA Purity):
-   * نظهر فقط الحسابات التي ليست "مجموعات" (ليست Group) 
-   * والأهم: نستبعد الحسابات التي تحمل referenceId (لأنها أسماء مشاريع وليست حسابات شجرة قياسية)
+   * تطهير القائمة (Postable Accounts Filter):
+   * القاعدة السيادية: تظهر فقط الحسابات التي ليس لها أبناء (Leaf Nodes).
    */
   const availableAccounts = useMemo(() => {
-    return (accounts || []).filter(a => !a.isGroup && !(a as any).referenceId);
+    return (accounts || []).filter(a => a.isGroup === false);
   }, [accounts]);
 
   /**
-   * محرك تجميع البيان العام (Narration Aggregator Engine)
+   * محرك تجميع البيان الذكي (Auto-Narration Aggregator)
    * يراقب سطور القيد، يجمع البيانات الفريدة، ويصيغها في البيان العام تلقائياً.
    */
   useEffect(() => {
@@ -159,7 +157,6 @@ export default function JournalEntriesPage() {
     const newLines = [...form.lines];
     newLines[idx + 1].memo = newLines[idx].memo;
     setForm({ ...form, lines: newLines });
-    toast({ title: isRtl ? 'تم النسخ للأسفل' : 'Memo copied down' });
   };
 
   const updateLine = (idx: number, field: keyof (JournalEntryLine & { isAutoLinked: boolean }), val: any) => {
@@ -169,7 +166,9 @@ export default function JournalEntriesPage() {
        const acc = accounts?.find(a => a.id === val);
        newLines[idx].accountId = val;
        newLines[idx].accountName = isRtl ? acc?.nameAr || '' : acc?.nameEn || '';
-       newLines = autoLinkLine(idx, newLines[idx].projectId || '', val, newLines);
+       // تصفير المشروع إذا تغير الحساب لضمان المزامنة
+       newLines[idx].projectId = ''; 
+       newLines = autoLinkLine(idx, '', val, newLines);
     }
     else if (field === 'projectId') {
        newLines[idx].projectId = val === 'NONE' ? '' : val;
@@ -246,8 +245,8 @@ export default function JournalEntriesPage() {
                  <Table>
                     <TableHeader className="bg-slate-50">
                        <TableRow className="hover:bg-slate-50 border-0">
-                          <TableHead className="py-4 ps-6 text-[10px] font-black uppercase w-[240px]">{isRtl ? 'الحساب المالي' : 'Account'}</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase w-[200px]">{isRtl ? 'المشروع المرتبط' : 'Project'}</TableHead>
+                          <TableHead className="py-4 ps-6 text-[10px] font-black uppercase w-[240px]">{isRtl ? 'الحساب المالي (فرعي)' : 'Postable Account'}</TableHead>
+                          <TableHead className="text-[10px] font-black uppercase w-[200px]">{isRtl ? 'المشروع المرتبط' : 'Linked Project'}</TableHead>
                           <TableHead className="text-[10px] font-black uppercase w-[220px]">{isRtl ? 'بيان السطر' : 'Line Memo'}</TableHead>
                           <TableHead className="text-center text-[10px] font-black uppercase w-[100px]">{isRtl ? 'مدين' : 'Debit'}</TableHead>
                           <TableHead className="text-center text-[10px] font-black uppercase w-[100px]">{isRtl ? 'دائن' : 'Credit'}</TableHead>
@@ -257,6 +256,15 @@ export default function JournalEntriesPage() {
                     <TableBody>
                        {form.lines.map((line, idx) => {
                          const acc = accounts?.find(a => a.id === line.accountId);
+                         
+                         // فلترة المشاريع بناءً على الحساب المختار
+                         const filteredProjects = projects?.filter(p => {
+                            if (!acc || !acc.referenceId) return true;
+                            // إذا كان الحساب مربوطاً بعميل (مثل ذمم 1202)، اظهر مشاريع هذا العميل فقط
+                            if (acc.code.startsWith('1202')) return p.clientId === acc.referenceId;
+                            return true;
+                         });
+
                          const requiresCC = acc?.analyticalConfig?.costCenter === 'required';
                          const requiresPC = acc?.analyticalConfig?.profitCenter === 'required';
 
@@ -271,7 +279,7 @@ export default function JournalEntriesPage() {
                                    options={(availableAccounts || []).map(a => ({ id: a.id!, name: isRtl ? a.nameAr : a.nameEn, subText: a.code }))}
                                    value={line.accountId}
                                    onChange={v => updateLine(idx, 'accountId', v)}
-                                   placeholder={isRtl ? "اختر الحساب..." : "Select Account..."}
+                                   placeholder={isRtl ? "اختر الحساب الفرعي..." : "Select Account..."}
                                  />
                               </TableCell>
                               <TableCell className="py-3">
@@ -279,7 +287,7 @@ export default function JournalEntriesPage() {
                                     <SearchableDropdown
                                       options={[
                                          { id: 'NONE', name: noneLabel },
-                                         ...(projects || []).map(p => ({ 
+                                         ...(filteredProjects || []).map(p => ({ 
                                             id: p.id!, 
                                             name: p.clientName, 
                                             subText: `${p.subServiceName} (#${p.transactionNumber})` 
