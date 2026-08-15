@@ -85,7 +85,7 @@ export default function JournalEntriesPage() {
   const { data: costCenters } = useCollection<CostCenter>(costCentersQuery);
   const { data: profitCenters } = useCollection<ProfitCenter>(profitCentersQuery);
 
-  // عرض الحسابات الفرعية فقط (Leaf Accounts) كما طلب المهندس
+  // عرض الحسابات الفرعية فقط (Leaf Accounts) - القاعدة السيادية الصارمة
   const availableAccounts = useMemo(() => {
     return (accounts || []).filter(a => a.isGroup === false);
   }, [accounts]);
@@ -189,12 +189,12 @@ export default function JournalEntriesPage() {
     else if (field === 'debit') {
        const debitVal = Number(val) || 0;
        newLines[idx].debit = debitVal;
-       if (debitVal > 0) newLines[idx].credit = 0; // حماية السطر (Mutual Exclusion)
+       if (debitVal > 0) newLines[idx].credit = 0; 
     }
     else if (field === 'credit') {
        const creditVal = Number(val) || 0;
        newLines[idx].credit = creditVal;
-       if (creditVal > 0) newLines[idx].debit = 0; // حماية السطر (Mutual Exclusion)
+       if (creditVal > 0) newLines[idx].debit = 0; 
     }
     else { (newLines[idx] as any)[field] = val; }
     setForm({ ...form, lines: newLines });
@@ -321,7 +321,7 @@ export default function JournalEntriesPage() {
               </div>
 
               <div className="flex flex-col md:flex-row justify-between items-center bg-slate-50 p-8 rounded-[2.5rem] border-2 border-white shadow-inner gap-6">
-                 <div className={cn("flex items-center gap-3 px-8 py-3 rounded-2xl font-black text-xs shadow-xl", isBalanced ? "bg-emerald-600 text-white" : "bg-rose-500 text-white animate-pulse")}>
+                 <div className={cn("flex items-center gap-3 px-8 py-3 rounded-2xl font-black text-xs shadow-xl", isBalanced ? "bg-emerald-600 text-white" : "bg-rose-50 text-white animate-pulse")}>
                     {isBalanced ? <CheckCircle2 className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
                     {isBalanced ? t('accounting.journals.balanced') : t('accounting.journals.unbalanced')}
                  </div>

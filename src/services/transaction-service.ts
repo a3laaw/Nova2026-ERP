@@ -59,7 +59,8 @@ export class TransactionService {
 
     const clientData = clientSnap.data();
     const nextCounter = (clientData.transactionCounter || 0) + 1;
-    const transactionNumber = `${clientData.fileNumber}-${nextCounter.toString().padStart(2, '0')}`;
+    const seqStr = nextCounter.toString().padStart(2, '0');
+    const transactionNumber = `${clientData.fileNumber}-${seqStr}`;
 
     const batch = writeBatch(this.db);
     const transRef = doc(collection(this.db, paths.transactions(this.companyId)));
@@ -95,21 +96,22 @@ export class TransactionService {
 
     const accService = new AccountingService(this.db, this.companyId);
     
-    // --- الأتمتة المالية السيادية للمشروع ---
-    // 1. إنشاء حساب "أعمال تحت التنفيذ - WIP" مخصص للمشروع تحت كود (1205)
-    // التعديل السيادي: إضافة اسم العميل لمطلع الحساب لسهولة التعرف عليه في القيود
+    // --- الأتمتة المالية السيادية للمشروع (WIP) ---
+    // التعديل السيادي: المسمى يبدأ باسم العميل + نوع المشروع + رقم التسلسل (مثلاً: أحمد علي - هيكل 01)
+    const shortProjectName = `${data.clientName} - ${data.subServiceName} (${seqStr})`;
+    
     await accService.ensureControlAccount('1205', 'أعمال تحت التنفيذ (WIP)', 'Work In Progress', 'asset');
     await accService.createAutomaticSubAccount(
       '1205', 
       transactionId, 
-      `مشروع: ${data.clientName} - ${data.subServiceName} (${transactionNumber})`, 
+      shortProjectName, 
       'asset'
     );
 
-    // 2. إنشاء مركز ربحية آلي للمشروع لمطابقة الميدان بالمالية
+    // إنشاء مركز ربحية آلي للمشروع
     await accService.createAutomaticProfitCenter(
       transactionId, 
-      `ربحية: ${data.clientName} - ${data.subServiceName}`, 
+      shortProjectName, 
       `PC-${transactionNumber}`
     );
 
@@ -117,7 +119,7 @@ export class TransactionService {
     batch.set(timelineRef, {
       transactionId,
       type: 'system',
-      content: `[إجراء نظام] تم فتح المعاملة الفنية بنجاح. تم تأسيس حساب WIP ومركز ربحية للمشروع.`,
+      content: `[إجراء نظام] تم فتح المعاملة الفنية بنجاح. تم تأسيس حساب WIP ومركز ربحية باسم: ${shortProjectName}`,
       userId,
       userName,
       companyId: this.companyId,

@@ -59,12 +59,12 @@ export class DocumentService {
        const accService = new AccountingService(this.db, this.companyId);
        
        // تأسيس حساب العميل (Accounts Receivable) تحت الكود المرجعي 1202
-       // التعديل السيادي: توضيح الاسم بجانب الكود لسهولة البحث في القيود
+       // التعديل السيادي: الاسم يبدأ باسم العميل لسهولة البحث (مثلاً: فلان الفلاني - ذمم)
        await accService.ensureControlAccount('1202', 'ذمم العملاء', 'Accounts Receivable', 'asset');
        await accService.createAutomaticSubAccount(
          '1202', 
          currentData.clientId, 
-         `عميل: ${currentData.clientName} (${currentData.fileNumber})`, 
+         `${currentData.clientName} (#${currentData.fileNumber})`, 
          'asset'
        );
 
