@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -5,14 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   LayoutTemplate, FileText, Gavel, FileSpreadsheet, 
-  ChevronRight, ArrowUpRight, Handshake
+  ChevronRight, ArrowUpRight, Handshake, HardHat, Compass
 } from "lucide-react";
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/context/language-context';
 import { cn } from '@/lib/utils';
 
 export default function TemplatesHubPage() {
-  const { t, dir, lang, tSafe } = useLanguage();
+  const { t, lang, dir, tSafe } = useLanguage();
   const router = useRouter();
   const isRtl = lang === 'ar';
 
@@ -27,13 +28,23 @@ export default function TemplatesHubPage() {
       path: '/dashboard/settings/templates/quotations'
     },
     {
-      id: 'contracts',
-      title: t('contractTemplates'),
-      desc: t('contractTemplates.desc'),
-      icon: Gavel,
+      id: 'consulting_contracts',
+      title: isRtl ? 'عقود التصميم والاستشارات' : 'Consulting Contracts',
+      desc: isRtl ? 'نماذج أتعاب التصميم، الإشراف، والتراخيص الهندسية.' : 'Design fees and engineering supervision templates.',
+      icon: Compass,
       color: 'text-indigo-600',
       bg: 'bg-indigo-50',
-      path: '/dashboard/settings/templates/contracts'
+      path: '/dashboard/settings/templates/contracts?scope=CONSULTING'
+    },
+    {
+      id: 'construction_contracts',
+      title: isRtl ? 'عقود التنفيذ والمقاولات' : 'Construction Contracts',
+      desc: isRtl ? 'قوالب تنفيذ الهيكل، الصحي، الكهرباء، والتشطيبات.' : 'Skeleton, MEP, and finishing execution templates.',
+      icon: HardHat,
+      color: 'text-orange-600',
+      bg: 'bg-orange-50',
+      path: '/dashboard/settings/templates/contracts?scope=CONSTRUCTION',
+      primary: true
     },
     {
       id: 'subcon',
@@ -69,12 +80,14 @@ export default function TemplatesHubPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {templateModules.map((module) => (
           <Card 
             key={module.id} 
-            className="border-0 shadow-2xl rounded-[3rem] bg-white group hover:shadow-primary/5 transition-all cursor-pointer overflow-hidden border-b-8"
-            style={{ borderBottomColor: `var(--${module.id}-color)` }}
+            className={cn(
+              "border-0 shadow-2xl rounded-[3rem] bg-white group hover:shadow-primary/5 transition-all cursor-pointer overflow-hidden border-b-8",
+              module.primary ? "border-b-primary lg:scale-105 z-10" : "border-b-slate-100"
+            )}
             onClick={() => router.push(module.path)}
           >
             <CardHeader className="p-10 pb-6 text-start">
