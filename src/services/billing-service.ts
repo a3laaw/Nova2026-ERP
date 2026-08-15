@@ -38,8 +38,6 @@ export class BillingService {
   ) {
     if (!this.db || !this.companyId || !transactionId || !technicalStageId) return null;
 
-    console.log(`[Billing Engine] Checking triggers for Trans: ${transactionId}, Stage: ${technicalStageId}, Timing: ${timing}`);
-
     const contractsSnap = await getDocs(query(
       collection(this.db, paths.contracts(this.companyId)), 
       where('transactionId', '==', transactionId),
@@ -152,7 +150,7 @@ export class BillingService {
     
     const subContract = subContractsSnap.empty ? null : subContractsSnap.docs[0].data();
     
-    // فرض نسبة 5% إذا لم تكن معرفة في عقد الباطن
+    // فرض نسبة 5% إذا لم تكن معرفة في عقد الباطن (الرقابة السيادية)
     const subRetentionRate = subContract?.retentionRate ?? 5;
     const retentionAmount = Math.round((amount * (subRetentionRate / 100)) * 1000) / 1000;
     const netPayable = amount - retentionAmount;
@@ -164,6 +162,8 @@ export class BillingService {
       subcontractorName,
       transactionId,
       transactionNumber: transData?.transactionNumber || '',
+      clientId: transData?.clientId || '',
+      clientName: transData?.clientName || '',
       status: 'draft',
       grossAmount: amount,
       retentionAmount: retentionAmount,

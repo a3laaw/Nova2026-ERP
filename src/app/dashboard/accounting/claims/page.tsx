@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Receipt, Search, Loader2, Filter, ArrowUpRight, Clock, CheckCircle2 } from "lucide-react";
+import { Receipt, Search, Loader2, Filter, ArrowUpRight, Clock, CheckCircle2, ShieldCheck } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
@@ -17,7 +17,7 @@ import { useRouter } from 'next/navigation';
 
 export default function GlobalOwnerClaimsPage() {
   const { globalUser } = useAuthContext();
-  const { t, tSafe, lang, dir, isRtl } = useLanguage();
+  const { t, lang, dir, isRtl } = useLanguage();
   const db = useFirestore();
   const router = useRouter();
   const companyId = globalUser?.companyId;
@@ -62,17 +62,19 @@ export default function GlobalOwnerClaimsPage() {
           <Table>
             <TableHeader className="bg-muted/10">
               <TableRow>
-                <TableHead className="py-5 ps-10 text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'رقم المستخلص / العميل' : 'IPC # / Client'}</TableHead>
-                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest text-end">{isRtl ? 'قيمة المطالبة' : 'Claim Value'}</TableHead>
+                <TableHead className="py-5 ps-10 text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'المستخلص / العميل' : 'IPC # / Client'}</TableHead>
+                <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest text-end">{isRtl ? 'الإجمالي' : 'Gross'}</TableHead>
+                <TableHead className="text-[10px] font-black uppercase text-rose-500 tracking-widest text-end">{isRtl ? 'المحتجزات (5%)' : 'Retention'}</TableHead>
+                <TableHead className="text-[10px] font-black uppercase text-emerald-600 tracking-widest text-end">{isRtl ? 'المستحق الصافي' : 'Net Payable'}</TableHead>
                 <TableHead className="text-[10px] font-black uppercase text-slate-500 tracking-widest text-center">{t('common.status')}</TableHead>
                 <TableHead className="pe-10"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={4} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/20" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/20" /></TableCell></TableRow>
               ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={4} className="text-center py-24 text-slate-300 font-black italic">{t('common.noResults')}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-24 text-slate-300 font-black italic">{t('common.noResults')}</TableCell></TableRow>
               ) : filtered.map((ipc) => (
                 <TableRow key={ipc.id} className="hover:bg-primary/[0.01] border-b-slate-50 cursor-pointer group" onClick={() => router.push(`/dashboard/clients/${ipc.clientId}/transactions/${ipc.transactionId}?tab=documents`)}>
                    <TableCell className="py-6 ps-10">
@@ -86,7 +88,13 @@ export default function GlobalOwnerClaimsPage() {
                          </div>
                       </div>
                    </TableCell>
-                   <TableCell className="text-end font-mono font-black text-slate-900 text-lg">
+                   <TableCell className="text-end font-mono font-bold text-slate-500">
+                      {ipc.grossAmount?.toLocaleString()}
+                   </TableCell>
+                   <TableCell className="text-end font-mono font-black text-rose-600 bg-rose-50/20">
+                      -{ipc.retentionAmount?.toLocaleString()}
+                   </TableCell>
+                   <TableCell className="text-end font-mono font-black text-emerald-600 text-lg">
                       {ipc.netPayable?.toLocaleString()} <span className="text-[9px] opacity-40">KWD</span>
                    </TableCell>
                    <TableCell className="text-center">
