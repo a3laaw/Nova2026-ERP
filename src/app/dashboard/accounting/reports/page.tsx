@@ -1,17 +1,19 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Input } from '@/components/ui/input';
 import { 
   Calculator, Loader2, Printer, LayoutGrid, DatabaseZap, 
   TrendingUp, Wallet, Receipt, Target, 
   History, TrendingDown, Sparkles, ShieldCheck, 
   Scale, Users, Truck, ArrowUpRight, UserCheck, Zap,
   BarChart3, Activity, Search, Filter, Briefcase, ListChecks,
-  ChevronDown
+  ChevronDown, RefreshCcw, Info
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
@@ -218,7 +220,7 @@ export default function FinancialProfitabilityPage() {
                                 <td className="p-6 text-center pe-10">
                                    <Badge className={cn(
                                      "font-black text-[10px] px-4 py-1 rounded-lg border-0 shadow-sm",
-                                     p.marginPercent > 20 ? "bg-emerald-500 text-white" : p.marginPercent > 0 ? "bg-blue-500 text-white" : "bg-rose-500 text-white"
+                                     p.marginPercent > 20 ? "bg-emerald-50 text-white" : p.marginPercent > 0 ? "bg-blue-500 text-white" : "bg-rose-500 text-white"
                                    )}>
                                       {p.marginPercent}%
                                    </Badge>
