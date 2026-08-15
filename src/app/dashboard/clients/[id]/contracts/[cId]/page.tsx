@@ -146,14 +146,6 @@ export default function ContractViewPage() {
     }
   };
 
-  const getOrdinalLabel = (index: number) => {
-    const arOrdinals = ["الأولى", "الثانية", "الثالثة", "الرابعة", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"];
-    const enOrdinals = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth", "Ninth", "Tenth"];
-    const base = tSafe('inline.installment', 'الدفعة', 'Installment');
-    const ordinal = isRtl ? (arOrdinals[index] || `#${index + 1}`) : (enOrdinals[index] || `#${index + 1}`);
-    return `${base} ${ordinal}`;
-  };
-
   const updateMilestone = (idx: number, field: keyof ContractMilestone, value: any) => {
     const newM = [...(editData.milestones || [])];
     const item = { ...newM[idx], [field]: value };
@@ -177,7 +169,7 @@ export default function ContractViewPage() {
     setEditForm({
       ...editData,
       milestones: [...(editData.milestones || []), { 
-        name: getOrdinalLabel(nextIdx), 
+        name: tSafe('inline.installment', 'الدفعة', 'Installment') + " " + (nextIdx + 1), 
         percentage: 0, 
         amount: 0, 
         timing: 'at', 
@@ -263,10 +255,10 @@ export default function ContractViewPage() {
 
       <PrintWrapper title={t('contracts.officialTitle')} className="mt-2">
          <div className="space-y-10 text-start">
-            <div className="p-6 bg-primary/5 rounded-[2rem] border-2 border-dashed border-primary/20 flex items-center justify-between gap-4 shadow-sm print:hidden">
+            <div className="p-6 bg-primary/5 rounded-[2rem] border-2 border-dashed border-primary/20 flex flex-col md:flex-row items-center justify-between gap-8 shadow-sm print:hidden">
                 <div className="flex items-center gap-4 text-start">
                   <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-lg"><Calculator className="h-5 w-5" /></div>
-                  <div>
+                  <div className="text-start">
                     <p className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'نمط التسعير' : 'Pricing Mode'}</p>
                     {isEditing ? (
                       <Select value={editData.pricingMode || 'percentage'} onValueChange={(v: PricingMode) => setEditForm({...editData, pricingMode: v})}>
@@ -279,6 +271,19 @@ export default function ContractViewPage() {
                       </Select>
                     ) : <span className="text-xs font-black uppercase text-slate-900">{t(editData.pricingMode || '')}</span>}
                   </div>
+                </div>
+
+                <div className="space-y-1 text-start">
+                   <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'المحتجزات (Retention)' : 'Retention'}</Label>
+                   <div className="flex items-center gap-3">
+                     {isEditing ? (
+                       <div className="relative w-24">
+                          <Input type="number" value={editData.retentionRate} onChange={e => setEditForm({...editData, retentionRate: Number(e.target.value)})} className="h-10 rounded-xl border-2 font-black text-center" />
+                          <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
+                       </div>
+                     ) : <Badge className="bg-slate-900 text-white font-black">{editData.retentionRate}%</Badge>}
+                     <p className="text-[9px] font-bold text-slate-400 italic">يتم خصمها آلياً من كل دفعة.</p>
+                   </div>
                 </div>
                 
                 {(editData.pricingMode === 'percentage' || editData.pricingMode === 'fixed') && (
@@ -319,7 +324,7 @@ export default function ContractViewPage() {
             <div className="space-y-6 text-start">
                <div className="flex justify-between items-center px-2">
                   <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                     <Layers className="h-4 w-4 text-primary" /> {tSafe('inline.payment.milestones.pipeline', 'جدول الدفعات والربط الفني', 'Payment Milestones & Pipeline')}
+                     <Layers className="h-4 w-4 text-primary" /> {tSafe('inline.payment.milestones.pipeline', 'جدول الدفعات والارتباط الفني', 'Payment Milestones & Pipeline')}
                   </h4>
                   {isEditing && (
                     <Button variant="outline" size="sm" onClick={addMilestone} className="rounded-xl font-black text-[10px] border-2 h-9 px-6 gap-2 bg-white hover:bg-primary/5">
@@ -420,7 +425,7 @@ export default function ContractViewPage() {
                                 </td>
                                 <td className="p-5 text-end pe-10 w-40">
                                    {isEditing && editData.pricingMode !== 'percentage' ? (
-                                      <Input type="number" step="0.001" value={m.amount === 0 ? "" : (m.amount || "")} onChange={e => updateMilestone(idx, 'amount', e.target.value === "" ? 0 : Number(e.target.value))} className="h-10 w-32 ms-auto text-end font-black text-emerald-600 text-sm bg-slate-50 border-2" />
+                                      <Input type="number" step="0.001" value={m.amount === 0 ? "" : (m.amount || "")} onChange={e => updateMilestone(idx, 'amount', e.target.value)} className="h-10 w-32 ms-auto text-end font-black text-emerald-600 text-sm bg-slate-50 border-2" />
                                    ) : (
                                       <span className="font-mono font-black text-emerald-600 text-lg">{(lineAmount || 0).toLocaleString()} <span className="text-[10px] opacity-40">KWD</span></span>
                                    )}

@@ -21,13 +21,13 @@ import { nextSequential } from '@/lib/counters';
 
 /**
  * محرك الفوترة السيادي المطور (Sovereign Billing Engine V4).
- * تم تحديثه ليدعم حساب المحتجزات (Retention) بنسبة 5% آلياً.
+ * تم تحديثه ليدعم حساب المحتجزات (Retention) بنسبة 5% آلياً وبدقة مطلقة.
  */
 export class BillingService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * إطلاق مطالبة مالية للمالك مع احتساب المحتجزات
+   * إطلاق مطالبة مالية للمالك مع احتساب المحتجزات (Owner Billing with Retention)
    */
   async triggerMilestoneBilling(
     transactionId: string, 
@@ -80,8 +80,8 @@ export class BillingService {
        return acc + (Number(mAmt) || 0);
     }, 0);
 
-    // تطبيق قاعدة المحتجزات السيادية (Default 5%)
-    const retentionRate = (contract as any).retentionRate || 5; 
+    // تطبيق قاعدة المحتجزات السيادية للمالك (Default 5% from Contract)
+    const retentionRate = (contract as any).retentionRate ?? 5; 
     const retentionAmount = Math.round((totalGrossAmount * (retentionRate / 100)) * 1000) / 1000;
     const netPayable = totalGrossAmount - retentionAmount;
 
@@ -126,7 +126,7 @@ export class BillingService {
   }
 
   /**
-   * توليد مطالبة لمقاول باطن مع احتساب المحتجزات (SIP)
+   * توليد مطالبة لمقاول باطن مع احتساب المحتجزات (SIP with SubCon Retention)
    */
   async generateSubcontractorIPC(
     transactionId: string,
@@ -142,7 +142,7 @@ export class BillingService {
     const transSnap = await getDoc(doc(this.db, paths.transactions(this.companyId), transactionId));
     const transData = transSnap.data();
 
-    // البحث عن عقد مقاول الباطن لمعرفة نسبة المحتجزات الخاصة به
+    // البحث عن عقد مقاول الباطن لمعرفة نسبة المحتجزات الخاصة به المعتمدة
     const subContractsSnap = await getDocs(query(
       collection(this.db, paths.subconContracts(this.companyId)),
       where('transactionId', '==', transactionId),
@@ -151,7 +151,9 @@ export class BillingService {
     ));
     
     const subContract = subContractsSnap.empty ? null : subContractsSnap.docs[0].data();
-    const subRetentionRate = subContract?.retentionRate || 5;
+    
+    // فرض نسبة 5% إذا لم تكن معرفة في عقد الباطن
+    const subRetentionRate = subContract?.retentionRate ?? 5;
     const retentionAmount = Math.round((amount * (subRetentionRate / 100)) * 1000) / 1000;
     const netPayable = amount - retentionAmount;
 

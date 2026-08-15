@@ -198,6 +198,12 @@ export function ContractTemplateForm({ template, onClose }: Props) {
           </div>
         </div>
         <div className="flex items-center gap-4">
+           <div className="flex flex-col text-end">
+              <span className="text-[9px] font-black text-slate-400 uppercase">{isRtl ? 'حالة التوازن' : 'Balance Status'}</span>
+              <Badge variant="outline" className={cn("h-6 border-2 font-black text-[9px]", stats.isValid ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100")}>
+                 {stats.isValid ? `BALANCED` : `BUDGET MISMATCH`}
+              </Badge>
+           </div>
            <Button onClick={handleSave} disabled={loading} className="h-12 px-10 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 gap-3 border-b-4 border-orange-700">
               {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />} {t('common.save')}
            </Button>
@@ -233,7 +239,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                     <Input type="number" value={formData.retentionRate} onChange={e => setFormData({...formData, retentionRate: Number(e.target.value)})} className="h-11 rounded-xl border-2 bg-white text-lg font-black text-center pr-10" />
                     <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
                   </div>
-                  <p className="text-[8px] font-bold text-slate-400 italic">يتم خصم هذه النسبة آلياً من كل مستخلص مالك.</p>
+                  <p className="text-[8px] font-bold text-slate-400 italic">يتم خصم هذه النسبة آلياً من كل مستخلص مالي.</p>
                </div>
             </div>
          </aside>
@@ -243,7 +249,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                <div className="space-y-10 text-start">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b pb-8">
                      <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">مسمى القالب</Label><Input value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="h-12 rounded-xl border-2 font-black text-lg bg-slate-50 shadow-inner" /></div>
-                     <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">نمط التسعير</Label><Select value={formData.pricingMode} onValueChange={(v: any) => setFormData({...formData, pricingMode: v})}><SelectTrigger className="h-12 rounded-xl border-2 font-black bg-white"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl"><SelectItem value="percentage" className="font-bold py-3">نسب مئوية من الإجمالي</SelectItem><SelectItem value="fixed" className="font-bold py-3">مبالغ مقطوعة</SelectItem></SelectContent></Select></div>
+                     <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">نمط التسعير</Label><Select value={formData.pricingMode} onValueChange={(v: any) => setFormData({...formData, pricingMode: v})}><SelectTrigger className="h-12 rounded-xl border-2 font-black bg-white"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl"><SelectItem value="percentage" className="font-bold py-3">نسب مئوية من الإجمالي</SelectItem><SelectItem value="fixed" className="font-bold py-3">مبالغ ثابتة مقطوعة</SelectItem></SelectContent></Select></div>
                   </div>
 
                   <div className="space-y-6">

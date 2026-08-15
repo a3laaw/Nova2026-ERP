@@ -266,7 +266,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                </CardContent>
             </Card>
 
-            <div className="p-6 rounded-[2rem] bg-slate-50 border-2 border-primary/10 space-y-6 relative overflow-hidden shadow-inner">
+            <div className="p-6 rounded-[2rem] bg-slate-50 border-2 border-primary/20 space-y-6 relative overflow-hidden shadow-inner">
                <div className="absolute top-0 right-0 p-6 opacity-5"><Calculator className="h-20 w-20 text-primary" /></div>
                <div className="space-y-2 text-start relative z-10">
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-1">{isRtl ? 'إجمالي قيمة العقد' : 'Contract Value'}</p>
@@ -274,7 +274,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                     type="number" 
                     value={formData.baseAmount === 0 ? "" : (formData.baseAmount || "")} 
                     onChange={e => setFormData({...formData, baseAmount: e.target.value === '' ? 0 : Number(e.target.value)})} 
-                    className="h-14 rounded-2xl border-2 bg-white text-2xl text-center shadow-inner font-black text-primary" 
+                    className="h-14 rounded-2xl border-2 bg-white text-2xl text-center font-black text-primary" 
                   />
                </div>
 
@@ -418,7 +418,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                   </div>
 
                   <div className="p-6 rounded-3xl bg-amber-50/50 border-2 border-dashed border-amber-200 flex items-start gap-4">
-                     <ShieldAlert className="h-6 w-6 text-amber-600 shrink-0" />
+                     <ShieldAlert className="h-6 w-6 text-amber-600 shrink-0 mt-1" />
                      <p className="text-xs font-bold text-amber-800 leading-relaxed">
                         سيتم استقطاع نسبة ({formData.retentionRate}%) كاحتجاز ضمان آلياً من كل دفعة يتم إقرارها لمقاول الباطن بناءً على إنجازاته الميدانية.
                      </p>

@@ -77,7 +77,7 @@ export default function SubConContractViewPage() {
     const item = { ...newM[idx], [field]: value };
     if (editData.pricingMode === 'percentage' && (field === 'percentage' || field === 'amount')) {
       const total = editData.totalAmount || 0;
-      if (field === 'percentage') item.amount = (total * (Number(value) || 0)) / 100;
+      if (field === 'percentage') item.amount = Math.round(((total * (Number(value) || 0)) / 100) * 1000) / 1000;
       else if (field === 'amount' && total > 0) item.percentage = (Number(value) / total) * 100;
     }
     newM[idx] = item;
@@ -147,9 +147,22 @@ export default function SubConContractViewPage() {
                  <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em] border-b-2 border-primary/10 pb-2">{tSafe('subcon.legal.subject', 'ثانياً: موضوع التعاقد والميزانية', 'Contract Subject & Budget')}</h3>
                  <div className="p-10 rounded-[3rem] bg-white border-2 border-slate-100 shadow-sm text-start space-y-6 relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-8 opacity-5"><Landmark className="h-40 w-40" /></div>
-                    <div className="space-y-2 relative z-10">
-                       <Label className="text-[10px] font-black text-slate-400 uppercase">{tSafe('common.project', 'المشروع المرتبط', 'Linked Project')}</Label>
-                       <p className="text-2xl font-black text-slate-900">{contract.projectTitle}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                       <div className="space-y-2 relative z-10">
+                          <Label className="text-[10px] font-black text-slate-400 uppercase">{tSafe('common.project', 'المشروع المرتبط', 'Linked Project')}</Label>
+                          <p className="text-2xl font-black text-slate-900">{contract.projectTitle}</p>
+                       </div>
+                       <div className="space-y-2 relative z-10 text-end">
+                          <Label className="text-[10px] font-black text-primary uppercase">{isRtl ? 'المحتجزات المتفق عليها' : 'Contracted Retention'}</Label>
+                          <div className="flex items-center justify-end gap-2">
+                             {isEditing ? (
+                               <div className="relative w-24">
+                                  <Input type="number" value={editData.retentionRate} onChange={e => setEditForm({...editData, retentionRate: Number(e.target.value)})} className="h-10 rounded-xl border-2 font-black text-center" />
+                                  <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
+                               </div>
+                             ) : <Badge className="bg-slate-900 text-white font-black text-lg h-9 px-4">{contract.retentionRate}%</Badge>}
+                          </div>
+                       </div>
                     </div>
                     <div className="flex flex-col md:flex-row justify-between items-center gap-10 pt-8 border-t border-slate-50 relative z-10">
                        <div className="text-start space-y-2">

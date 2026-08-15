@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, Suspense } from 'react';
@@ -57,7 +56,8 @@ function NewSubConContractContent() {
     totalAmount: 0,
     milestones: [] as ContractMilestone[],
     legalText: '',
-    pricingMode: 'percentage'
+    pricingMode: 'percentage',
+    retentionRate: 5 // القيمة الافتراضية السيادية لمقاول الباطن
   });
 
   const [pathStages, setPathStages] = useState<any[]>([]);
@@ -126,7 +126,8 @@ function NewSubConContractContent() {
           milestones: template.defaultMilestones || [],
           legalText: template.legalText || '',
           pricingMode: template.pricingMode || 'percentage',
-          totalAmount: template.baseAmount || 0
+          totalAmount: template.baseAmount || 0,
+          retentionRate: template.retentionRate ?? 5
         }));
       }
     }
@@ -156,7 +157,7 @@ function NewSubConContractContent() {
     const item = { ...newM[idx], [field]: value };
     if (form.pricingMode === 'percentage' && (field === 'percentage' || field === 'amount')) {
       const total = form.totalAmount || 0;
-      if (field === 'percentage') item.amount = (total * (Number(value) || 0)) / 100;
+      if (field === 'percentage') item.amount = Math.round(((total * (Number(value) || 0)) / 100) * 1000) / 1000;
       else if (field === 'amount' && total > 0) item.percentage = (Number(value) / total) * 100;
     }
     newM[idx] = item;
@@ -285,9 +286,18 @@ function NewSubConContractContent() {
                      </div>
                      <div className="lg:col-span-4 p-8 rounded-[3rem] bg-slate-50 border-2 border-primary/20 shadow-2xl relative overflow-hidden flex flex-col justify-center">
                         <div className="absolute top-0 right-0 p-8 opacity-10"><Calculator className="h-32 w-32" /></div>
-                        <div className="relative z-10 space-y-2 text-start">
-                           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">{tSafe('subcon.form.targetBudget', 'إجمالي قيمة العقد', 'Contract Value')}</p>
-                           <Input type="number" value={form.totalAmount === 0 ? "" : form.totalAmount} onChange={e => setForm({...form, totalAmount: Number(e.target.value)})} className="h-16 bg-white border-2 border-primary/10 rounded-2xl text-4xl font-black text-center text-slate-900 shadow-inner" />
+                        <div className="relative z-10 space-y-4 text-start">
+                           <div className="space-y-1">
+                              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">{tSafe('subcon.form.targetBudget', 'إجمالي قيمة العقد', 'Contract Value')}</p>
+                              <Input type="number" value={form.totalAmount === 0 ? "" : form.totalAmount} onChange={e => setForm({...form, totalAmount: Number(e.target.value)})} className="h-14 bg-white border-2 border-primary/10 rounded-2xl text-4xl font-black text-center text-slate-900 shadow-inner" />
+                           </div>
+                           <div className="space-y-1">
+                              <Label className="text-[9px] font-black uppercase text-slate-400">{isRtl ? 'نسبة المحتجزات' : 'Retention %'}</Label>
+                              <div className="relative">
+                                 <Input type="number" value={form.retentionRate} onChange={e => setForm({...form, retentionRate: Number(e.target.value)})} className="h-10 bg-white border-2 rounded-xl text-lg font-black text-center pr-10" />
+                                 <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+                              </div>
+                           </div>
                         </div>
                      </div>
                   </div>
@@ -323,7 +333,7 @@ function NewSubConContractContent() {
                                   {form.pricingMode === 'percentage' && (
                                     <td className="p-4 text-center">
                                        <div className="relative w-24 mx-auto">
-                                          <Input type="number" value={m.percentage === 0 ? "" : (m.percentage || "")} onChange={e => updateMilestone(idx, 'percentage', e.target.value)} className="h-10 rounded-xl border-2 font-black text-center pe-8" />
+                                          <Input type="number" value={m.percentage === 0 ? "" : (m.percentage || "")} onChange={e => updateMilestone(idx, 'percentage', e.target.value)} className="h-10 rounded-xl border-2 font-black text-center pe-6" />
                                           <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" />
                                        </div>
                                     </td>
