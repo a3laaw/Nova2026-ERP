@@ -13,7 +13,7 @@ import {
   History, TrendingDown, Sparkles, ShieldCheck, 
   Scale, Users, Truck, ArrowUpRight, UserCheck, Zap,
   BarChart3, Activity, Search, Filter, Briefcase, ListChecks,
-  ChevronDown, RefreshCcw, Info
+  ChevronDown, RefreshCcw, Info, X
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
@@ -24,6 +24,10 @@ import { AnalyticsService, ProjectAnalyticsSummary, ResourceProfitability, ItemP
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 import { cn } from '@/lib/utils';
 
+/**
+ * رادار الجدوى السيادي (Sovereign Profitability Radar)
+ * يدمج تقارير التكلفة والربحية مع دعم الفلترة الشمولية لمراكز التكلفة.
+ */
 export default function FinancialProfitabilityPage() {
   const { globalUser } = useAuthContext();
   const { t, tSafe, lang, dir, isRtl } = useLanguage();
@@ -36,7 +40,6 @@ export default function FinancialProfitabilityPage() {
   const [resourcesData, setResourcesData] = useState<ResourceProfitability[]>([]);
   const [itemProfitability, setItemProfitability] = useState<ItemProfitability[]>([]);
   
-  // حالة الفلترة الشمولية (The Sovereign Filter State)
   const [filters, setFilters] = useState<GlobalFilters>({
     projectId: 'all',
     costCenterId: 'all',
@@ -44,6 +47,7 @@ export default function FinancialProfitabilityPage() {
     searchTerm: ''
   });
 
+  // جلب مراكز التكلفة والربحية والمشاريع للقوائم المنسدلة
   const projectsQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.transactions(companyId))) : null, 
   [db, companyId]);
@@ -108,7 +112,6 @@ export default function FinancialProfitabilityPage() {
       totalRevenue: projectsData.reduce((acc, p) => acc + p.totalRevenue, 0),
       totalCosts: projectsData.reduce((acc, p) => acc + p.totalSpent, 0),
       netMargin: projectsData.reduce((acc, p) => acc + p.margin, 0),
-      avgMarginPercent: projectsData.length > 0 ? Math.round(projectsData.reduce((acc, p) => acc + p.marginPercent, 0) / projectsData.length) : 0
     };
   }, [projectsData]);
 
@@ -119,17 +122,17 @@ export default function FinancialProfitabilityPage() {
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-6">
         <div className="text-start space-y-1">
            <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit border border-primary/10 shadow-sm">
-              <Sparkles className="h-3 w-3" /> {isRtl ? 'رادار الجدوى السيادي' : 'Sovereign Profitability Radar'}
+              <Sparkles className="h-3 w-3" /> {isRtl ? 'رادار الربحية السيادي' : 'Sovereign Profitability Radar'}
            </div>
-           <h1 className="text-4xl font-black font-headline text-slate-900">{isRtl ? 'تحليل الربحية والنمو الميداني' : 'Profitability & Growth Analysis'}</h1>
-           <p className="text-xs font-bold text-slate-400 italic">{isRtl ? 'مطابقة ذكية بين ميزانية BOQ والمصروف المالي والإنتاجية الميدانية.' : 'Intelligent matching between BOQ budget, spend, and field productivity.'}</p>
+           <h1 className="text-4xl font-black font-headline text-slate-900">{isRtl ? 'تحليل مراكز التكلفة والربحية' : 'Cost & Profit Center Analysis'}</h1>
+           <p className="text-xs font-bold text-slate-400 italic">{isRtl ? 'رقابة شاملة تربط مصروفات الميدان والعهد بالإيرادات المفوترة.' : 'Comprehensive control linking field spend and assets to revenue.'}</p>
         </div>
         <Button variant="outline" onClick={() => window.print()} className="rounded-xl border-2 h-12 px-6 font-black gap-2 bg-white shadow-sm hover:bg-slate-50 print:hidden">
            <Printer className="h-4 w-4" /> {t('common.print')}
         </Button>
       </header>
 
-      {/* شريط الفلترة الشمولي المحدث */}
+      {/* شريط الفلترة الشمولي - يخرج المراكز من الخفاء */}
       <Card className="border-0 shadow-2xl rounded-[2rem] bg-white ring-1 ring-black/5 p-8 overflow-visible print:hidden">
          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
             <div className="space-y-2 text-start">
@@ -148,11 +151,11 @@ export default function FinancialProfitabilityPage() {
 
             <div className="space-y-2 text-start">
                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                  <LayoutGrid className="h-3.5 w-3.5 text-blue-600" /> {isRtl ? 'مركز التكلفة' : 'Cost Center'}
+                  <LayoutGrid className="h-3.5 w-3.5 text-blue-600" /> {isRtl ? 'مركز التكلفة (المصروفات)' : 'Cost Center'}
                </Label>
                <SearchableDropdown
                  options={[
-                   { id: 'all', name: isRtl ? '--- كافة المراكز ---' : '--- All Centers ---' },
+                   { id: 'all', name: isRtl ? '--- كافة مراكز التكلفة ---' : '--- All Cost Centers ---' },
                    ...(costCenters || []).map(c => ({ id: c.id, name: c.name, subText: c.code }))
                  ]}
                  value={filters.costCenterId}
@@ -162,7 +165,7 @@ export default function FinancialProfitabilityPage() {
 
             <div className="space-y-2 text-start">
                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                  <DatabaseZap className="h-3.5 w-3.5 text-emerald-600" /> {isRtl ? 'مركز الربحية' : 'Profit Center'}
+                  <DatabaseZap className="h-3.5 w-3.5 text-emerald-600" /> {isRtl ? 'مركز الربحية (الإيرادات)' : 'Profit Center'}
                </Label>
                <SearchableDropdown
                  options={[
@@ -193,27 +196,27 @@ export default function FinancialProfitabilityPage() {
                  <Target className="h-4 w-4" /> {isRtl ? 'ربحية المشاريع المفلترة' : 'Filtered Project Profits'}
               </TabsTrigger>
               <TabsTrigger value="resources" className="rounded-xl font-black text-xs px-8 h-full data-[state=active]:bg-slate-900 data-[state=active]:text-white transition-all gap-2">
-                 <Users className="h-4 w-4" /> {isRtl ? 'تحليل كفاءة المورد (ROI)' : 'Resource ROI'}
+                 <Users className="h-4 w-4" /> {isRtl ? 'كفاءة الموارد (ROI)' : 'Resource Efficiency'}
               </TabsTrigger>
            </TabsList>
 
            <TabsContent value="projects" className="space-y-8 animate-in slide-in-from-bottom-4">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                  <Card className="border-0 shadow-xl rounded-[2rem] bg-white p-8 border-b-8 border-primary ring-1 ring-black/5 text-start">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إيرادات محققة مفلترة' : 'Filtered Revenue'}</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إيرادات محققة (مفلترة)' : 'Filtered Revenue'}</p>
                     <h3 className="text-3xl font-black text-slate-900">{stats.totalRevenue.toLocaleString()} <span className="text-xs">KWD</span></h3>
                  </Card>
                  <Card className="border-0 shadow-xl rounded-[2rem] bg-white p-8 border-b-8 border-rose-500 ring-1 ring-black/5 text-start">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي التكاليف المفلترة' : 'Filtered Costs'}</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي التكاليف (مفلترة)' : 'Filtered Costs'}</p>
                     <h3 className="text-3xl font-black text-rose-600">{stats.totalCosts.toLocaleString()} <span className="text-xs">KWD</span></h3>
                  </Card>
                  <Card className="border-0 shadow-xl rounded-[2.5rem] bg-slate-900 p-8 text-white relative overflow-hidden group text-start">
                     <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><TrendingUp className="h-24 w-24 text-primary" /></div>
-                    <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-2">{isRtl ? 'صافي الهامش المفلتر' : 'Filtered Margin'}</p>
+                    <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-2">{isRtl ? 'صافي هامش الربح' : 'Filtered Margin'}</p>
                     <h3 className="text-4xl font-black text-white">{stats.netMargin.toLocaleString()} <span className="text-xs text-primary">KWD</span></h3>
                  </Card>
                  <Card className="border-0 shadow-xl rounded-[2rem] bg-white p-8 border-b-8 border-blue-500 ring-1 ring-black/5 text-start">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي ميزانيات المحفظة' : 'Total Budgets'}</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'ميزانية المقايسات الكلية' : 'Total Budgets'}</p>
                     <h3 className="text-3xl font-black text-blue-600">{stats.totalBudget.toLocaleString()} <span className="text-xs">KWD</span></h3>
                  </Card>
               </div>
@@ -223,15 +226,14 @@ export default function FinancialProfitabilityPage() {
                     <CardTitle className="text-xl font-black font-headline flex items-center gap-3">
                        <Scale className="h-6 w-6 text-primary" /> {isRtl ? 'ميزان ربحية المشاريع' : 'Project Profitability Ledger'}
                     </CardTitle>
-                    <Badge variant="outline" className="border-primary/20 text-primary font-black uppercase text-[10px] h-6 px-4">CROSS-AUDITED BY NOVAFlow</Badge>
                  </CardHeader>
                  <CardContent className="p-0 overflow-x-auto text-start">
                     <table className="w-full text-start">
                        <thead className="bg-muted/10 border-b">
                           <tr className="font-black text-slate-500 uppercase text-[10px] tracking-widest">
                              <th className="p-6 ps-10 text-start">{isRtl ? 'المشروع' : 'Project'}</th>
-                             <th className="p-6 text-end">{isRtl ? 'الإيراد المفلتر' : 'Filtered Revenue'}</th>
-                             <th className="p-6 text-end">{isRtl ? 'التكلفة المفلترة' : 'Filtered Cost'}</th>
+                             <th className="p-6 text-end">{isRtl ? 'إيراد البعد المختار' : 'Revenue'}</th>
+                             <th className="p-6 text-end">{isRtl ? 'تكلفة البعد المختار' : 'Spent'}</th>
                              <th className="p-6 text-end">{isRtl ? 'الربح الصافي' : 'Net Profit'}</th>
                              <th className="p-6 text-center pe-10">{isRtl ? 'الهامش %' : 'Margin %'}</th>
                           </tr>
@@ -249,7 +251,7 @@ export default function FinancialProfitabilityPage() {
                                 <td className="p-6 text-center pe-10">
                                    <Badge className={cn(
                                      "font-black text-[10px] px-4 py-1 rounded-lg border-0 shadow-sm",
-                                     p.marginPercent > 20 ? "bg-emerald-600 text-white" : p.marginPercent > 0 ? "bg-blue-500 text-white" : "bg-rose-500 text-white"
+                                     p.marginPercent > 20 ? "bg-emerald-600 text-white" : p.marginPercent > 0 ? "bg-blue-500 text-white" : "bg-rose-50 text-white"
                                    )}>
                                       {p.marginPercent}%
                                    </Badge>
@@ -275,8 +277,8 @@ export default function FinancialProfitabilityPage() {
                           <thead className="bg-muted/10 border-b">
                              <tr className="font-black text-slate-500 uppercase text-[9px] tracking-widest">
                                 <th className="p-4 ps-8 text-start">{isRtl ? 'الموظف' : 'Staff'}</th>
-                                <th className="p-4 text-end">{isRtl ? 'التكلفة (الراتب)' : 'Cost'}</th>
-                                <th className="p-4 text-end">{isRtl ? 'القيمة المنتجة (المفلترة)' : 'Filtered Output'}</th>
+                                <th className="p-4 text-end">{isRtl ? 'التكلفة (المحاسبة)' : 'Real Cost'}</th>
+                                <th className="p-4 text-end">{isRtl ? 'القيمة المنتجة (الميدان)' : 'Value Generated'}</th>
                                 <th className="p-4 text-center pe-8">{isRtl ? 'الكفاءة' : 'ROI'}</th>
                              </tr>
                           </thead>
@@ -301,7 +303,7 @@ export default function FinancialProfitabilityPage() {
                  <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                     <CardHeader className="bg-slate-50/50 border-b p-8 flex items-center justify-between">
                        <CardTitle className="text-lg font-black flex items-center gap-3">
-                          <Truck className="h-6 w-6 text-orange-600" /> {isRtl ? 'عائد استثمار المعدات المفلتر' : 'Filtered Equipment ROI'}
+                          <Truck className="h-6 w-6 text-orange-600" /> {isRtl ? 'عائد استثمار المعدات' : 'Equipment ROI'}
                        </CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
@@ -309,8 +311,8 @@ export default function FinancialProfitabilityPage() {
                           <thead className="bg-muted/10 border-b">
                              <tr className="font-black text-slate-500 uppercase text-[9px] tracking-widest">
                                 <th className="p-4 ps-8 text-start">{isRtl ? 'المعدة' : 'Machine'}</th>
-                                <th className="p-4 text-end">{isRtl ? 'التكلفة' : 'Cost'}</th>
-                                <th className="p-4 text-end">{isRtl ? 'الإنتاجية المفلترة' : 'Filtered Prod.'}</th>
+                                <th className="p-4 text-end">{isRtl ? 'تكلفة الملكية' : 'Ownership Cost'}</th>
+                                <th className="p-4 text-end">{isRtl ? 'إنتاجية الميدان' : 'Field Output'}</th>
                                 <th className="p-4 text-center pe-8">{isRtl ? 'المساهمة' : 'Net Contribution'}</th>
                              </tr>
                           </thead>
@@ -369,8 +371,8 @@ export default function FinancialProfitabilityPage() {
                      <thead className="bg-slate-50 border-b">
                         <tr className="font-black text-slate-500 uppercase text-[10px] tracking-widest">
                            <th className="p-6 ps-10 text-start">{isRtl ? 'بند العمل / الكمية' : 'Work Item / Qty'}</th>
-                           <th className="p-6 text-end">{isRtl ? 'إيراد البند (مفوتر)' : 'Revenue (Billed)'}</th>
-                           <th className="p-6 text-end text-rose-500">{isRtl ? 'التكلفة المباشرة' : 'Direct Cost'}</th>
+                           <th className="p-6 text-end">{isRtl ? 'إيراد البند (مفوتر للمالك)' : 'Revenue'}</th>
+                           <th className="p-6 text-end text-rose-500">{isRtl ? 'التكلفة المباشرة (ميداني)' : 'Direct Cost'}</th>
                            <th className="p-6 text-end text-emerald-600">{isRtl ? 'صافي الربح' : 'Net Profit'}</th>
                            <th className="p-6 text-center pe-10">{isRtl ? 'هامش البند' : 'Item Margin'}</th>
                         </tr>

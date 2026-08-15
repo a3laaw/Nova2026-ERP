@@ -5,14 +5,12 @@ import {
   collection, 
   getDocs, 
   query, 
-  where,
-  doc,
-  getDoc
+  where
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Transaction } from '@/types/transaction';
 import { BOQ, BOQItem } from '@/types/documents';
-import { JournalEntry, JournalEntryLine } from '@/types/accounting';
+import { JournalEntry } from '@/types/accounting';
 import { Employee } from '@/types/hr';
 import { Equipment } from '@/types/equipment';
 
@@ -20,7 +18,6 @@ export interface ProjectAnalyticsSummary {
   projectId: string;
   projectName: string;
   clientName: string;
-  completionRate: number;
   totalBudget: number;  
   totalRevenue: number; 
   totalSpent: number;   
@@ -60,18 +57,18 @@ export interface GlobalFilters {
 }
 
 /**
- * خدمة التحليلات السيادية المحدثة - تدعم الفلترة الشمولية المتقاطعة.
+ * خدمة التحليلات السيادية المحدثة - محرك المطابقة بين الميدان والمركز المالي.
  */
 export class AnalyticsService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * جلب الأداء المالي المفلتر
+   * جلب الأداء المالي المفلتر بناءً على المشاريع ومراكز التكلفة
    */
   async getFilteredPerformance(filters: GlobalFilters): Promise<ProjectAnalyticsSummary[]> {
     const [transSnap, boqsSnap, journalSnap] = await Promise.all([
-      getDocs(query(collection(this.db, paths.transactions(this.companyId)))),
-      getDocs(query(collection(this.db, paths.boqs(this.companyId)))),
+      getDocs(collection(this.db, paths.transactions(this.companyId))),
+      getDocs(collection(this.db, paths.boqs(this.companyId))),
       getDocs(query(collection(this.db, paths.journalEntries(this.companyId)), where('status', '==', 'posted')))
     ]);
 
@@ -80,7 +77,7 @@ export class AnalyticsService {
     const allJournalLines = journalSnap.docs.flatMap(d => (d.data() as JournalEntry).lines || []);
 
     const summaries = await Promise.all(allTrans.map(async (trans) => {
-      // تطبيق فلتر المشروع
+      // تطبيق فلتر المشروع الأساسي
       if (filters.projectId !== 'all' && trans.id !== filters.projectId) return null;
 
       const projectBoq = allBoqs.find(b => b.transactionId === trans.id);
@@ -94,10 +91,12 @@ export class AnalyticsService {
         return matchProject && matchCC && matchPC;
       });
 
+      // الإيرادات (الدائن في حسابات الإيراد)
       const projectRevenue = filteredLines
         .filter(l => (l.credit || 0) > 0)
         .reduce((acc, l) => acc + (l.credit || 0), 0);
 
+      // التكاليف (المدين في حسابات المصاريف)
       const projectCosts = filteredLines
         .filter(l => (l.debit || 0) > 0)
         .reduce((acc, l) => acc + (l.debit || 0), 0);
@@ -105,11 +104,13 @@ export class AnalyticsService {
       const margin = projectRevenue - projectCosts;
       const marginPercent = projectRevenue > 0 ? Math.round((margin / projectRevenue) * 100) : 0;
 
+      // إذا كانت التكاليف والإيرادات صفر بعد الفلترة بالمركز، ولا يوجد فلتر مشروع محدد، نتجاهل السجل
+      if (filters.costCenterId !== 'all' && projectRevenue === 0 && projectCosts === 0) return null;
+
       return {
         projectId: trans.id,
         projectName: trans.subServiceName,
         clientName: trans.clientName,
-        completionRate: 0, 
         totalBudget,
         totalRevenue: projectRevenue,
         totalSpent: projectCosts,
@@ -125,7 +126,7 @@ export class AnalyticsService {
   }
 
   /**
-   * تحليل جدوى الموارد المفلتر (ROI)
+   * تحليل جدوى الموارد المفلتر (ROI) - يقارن تكلفة العامل/المعدة بإنتاجيتهم الميدانية
    */
   async getFilteredResourcesProfitability(filters: GlobalFilters): Promise<ResourceProfitability[]> {
     const [empsSnap, equipSnap, execsSnap] = await Promise.all([
@@ -138,20 +139,23 @@ export class AnalyticsService {
     const equipment = equipSnap.docs.map(d => ({ id: d.id, ...d.data() } as Equipment));
     const allExecutions = execsSnap.docs.map(d => d.data());
 
-    // تصفية الزيارات بناءً على فلتر المشروع
-    const executions = allExecutions.filter(ex => 
+    // تصفية الزيارات بناءً على فلتر المشروع المختار
+    const filteredExecs = allExecutions.filter(ex => 
        filters.projectId === 'all' || ex.transactionId === filters.projectId
     );
 
     const resourceStats: ResourceProfitability[] = [];
 
+    // 1. تحليل العمالة
     employees.forEach(emp => {
+      // التكلفة الفعلية (الراتب من المحاسبة)
       const monthlyCost = emp.basicSalary || 0; 
       let generatedValue = 0;
 
-      executions.forEach(ex => {
+      filteredExecs.forEach(ex => {
         const myLogs = (ex.laborDetails || []).filter((l: any) => l.resourceId === emp.id);
         myLogs.forEach((log: any) => {
+          // القيمة المنتجة = ساعات العمل x السعر المرجعي في الـ BOQ
           generatedValue += (log.hours || 0) * (log.hourlyCostRef || 0);
         });
       });
@@ -169,12 +173,13 @@ export class AnalyticsService {
       }
     });
 
+    // 2. تحليل المعدات
     equipment.forEach(eq => {
       const baseHourlyCost = eq.ownershipType === 'owned' ? (eq.hourlyDepreciationRate || 0) : (eq.hourlyRentalRate || 0);
-      const totalCost = baseHourlyCost * 160; 
+      const totalCost = baseHourlyCost * 160; // تقديري لـ 160 ساعة عمل شهرياً
       let generatedValue = 0;
 
-      executions.forEach(ex => {
+      filteredExecs.forEach(ex => {
         const myLogs = (ex.equipmentUsed || []).filter((e: any) => e.equipmentId === eq.id);
         myLogs.forEach((log: any) => {
           generatedValue += (log.hours || log.hoursUsed || 0) * (log.hourlyRateRef || 0);
@@ -197,6 +202,9 @@ export class AnalyticsService {
     return resourceStats.sort((a, b) => b.efficiency - a.efficiency);
   }
 
+  /**
+   * كشف الربحية الجزيئي لمشروع محدد (بناءً على بنود المقايسة)
+   */
   async getProjectDetailedProfitability(projectId: string): Promise<ItemProfitability[]> {
     const boqsSnap = await getDocs(query(collection(this.db, paths.boqs(this.companyId)), where('transactionId', '==', projectId)));
     if (boqsSnap.empty) return [];
