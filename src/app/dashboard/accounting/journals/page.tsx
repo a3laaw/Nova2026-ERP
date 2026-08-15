@@ -31,8 +31,9 @@ import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 
 /**
  * شاشة قيود اليومية السيادية (Sovereign Journal Entries).
- * تم تحديث محرك الربط ليكون ديناميكياً وصامتاً (Silent Row-Level Linking).
- * تم تفعيل محرك تجميع البيان العام التلقائي من بيانات السطور (Narration Aggregator).
+ * - تطهير الحساب المالي (COA Purity): يظهر فقط حسابات الشجرة الأصلية.
+ * - محرك تجميع البيان (Narration Aggregator): يصيغ البيان العام آلياً من السطور.
+ * - الربط الصامت (Silent Row Linker): يربط مراكز التكلفة آلياً بالمشروع.
  */
 export default function JournalEntriesPage() {
   const { globalUser, user } = useAuthContext();
@@ -78,17 +79,17 @@ export default function JournalEntriesPage() {
   const { data: profitCenters } = useCollection<ProfitCenter>(profitCentersQuery);
 
   /**
-   * تصفية الحسابات المالية:
-   * نظهر فقط الحسابات القياسية من شجرة الحسابات (التي لا تتبع لمشروع أو عميل محدد)
-   * لمنع تكرار أسماء المشاريع في القائمة المالية.
+   * تصفية الحسابات المالية (COA Purity):
+   * نظهر فقط الحسابات التي ليست "مجموعات" (ليست Group) 
+   * والأهم: نستبعد الحسابات التي تحمل referenceId (لأنها أسماء مشاريع وليست حسابات شجرة قياسية)
    */
   const availableAccounts = useMemo(() => {
-    return accounts?.filter(a => !a.isGroup && !(a as any).referenceId);
+    return (accounts || []).filter(a => !a.isGroup && !(a as any).referenceId);
   }, [accounts]);
 
   /**
    * محرك تجميع البيان العام (Narration Aggregator Engine)
-   * يجمع بيانات السطور الفريدة ويصيغها في البيان العام للقيد تلقائياً.
+   * يراقب سطور القيد، يجمع البيانات الفريدة، ويصيغها في البيان العام تلقائياً.
    */
   useEffect(() => {
     if (isAdding) {
@@ -153,9 +154,6 @@ export default function JournalEntriesPage() {
     setForm({ ...form, lines: form.lines.filter((_, i) => i !== idx) });
   };
 
-  /**
-   * نسخ البيان للسطر التالي (Smart Memo Downloader)
-   */
   const copyMemoToNext = (idx: number) => {
     if (idx >= form.lines.length - 1) return;
     const newLines = [...form.lines];
@@ -180,12 +178,12 @@ export default function JournalEntriesPage() {
     else if (field === 'debit') {
        const debitVal = Number(val) || 0;
        newLines[idx].debit = debitVal;
-       if (debitVal > 0) newLines[idx].credit = 0; // صرامة محاسبية: لا يجوز الجمع في سطر واحد
+       if (debitVal > 0) newLines[idx].credit = 0; 
     }
     else if (field === 'credit') {
        const creditVal = Number(val) || 0;
        newLines[idx].credit = creditVal;
-       if (creditVal > 0) newLines[idx].debit = 0; // صرامة محاسبية
+       if (creditVal > 0) newLines[idx].debit = 0; 
     }
     else {
        (newLines[idx] as any)[field] = val;
@@ -238,7 +236,7 @@ export default function JournalEntriesPage() {
                  </div>
                  <div className="md:col-span-3 space-y-2">
                     <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
-                      <Sparkles className="h-3 w-3" /> {isRtl ? 'البيان العام للقيد (توليد تلقائي)' : 'Aggregated Main Narration'}
+                      <Sparkles className="h-3 w-3" /> {isRtl ? 'البيان العام للقيد (توليد تلقائي من السطور)' : 'Auto-Aggregated Narration'}
                     </Label>
                     <Input value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="..." className="h-12 border-2 rounded-xl font-bold bg-primary/[0.02] border-primary/10 shadow-inner" />
                  </div>
@@ -262,11 +260,6 @@ export default function JournalEntriesPage() {
                          const requiresCC = acc?.analyticalConfig?.costCenter === 'required';
                          const requiresPC = acc?.analyticalConfig?.profitCenter === 'required';
 
-                         const dynamicProjects = (projects || []).filter((p: any) => {
-                            if (!acc?.referenceId) return true;
-                            return p.clientId === acc.referenceId;
-                         });
-
                          const noneLabel = isRtl 
                             ? (acc?.type === 'expense' ? '--- مصروف إداري عام ---' : '--- بدون مشروع ---')
                             : '--- No Project ---';
@@ -286,7 +279,7 @@ export default function JournalEntriesPage() {
                                     <SearchableDropdown
                                       options={[
                                          { id: 'NONE', name: noneLabel },
-                                         ...(dynamicProjects || []).map(p => ({ 
+                                         ...(projects || []).map(p => ({ 
                                             id: p.id!, 
                                             name: p.clientName, 
                                             subText: `${p.subServiceName} (#${p.transactionNumber})` 
@@ -392,10 +385,6 @@ export default function JournalEntriesPage() {
                     )}>
                        {isBalanced ? <CheckCircle2 className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
                        {isBalanced ? t('accounting.journals.balanced') : t('accounting.journals.unbalanced')}
-                    </div>
-                    <div className="text-start max-w-xs space-y-1">
-                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{tSafe('inline.analytical_validation_hint', 'الرقابة السيادية للأبعاد', 'Sovereign Validation')}</p>
-                       <p className="text-[9px] font-bold text-slate-400 italic">يتم التحقق من مطابقة مراكز التكلفة والربحية آلياً عند الترحيل لضمان نزاهة التقارير.</p>
                     </div>
                  </div>
                  <Button onClick={handleSave} disabled={loading || !isBalanced} className="h-16 rounded-[1.5rem] px-16 bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-8 border-orange-700">
