@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -31,7 +32,7 @@ import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
  * شاشة قيود اليومية السيادية (Sovereign Journal Entries).
  * تم تحديث محرك الربط ليكون ديناميكياً وصامتاً (Silent Row-Level Linking).
  * تم فرض قاعدة منع الجمع بين المدين والدائن في سطر واحد (Strict Mutual Exclusion).
- * تم استخدام SearchableDropdown لكافة الاختيارات.
+ * تم إصلاح ظهور "مصروف إداري عام" ليكون مشروطاً بنوع الحساب فقط.
  */
 export default function JournalEntriesPage() {
   const { globalUser, user } = useAuthContext();
@@ -125,10 +126,6 @@ export default function JournalEntriesPage() {
     setForm({ ...form, lines: form.lines.filter((_, i) => i !== idx) });
   };
 
-  /**
-   * دالة تحديث السطر مع فرض القاعدة المحاسبية السيادية:
-   * "لا يجوز الجمع بين المدين والدائن في نفس السطر"
-   */
   const updateLine = (idx: number, field: keyof (JournalEntryLine & { isAutoLinked: boolean }), val: any) => {
     let newLines = [...form.lines];
     
@@ -136,7 +133,7 @@ export default function JournalEntriesPage() {
        const acc = availableAccounts?.find(a => a.id === val);
        newLines[idx].accountId = val;
        newLines[idx].accountName = isRtl ? acc?.nameAr || '' : acc?.nameEn || '';
-       // تصفية المشروع التلقائي إذا لم يعد الحساب تابعاً للعميل المختار
+       // تصفير الربط التلقائي عند تغيير الحساب
        newLines = autoLinkLine(idx, newLines[idx].projectId || '', val, newLines);
     }
     else if (field === 'projectId') {
@@ -225,11 +222,16 @@ export default function JournalEntriesPage() {
                          const requiresCC = acc?.analyticalConfig?.costCenter === 'required';
                          const requiresPC = acc?.analyticalConfig?.profitCenter === 'required';
 
-                         // تصفية المشاريع ديناميكياً بناءً على العميل المربوط بالحساب (إن وجد)
+                         // تصفية المشاريع ديناميكياً بناءً على العميل المربوط بالحساب
                          const dynamicProjects = (projects || []).filter((p: any) => {
                             if (!acc?.referenceId) return true;
                             return p.clientId === acc.referenceId;
                          });
+
+                         // منطق مسمى الخيار التلقائي (NONE): هل هو مصروف إداري أم مجرد بدون مشروع؟
+                         const noneLabel = isRtl 
+                            ? (acc?.type === 'expense' ? '--- مصروف إداري عام ---' : '--- بدون مشروع ---')
+                            : '--- No Project ---';
 
                          return (
                            <TableRow key={idx} className="border-b-slate-50 hover:bg-primary/[0.01]">
@@ -245,14 +247,14 @@ export default function JournalEntriesPage() {
                                  <div className="flex flex-col gap-2">
                                     <SearchableDropdown
                                       options={[
-                                         { id: 'NONE', name: isRtl ? '--- مصروف إداري عام ---' : '--- No Project ---' },
+                                         { id: 'NONE', name: noneLabel },
                                          ...(dynamicProjects || []).map(p => ({ 
                                             id: p.id!, 
                                             name: p.clientName, 
                                             subText: `${p.subServiceName} (#${p.transactionNumber})` 
                                          }))
                                       ]}
-                                      value={line.projectId || 'NONE'}
+                                      value={line.projectId || (line.accountId ? 'NONE' : '')}
                                       onChange={v => updateLine(idx, 'projectId', v)}
                                       placeholder={isRtl ? "اختيار المشروع..." : "Project..."}
                                       disabled={!line.accountId}
@@ -394,4 +396,3 @@ export default function JournalEntriesPage() {
     </div>
   );
 }
-
