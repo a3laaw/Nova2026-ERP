@@ -9,7 +9,7 @@ import {
   Trash2, ArrowRight, Calculator,
   LayoutGrid, DatabaseZap, Briefcase,
   Zap, Search, Check, ChevronDown, X,
-  AlertTriangle
+  AlertTriangle, CheckCircle2
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, getDocs } from 'firebase/firestore';
@@ -30,6 +30,7 @@ import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 /**
  * شاشة قيود اليومية السيادية (Sovereign Journal Entries).
  * تم تحديث محرك الربط ليكون ديناميكياً وصامتاً (Silent Row-Level Linking).
+ * تم فرض قاعدة منع الجمع بين المدين والدائن في سطر واحد (Strict Mutual Exclusion).
  */
 export default function JournalEntriesPage() {
   const { globalUser, user } = useAuthContext();
@@ -77,8 +78,8 @@ export default function JournalEntriesPage() {
   const availableAccounts = useMemo(() => accounts?.filter(a => !a.isGroup), [accounts]);
 
   // --- محرك الربط الصامت على مستوى السطر (Row-Level Silent Linker) ---
-  const autoLinkLine = (idx: number, projectId: string, accId: string) => {
-    const newLines = [...form.lines];
+  const autoLinkLine = (idx: number, projectId: string, accId: string, currentLines: any[]) => {
+    const lines = [...currentLines];
     const acc = availableAccounts?.find(a => a.id === accId);
     
     let ccId = '';
@@ -86,9 +87,7 @@ export default function JournalEntriesPage() {
     let isAuto = false;
 
     if (projectId && projectId !== 'NONE') {
-       // البحث عن مركز تكلفة مرتبط آلياً (cc_PROJECT_ID)
        const matchedCC = costCenters?.find(cc => cc.projectId === projectId || cc.id === `cc_${projectId}`);
-       // البحث عن مركز ربحية مرتبط آلياً (pc_PROJECT_ID)
        const matchedPC = profitCenters?.find(pc => pc.projectId === projectId || pc.id === `pc_${projectId}`);
 
        if (acc?.type === 'expense' && matchedCC) {
@@ -101,10 +100,10 @@ export default function JournalEntriesPage() {
        }
     }
 
-    newLines[idx].costCenterId = ccId;
-    newLines[idx].profitCenterId = pcId;
-    newLines[idx].isAutoLinked = isAuto;
-    setForm({ ...form, lines: newLines });
+    lines[idx].costCenterId = ccId;
+    lines[idx].profitCenterId = pcId;
+    lines[idx].isAutoLinked = isAuto;
+    return lines;
   };
 
   const totals = useMemo(() => {
@@ -125,21 +124,43 @@ export default function JournalEntriesPage() {
     setForm({ ...form, lines: form.lines.filter((_, i) => i !== idx) });
   };
 
+  /**
+   * دالة تحديث السطر مع فرض القاعدة المحاسبية السيادية:
+   * "لا يجوز الجمع بين المدين والدائن في نفس السطر"
+   */
   const updateLine = (idx: number, field: keyof (JournalEntryLine & { isAutoLinked: boolean }), val: any) => {
-    const newLines = [...form.lines];
+    let newLines = [...form.lines];
+    
     if (field === 'accountId') {
        const acc = availableAccounts?.find(a => a.id === val);
+       newLines[idx].accountId = val;
        newLines[idx].accountName = isRtl ? acc?.nameAr || '' : acc?.nameEn || '';
-       // تفعيل الربط الصامت فور تغيير الحساب
-       autoLinkLine(idx, newLines[idx].projectId || '', val);
+       newLines = autoLinkLine(idx, newLines[idx].projectId || '', val, newLines);
     }
-    if (field === 'projectId') {
+    else if (field === 'projectId') {
+       newLines[idx].projectId = val;
+       newLines = autoLinkLine(idx, val, newLines[idx].accountId, newLines);
+    }
+    else if (field === 'debit') {
+       const debitVal = Number(val) || 0;
+       newLines[idx].debit = debitVal;
+       // القانون المحاسبي: إذا وجد مدين، يتم تصفير الدائن فوراً في نفس السطر
+       if (debitVal > 0) {
+          newLines[idx].credit = 0;
+       }
+    }
+    else if (field === 'credit') {
+       const creditVal = Number(val) || 0;
+       newLines[idx].credit = creditVal;
+       // القانون المحاسبي: إذا وجد دائن، يتم تصفير المدين فوراً في نفس السطر
+       if (creditVal > 0) {
+          newLines[idx].debit = 0;
+       }
+    }
+    else {
        (newLines[idx] as any)[field] = val;
-       // تفعيل الربط الصامت فور تغيير المشروع
-       autoLinkLine(idx, val, newLines[idx].accountId);
-       return;
     }
-    (newLines[idx] as any)[field] = val;
+    
     setForm({ ...form, lines: newLines });
   };
 
@@ -208,11 +229,10 @@ export default function JournalEntriesPage() {
                          const requiresCC = acc?.analyticalConfig?.costCenter === 'required';
                          const requiresPC = acc?.analyticalConfig?.profitCenter === 'required';
 
-                         // تصفية المشاريع ديناميكياً إذا كان الحساب مرتبط بمرجع (مثل عميل)
-                         const dynamicProjects = useMemo(() => {
-                            if (!acc?.referenceId) return projects || [];
-                            return (projects || []).filter((p: any) => p.clientId === acc.referenceId);
-                         }, [acc, projects]);
+                         const dynamicProjects = (projects || []).filter((p: any) => {
+                            if (!acc?.referenceId) return true;
+                            return p.clientId === acc.referenceId;
+                         });
 
                          return (
                            <TableRow key={idx} className="border-b-slate-50 hover:bg-primary/[0.01]">
@@ -243,7 +263,6 @@ export default function JournalEntriesPage() {
                                        </SelectContent>
                                     </Select>
                                     
-                                    {/* عرض اختيار المركز فقط في حال فشل الربط التلقائي (Exception Handler) */}
                                     {line.projectId && line.projectId !== 'NONE' && (requiresCC || requiresPC) && !line.isAutoLinked && (
                                        <div className="animate-in slide-in-from-top-1">
                                           {requiresCC && (
@@ -270,10 +289,22 @@ export default function JournalEntriesPage() {
                                  </div>
                               </TableCell>
                               <TableCell className="p-3">
-                                 <Input type="number" step="0.001" value={line.debit === 0 ? '' : line.debit} onChange={e => updateLine(idx, 'debit', Number(e.target.value))} className="h-11 text-center font-black text-blue-600 text-lg border-2 rounded-xl bg-slate-50/30" />
+                                 <Input 
+                                   type="number" 
+                                   step="0.001" 
+                                   value={line.debit === 0 ? '' : line.debit} 
+                                   onChange={e => updateLine(idx, 'debit', e.target.value)} 
+                                   className="h-11 text-center font-black text-blue-600 text-lg border-2 rounded-xl bg-slate-50/30" 
+                                 />
                               </TableCell>
                               <TableCell className="p-3">
-                                 <Input type="number" step="0.001" value={line.credit === 0 ? '' : line.credit} onChange={e => updateLine(idx, 'credit', Number(e.target.value))} className="h-11 text-center font-black text-rose-600 text-lg border-2 rounded-xl bg-slate-50/30" />
+                                 <Input 
+                                   type="number" 
+                                   step="0.001" 
+                                   value={line.credit === 0 ? '' : line.credit} 
+                                   onChange={e => updateLine(idx, 'credit', e.target.value)} 
+                                   className="h-11 text-center font-black text-rose-600 text-lg border-2 rounded-xl bg-slate-50/30" 
+                                 />
                               </TableCell>
                               <TableCell className="pe-4 text-center">
                                  <Button variant="ghost" size="icon" onClick={() => handleRemoveLine(idx)} className="h-9 w-9 text-slate-300 hover:text-rose-500 rounded-xl"><Trash2 className="h-4 w-4" /></Button>
@@ -311,7 +342,7 @@ export default function JournalEntriesPage() {
                        <p className="text-[9px] font-bold text-slate-400 italic">يتم التحقق من مطابقة مراكز التكلفة والربحية آلياً عند الترحيل لضمان نزاهة التقارير.</p>
                     </div>
                  </div>
-                 <Button onClick={handleSave} disabled={loading || !isBalanced} className="h-16 rounded-[1.5rem] px-16 bg-primary text-white font-black text-xl shadow-2xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-8 border-orange-700">
+                 <Button onClick={handleSave} disabled={loading || !isBalanced} className="h-16 rounded-[1.5rem] px-16 bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-8 border-orange-700">
                     {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
                     {t('accounting.journals.postToLedger')}
                  </Button>
@@ -339,7 +370,7 @@ export default function JournalEntriesPage() {
                     ) : journals?.map(j => {
                       const total = j.lines.reduce((sum, l) => sum + (l.debit || 0), 0);
                       return (
-                        <TableRow key={j.id} className="hover:bg-slate-50/50 transition-colors border-b-slate-50 group">
+                        <TableRow key={j.id} className="hover:bg-slate-50/50 transition-colors border-b-slate-100 group">
                            <TableCell className="py-5 ps-8 text-start font-black text-slate-800">
                               <div className="flex flex-col">
                                  <span className="text-sm">{j.entryNumber}</span>
