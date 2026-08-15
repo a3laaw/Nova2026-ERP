@@ -18,7 +18,8 @@ import {
 import { 
   UserPlus, Save, Loader2, 
   RefreshCw, Mail, Fingerprint, MapPinned,
-  Search, Globe, Briefcase, ShieldCheck
+  Search, Globe, Briefcase, ShieldCheck, MapPin,
+  LocateFixed
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useFirestore, useCollection } from '@/firebase';
@@ -36,20 +37,20 @@ import { Badge } from "@/components/ui/badge";
 const clientFormSchema = z.object({
   fileNumber: z.string().min(1, "رقم الملف مطلوب"),
   nameAr: z.string().min(3, "يجب أن يكون الاسم 3 حروف على الأقل"),
-  nameEn: z.string().optional(),
+  nameEn: z.string().default(''),
   mobile: z.string().min(8, "رقم الهاتف غير صحيح"),
   email: z.string().email("البريد الإلكتروني غير صحيح").optional().or(z.literal('')),
-  civilId: z.string().optional(),
+  civilId: z.string().default(''),
   governorateId: z.string().min(1, "يرجى اختيار المحافظة"),
-  governorateName: z.string().optional(),
+  governorateName: z.string().default(''),
   areaId: z.string().min(1, "يرجى اختيار المنطقة"),
-  areaName: z.string().optional(),
-  block: z.string().optional(),
-  street: z.string().optional(),
-  houseNumber: z.string().optional(),
-  locationUrl: z.string().optional(),
+  areaName: z.string().default(''),
+  block: z.string().default(''),
+  street: z.string().default(''),
+  houseNumber: z.string().default(''),
+  locationUrl: z.string().default(''),
   assignedEngineerId: z.string().min(1, "يجب تعيين مهندس مسؤول"),
-  assignedEngineerName: z.string().optional()
+  assignedEngineerName: z.string().default('')
 });
 
 export function ClientForm({ initialData, onSubmit, loading }: { initialData?: any, onSubmit: (data: any) => void, loading?: boolean }) {
@@ -75,6 +76,7 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
   const selectedGovId = watch('governorateId');
   const selectedAreaId = watch('areaId');
   const assignedEngineerId = watch('assignedEngineerId');
+  const locationUrl = watch('locationUrl');
 
   const govsQuery = useMemo(() => companyId && db ? query(collection(db, paths.governorates(companyId)), orderBy('order')) : null, [db, companyId]);
   const areasQuery = useMemo(() => companyId && db && selectedGovId ? query(collection(db, paths.areas(companyId, selectedGovId)), orderBy('order')) : null, [db, companyId, selectedGovId]);
@@ -192,7 +194,7 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
                 
                 <div className="flex-1 w-full text-start">
                    <Select 
-                     disabled={!isAdmin && !initialData} 
+                     disabled={!isAdmin && !!initialData} 
                      value={assignedEngineerId} 
                      onValueChange={(v) => setValue('assignedEngineerId', v, { shouldValidate: true })}
                    >
@@ -216,48 +218,75 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
 
       <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/[0.02]">
         <div className="bg-blue-50/30 p-6 border-b flex items-center justify-between">
-           <div className="flex items-center gap-3">
-              <MapPinned className="h-5 w-5 text-blue-600" />
-              <h3 className="text-base font-black font-headline text-slate-800">{t('clients.form.locationRadar')}</h3>
+           <div className="flex items-center gap-3 text-start">
+              <MapPinned className="h-6 w-6 text-blue-600" />
+              <div>
+                 <h3 className="text-base font-black font-headline text-slate-800">{t('clients.form.locationRadar')}</h3>
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{isRtl ? 'تحديد إحداثيات الموقع بدقة Gps' : 'Set precise GPS coordinates'}</p>
+              </div>
            </div>
+           {locationUrl && (
+              <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 border-2 font-black text-[10px] h-8 px-4 rounded-xl flex items-center gap-2">
+                 <CheckCircle2 className="h-3.5 w-3.5" /> {isRtl ? 'تم تحديد الموقع' : 'Location Set'}
+              </Badge>
+           )}
         </div>
         <CardContent className="p-8 space-y-10">
-           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-              <div className="space-y-1.5 text-start">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.governorate')} <span className="text-rose-500">*</span></Label>
-                <Select value={selectedGovId} onValueChange={(v) => { setValue('governorateId', v, { shouldValidate: true }); setValue('areaId', ''); }}>
-                   <SelectTrigger className={cn("h-10 rounded-xl border-2 font-bold bg-slate-50/30", errors.governorateId && "border-rose-200 bg-rose-50")}><SelectValue placeholder="..." /></SelectTrigger>
-                   <SelectContent className="rounded-xl border-2 shadow-2xl z-[200] max-h-[300px] overflow-y-auto">
-                      {governorates?.map(g => <SelectItem key={g.id} value={g.id!} className="font-bold">{isRtl ? g.name : g.nameEn}</SelectItem>)}
-                   </SelectContent>
-                </Select>
-                {errors.governorateId && <p className="text-[10px] text-rose-500 font-bold mt-1">{errors.governorateId.message as string}</p>}
-              </div>
-              
-              <div className="space-y-1.5 text-start">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.area')} <span className="text-rose-500">*</span></Label>
-                <Select disabled={!selectedGovId} value={selectedAreaId} onValueChange={(v) => setValue('areaId', v, { shouldValidate: true })}>
-                   <SelectTrigger className={cn("h-10 rounded-xl border-2 font-bold bg-slate-50/30", errors.areaId && "border-rose-200 bg-rose-50")}><SelectValue placeholder="..." /></SelectTrigger>
-                   <SelectContent className="rounded-xl border-2 shadow-2xl z-[200] max-h-[300px] overflow-y-auto">
-                      {areas?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}
-                   </SelectContent>
-                </Select>
-                {errors.areaId && <p className="text-[10px] text-rose-500 font-bold mt-1">{errors.areaId.message as string}</p>}
+           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+              <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+                 <div className="space-y-1.5 text-start">
+                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.governorate')} <span className="text-rose-500">*</span></Label>
+                   <Select value={selectedGovId} onValueChange={(v) => { setValue('governorateId', v, { shouldValidate: true }); setValue('areaId', ''); }}>
+                      <SelectTrigger className={cn("h-10 rounded-xl border-2 font-bold bg-slate-50/30", errors.governorateId && "border-rose-200 bg-rose-50")}><SelectValue placeholder="..." /></SelectTrigger>
+                      <SelectContent className="rounded-xl border-2 shadow-2xl z-[200] max-h-[300px] overflow-y-auto">
+                         {governorates?.map(g => <SelectItem key={g.id} value={g.id!} className="font-bold">{isRtl ? g.name : g.nameEn}</SelectItem>)}
+                      </SelectContent>
+                   </Select>
+                   {errors.governorateId && <p className="text-[10px] text-rose-500 font-bold mt-1">{errors.governorateId.message as string}</p>}
+                 </div>
+                 
+                 <div className="space-y-1.5 text-start">
+                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.area')} <span className="text-rose-500">*</span></Label>
+                   <Select disabled={!selectedGovId} value={selectedAreaId} onValueChange={(v) => setValue('areaId', v, { shouldValidate: true })}>
+                      <SelectTrigger className={cn("h-10 rounded-xl border-2 font-bold bg-slate-50/30", errors.areaId && "border-rose-200 bg-rose-50")}><SelectValue placeholder="..." /></SelectTrigger>
+                      <SelectContent className="rounded-xl border-2 shadow-2xl z-[200] max-h-[300px] overflow-y-auto">
+                         {areas?.map(a => <SelectItem key={a.id} value={a.id!} className="font-bold">{isRtl ? a.name : a.nameEn}</SelectItem>)}
+                      </SelectContent>
+                   </Select>
+                   {errors.areaId && <p className="text-[10px] text-rose-500 font-bold mt-1">{errors.areaId.message as string}</p>}
+                 </div>
+
+                 <div className="grid grid-cols-3 md:col-span-2 gap-4">
+                    <div className="space-y-1.5 text-start">
+                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.block')}</Label>
+                       <Input {...register('block')} className="h-10 rounded-xl border-2 font-bold text-center bg-slate-50/30" />
+                    </div>
+                    <div className="space-y-1.5 text-start">
+                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.street')}</Label>
+                       <Input {...register('street')} className="h-10 rounded-xl border-2 font-bold text-center bg-slate-50/30" />
+                    </div>
+                    <div className="space-y-1.5 text-start">
+                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.house')}</Label>
+                       <Input {...register('houseNumber')} className="h-10 rounded-xl border-2 font-bold text-center bg-slate-50/30" />
+                    </div>
+                 </div>
               </div>
 
-              <div className="grid grid-cols-3 md:col-span-2 gap-4">
-                 <div className="space-y-1.5 text-start">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.block')}</Label>
-                    <Input {...register('block')} className="h-10 rounded-xl border-2 font-bold text-center bg-slate-50/30" />
-                 </div>
-                 <div className="space-y-1.5 text-start">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.street')}</Label>
-                    <Input {...register('street')} className="h-10 rounded-xl border-2 font-bold text-center bg-slate-50/30" />
-                 </div>
-                 <div className="space-y-1.5 text-start">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('clients.form.house')}</Label>
-                    <Input {...register('houseNumber')} className="h-10 rounded-xl border-2 font-bold text-center bg-slate-50/30" />
-                 </div>
+              <div className="lg:col-span-4 flex flex-col gap-4">
+                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest text-start">{isRtl ? 'الموقع الجغرافي (GPS)' : 'GPS Location'}</Label>
+                 <Button 
+                   type="button"
+                   onClick={() => setIsMapOpen(true)}
+                   className="h-32 w-full rounded-[2rem] border-2 border-dashed border-blue-200 bg-blue-50/50 hover:bg-blue-50 hover:border-blue-400 text-blue-600 font-black flex flex-col gap-3 transition-all group shadow-inner"
+                 >
+                    <div className="h-12 w-12 bg-white rounded-2xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                       <LocateFixed className="h-6 w-6" />
+                    </div>
+                    {isRtl ? 'تحديد الموقع من الخريطة' : 'Locate on Map Radar'}
+                 </Button>
+                 {locationUrl && (
+                    <p className="text-[9px] font-mono text-slate-400 text-center truncate px-4">{locationUrl}</p>
+                 )}
               </div>
            </div>
         </CardContent>

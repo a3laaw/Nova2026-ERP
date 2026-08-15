@@ -130,13 +130,13 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl rounded-[3rem] p-0 overflow-hidden border-0 shadow-3xl bg-white" dir={dir}>
-        <div className="bg-primary/5 p-8 text-slate-900 text-start flex items-center justify-between border-b shrink-0 relative">
-           <div className="flex items-center gap-4 relative z-10">
+        <div className="bg-primary/5 p-8 text-slate-900 text-start border-b flex items-center justify-between shrink-0 relative">
+           <div className="flex items-center gap-4 relative z-10 text-start">
               <div className="h-12 w-12 bg-primary/20 rounded-2xl flex items-center justify-center text-primary shadow-lg ring-4 ring-primary/5">
                  <LocateFixed className="h-7 w-7" />
               </div>
-              <div>
-                 <DialogTitle className="text-2xl font-black font-headline">{t('clients.form.locationRadar')}</DialogTitle>
+              <div className="text-start">
+                 <DialogTitle className="text-2xl font-black font-headline text-start">{t('clients.form.locationRadar')}</DialogTitle>
                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">{t('clients.form.openMap')}</p>
               </div>
            </div>
@@ -152,26 +152,26 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
                    onChange={e => setSearchQuery(e.target.value)}
                    onKeyDown={e => e.key === 'Enter' && handleSearch()}
                    placeholder={t('common.search')}
-                   className="h-14 rounded-2xl border-2 ps-12 font-bold text-lg bg-slate-50/50 focus:bg-white transition-all shadow-inner"
+                   className="h-12 rounded-2xl border-2 ps-12 font-bold text-lg bg-slate-50/50 focus:bg-white transition-all shadow-inner"
                  />
                  {isSearching && <Loader2 className="absolute end-4 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-primary" />}
               </div>
-              <Button onClick={handleSearch} disabled={isSearching} className="h-14 px-10 rounded-2xl bg-slate-900 text-white font-black shadow-xl hover:scale-105 transition-all">{t('common.search')}</Button>
+              <Button onClick={handleSearch} disabled={isSearching} className="h-12 px-10 rounded-2xl bg-slate-900 text-white font-black shadow-xl hover:scale-105 transition-all">{t('common.search')}</Button>
               <Button 
                 variant="outline" 
                 onClick={handleLocateMe} 
                 disabled={isLocating}
-                className="h-14 w-14 p-0 rounded-2xl border-2 text-blue-600 hover:bg-blue-50 bg-white shadow-sm shrink-0"
+                className="h-12 w-12 p-0 rounded-2xl border-2 text-blue-600 hover:bg-blue-50 bg-white shadow-sm shrink-0"
               >
                  {isLocating ? <Loader2 className="h-6 w-6 animate-spin" /> : <Crosshair className="h-6 w-6" />}
               </Button>
            </div>
 
-           <div className="h-[450px] w-full rounded-[2.5rem] overflow-hidden border-4 border-slate-50 shadow-2xl relative group bg-slate-100">
+           <div className="h-[400px] w-full rounded-[2.5rem] overflow-hidden border-4 border-slate-50 shadow-2xl relative group bg-slate-100">
               {isOpen && <MapView position={position} setPosition={setPosition} />}
               
               <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[1000] pointer-events-none w-full px-10 flex justify-center">
-                 <div className="bg-slate-900/90 text-white backdrop-blur-md border-0 px-6 py-3 rounded-2xl font-mono text-xs shadow-3xl pointer-events-auto flex items-center gap-4 border border-white/10">
+                 <div className="bg-slate-900/90 text-white backdrop-blur-md border-0 px-6 py-3 rounded-2xl font-mono text-xs shadow-3xl pointer-events-auto flex items-center gap-4 border border-white/10" dir="ltr">
                     <div className="flex items-center gap-2 border-e border-white/10 pe-4">
                        <MapPin className="h-3.5 w-3.5 text-primary" />
                        <span className="font-black">LAT: {position[0].toFixed(6)}</span>
@@ -186,10 +186,10 @@ export function LocationPickerDialog({ isOpen, onClose, onSelect, initialUrl }: 
         </div>
 
         <DialogFooter className="p-8 bg-slate-50 border-t flex flex-row gap-4 shrink-0">
-           <Button variant="outline" onClick={onClose} className="flex-1 h-16 rounded-2xl border-2 font-black text-lg bg-white shadow-sm">
+           <Button variant="outline" onClick={onClose} className="flex-1 h-12 rounded-xl border-2 font-black text-lg bg-white shadow-sm">
               {t('common.cancel')}
            </Button>
-           <Button onClick={handleConfirm} className="flex-[2] h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-8 border-orange-700">
+           <Button onClick={handleConfirm} className="flex-[2] h-12 rounded-xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-4 border-orange-700">
               <CheckCircle2 className="h-7 w-7" />
               {t('common.confirm')}
            </Button>
