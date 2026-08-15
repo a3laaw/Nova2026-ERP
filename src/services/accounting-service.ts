@@ -296,7 +296,8 @@ export class AccountingService {
     const ref = doc(collection(this.db, paths.accounts(this.companyId)));
     await setDoc(ref, {
       id: ref.id, code, nameAr, nameEn, type,
-      isActive: true, companyId: this.companyId, createdAt: serverTimestamp()
+      isActive: true, companyId: this.companyId, createdAt: serverTimestamp(),
+      isGroup: true // حسابات الرقابة (Control) هي مجموعات دائماً
     });
     return ref.id;
   }
@@ -312,6 +313,7 @@ export class AccountingService {
     await setDoc(ref, {
       id: ref.id, code: subCode, nameAr: referenceName, nameEn: referenceName,
       type, isActive: true, referenceId: referenceId, companyId: this.companyId,
+      isGroup: false, // الحسابات التلقائية للمشاريع هي حسابات فرعية للتسجيل
       createdAt: serverTimestamp(), updatedAt: serverTimestamp()
     });
     return ref.id;
