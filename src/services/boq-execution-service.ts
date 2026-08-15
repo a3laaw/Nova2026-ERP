@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -33,7 +32,7 @@ export class BOQExecutionService {
 
   /**
    * تسجيل إنجاز ميداني متكامل مع الموارد والتكاليف (Cost Snapping)
-   * تم التحديث لدعم ربط الإنجاز بمقاول باطن محدد (SubCon Tracking)
+   * تم التحديث لدعم تحليل الربحية والـ ROI للموارد
    */
   async recordBOQItemExecution(
     boqId: string,
@@ -50,7 +49,6 @@ export class BOQExecutionService {
   ) {
     const executionRef = doc(collection(this.db, paths.executions(this.companyId)));
     
-    // 1. جلب بيانات البند المرجعية
     const itemRef = doc(this.db, paths.boqItems(this.companyId, boqId), itemId);
     const itemSnap = await getDoc(itemRef);
     if (!itemSnap.exists()) throw new Error("BOQ Item missing");
@@ -59,13 +57,24 @@ export class BOQExecutionService {
     let processedLabor: LaborDetail[] = [];
     let processedEquip: EquipmentUsed[] = [];
 
+    // محرك القيمة المضافة (Value Snap Engine):
+    // هنا نقوم بتجميد سعر الساعة المرجعي في المقايسة وقت التنفيذ لضمان دقة تحليل الربحية لاحقاً
     if (resources) {
        processedLabor = resources.laborDetails.map(l => ({
           ...l,
+          resourceId: l.resourceId,
+          employeeName: l.resourceName,
+          actualCost: Number(l.hourlyCostRef) || 0, // السعر المرجعي في الـ BOQ
+          hours: Number(l.hours) || 8,
           totalCost: (Number(l.count) || 0) * (Number(l.hours) || 8) * (Number(l.hourlyCostRef) || 0)
        }));
+       
        processedEquip = resources.equipmentUsed.map(e => ({
           ...e,
+          equipmentId: e.equipmentId,
+          equipmentName: e.name,
+          actualCost: Number(e.hourlyRateRef) || 0, // السعر المرجعي في الـ BOQ
+          hours: Number(e.hoursUsed) || 0,
           totalCost: (Number(e.hoursUsed) || 0) * (Number(e.hourlyRateRef) || 0)
        }));
     }
@@ -82,11 +91,8 @@ export class BOQExecutionService {
       quantity: Number(quantity) || 0,
       status: 'executed',
       notes,
-      
-      // توثيق المقاول المسؤول عن البند (The SubCon Audit Trail)
       subcontractorId: itemData.subcontractorId || '',
       subcontractorName: itemData.subcontractorName || '',
-      
       laborDetails: processedLabor,
       equipmentUsed: processedEquip,
       recordedBy: userId,
@@ -102,31 +108,24 @@ export class BOQExecutionService {
 
     batch.set(executionRef, executionData);
     
-    // 2. تحديث المقايسة لأغراض المالية والكمية الكلية
     batch.update(itemRef, {
       executedQuantity: increment(Number(quantity) || 0),
       updatedAt: serverTimestamp()
     });
 
-    // 3. تحديث المرحلة النشطة فنياً
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, itemData.transactionId || ''), stageInstanceId);
     batch.update(stageRef, {
       currentCount: increment(Number(quantity) || 0),
       updatedAt: serverTimestamp()
     });
 
-    // 4. توثيق في التايملاين مع ذكر المقاول إن وجد لتعزيز الشفافية
     if (itemData.transactionId) {
       const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, itemData.transactionId)));
-      const subConPart = itemData.subcontractorName ? ` بواسطة (${itemData.subcontractorName})` : "";
-      
       batch.set(timelineRef, {
         transactionId: itemData.transactionId,
         stageId: stageInstanceId,
-        technicalStageId,
-        appointmentId: appointmentId || null,
         type: 'numeric_update',
-        content: `[إنجاز تقني] تم تنفيذ كمية ${quantity} ${itemData.unitSymbol || ''} من بند "${itemData.referenceTitle}"${subConPart}. تم تحديث المسار الفني والمقايسة آلياً.`,
+        content: `[إنجاز تقني] تم تنفيذ كمية ${quantity} من بند "${itemData.referenceTitle}". تم توثيق الموارد المستخدمة لتحليل الربحية.`,
         userId,
         userName,
         companyId: this.companyId,
@@ -163,4 +162,3 @@ export class BOQExecutionService {
     };
   }
 }
-
