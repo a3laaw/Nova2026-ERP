@@ -15,6 +15,7 @@ import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, getDocs } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
 import { JournalEntry, Account, JournalEntryLine } from '@/types/accounting';
 import { CostCenter, ProfitCenter } from '@/types/cost-profit-centers';
@@ -29,6 +30,7 @@ import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 
 /**
  * دالة تطبيع النص العربي (Arabic Normalization)
+ * لضمان عدم تكرار الجمل المتشابهة معنوياً في البيان العام
  */
 const normalizeArabic = (text: string): string => {
   return text
@@ -42,6 +44,7 @@ const normalizeArabic = (text: string): string => {
 export default function JournalEntriesPage() {
   const { globalUser, user } = useAuthContext();
   const { t, tSafe, dir, isRtl, lang } = useLanguage();
+  const { isAdmin } = usePermissions();
   const db = useFirestore();
   const companyId = globalUser?.companyId;
 
@@ -82,11 +85,12 @@ export default function JournalEntriesPage() {
   const { data: costCenters } = useCollection<CostCenter>(costCentersQuery);
   const { data: profitCenters } = useCollection<ProfitCenter>(profitCentersQuery);
 
+  // عرض الحسابات الفرعية فقط (Leaf Accounts) كما طلب المهندس
   const availableAccounts = useMemo(() => {
     return (accounts || []).filter(a => a.isGroup === false);
   }, [accounts]);
 
-  // محرك تجميع البيان العام الذكي
+  // محرك تجميع البيان العام الذكي (Semantic Aggregator)
   useEffect(() => {
     if (isAdding) {
        const uniqueMemosMap = new Map<string, string>();
@@ -118,7 +122,6 @@ export default function JournalEntriesPage() {
        
        if (acc?.type === 'expense' && matchedCC) { ccId = matchedCC.id; isAuto = true; }
        if (acc?.type === 'revenue' && matchedPC) { pcId = matchedPC.id; isAuto = true; }
-       // حالة حساب WIP (1205)
        if (acc?.code.startsWith('1205') && matchedCC) { ccId = matchedCC.id; isAuto = true; }
     }
 
@@ -161,7 +164,6 @@ export default function JournalEntriesPage() {
        newLines[idx].accountId = val;
        newLines[idx].accountName = isRtl ? acc?.nameAr || '' : acc?.nameEn || '';
        
-       // إذا كان الحساب مرتبط بمشروع محدد (WIP أو عميل)، نقوم باختيار المشروع تلقائياً
        if (acc?.referenceId) {
           const matchProj = projects?.find(p => p.id === acc.referenceId);
           if (matchProj) {
@@ -174,7 +176,6 @@ export default function JournalEntriesPage() {
     else if (field === 'projectId') {
        newLines[idx].projectId = val === 'NONE' ? '' : val;
        
-       // الربط الذكي العكسي: إذا اخترت المشروع والحساب فارغ، نبحث عن حساب الـ WIP الخاص به
        if (!newLines[idx].accountId && val !== 'NONE') {
           const wipAcc = availableAccounts.find(a => a.code.startsWith('1205') && a.referenceId === val);
           if (wipAcc) {
@@ -188,12 +189,12 @@ export default function JournalEntriesPage() {
     else if (field === 'debit') {
        const debitVal = Number(val) || 0;
        newLines[idx].debit = debitVal;
-       if (debitVal > 0) newLines[idx].credit = 0; 
+       if (debitVal > 0) newLines[idx].credit = 0; // حماية السطر (Mutual Exclusion)
     }
     else if (field === 'credit') {
        const creditVal = Number(val) || 0;
        newLines[idx].credit = creditVal;
-       if (creditVal > 0) newLines[idx].debit = 0; 
+       if (creditVal > 0) newLines[idx].debit = 0; // حماية السطر (Mutual Exclusion)
     }
     else { (newLines[idx] as any)[field] = val; }
     setForm({ ...form, lines: newLines });
@@ -220,7 +221,7 @@ export default function JournalEntriesPage() {
           <h1 className="text-2xl font-black font-headline flex items-center gap-3 text-slate-900">
             <Calculator className="h-7 w-7 text-primary" /> {t('accounting.journals.title')}
           </h1>
-          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">{t('accounting.journals.desc')}</p>
+          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">{t('accounting.journals.desc')}</p>
         </div>
         <div className="flex gap-3">
            <Button onClick={() => setIsAdding(!isAdding)} size="sm" className="h-10 px-8 font-black rounded-xl shadow-lg gap-2">
@@ -245,11 +246,11 @@ export default function JournalEntriesPage() {
                     <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
                       <Sparkles className="h-3 w-3" /> {isRtl ? 'البيان العام للقيد (توليد تلقائي)' : 'Auto Narration'}
                     </Label>
-                    <Input value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="..." className="h-10 border-2 rounded-xl font-bold bg-primary/[0.02] border-primary/10" />
+                    <Input value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="..." className="h-10 border-2 rounded-xl font-bold bg-primary/[0.02] border-primary/10 shadow-inner" />
                  </div>
               </div>
 
-              <div className="border-2 rounded-3xl overflow-hidden shadow-sm">
+              <div className="border-2 rounded-[2rem] overflow-hidden shadow-sm">
                  <Table>
                     <TableHeader className="bg-slate-50">
                        <TableRow className="hover:bg-slate-50 border-0">
@@ -273,7 +274,7 @@ export default function JournalEntriesPage() {
                                  <SearchableDropdown
                                    options={(availableAccounts || []).map(a => ({ id: a.id!, name: isRtl ? a.nameAr : a.nameEn, subText: a.code }))}
                                    value={line.accountId}
-                                   onChange={v => updateLine(idx, 'accountId', v)}
+                                   onChange={v => updateLine(idx, 'accountId', v as string)}
                                    placeholder={isRtl ? "اختر الحساب..." : "Select..."}
                                  />
                               </TableCell>
@@ -282,7 +283,7 @@ export default function JournalEntriesPage() {
                                     <SearchableDropdown
                                       options={[{ id: 'NONE', name: noneLabel }, ...(filteredProjects || []).map(p => ({ id: p.id!, name: p.clientName, subText: p.subServiceName }))]}
                                       value={line.projectId || (line.accountId ? 'NONE' : '')}
-                                      onChange={v => updateLine(idx, 'projectId', v)}
+                                      onChange={v => updateLine(idx, 'projectId', v as string)}
                                       placeholder={isRtl ? "المشروع..." : "Project..."}
                                       disabled={!line.accountId && !isAdmin}
                                     />
