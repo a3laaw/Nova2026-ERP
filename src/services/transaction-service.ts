@@ -95,11 +95,13 @@ export class TransactionService {
 
     const accService = new AccountingService(this.db, this.companyId);
     
-    // أتمتة سيادية: إنشاء حساب أعمال تحت التنفيذ (WIP) للمشروع
+    // --- الأتمتة المالية السيادية للمشروع ---
+    // 1. إنشاء حساب "أعمال تحت التنفيذ - WIP" مخصص للمشروع تحت كود (1205)
+    // هذا الحساب مخصص لتراكم التكاليف الميدانية (مواد، عمالة)
     await accService.ensureControlAccount('1205', 'أعمال تحت التنفيذ (WIP)', 'Work In Progress', 'asset');
     await accService.createAutomaticSubAccount('1205', transactionId, `مشروع: ${data.subServiceName} (${transactionNumber})`, 'asset');
 
-    // أتمتة سيادية: إنشاء مركز ربحية آلي للمشروع
+    // 2. إنشاء مركز ربحية آلي للمشروع لمطابقة الميدان بالمالية
     await accService.createAutomaticProfitCenter(
       transactionId, 
       `ربحية: ${data.clientName} - ${data.subServiceName}`, 
@@ -110,7 +112,7 @@ export class TransactionService {
     batch.set(timelineRef, {
       transactionId,
       type: 'system',
-      content: `[إجراء نظام] تم فتح المعاملة الفنية بنجاح. المهندس المسؤول المعتمد: ${data.assignedEngineerName}.`,
+      content: `[إجراء نظام] تم فتح المعاملة الفنية بنجاح. تم تأسيس حساب WIP ومركز ربحية للمشروع.`,
       userId,
       userName,
       companyId: this.companyId,

@@ -51,21 +51,25 @@ export class DocumentService {
 
     const finalStatus = data.status || currentData.status;
     
+    // عند اعتماد العقد، نقوم بتأسيس حساب العميل المالي (ذمم - 1202)
     if (['approved', 'paid', 'active', 'signed'].includes(finalStatus)) {
        const clientRef = doc(this.db, paths.clients(this.companyId), currentData.clientId);
        await updateDoc(clientRef, { status: 'contracted', updatedAt: serverTimestamp() });
 
        const accService = new AccountingService(this.db, this.companyId);
+       
+       // تأسيس حساب العميل (Accounts Receivable) تحت الكود المرجعي 1202
+       // هذا الحساب يمثل "الشخص" والديون المستحقة عليه
        await accService.ensureControlAccount('1202', 'ذمم العملاء', 'Accounts Receivable', 'asset');
        await accService.createAutomaticSubAccount('1202', currentData.clientId, currentData.clientName, 'asset');
 
        const billing = new BillingService(this.db, this.companyId);
-       await billing.triggerMilestoneBilling(currentData.transactionId || '', 'SIGNING', 'at', userId, 'System System');
+       await billing.triggerMilestoneBilling(currentData.transactionId || '', 'SIGNING', 'at', userId, 'System Finance');
     }
   }
 
   /**
-   * تحديث بيانات عرض السعر (إصلاح الخطأ المطلوب)
+   * تحديث بيانات عرض السعر
    */
   async updateQuotation(id: string, data: Partial<Quotation>, userId: string) {
     ensureActionPermission(this.permissions, 'projects:edit');
