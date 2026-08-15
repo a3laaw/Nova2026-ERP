@@ -36,6 +36,9 @@ export class AccountingService {
     this.validationService = new AnalyticalValidationService();
   }
 
+  /**
+   * ضبط القواعد التلقائية للأبعاد بناءً على نوع الحساب
+   */
   private getDefaultAnalyticalConfig(type: Account['type'], nature?: Account['expenseNature']): AccountAnalyticalConfig {
     const config: AccountAnalyticalConfig = {
       costCenter: 'not_allowed',
@@ -47,7 +50,7 @@ export class AccountingService {
     if (type === 'revenue') {
       config.profitCenter = 'required';
       config.costCenter = 'optional';
-      config.project = 'optional';
+      config.project = 'required';
       config.distributionAllowed = true;
     } else if (type === 'expense') {
       config.costCenter = 'required';
@@ -248,12 +251,11 @@ export class AccountingService {
             accountId: data.accountId!, 
             accountName: 'حساب المصروف', 
             debit: data.amount!, 
-            debit_credit: 'debit',
             credit: 0, 
             projectId: data.projectId,
             costCenterId: data.costCenterId,
             profitCenterId: data.profitCenterId
-          } as any);
+          });
         }
         lines.push({ accountId: data.cashAccountId!, accountName: 'حساب النقدية', debit: 0, credit: data.amount! });
     }

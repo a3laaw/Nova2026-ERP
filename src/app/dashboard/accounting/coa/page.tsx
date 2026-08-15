@@ -167,24 +167,20 @@ export default function ChartOfAccountsPage() {
 
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
                 {account.isGroup && (
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8 rounded-lg text-primary"
+                  <button 
                     onClick={(e) => { e.stopPropagation(); openAddDialog(account); }}
+                    className="h-8 w-8 rounded-lg text-primary hover:bg-primary/10 flex items-center justify-center"
                   >
                     <Plus className="h-4 w-4" />
-                  </Button>
+                  </button>
                 )}
                 {!account.isGroup && (
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-8 w-8 rounded-lg text-blue-600"
+                  <button 
                     onClick={(e) => { e.stopPropagation(); openEditDialog(account); }}
+                    className="h-8 w-8 rounded-lg text-blue-600 hover:bg-blue-100 flex items-center justify-center"
                   >
                     <Edit3 className="h-4 w-4" />
-                  </Button>
+                  </button>
                 )}
               </div>
             </div>
@@ -239,7 +235,7 @@ export default function ChartOfAccountsPage() {
               <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <Input 
                 placeholder={t('common.search')} 
-                className="ps-12 h-12 rounded-2xl bg-white border-slate-200 text-lg font-bold" 
+                className="ps-12 h-12 rounded-2xl bg-white border-2 border-slate-100 text-lg font-bold" 
                 value={searchTerm} 
                 onChange={e => setSearchTerm(e.target.value)} 
               />

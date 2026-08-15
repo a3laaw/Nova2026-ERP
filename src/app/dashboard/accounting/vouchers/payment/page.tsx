@@ -86,6 +86,8 @@ export default function PaymentVouchersPage() {
 
   const expenseAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.type === 'expense' || a.type === 'liability')), [accounts]);
 
+  const selectedAccount = useMemo(() => accounts?.find(a => a.id === form.accountId), [accounts, form.accountId]);
+
   const handleSave = async () => {
     if (!db || !companyId || !user) return;
     if (!form.accountId || !form.cashAccountId || form.amount <= 0 || !form.paymentMethod) {
@@ -195,13 +197,15 @@ export default function PaymentVouchersPage() {
                  <div className="pt-6 border-t space-y-4">
                     <div className="flex justify-between items-center mb-2">
                        <Label className="text-[10px] font-black uppercase text-primary tracking-widest">{isRtl ? 'مقابل حساب (مصروف)' : 'Against Account (Expense)'}</Label>
-                       <button 
-                         type="button" 
-                         onClick={() => { setIsDistOpen(true); if(form.distributions.length === 0) handleAddDist(); }} 
-                         className="flex items-center gap-2 text-primary font-black text-[10px] uppercase hover:underline"
-                       >
-                          <Split className="h-3 w-3" /> {tSafe('inline.distribute.expense', 'توزيع المصروف', 'Distribute Expense')}
-                       </button>
+                       {selectedAccount?.analyticalConfig?.distributionAllowed && (
+                         <button 
+                           type="button" 
+                           onClick={() => { setIsDistOpen(true); if(form.distributions.length === 0) handleAddDist(); }} 
+                           className="flex items-center gap-2 text-primary font-black text-[10px] uppercase hover:underline"
+                         >
+                            <Split className="h-3 w-3" /> {tSafe('inline.distribute.expense', 'توزيع المصروف', 'Distribute Expense')}
+                         </button>
+                       )}
                     </div>
 
                     <div className="space-y-4">
@@ -219,25 +223,31 @@ export default function PaymentVouchersPage() {
                          </div>
                        ) : (
                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <Select value={form.projectId} onValueChange={v => setForm({...form, projectId: v, costCenterId: '', profitCenterId: ''})}>
-                               <SelectTrigger className="h-10 rounded-lg border-2 font-bold bg-slate-50/50 text-[10px]"><SelectValue placeholder={isRtl ? "المشروع..." : "Project..."} /></SelectTrigger>
-                               <SelectContent className="rounded-xl">
-                                  <SelectItem value="GENERAL" className="italic text-slate-400">--- {isRtl ? 'عام' : 'General'} ---</SelectItem>
-                                  {projects?.map(p => <SelectItem key={p.id} value={p.id!} className="font-bold text-xs">{p.subServiceName}</SelectItem>)}
-                               </SelectContent>
-                            </Select>
-                            <Select value={form.costCenterId} onValueChange={v => setForm({...form, costCenterId: v})}>
-                               <SelectTrigger className="h-10 rounded-lg border-2 font-bold bg-slate-50/50 text-[10px]"><SelectValue placeholder={isRtl ? "مركز تكلفة..." : "Cost Center..."} /></SelectTrigger>
-                               <SelectContent className="rounded-xl">
-                                  {costCenters?.filter(cc => cc.isAdministrative || (form.projectId && cc.projectId === form.projectId)).map(cc => <SelectItem key={cc.id} value={cc.id!} className="font-bold text-xs">{cc.name}</SelectItem>)}
-                               </SelectContent>
-                            </Select>
-                            <Select value={form.profitCenterId} onValueChange={v => setForm({...form, profitCenterId: v})}>
-                               <SelectTrigger className="h-10 rounded-lg border-2 font-bold bg-slate-50/50 text-[10px]"><SelectValue placeholder={isRtl ? "مركز ربحية..." : "Profit Center..."} /></SelectTrigger>
-                               <SelectContent className="rounded-xl">
-                                  {profitCenters?.filter(pc => form.projectId && pc.projectId === form.projectId).map(pc => <SelectItem key={pc.id} value={pc.id!} className="font-bold text-xs">{pc.name}</SelectItem>)}
-                               </SelectContent>
-                            </Select>
+                            {selectedAccount?.analyticalConfig?.project !== 'not_allowed' && (
+                              <Select value={form.projectId} onValueChange={v => setForm({...form, projectId: v, costCenterId: '', profitCenterId: ''})}>
+                                 <SelectTrigger className="h-10 rounded-lg border-2 font-bold bg-slate-50/50 text-[10px]"><SelectValue placeholder={isRtl ? "المشروع..." : "Project..."} /></SelectTrigger>
+                                 <SelectContent className="rounded-xl">
+                                    <SelectItem value="GENERAL" className="italic text-slate-400">--- {isRtl ? 'عام' : 'General'} ---</SelectItem>
+                                    {projects?.map(p => <SelectItem key={p.id} value={p.id!} className="font-bold text-xs">{p.subServiceName}</SelectItem>)}
+                                 </SelectContent>
+                              </Select>
+                            )}
+                            {selectedAccount?.analyticalConfig?.costCenter !== 'not_allowed' && (
+                              <Select value={form.costCenterId} onValueChange={v => setForm({...form, costCenterId: v})}>
+                                 <SelectTrigger className="h-10 rounded-lg border-2 font-bold bg-slate-50/50 text-[10px]"><SelectValue placeholder={isRtl ? "مركز تكلفة..." : "Cost Center..."} /></SelectTrigger>
+                                 <SelectContent className="rounded-xl">
+                                    {costCenters?.filter(cc => cc.isAdministrative || (form.projectId && cc.projectId === form.projectId)).map(cc => <SelectItem key={cc.id} value={cc.id!} className="font-bold text-xs">{cc.name}</SelectItem>)}
+                                 </SelectContent>
+                              </Select>
+                            )}
+                            {selectedAccount?.analyticalConfig?.profitCenter !== 'not_allowed' && (
+                              <Select value={form.profitCenterId} onValueChange={v => setForm({...form, profitCenterId: v})}>
+                                 <SelectTrigger className="h-10 rounded-lg border-2 font-bold bg-slate-50/50 text-[10px]"><SelectValue placeholder={isRtl ? "مركز ربحية..." : "Profit Center..."} /></SelectTrigger>
+                                 <SelectContent className="rounded-xl">
+                                    {profitCenters?.filter(pc => form.projectId && pc.projectId === form.projectId).map(pc => <SelectItem key={pc.id} value={pc.id!} className="font-bold text-xs">{pc.name}</SelectItem>)}
+                                 </SelectContent>
+                              </Select>
+                            )}
                          </div>
                        )}
                     </div>
@@ -260,9 +270,9 @@ export default function PaymentVouchersPage() {
            <aside className="lg:col-span-4 space-y-6 text-start">
               <Card className="rounded-2xl border-2 border-primary/10 shadow-sm p-6 bg-primary/5 text-slate-900 space-y-4 overflow-hidden relative">
                  <div className="absolute top-0 right-0 p-6 opacity-5"><Landmark className="h-24 w-24" /></div>
-                 <h4 className="font-black text-xs uppercase tracking-widest text-primary">{isRtl ? 'المطابقة التلقائية' : 'Auto Reconciliation'}</h4>
+                 <h4 className="font-black text-xs uppercase tracking-widest text-primary">{isRtl ? 'التحكم التحليلي الذكي' : 'Analytical Control'}</h4>
                  <p className="text-[10px] font-bold text-slate-500 leading-relaxed italic">
-                    {isRtl ? 'سيقوم النظام بتوليد قيد اليومية المناظر فور حفظ السند، مع ربطه بمركز التكلفة المختار.' : 'System will auto-generate journal entries and link to the selected cost center.'}
+                    {isRtl ? 'يقوم النظام تلقائياً بطلب مركز التكلفة أو الربحية بناءً على نوع الحساب المختار في شجرة الحسابات لضمان دقة التقارير.' : 'System auto-requests centers based on account configuration in COA for report accuracy.'}
                  </p>
               </Card>
            </aside>
