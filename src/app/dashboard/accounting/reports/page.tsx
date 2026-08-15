@@ -13,7 +13,7 @@ import {
   History, TrendingDown, Sparkles, ShieldCheck, 
   Scale, Users, Truck, ArrowUpRight, UserCheck, Zap,
   BarChart3, Activity, Search, Filter, Briefcase, ListChecks,
-  ChevronDown, RefreshCcw, Info, X
+  ChevronDown, RefreshCcw, Info, X, ListTree
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
@@ -23,6 +23,7 @@ import { paths } from '@/firebase/multi-tenant';
 import { AnalyticsService, ProjectAnalyticsSummary, ResourceProfitability, ItemProfitability, GlobalFilters } from '@/services/analytics-service';
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
 import { cn } from '@/lib/utils';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 /**
  * رادار الجدوى السيادي (Sovereign Profitability Radar)
@@ -118,21 +119,21 @@ export default function FinancialProfitabilityPage() {
   if (loading && projectsData.length === 0) return <div className="h-[60vh] flex items-center justify-center bg-[#fdfaf3]"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
   return (
-    <div className="space-y-8 animate-in fade-in pb-20 text-start" dir={dir}>
+    <div className="space-y-8 animate-in fade-in duration-500 pb-20 text-start max-w-[1600px] mx-auto" dir={dir}>
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-6">
         <div className="text-start space-y-1">
            <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest bg-primary/5 px-4 py-1.5 rounded-full w-fit border border-primary/10 shadow-sm">
               <Sparkles className="h-3 w-3" /> {isRtl ? 'رادار الربحية السيادي' : 'Sovereign Profitability Radar'}
            </div>
            <h1 className="text-4xl font-black font-headline text-slate-900">{isRtl ? 'تحليل مراكز التكلفة والربحية' : 'Cost & Profit Center Analysis'}</h1>
-           <p className="text-xs font-bold text-slate-400 italic">{isRtl ? 'رقابة شاملة تربط مصروفات الميدان والعهد بالإيرادات المفوترة.' : 'Comprehensive control linking field spend and assets to revenue.'}</p>
+           <p className="text-xs font-bold text-slate-400 italic text-start">{isRtl ? 'رقابة شاملة تربط مصروفات الميدان والعهد بالإيرادات المفوترة.' : 'Comprehensive control linking field spend and assets to revenue.'}</p>
         </div>
-        <Button variant="outline" onClick={() => window.print()} className="rounded-xl border-2 h-12 px-6 font-black gap-2 bg-white shadow-sm hover:bg-slate-50 print:hidden">
+        <Button variant="outline" onClick={() => window.print()} className="rounded-xl border-2 h-11 px-6 font-black gap-2 bg-white shadow-sm hover:bg-slate-50 print:hidden">
            <Printer className="h-4 w-4" /> {t('common.print')}
         </Button>
       </header>
 
-      {/* شريط الفلترة الشمولي - تم تعديله ليظهر اسم العميل أولاً */}
+      {/* شريط الفلترة الشمولي */}
       <Card className="border-0 shadow-2xl rounded-[2rem] bg-white ring-1 ring-black/5 p-8 overflow-visible print:hidden">
          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
             <div className="space-y-2 text-start">
@@ -186,233 +187,311 @@ export default function FinancialProfitabilityPage() {
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Filter className="h-4 w-4" />}
                   {isRtl ? 'تطبيق الفلتر' : 'Apply'}
                </Button>
-               <Button variant="ghost" onClick={() => setFilters({ projectId: 'all', costCenterId: 'all', profitCenterId: 'all', searchTerm: '' })} className="h-12 rounded-xl font-black text-rose-500">
+               <Button variant="ghost" onClick={() => setFilters({ projectId: 'all', costCenterId: 'all', profitCenterId: 'all', searchTerm: '' })} className="h-12 rounded-xl font-black text-rose-500 hover:bg-rose-50 border-2 border-transparent">
                   <RefreshCcw className="h-4 w-4" />
                </Button>
             </div>
          </div>
       </Card>
 
-      {filters.projectId === 'all' ? (
-        <Tabs defaultValue="projects" className="w-full">
-           <TabsList className="bg-white p-1.5 rounded-2xl border-2 border-slate-100 shadow-xl mb-8 h-16 gap-2">
-              <TabsTrigger value="projects" className="rounded-xl font-black text-xs px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2 text-start">
-                 <Target className="h-4 w-4" /> {isRtl ? 'ميزان ربحية العملاء' : 'Client Profitability'}
-              </TabsTrigger>
-              <TabsTrigger value="resources" className="rounded-xl font-black text-xs px-8 h-full data-[state=active]:bg-slate-900 data-[state=active]:text-white transition-all gap-2 text-start">
-                 <Users className="h-4 w-4" /> {isRtl ? 'كفاءة الموارد (ROI)' : 'Resource Efficiency'}
-              </TabsTrigger>
-           </TabsList>
+      <Tabs defaultValue="projects" className="w-full">
+         <TabsList className="bg-white p-1.5 rounded-2xl border-2 border-slate-100 shadow-xl mb-8 h-16 gap-2">
+            <TabsTrigger value="projects" className="rounded-xl font-black text-xs px-8 h-full data-[state=active]:bg-primary data-[state=active]:text-white transition-all gap-2">
+               <Target className="h-4 w-4" /> {isRtl ? 'ميزان ربحية المشاريع' : 'Project Profitability'}
+            </TabsTrigger>
+            <TabsTrigger value="resources" className="rounded-xl font-black text-xs px-8 h-full data-[state=active]:bg-slate-900 data-[state=active]:text-white transition-all gap-2">
+               <Users className="h-4 w-4" /> {isRtl ? 'كفاءة الموارد (ROI)' : 'Resource Efficiency'}
+            </TabsTrigger>
+            <TabsTrigger value="registry" className="rounded-xl font-black text-xs px-8 h-full data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all gap-2">
+               <ListTree className="h-4 w-4" /> {tSafe('inline.centers.registry', 'سجل مراكز التكلفة والربحية', 'Centers Registry')}
+            </TabsTrigger>
+         </TabsList>
 
-           <TabsContent value="projects" className="space-y-8 animate-in slide-in-from-bottom-4">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                 <Card className="border-0 shadow-xl rounded-[2rem] bg-white p-8 border-b-8 border-primary ring-1 ring-black/5 text-start">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إيرادات محققة (مفلترة)' : 'Filtered Revenue'}</p>
-                    <h3 className="text-3xl font-black text-slate-900">{stats.totalRevenue.toLocaleString()} <span className="text-xs">KWD</span></h3>
-                 </Card>
-                 <Card className="border-0 shadow-xl rounded-[2rem] bg-white p-8 border-b-8 border-rose-500 ring-1 ring-black/5 text-start">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي التكاليف (مفلترة)' : 'Filtered Costs'}</p>
-                    <h3 className="text-3xl font-black text-rose-600">{stats.totalCosts.toLocaleString()} <span className="text-xs">KWD</span></h3>
-                 </Card>
-                 <Card className="border-0 shadow-xl rounded-[2.5rem] bg-slate-900 p-8 text-white relative overflow-hidden group text-start">
-                    <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><TrendingUp className="h-24 w-24 text-primary" /></div>
-                    <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-2">{isRtl ? 'صافي هامش الربح' : 'Filtered Margin'}</p>
-                    <h3 className="text-4xl font-black text-white">{stats.netMargin.toLocaleString()} <span className="text-xs text-primary">KWD</span></h3>
-                 </Card>
-                 <Card className="border-0 shadow-xl rounded-[2rem] bg-white p-8 border-b-8 border-blue-500 ring-1 ring-black/5 text-start">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'ميزانية المقايسات الكلية' : 'Total Budgets'}</p>
-                    <h3 className="text-3xl font-black text-blue-600">{stats.totalBudget.toLocaleString()} <span className="text-xs">KWD</span></h3>
-                 </Card>
-              </div>
+         <TabsContent value="projects" className="space-y-8 animate-in slide-in-from-bottom-4">
+            {filters.projectId === 'all' ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                   <Card className="border-0 shadow-xl rounded-[2rem] bg-white p-8 border-b-8 border-primary ring-1 ring-black/5 text-start">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إيرادات محققة (مفلترة)' : 'Filtered Revenue'}</p>
+                      <h3 className="text-3xl font-black text-slate-900">{stats.totalRevenue.toLocaleString()} <span className="text-xs">KWD</span></h3>
+                   </Card>
+                   <Card className="border-0 shadow-xl rounded-[2rem] bg-white p-8 border-b-8 border-rose-500 ring-1 ring-black/5 text-start">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'إجمالي التكاليف (مفلترة)' : 'Filtered Costs'}</p>
+                      <h3 className="text-3xl font-black text-rose-600">{stats.totalCosts.toLocaleString()} <span className="text-xs">KWD</span></h3>
+                   </Card>
+                   <Card className="border-0 shadow-xl rounded-[2.5rem] bg-slate-900 p-8 text-white relative overflow-hidden group text-start">
+                      <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><TrendingUp className="h-24 w-24 text-primary" /></div>
+                      <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-2">{isRtl ? 'صافي هامش الربح' : 'Filtered Margin'}</p>
+                      <h3 className="text-4xl font-black text-white">{stats.netMargin.toLocaleString()} <span className="text-xs text-primary">KWD</span></h3>
+                   </Card>
+                   <Card className="border-0 shadow-xl rounded-[2rem] bg-white p-8 border-b-8 border-blue-500 ring-1 ring-black/5 text-start">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'ميزانية المقايسات الكلية' : 'Total Budgets'}</p>
+                      <h3 className="text-3xl font-black text-blue-600">{stats.totalBudget.toLocaleString()} <span className="text-xs">KWD</span></h3>
+                   </Card>
+                </div>
 
-              <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-                 <CardHeader className="bg-slate-50/50 p-8 border-b flex flex-row items-center justify-between">
-                    <CardTitle className="text-xl font-black font-headline flex items-center gap-3 text-start">
-                       <Scale className="h-6 w-6 text-primary" /> {isRtl ? 'كشف ربحية العملاء والمشاريع' : 'Project Profitability Ledger'}
-                    </CardTitle>
-                 </CardHeader>
-                 <CardContent className="p-0 overflow-x-auto text-start">
-                    <table className="w-full text-start">
-                       <thead className="bg-muted/10 border-b">
-                          <tr className="font-black text-slate-500 uppercase text-[10px] tracking-widest">
-                             <th className="p-6 ps-10 text-start">{isRtl ? 'العميل / المشروع' : 'Client / Project'}</th>
-                             <th className="p-6 text-end">{isRtl ? 'إيراد البعد المختار' : 'Revenue'}</th>
-                             <th className="p-6 text-end">{isRtl ? 'تكلفة البعد المختار' : 'Spent'}</th>
-                             <th className="p-6 text-end">{isRtl ? 'الربح الصافي' : 'Net Profit'}</th>
-                             <th className="p-6 text-center pe-10">{isRtl ? 'الهامش %' : 'Margin %'}</th>
-                          </tr>
-                       </thead>
-                       <tbody className="divide-y divide-slate-100">
-                          {projectsData.map((p, i) => (
-                             <tr key={i} className="hover:bg-slate-50/50 transition-colors cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, projectId: p.projectId }))}>
-                                <td className="p-6 ps-10 text-start">
-                                   <p className="font-black text-slate-800 text-sm">{p.clientName}</p>
-                                   <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">{p.projectName}</p>
-                                </td>
-                                <td className="p-6 text-end font-mono font-bold text-slate-900">{p.totalRevenue.toLocaleString()}</td>
-                                <td className="p-6 text-end font-mono font-bold text-rose-500">{p.totalSpent.toLocaleString()}</td>
-                                <td className="p-6 text-end font-mono font-black text-emerald-600">{p.margin.toLocaleString()}</td>
-                                <td className="p-6 text-center pe-10">
-                                   <Badge className={cn(
-                                     "font-black text-[10px] px-4 py-1 rounded-lg border-0 shadow-sm",
-                                     p.marginPercent > 20 ? "bg-emerald-600 text-white" : p.marginPercent > 0 ? "bg-blue-500 text-white" : "bg-rose-50 text-white"
-                                   )}>
-                                      {p.marginPercent}%
-                                   </Badge>
-                                </td>
-                             </tr>
-                          ))}
-                       </tbody>
-                    </table>
-                 </CardContent>
-              </Card>
-           </TabsContent>
-
-           <TabsContent value="resources" className="space-y-8 animate-in slide-in-from-bottom-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                 <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-                    <CardHeader className="bg-slate-50/50 border-b p-8 flex items-center justify-between">
-                       <CardTitle className="text-lg font-black flex items-center gap-3 text-start">
-                          <UserCheck className="h-6 w-6 text-blue-600" /> {isRtl ? 'جدوى القوى العاملة (Labor ROI)' : 'Labor Efficiency (ROI)'}
-                       </CardTitle>
+                <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+                   <CardHeader className="bg-slate-50/50 p-8 border-b">
+                      <CardTitle className="text-xl font-black font-headline flex items-center gap-3 text-start">
+                         <Scale className="h-6 w-6 text-primary" /> {isRtl ? 'كشف ربحية العملاء والمشاريع' : 'Project Profitability Ledger'}
+                      </CardTitle>
+                   </CardHeader>
+                   <CardContent className="p-0 overflow-x-auto text-start">
+                      <table className="w-full text-start">
+                         <thead className="bg-muted/10 border-b">
+                            <tr className="font-black text-slate-500 uppercase text-[10px] tracking-widest">
+                               <th className="p-6 ps-10 text-start">{isRtl ? 'العميل / المشروع' : 'Client / Project'}</th>
+                               <th className="p-6 text-end">{isRtl ? 'إيراد البعد المختار' : 'Revenue'}</th>
+                               <th className="p-6 text-end">{isRtl ? 'تكلفة البعد المختار' : 'Spent'}</th>
+                               <th className="p-6 text-end">{isRtl ? 'الربح الصافي' : 'Net Profit'}</th>
+                               <th className="p-6 text-center pe-10">{isRtl ? 'الهامش %' : 'Margin %'}</th>
+                            </tr>
+                         </thead>
+                         <tbody className="divide-y divide-slate-100">
+                            {projectsData.map((p, i) => (
+                               <tr key={i} className="hover:bg-slate-50/50 transition-colors cursor-pointer" onClick={() => setFilters(prev => ({ ...prev, projectId: p.projectId }))}>
+                                  <td className="p-6 ps-10 text-start">
+                                     <p className="font-black text-slate-800 text-sm">{p.clientName}</p>
+                                     <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">{p.projectName}</p>
+                                  </td>
+                                  <td className="p-6 text-end font-mono font-bold text-slate-900">{p.totalRevenue.toLocaleString()}</td>
+                                  <td className="p-6 text-end font-mono font-bold text-rose-500">{p.totalSpent.toLocaleString()}</td>
+                                  <td className="p-6 text-end font-mono font-black text-emerald-600">{p.margin.toLocaleString()}</td>
+                                  <td className="p-6 text-center pe-10">
+                                     <Badge className={cn(
+                                       "font-black text-[10px] px-4 py-1 rounded-lg border-0 shadow-sm",
+                                       p.marginPercent > 20 ? "bg-emerald-600 text-white" : p.marginPercent > 0 ? "bg-blue-500 text-white" : "bg-rose-50 text-white"
+                                     )}>
+                                        {p.marginPercent}%
+                                     </Badge>
+                                  </td>
+                               </tr>
+                            ))}
+                         </tbody>
+                      </table>
+                   </CardContent>
+                </Card>
+              </>
+            ) : (
+              /* عرض تفصيلي لمشروع محدد */
+              <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+                 <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
+                    <CardHeader className="bg-slate-900 p-10 text-white flex flex-row items-center justify-between">
+                       <div className="text-start space-y-2">
+                          <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">{isRtl ? 'كشف الربحية الجزيئي للمشروع' : 'Project Molecular Profitability'}</p>
+                          <CardTitle className="text-3xl font-black font-headline text-start">{allTransactions?.find(t => t.id === filters.projectId)?.clientName} - {allTransactions?.find(t => t.id === filters.projectId)?.subServiceName}</CardTitle>
+                       </div>
+                       <div className="flex gap-4">
+                          <div className="relative">
+                             <Input 
+                               placeholder={isRtl ? 'بحث في البنود...' : 'Search items...'} 
+                               value={filters.searchTerm}
+                               onChange={e => setFilters(prev => ({ ...prev, searchTerm: e.target.value }))}
+                               className="h-12 rounded-xl border-0 bg-white/10 text-white font-bold ps-10 w-64 placeholder:text-white/40"
+                             />
+                             <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+                          </div>
+                          <button onClick={() => setFilters(prev => ({ ...prev, projectId: 'all' }))} className="h-12 w-12 bg-white/10 rounded-xl flex items-center justify-center text-white border border-white/10 hover:bg-white/20 transition-all">
+                             <X className="h-6 w-6" />
+                          </button>
+                       </div>
                     </CardHeader>
-                    <CardContent className="p-0">
-                       <table className="w-full text-start">
-                          <thead className="bg-muted/10 border-b">
-                             <tr className="font-black text-slate-500 uppercase text-[9px] tracking-widest">
-                                <th className="p-4 ps-8 text-start">{isRtl ? 'الموظف' : 'Staff'}</th>
-                                <th className="p-4 text-end">{isRtl ? 'التكلفة (المحاسبة)' : 'Real Cost'}</th>
-                                <th className="p-4 text-end">{isRtl ? 'القيمة المنتجة (الميدان)' : 'Value Generated'}</th>
-                                <th className="p-4 text-center pe-8">{isRtl ? 'الكفاءة' : 'ROI'}</th>
-                             </tr>
-                          </thead>
-                          <tbody>
-                             {resourcesData.filter(r => r.type === 'employee').map((r, i) => (
-                                <tr key={i} className="hover:bg-slate-50 border-b last:border-0">
-                                   <td className="p-4 ps-8 font-black text-xs text-slate-800">{r.name}</td>
-                                   <td className="p-4 text-end font-mono text-xs text-rose-500">{r.totalCost.toLocaleString()}</td>
-                                   <td className="p-4 text-end font-mono text-xs text-emerald-600">{r.valueGenerated.toLocaleString()}</td>
-                                   <td className="p-4 text-center pe-8">
-                                      <Badge className={cn("font-black text-[9px]", r.efficiency >= 100 ? "bg-emerald-500 text-emerald-600" : "bg-rose-50 text-rose-600")}>
-                                         {r.efficiency}%
-                                      </Badge>
-                                   </td>
-                                </tr>
-                             ))}
-                          </tbody>
-                       </table>
+                    <CardContent className="p-0 overflow-x-auto text-start">
+                       {drillDownLoading ? (
+                         <div className="py-40 text-center flex flex-col items-center gap-4">
+                            <Loader2 className="h-12 w-12 animate-spin text-primary/30" />
+                            <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest italic">{isRtl ? 'جاري مطابقة بنود المقايسة والمستخلصات...' : 'Matching BOQ items with IPCs...'}</p>
+                         </div>
+                       ) : (
+                         <table className="w-full text-start">
+                           <thead className="bg-slate-50 border-b">
+                              <tr className="font-black text-slate-500 uppercase text-[10px] tracking-widest">
+                                 <th className="p-6 ps-10 text-start">{isRtl ? 'بند العمل / الكمية' : 'Work Item / Qty'}</th>
+                                 <th className="p-6 text-end">{isRtl ? 'إيراد البند (مفوتر للمالك)' : 'Revenue'}</th>
+                                 <th className="p-6 text-end text-rose-500">{isRtl ? 'التكلفة المباشرة (ميداني)' : 'Direct Cost'}</th>
+                                 <th className="p-6 text-end text-emerald-600">{isRtl ? 'صافي الربح' : 'Net Profit'}</th>
+                                 <th className="p-6 text-center pe-10">{isRtl ? 'هامش البند' : 'Item Margin'}</th>
+                              </tr>
+                           </thead>
+                           <tbody className="divide-y divide-slate-100">
+                              {filteredItems.map((item, idx) => (
+                                 <tr key={idx} className="hover:bg-primary/[0.01] transition-colors">
+                                    <td className="p-6 ps-10 text-start">
+                                       <p className="font-black text-slate-800 text-sm">{item.itemTitle}</p>
+                                       <div className="flex items-center gap-2 mt-1">
+                                          <span className="text-[9px] font-bold text-slate-400 uppercase">{item.executedQty} / {item.plannedQty} {item.unit}</span>
+                                       </div>
+                                    </td>
+                                    <td className="p-6 text-end font-mono font-bold text-slate-700">{item.revenue.toLocaleString()}</td>
+                                    <td className="p-6 text-end font-mono font-bold text-rose-500">{item.cost.toLocaleString()}</td>
+                                    <td className="p-6 text-end font-mono font-black text-emerald-600">{item.profit.toLocaleString()}</td>
+                                    <td className="p-6 text-center pe-10">
+                                       <Badge className={cn(
+                                         "font-black text-[10px] px-3 py-1 rounded-lg border-0 shadow-sm",
+                                         item.marginPercent > 30 ? "bg-emerald-500 text-white" : item.marginPercent > 0 ? "bg-blue-500 text-white" : "bg-rose-50 text-white"
+                                       )}>
+                                          {item.marginPercent}%
+                                       </Badge>
+                                    </td>
+                                 </tr>
+                              ))}
+                           </tbody>
+                         </table>
+                       )}
                     </CardContent>
                  </Card>
-
-                 <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-                    <CardHeader className="bg-slate-50/50 border-b p-8 flex items-center justify-between">
-                       <CardTitle className="text-lg font-black flex items-center gap-3 text-start">
-                          <Truck className="h-6 w-6 text-orange-600" /> {isRtl ? 'عائد استثمار المعدات' : 'Equipment ROI'}
-                       </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                       <table className="w-full text-start">
-                          <thead className="bg-muted/10 border-b">
-                             <tr className="font-black text-slate-500 uppercase text-[9px] tracking-widest">
-                                <th className="p-4 ps-8 text-start">{isRtl ? 'المعدة' : 'Machine'}</th>
-                                <th className="p-4 text-end">{isRtl ? 'تكلفة الملكية' : 'Ownership Cost'}</th>
-                                <th className="p-4 text-end">{isRtl ? 'إنتاجية الميدان' : 'Field Output'}</th>
-                                <th className="p-4 text-center pe-8">{isRtl ? 'المساهمة' : 'Net Contribution'}</th>
-                             </tr>
-                          </thead>
-                          <tbody>
-                             {resourcesData.filter(r => r.type === 'equipment').map((r, i) => (
-                                <tr key={i} className="hover:bg-slate-50 border-b last:border-0">
-                                   <td className="p-4 ps-8 font-black text-xs text-slate-800">{r.name}</td>
-                                   <td className="p-4 text-end font-mono text-xs text-rose-500">{r.totalCost.toLocaleString()}</td>
-                                   <td className="p-4 text-end font-mono text-xs text-emerald-600">{r.valueGenerated.toLocaleString()}</td>
-                                   <td className="p-4 text-center pe-8">
-                                      <span className={cn("font-black text-xs", r.netContribution >= 0 ? "text-emerald-600" : "text-rose-600")}>
-                                         {r.netContribution.toLocaleString()}
-                                      </span>
-                                   </td>
-                                </tr>
-                             ))}
-                          </tbody>
-                       </table>
-                    </CardContent>
-                 </Card>
               </div>
-           </TabsContent>
-        </Tabs>
-      ) : (
-        /* عرض تفصيلي لمشروع محدد (Drill Down) */
-        <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
-           <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
-              <CardHeader className="bg-slate-900 p-10 text-white flex flex-row items-center justify-between">
-                 <div className="text-start space-y-2">
-                    <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">{isRtl ? 'كشف الربحية الجزيئي للمشروع' : 'Project Molecular Profitability'}</p>
-                    <CardTitle className="text-3xl font-black font-headline text-start">{allTransactions?.find(t => t.id === filters.projectId)?.clientName} - {allTransactions?.find(t => t.id === filters.projectId)?.subServiceName}</CardTitle>
-                 </div>
-                 <div className="flex gap-4">
-                    <div className="relative">
-                       <Input 
-                         placeholder={isRtl ? 'بحث في البنود...' : 'Search items...'} 
-                         value={filters.searchTerm}
-                         onChange={e => setFilters(prev => ({ ...prev, searchTerm: e.target.value }))}
-                         className="h-12 rounded-xl border-0 bg-white/10 text-white font-bold ps-10 w-64 placeholder:text-white/40"
-                       />
-                       <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
-                    </div>
-                    <button onClick={() => setFilters(prev => ({ ...prev, projectId: 'all' }))} className="h-12 w-12 bg-white/10 rounded-xl flex items-center justify-center text-white border border-white/10 hover:bg-white/20 transition-all">
-                       <X className="h-6 w-6" />
-                    </button>
-                 </div>
-              </CardHeader>
-              <CardContent className="p-0 overflow-x-auto">
-                 {drillDownLoading ? (
-                   <div className="py-40 text-center flex flex-col items-center gap-4">
-                      <Loader2 className="h-12 w-12 animate-spin text-primary/30" />
-                      <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest italic">{isRtl ? 'جاري مطابقة بنود المقايسة والمستخلصات...' : 'Matching BOQ items with IPCs...'}</p>
-                   </div>
-                 ) : (
-                   <table className="w-full text-start">
-                     <thead className="bg-slate-50 border-b">
-                        <tr className="font-black text-slate-500 uppercase text-[10px] tracking-widest">
-                           <th className="p-6 ps-10 text-start">{isRtl ? 'بند العمل / الكمية' : 'Work Item / Qty'}</th>
-                           <th className="p-6 text-end">{isRtl ? 'إيراد البند (مفوتر للمالك)' : 'Revenue'}</th>
-                           <th className="p-6 text-end text-rose-500">{isRtl ? 'التكلفة المباشرة (ميداني)' : 'Direct Cost'}</th>
-                           <th className="p-6 text-end text-emerald-600">{isRtl ? 'صافي الربح' : 'Net Profit'}</th>
-                           <th className="p-6 text-center pe-10">{isRtl ? 'هامش البند' : 'Item Margin'}</th>
-                        </tr>
-                     </thead>
-                     <tbody className="divide-y divide-slate-100">
-                        {filteredItems.map((item, idx) => (
-                           <tr key={idx} className="hover:bg-primary/[0.01] transition-colors">
-                              <td className="p-6 ps-10 text-start">
-                                 <p className="font-black text-slate-800 text-sm">{item.itemTitle}</p>
-                                 <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-[9px] font-bold text-slate-400 uppercase">{item.executedQty} / {item.plannedQty} {item.unit}</span>
-                                 </div>
-                              </td>
-                              <td className="p-6 text-end font-mono font-bold text-slate-700">{item.revenue.toLocaleString()}</td>
-                              <td className="p-6 text-end font-mono font-bold text-rose-500">{item.cost.toLocaleString()}</td>
-                              <td className="p-6 text-end font-mono font-black text-emerald-600">{item.profit.toLocaleString()}</td>
-                              <td className="p-6 text-center pe-10">
-                                 <Badge className={cn(
-                                   "font-black text-[10px] px-3 py-1 rounded-lg border-0 shadow-sm",
-                                   item.marginPercent > 30 ? "bg-emerald-500 text-white" : item.marginPercent > 0 ? "bg-blue-500 text-white" : "bg-rose-50 text-white"
-                                 )}>
-                                    {item.marginPercent}%
-                                 </Badge>
-                              </td>
+            )}
+         </TabsContent>
+
+         <TabsContent value="resources" className="space-y-8 animate-in slide-in-from-bottom-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+               <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+                  <CardHeader className="bg-slate-50/50 border-b p-8">
+                     <CardTitle className="text-lg font-black flex items-center gap-3 text-start">
+                        <UserCheck className="h-6 w-6 text-blue-600" /> {isRtl ? 'جدوى القوى العاملة (Labor ROI)' : 'Labor Efficiency (ROI)'}
+                     </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                     <table className="w-full text-start">
+                        <thead className="bg-muted/10 border-b">
+                           <tr className="font-black text-slate-500 uppercase text-[9px] tracking-widest">
+                              <th className="p-4 ps-8 text-start">{isRtl ? 'الموظف' : 'Staff'}</th>
+                              <th className="p-4 text-end">{isRtl ? 'التكلفة (المحاسبة)' : 'Real Cost'}</th>
+                              <th className="p-4 text-end">{isRtl ? 'القيمة المنتجة (الميدان)' : 'Value Generated'}</th>
+                              <th className="p-4 text-center pe-8">{isRtl ? 'الكفاءة' : 'ROI'}</th>
                            </tr>
-                        ))}
-                        {filteredItems.length === 0 && (
-                          <tr><td colSpan={5} className="py-24 text-center text-slate-300 font-bold italic">{isRtl ? 'لا يوجد بيانات إنجاز مالية لهذا البحث.' : 'No financial progress data for this search.'}</td></tr>
-                        )}
-                     </tbody>
-                   </table>
-                 )}
-              </CardContent>
-           </Card>
-        </div>
-      )}
+                        </thead>
+                        <tbody>
+                           {resourcesData.filter(r => r.type === 'employee').map((r, i) => (
+                              <tr key={i} className="hover:bg-slate-50 border-b last:border-0">
+                                 <td className="p-4 ps-8 font-black text-xs text-slate-800 text-start">{r.name}</td>
+                                 <td className="p-4 text-end font-mono text-xs text-rose-500">{r.totalCost.toLocaleString()}</td>
+                                 <td className="p-4 text-end font-mono text-xs text-emerald-600">{r.valueGenerated.toLocaleString()}</td>
+                                 <td className="p-4 text-center pe-8">
+                                    <Badge className={cn("font-black text-[9px]", r.efficiency >= 100 ? "bg-emerald-500 text-white" : "bg-rose-50 text-rose-600")}>
+                                       {r.efficiency}%
+                                    </Badge>
+                                 </td>
+                              </tr>
+                           ))}
+                        </tbody>
+                     </table>
+                  </CardContent>
+               </Card>
+
+               <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+                  <CardHeader className="bg-slate-50/50 border-b p-8">
+                     <CardTitle className="text-lg font-black flex items-center gap-3 text-start">
+                        <Truck className="h-6 w-6 text-orange-600" /> {isRtl ? 'عائد استثمار المعدات' : 'Equipment ROI'}
+                     </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                     <table className="w-full text-start">
+                        <thead className="bg-muted/10 border-b">
+                           <tr className="font-black text-slate-500 uppercase text-[9px] tracking-widest">
+                              <th className="p-4 ps-8 text-start">{isRtl ? 'المعدة' : 'Machine'}</th>
+                              <th className="p-4 text-end">{isRtl ? 'تكلفة الملكية' : 'Ownership Cost'}</th>
+                              <th className="p-4 text-end">{isRtl ? 'إنتاجية الميدان' : 'Field Output'}</th>
+                              <th className="p-4 text-center pe-8">{isRtl ? 'المساهمة' : 'Net Contribution'}</th>
+                           </tr>
+                        </thead>
+                        <tbody>
+                           {resourcesData.filter(r => r.type === 'equipment').map((r, i) => (
+                              <tr key={i} className="hover:bg-slate-50 border-b last:border-0">
+                                 <td className="p-4 ps-8 font-black text-xs text-slate-800 text-start">{r.name}</td>
+                                 <td className="p-4 text-end font-mono text-xs text-rose-500">{r.totalCost.toLocaleString()}</td>
+                                 <td className="p-4 text-end font-mono text-xs text-emerald-600">{r.valueGenerated.toLocaleString()}</td>
+                                 <td className="p-4 text-center pe-8">
+                                    <span className={cn("font-black text-xs", r.netContribution >= 0 ? "text-emerald-600" : "text-rose-600")}>
+                                       {r.netContribution.toLocaleString()}
+                                    </span>
+                                 </td>
+                              </tr>
+                           ))}
+                        </tbody>
+                     </table>
+                  </CardContent>
+               </Card>
+            </div>
+         </TabsContent>
+
+         <TabsContent value="registry" className="space-y-8 animate-in slide-in-from-bottom-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+               <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+                  <CardHeader className="bg-slate-900 p-8 text-white text-start">
+                     <div className="flex items-center gap-4">
+                        <div className="h-11 w-11 rounded-xl bg-white/10 flex items-center justify-center text-primary"><LayoutGrid className="h-6 w-6" /></div>
+                        <CardTitle className="text-xl font-black">{tSafe('inline.cost.centers.list', 'سجل مراكز التكلفة (المصروفات)', 'Cost Centers Registry')}</CardTitle>
+                     </div>
+                  </CardHeader>
+                  <CardContent className="p-0 overflow-x-auto">
+                     <table className="w-full text-start">
+                        <thead className="bg-slate-50 border-b">
+                           <tr className="font-black text-slate-500 uppercase text-[9px] tracking-widest">
+                              <th className="p-5 ps-8 text-start">{isRtl ? 'الكود' : 'Code'}</th>
+                              <th className="p-5 text-start">{isRtl ? 'مركز التكلفة' : 'Cost Center'}</th>
+                              <th className="p-5 text-start">{isRtl ? 'الارتباط التشغيلي' : 'Assignment'}</th>
+                           </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                           {costCenters?.map((cc: any) => (
+                              <tr key={cc.id} className="hover:bg-slate-50 transition-colors">
+                                 <td className="p-5 ps-8"><Badge variant="outline" className="font-mono font-black text-[9px] border-primary/20 text-primary">{cc.code}</Badge></td>
+                                 <td className="p-5 font-black text-slate-800 text-sm">{cc.name}</td>
+                                 <td className="p-5 text-start">
+                                    {cc.isAdministrative ? (
+                                      <Badge className="bg-blue-50 text-blue-600 border-0 text-[8px] font-black uppercase">{isRtl ? 'إداري عام' : 'Administrative'}</Badge>
+                                    ) : (
+                                      <div className="flex items-center gap-2 text-slate-400 font-bold text-[10px]">
+                                         <Briefcase className="h-3 w-3" />
+                                         <span className="truncate max-w-[120px]">{allTransactions?.find(t => t.id === cc.projectId)?.subServiceName || '---'}</span>
+                                      </div>
+                                    )}
+                                 </td>
+                              </tr>
+                           ))}
+                        </tbody>
+                     </table>
+                  </CardContent>
+               </Card>
+
+               <Card className="border-0 shadow-2xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+                  <CardHeader className="bg-emerald-900 p-8 text-white text-start">
+                     <div className="flex items-center gap-4">
+                        <div className="h-11 w-11 rounded-xl bg-white/10 flex items-center justify-center text-emerald-400"><DatabaseZap className="h-6 w-6" /></div>
+                        <CardTitle className="text-xl font-black">{tSafe('inline.profit.centers.list', 'سجل مراكز الربحية (الإيرادات)', 'Profit Centers Registry')}</CardTitle>
+                     </div>
+                  </CardHeader>
+                  <CardContent className="p-0 overflow-x-auto">
+                     <table className="w-full text-start">
+                        <thead className="bg-slate-50 border-b">
+                           <tr className="font-black text-slate-500 uppercase text-[9px] tracking-widest">
+                              <th className="p-5 ps-8 text-start">{isRtl ? 'الكود' : 'Code'}</th>
+                              <th className="p-5 text-start">{isRtl ? 'مركز الربحية' : 'Profit Center'}</th>
+                              <th className="p-5 text-start">{isRtl ? 'المشروع المرتبط' : 'Project Link'}</th>
+                           </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                           {profitCenters?.map((pc: any) => (
+                              <tr key={pc.id} className="hover:bg-slate-50 transition-colors">
+                                 <td className="p-5 ps-8"><Badge variant="outline" className="font-mono font-black text-[9px] border-emerald-200 text-emerald-600">{pc.code}</Badge></td>
+                                 <td className="p-5 font-black text-slate-800 text-sm">{pc.name}</td>
+                                 <td className="p-5 text-start">
+                                    <div className="flex items-center gap-2 text-slate-400 font-bold text-[10px]">
+                                       <Target className="h-3 w-3 text-emerald-500" />
+                                       <span className="truncate max-w-[150px]">{allTransactions?.find(t => t.id === pc.projectId)?.subServiceName || '---'}</span>
+                                    </div>
+                                 </td>
+                              </tr>
+                           ))}
+                        </tbody>
+                     </table>
+                  </CardContent>
+               </Card>
+            </div>
+         </TabsContent>
+      </Tabs>
     </div>
   );
 }
