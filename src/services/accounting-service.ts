@@ -26,6 +26,8 @@ import {
 import { CostCenter, ProfitCenter } from '@/types/cost-profit-centers';
 import { nextSequential } from '@/lib/counters';
 import { AnalyticalValidationService } from './analytical-validation-service';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 export class AccountingService {
   private validationService: AnalyticalValidationService;
@@ -80,6 +82,65 @@ export class AccountingService {
     return ref.id;
   }
 
+  /**
+   * أتمتة سيادية: إنشاء مركز تكلفة آلي لمورد (موظف أو معدة)
+   */
+  async createAutomaticCostCenter(referenceId: string, name: string, code: string, projectId?: string) {
+    const ccPath = paths.costCenters(this.companyId);
+    const ccRef = doc(this.db, ccPath, `cc_${referenceId}`);
+    
+    const docData = {
+      id: ccRef.id,
+      code: code,
+      name: name,
+      projectId: projectId || '',
+      isAdministrative: !projectId,
+      isActive: true,
+      companyId: this.companyId,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+
+    await setDoc(ccRef, docData).catch(err => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: ccRef.path,
+        operation: 'create',
+        requestResourceData: docData
+      }));
+    });
+    
+    return ccRef.id;
+  }
+
+  /**
+   * أتمتة سيادية: إنشاء مركز ربحية آلي لمشروع
+   */
+  async createAutomaticProfitCenter(projectId: string, name: string, code: string) {
+    const pcPath = paths.profitCenters(this.companyId);
+    const pcRef = doc(this.db, pcPath, `pc_${projectId}`);
+    
+    const docData = {
+      id: pcRef.id,
+      code: code,
+      name: name,
+      projectId: projectId,
+      isActive: true,
+      companyId: this.companyId,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+
+    await setDoc(pcRef, docData).catch(err => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: pcRef.path,
+        operation: 'create',
+        requestResourceData: docData
+      }));
+    });
+    
+    return pcRef.id;
+  }
+
   async createJournalEntry(data: Partial<JournalEntry>, userId: string) {
     const totalDebit = data.lines?.reduce((sum, l) => sum + (l.debit || 0), 0) || 0;
     const totalCredit = data.lines?.reduce((sum, l) => sum + (l.credit || 0), 0) || 0;
@@ -127,9 +188,6 @@ export class AccountingService {
     return ref.id;
   }
 
-  /**
-   * إصدار سند مالي مع دعم توزيع التكلفة والربحية آلياً
-   */
   async createVoucher(data: Partial<Voucher>, userId: string) {
     const batch = writeBatch(this.db);
     const voucherRef = doc(collection(this.db, paths.vouchers(this.companyId)));
@@ -144,16 +202,11 @@ export class AccountingService {
     const netAmount = (data.amount || 0) - feeAmount;
 
     if (data.type === 'receipt') {
-        // الطرف المدين: النقدية أو البنك (بالصافي)
         lines.push({ accountId: data.cashAccountId!, accountName: 'حساب البنك/النقدية (صافي)', debit: netAmount, credit: 0 });
-        
-        // حساب العمولات إذا وجد
         if (feeAmount > 0) {
             const chargesAccId = await this.ensureControlAccount('50203', 'عمولات ومصاريف بنكية', 'Bank Charges', 'expense');
             lines.push({ accountId: chargesAccId, accountName: 'عمولات بنكية', debit: feeAmount, credit: 0, memo: `عمولة سند ${voucherNumber}` });
         }
-
-        // الطرف الدائن: حساب الإيراد أو ذمم العملاء (موزع أو مفرد)
         if (data.distributions && data.distributions.length > 0) {
           data.distributions.forEach(d => {
             lines.push({ 
@@ -178,7 +231,6 @@ export class AccountingService {
           });
         }
     } else {
-        // سند صرف: الطرف المدين هو المصروف أو مركز التكلفة
         if (data.distributions && data.distributions.length > 0) {
           data.distributions.forEach(d => {
             lines.push({ 
@@ -196,13 +248,13 @@ export class AccountingService {
             accountId: data.accountId!, 
             accountName: 'حساب المصروف', 
             debit: data.amount!, 
+            debit_credit: 'debit',
             credit: 0, 
             projectId: data.projectId,
             costCenterId: data.costCenterId,
             profitCenterId: data.profitCenterId
-          });
+          } as any);
         }
-        // الطرف الدائن: النقدية أو البنك
         lines.push({ accountId: data.cashAccountId!, accountName: 'حساب النقدية', debit: 0, credit: data.amount! });
     }
 

@@ -94,8 +94,17 @@ export class TransactionService {
     });
 
     const accService = new AccountingService(this.db, this.companyId);
+    
+    // أتمتة سيادية: إنشاء حساب أعمال تحت التنفيذ (WIP) للمشروع
     await accService.ensureControlAccount('1205', 'أعمال تحت التنفيذ (WIP)', 'Work In Progress', 'asset');
     await accService.createAutomaticSubAccount('1205', transactionId, `مشروع: ${data.subServiceName} (${transactionNumber})`, 'asset');
+
+    // أتمتة سيادية: إنشاء مركز ربحية آلي للمشروع
+    await accService.createAutomaticProfitCenter(
+      transactionId, 
+      `ربحية: ${data.clientName} - ${data.subServiceName}`, 
+      `PC-${transactionNumber}`
+    );
 
     const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
     batch.set(timelineRef, {
@@ -145,7 +154,6 @@ export class TransactionService {
 
     await batch.commit();
 
-    // أتمتة مالية: تفعيل "أثناء التنفيذ" (DURING) عند وجود مراجعات فنية موثقة
     const billing = new BillingService(this.db, this.companyId);
     await billing.triggerMilestoneBilling(transactionId, stage.technicalStageId, 'during', userId, userName);
   }
@@ -190,7 +198,6 @@ export class TransactionService {
       createdAt: serverTimestamp()
     });
 
-    // أتمتة مالية للمالك: تفعيل دفعة "عند البداية" (AT)
     const billing = new BillingService(this.db, this.companyId);
     await billing.triggerMilestoneBilling(transactionId, stageData.technicalStageId, 'at', userId, userName);
   }
@@ -227,11 +234,9 @@ export class TransactionService {
 
     await batch.commit();
 
-    // أتمتة مالية للمالك: تفعيل دفعة "بعد الانتهاء" (AFTER)
     const billing = new BillingService(this.db, this.companyId);
     await billing.triggerMilestoneBilling(transactionId, stageData.technicalStageId, 'after', userId, userName);
 
-    // أتمتة مالية لمقاول الباطن: توليد مطالبة له فور إتمام المرحلة المنسوبة له
     if (stageData.subcontractorId && stageData.subcontractorPrice) {
        await billing.generateSubcontractorIPC(
           transactionId, 

@@ -19,6 +19,7 @@ import { nextSequential } from '@/lib/counters';
 import { paths } from '@/firebase/multi-tenant';
 import { Employee, EmployeeAuditLog } from '@/types/hr';
 import { ensureActionPermission } from '@/lib/permissions';
+import { AccountingService } from './accounting-service';
 
 export class HRService {
   constructor(
@@ -47,6 +48,15 @@ export class HRService {
 
     try {
       await setDoc(empRef, docData);
+      
+      // أتمتة سيادية: إنشاء مركز تكلفة آلي للموظف لتتبع الـ ROI
+      const accService = new AccountingService(this.db, this.companyId);
+      await accService.createAutomaticCostCenter(
+        empRef.id, 
+        `تكلفة الموظف: ${data.fullName}`, 
+        `CC-EMP-${data.employeeNumber}`
+      );
+
     } catch (err: any) {
       await handleWriteError(err, { path: empRef.path, operation: 'create', requestResourceData: docData });
     }
@@ -75,7 +85,6 @@ export class HRService {
       await handleWriteError(err, { path: empRef.path, operation: 'update', requestResourceData: updates });
     }
 
-    // مزامنة الصلاحيات والبيانات العالمية عند التغيير
     if ((newData.roleId && newData.roleId !== oldData.roleId) || 
         (newData.departmentId && newData.departmentId !== oldData.departmentId) ||
         (newData.fullName && newData.fullName !== oldData.fullName)) {
@@ -118,7 +127,6 @@ export class HRService {
         
         if (roleId) {
           updates.roleId = roleId;
-          // جلب كود الدور لضمان استمرارية القواعد الأمنية السيادية
           const roleSnap = await getDoc(doc(this.db, 'companies', this.companyId, 'roles', roleId));
           if (roleSnap.exists()) {
              const codeUpper = String(roleSnap.data().code).toUpperCase();
@@ -126,7 +134,6 @@ export class HRService {
              updates.role = codeUpper.toLowerCase(); 
           }
         } else {
-          // في حال إزالة الدور، يتم تحويله لمستخدم عادي بدون صلاحيات إدارية
           updates.roleId = "";
           updates.roleCode = "USER";
           updates.role = "user";
