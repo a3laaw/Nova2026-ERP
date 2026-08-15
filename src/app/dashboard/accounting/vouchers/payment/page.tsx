@@ -93,7 +93,7 @@ export default function PaymentVouchersPage() {
            setForm(prev => ({ ...prev, costCenterId: '' }));
         }
      } else {
-        setAutoLinkedPC(false);
+        setAutoLinkedCC(false);
      }
   }, [form.projectId, costCenters, selectedAccount]);
 
@@ -186,7 +186,7 @@ export default function PaymentVouchersPage() {
                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('paymentMethods')}</Label>
                        <Select value={form.paymentMethod} onValueChange={v => setForm({...form, paymentMethod: v, cashAccountId: ''})}>
                           <SelectTrigger className="h-16 rounded-2xl border-2 font-black text-lg"><SelectValue /></SelectTrigger>
-                          <SelectContent className="rounded-2xl border-0 shadow-3xl">
+                          <SelectContent className="rounded-2xl border-0 shadow-2xl">
                              {paymentMethods?.map((pm: any) => (
                                <SelectItem key={pm.code} value={pm.code} className="font-bold py-3 border-b last:border-0 border-slate-50">{isRtl ? pm.name : (pm.nameEn || pm.name)}</SelectItem>
                              ))}
@@ -343,4 +343,3 @@ export default function PaymentVouchersPage() {
     </div>
   );
 }
-
