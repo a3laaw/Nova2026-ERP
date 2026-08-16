@@ -9,7 +9,8 @@ import {
   CalendarDays, Plus, Loader2, CheckCircle2, 
   XCircle, ArrowRight, MessageSquare, Clock,
   Calendar, Hash, Pencil, ShieldAlert,
-  AlertTriangle
+  AlertTriangle, PlaneLanding, PlaneTakeoff, Zap,
+  UserCheck
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -31,11 +32,10 @@ import { canPerformOnRecord } from '@/lib/permissions/engine';
 
 export function LeavesManager() {
   const { globalUser, user } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
+  const { t, lang, dir, isRtl } = useLanguage();
   const { check, permissions } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
-  const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
   const [processingLeave, setProcessingLeave] = useState<LeaveRequest | null>(null);
@@ -47,7 +47,8 @@ export function LeavesManager() {
     comment: '',
     startDate: '',
     endDate: '',
-    workingDays: 0
+    workingDays: 0,
+    actualDate: new Date().toISOString().split('T')[0]
   });
 
   const viewAccess = check('hr', 'view');
@@ -78,10 +79,10 @@ export function LeavesManager() {
         comment: '',
         startDate: processingLeave.startDate,
         endDate: processingLeave.endDate,
-        workingDays: processingLeave.workingDays
+        workingDays: processingLeave.workingDays,
+        actualDate: new Date().toISOString().split('T')[0]
       });
 
-      // فحص تداخل القسم
       if (leaveService && (processingLeave as any).departmentId) {
         setLoadingConflict(true);
         leaveService.getDepartmentLeaveDensity(
@@ -97,7 +98,7 @@ export function LeavesManager() {
     }
   }, [processingLeave, leaveService]);
 
-  const handleAction = async (status: 'approved' | 'rejected') => {
+  const handleAction = async (status: LeaveRequest['status']) => {
     if (!leaveService || !user || !processingLeave) return;
     setIsProcessing(true);
     try {
@@ -105,9 +106,11 @@ export function LeavesManager() {
         comment: editForm.comment,
         startDate: editForm.startDate,
         endDate: editForm.endDate,
-        workingDays: editForm.workingDays
+        workingDays: editForm.workingDays,
+        actualDepartureDate: status === 'on-leave' ? editForm.actualDate : undefined,
+        actualReturnDate: status === 'returned' ? editForm.actualDate : undefined
       });
-      toast({ title: isRtl ? "تمت معالجة الطلب" : "Request Processed" });
+      toast({ title: isRtl ? "تم تحديث حالة الإجازة" : "Leave Status Updated" });
       setProcessingLeave(null);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('error') });
@@ -122,68 +125,63 @@ export function LeavesManager() {
         <div className="text-start">
            <h3 className="text-xl font-black flex items-center gap-2">
              <CalendarDays className="h-6 w-6 text-primary" />
-             {isRtl ? 'إجازات الموظفين' : 'Employee Leaves'}
+             {isRtl ? 'إدارة إجازات القوى العاملة' : 'Workforce Leaves'}
            </h3>
-           <p className="text-[10px] font-bold text-muted-foreground mt-1 opacity-70 italic">
-             {viewAccess.scope === 'own' ? (isRtl ? 'عرض سجلاتك الشخصية وحالة طلباتك' : 'View your own requests and status') : (isRtl ? 'إدارة واعتماد إجازات فريق العمل' : 'Manage and approve team leaves')}
-           </p>
         </div>
-
-        <Button 
-          onClick={() => router.push('/dashboard/hr/leaves/new')}
-          className="rounded-xl font-bold bg-primary text-white shadow-lg h-12 px-6 hover:scale-[1.02] transition-all"
-        >
-          <Plus className="me-2 h-4 w-4" /> {isRtl ? 'تقديم إجازة' : 'Apply'}
+        <Button onClick={() => router.push('/dashboard/hr/leaves/new')} className="rounded-xl font-bold h-12 px-6">
+          <Plus className="me-2 h-4 w-4" /> {t('common.add')}
         </Button>
       </div>
 
-      <Card className="border-0 shadow-2xl rounded-xl bg-white overflow-hidden ring-1 ring-black/5">
+      <Card className="border-0 shadow-xl rounded-xl bg-white overflow-hidden ring-1 ring-black/5">
          <CardContent className="p-0 overflow-x-auto">
             <Table>
                <TableHeader className="bg-muted/30">
                   <TableRow>
                      <TableHead className="py-6 ps-8 text-start">{isRtl ? 'الموظف' : 'Employee'}</TableHead>
                      <TableHead className="text-start">{isRtl ? 'النوع' : 'Type'}</TableHead>
-                     <TableHead className="text-start">{isRtl ? 'الفترة' : 'Period'}</TableHead>
-                     <TableHead className="text-center">{isRtl ? 'أيام العمل' : 'Work Days'}</TableHead>
                      <TableHead className="text-start">{isRtl ? 'الحالة' : 'Status'}</TableHead>
-                     <TableHead className="pe-8"></TableHead>
+                     <TableHead className="pe-8 text-end">{isRtl ? 'الإجراءات التنفيذية' : 'Execution'}</TableHead>
                   </TableRow>
                </TableHeader>
                <TableBody>
                   {loading ? (
-                    <TableRow><TableCell colSpan={6} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
+                    <TableRow><TableCell colSpan={4} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
                   ) : (
                     leaves?.map((leave) => (
-                      <TableRow key={leave.id} className="hover:bg-slate-50 transition-colors group border-b-slate-100 cursor-pointer" onClick={() => canApprove && leave.status === 'pending' ? setProcessingLeave(leave) : router.push(`/dashboard/hr/leaves/${leave.id}`)}>
+                      <TableRow key={leave.id} className="hover:bg-slate-50 transition-colors border-b-slate-100 cursor-pointer" onClick={() => router.push(`/dashboard/hr/leaves/${leave.id}`)}>
                          <TableCell className="py-6 ps-8 text-start font-black text-slate-800">{leave.userName}</TableCell>
                          <TableCell className="text-start">
-                            <Badge variant="outline" className="bg-white font-black uppercase text-[9px] px-3">{leave.type}</Badge>
+                            <Badge variant="outline" className="font-black uppercase text-[9px] px-3">{leave.type}</Badge>
                          </TableCell>
-                         <TableCell className="text-start font-mono text-[10px] text-slate-500">{leave.startDate} → {leave.endDate}</TableCell>
-                         <TableCell className="text-center"><span className="font-black text-slate-700 bg-slate-100 px-3 py-1 rounded-lg text-xs">{leave.workingDays}</span></TableCell>
                          <TableCell className="text-start">
                             <Badge className={cn(
                               "font-black px-3 py-1 border-0 shadow-sm",
-                              leave.status === 'approved' || leave.status === 'commenced' || leave.status === 'on-leave' || leave.status === 'returned' ? 'bg-emerald-500 text-white' :
-                              leave.status === 'rejected' ? 'bg-rose-500 text-white' :
-                              'bg-amber-50 text-amber-600'
+                              ['approved', 'on-leave', 'returned', 'commenced'].includes(leave.status) ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
                             )}>
                                {leave.status.toUpperCase()}
                             </Badge>
                          </TableCell>
-                         <TableCell className="pe-8">
+                         <TableCell className="pe-8" onClick={e => e.stopPropagation()}>
                             <div className="flex justify-end gap-2">
-                               {leave.status === 'pending' && canApprove ? (
-                                  <Button 
-                                    onClick={(e) => { e.stopPropagation(); setProcessingLeave(leave); }} 
-                                    className="h-10 px-4 rounded-xl bg-primary text-white font-black text-xs gap-2 shadow-lg"
-                                  >
-                                     <Pencil className="h-3.5 w-3.5" /> {isRtl ? 'معالجة' : 'Process'}
+                               {leave.status === 'pending' && canApprove && (
+                                  <Button onClick={() => setProcessingLeave(leave)} className="h-9 px-4 rounded-lg bg-primary font-black text-[10px] gap-2">
+                                     <Pencil className="h-3.5 w-3.5" /> {isRtl ? 'قرار الإدارة' : 'Decision'}
                                   </Button>
-                               ) : (
-                                  <Button variant="ghost" size="icon" className="rounded-xl">
-                                     <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
+                               )}
+                               {leave.status === 'approved' && canApprove && (
+                                  <Button onClick={() => setProcessingLeave(leave)} className="h-9 px-4 rounded-lg bg-amber-500 font-black text-[10px] gap-2 text-white">
+                                     <PlaneTakeoff className="h-3.5 w-3.5" /> {isRtl ? 'تسجيل ذهاب' : 'Departure'}
+                                  </Button>
+                               )}
+                               {leave.status === 'on-leave' && canApprove && (
+                                  <Button onClick={() => setProcessingLeave(leave)} className="h-9 px-4 rounded-lg bg-blue-600 font-black text-[10px] gap-2 text-white">
+                                     <PlaneLanding className="h-3.5 w-3.5" /> {isRtl ? 'تسجيل عودة' : 'Return'}
+                                  </Button>
+                               )}
+                               {leave.status === 'returned' && canApprove && (
+                                  <Button onClick={() => setProcessingLeave(leave)} className="h-9 px-4 rounded-lg bg-emerald-600 font-black text-[10px] gap-2 text-white">
+                                     <Zap className="h-3.5 w-3.5" /> {isRtl ? 'اعتماد مباشرة' : 'Commence'}
                                   </Button>
                                )}
                             </div>
@@ -196,103 +194,81 @@ export function LeavesManager() {
          </CardContent>
       </Card>
 
-      <Dialog open={!!processingLeave} onOpenChange={(open) => !open && setProcessingLeave(null)}>
-        <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-2xl" dir={dir}>
-           <div className="bg-primary/5 p-10 text-slate-900 text-start border-b">
-              <DialogTitle className="text-3xl font-black font-headline flex items-center gap-3 text-slate-900">
+      <Dialog open={!!processingLeave} onOpenChange={open => !open && setProcessingLeave(null)}>
+        <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-2xl text-start" dir={dir}>
+           <div className="bg-primary/5 p-10 text-slate-900 border-b">
+              <DialogTitle className="text-3xl font-black font-headline flex items-center gap-3">
                  <Clock className="h-9 w-9 text-primary" />
-                 {isRtl ? 'قرار الإدارة وتصحيح البيانات' : 'Admin Decision & Correction'}
+                 {processingLeave?.status === 'pending' ? (isRtl ? 'قرار الإدارة وتصحيح البيانات' : 'Admin Decision') : (isRtl ? 'توثيق التاريخ الفعلي' : 'Document Actual Date')}
               </DialogTitle>
-              <p className="text-slate-500 font-bold mt-2">{isRtl ? `طلب الموظف: ${processingLeave?.userName}` : `Employee: ${processingLeave?.userName}`}</p>
+              <p className="text-slate-500 font-bold mt-2">الموظف: {processingLeave?.userName}</p>
            </div>
            
-           <div className="p-10 space-y-8 text-start bg-white max-h-[60vh] overflow-y-auto scrollbar-hide">
-              {/* قسم تحذير تداخل القسم المطور */}
-              {loadingConflict ? (
-                <div className="p-4 bg-slate-50 rounded-xl animate-pulse flex items-center gap-2">
-                   <Loader2 className="h-4 w-4 animate-spin text-slate-300" />
-                   <span className="text-[10px] font-bold text-slate-400">Analyzing Department Load...</span>
-                </div>
-              ) : conflictData && conflictData.count > 0 && (
-                <div className="p-6 bg-rose-50 border-2 border-rose-100 rounded-[1.5rem] space-y-3 animate-in shake-in duration-500">
-                   <div className="flex items-center gap-3 text-rose-600">
-                      <ShieldAlert className="h-6 w-6" />
-                      <h4 className="font-black text-sm uppercase tracking-widest">{isRtl ? 'تحذير تداخل تخصصي' : 'Departmental Overlap Warning'}</h4>
+           <div className="p-10 space-y-8 bg-white max-h-[65vh] overflow-y-auto scrollbar-hide">
+              {/* الخطوة 1: الموافقة */}
+              {processingLeave?.status === 'pending' && (
+                <div className="space-y-6">
+                   <div className="grid grid-cols-2 gap-6 p-6 bg-slate-50 rounded-2xl border-2 border-dashed">
+                      <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">تاريخ البدء المعتمد</Label><SmartDateInput value={editForm.startDate} onChange={v => setEditForm({...editForm, startDate: v})} /></div>
+                      <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">تاريخ العودة المعتمد</Label><SmartDateInput value={editForm.endDate} onChange={v => setEditForm({...editForm, endDate: v})} /></div>
+                      <div className="col-span-2 space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">أيام الخصم المعتمدة</Label><Input type="number" value={editForm.workingDays} onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})} className="h-14 rounded-xl font-black text-2xl text-center" /></div>
                    </div>
-                   <p className="text-[11px] font-bold text-rose-700 leading-relaxed">
-                      {isRtl 
-                        ? `تنبيه: يوجد حالياً عدد (${conflictData.count}) موظفين آخرين من نفس القسم في إجازات معتمدة خلال هذه الفترة.` 
-                        : `Attention: There are (${conflictData.count}) other employees from the same department on approved leave during this period.`}
-                   </p>
-                   <div className="flex flex-wrap gap-2 pt-2">
-                      {conflictData.peers.map(p => (
-                        <Badge key={p.id} variant="outline" className="bg-white border-rose-200 text-rose-500 font-bold text-[8px] px-3">{p.name}</Badge>
-                      ))}
+                   <div className="flex gap-4">
+                      <Button onClick={() => handleAction('rejected')} variant="outline" className="flex-1 h-14 rounded-xl border-rose-100 text-rose-600 font-black">رفض الطلب</Button>
+                      <Button onClick={() => handleAction('approved')} className="flex-1 h-14 rounded-xl bg-emerald-600 text-white font-black">اعتماد وصرف</Button>
                    </div>
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-slate-50 rounded-2xl border-2 border-dashed border-primary/10">
-                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-2">
-                       <Calendar className="h-3.5 w-3.5" /> {isRtl ? 'تاريخ البدء المعتمد' : 'Approve Start Date'}
-                    </Label>
-                    <SmartDateInput value={editForm.startDate} onChange={v => setEditForm({...editForm, startDate: v})} />
-                 </div>
-                 <div className="space-y-2">
-                    <Label className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-2">
-                       <Calendar className="h-3.5 w-3.5" /> {isRtl ? 'تاريخ العودة المعتمد' : 'Approve Return Date'}
-                    </Label>
-                    <SmartDateInput value={editForm.endDate} onChange={v => setEditForm({...editForm, endDate: v})} />
-                 </div>
-                 <div className="space-y-2 md:col-span-2 pt-2">
-                    <Label className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-2">
-                       <Hash className="h-3.5 w-3.5" /> {isRtl ? 'أيام الخصم الفعلي (بعد المراجعة)' : 'Actual Days to Deduct'}
-                    </Label>
-                    <Input 
-                      type="number" 
-                      value={editForm.workingDays} 
-                      onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})}
-                      className="h-14 rounded-2xl border-2 font-black text-primary text-xl"
-                    />
-                 </div>
-              </div>
+              {/* الخطوة 2: المغادرة */}
+              {processingLeave?.status === 'approved' && (
+                <div className="space-y-6 animate-in zoom-in-95">
+                   <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-slate-400">تاريخ المغادرة الفعلي</Label>
+                      <SmartDateInput value={editForm.actualDate} onChange={v => setEditForm({...editForm, actualDate: v})} />
+                   </div>
+                   <Button onClick={() => handleAction('on-leave')} className="w-full h-16 rounded-2xl bg-amber-500 text-white font-black text-lg gap-3">
+                      <PlaneTakeoff className="h-6 w-6" /> تسجيل مغادرة الموظف
+                   </Button>
+                </div>
+              )}
 
-              <div className="space-y-3">
-                 <Label className="font-black text-xs uppercase text-slate-500 flex items-center gap-2">
-                    <MessageSquare className="h-3.5 w-3.5" />
-                    {isRtl ? 'ملاحظات الإدارة أو سبب الرفض' : 'Internal Notes / Reason'}
-                 </Label>
-                 <Textarea 
-                   value={editForm.comment} 
-                   onChange={(e) => setEditForm({...editForm, comment: e.target.value})}
-                   className="min-h-[100px] rounded-2xl border-2 p-6 text-base focus:bg-slate-50 transition-all shadow-inner"
-                   placeholder={isRtl ? "اكتب هنا ملاحظاتك للموظف..." : "Enter feedback..."}
-                 />
-              </div>
+              {/* الخطوة 3: العودة (المطلوبة بوضوح) */}
+              {processingLeave?.status === 'on-leave' && (
+                <div className="space-y-6 animate-in zoom-in-95">
+                   <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-slate-400">تاريخ العودة الفعلي من الإجازة</Label>
+                      <SmartDateInput value={editForm.actualDate} onChange={v => setEditForm({...editForm, actualDate: v})} />
+                   </div>
+                   <div className="p-4 bg-blue-50 border-2 border-blue-100 rounded-2xl flex items-start gap-3">
+                      <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+                      <p className="text-[10px] font-bold text-blue-800">سجل التاريخ الذي باشر فيه الموظف الحضور الفعلي للمنشأة.</p>
+                   </div>
+                   <Button onClick={() => handleAction('returned')} className="w-full h-16 rounded-2xl bg-blue-600 text-white font-black text-lg gap-3 shadow-xl">
+                      <PlaneLanding className="h-6 w-6" /> تسجيل العودة من الإجازة
+                   </Button>
+                </div>
+              )}
+
+              {/* الخطوة 4: المباشرة النهائية */}
+              {processingLeave?.status === 'returned' && (
+                <div className="space-y-6 animate-in zoom-in-95">
+                   <div className="p-8 bg-emerald-50 rounded-[2rem] border-2 border-emerald-100 space-y-6">
+                      <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">أيام الخصم النهائية بعد المراجعة</Label><Input type="number" value={editForm.workingDays} onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})} className="h-14 rounded-xl font-black text-2xl text-emerald-700 text-center" /></div>
+                   </div>
+                   <Button onClick={() => handleAction('commenced')} className="w-full h-16 rounded-2xl bg-emerald-600 text-white font-black text-lg gap-3">
+                      <Zap className="h-6 w-6" /> اعتماد المباشرة وتفعيل الموظف
+                   </Button>
+                </div>
+              )}
            </div>
-
-           <DialogFooter className="p-10 bg-slate-50 border-t flex flex-row gap-4">
-              <Button 
-                onClick={() => handleAction('rejected')}
-                disabled={isProcessing}
-                variant="outline"
-                className="flex-1 h-16 rounded-2xl border-2 border-rose-100 text-rose-600 font-black text-lg hover:bg-rose-50 transition-all"
-              >
-                 {isProcessing ? <Loader2 className="animate-spin h-5 w-5" /> : <XCircle className="me-2 h-6 w-6" />}
-                 {isRtl ? 'رفض الطلب' : 'Reject'}
-              </Button>
-              <Button 
-                onClick={() => handleAction('approved')}
-                disabled={isProcessing}
-                className="flex-1 h-16 rounded-2xl bg-emerald-600 text-white font-black text-lg hover:bg-emerald-700 shadow-xl shadow-emerald-100 transition-all gap-2 border-b-8 border-emerald-800"
-              >
-                 {isProcessing ? <Loader2 className="animate-spin h-5 w-5" /> : <CheckCircle2 className="me-2 h-6 w-6" />}
-                 {isRtl ? 'اعتماد وصرف' : 'Approve'}
-              </Button>
-           </DialogFooter>
+           
+           <div className="p-8 bg-slate-50 border-t flex justify-end">
+              <Button variant="ghost" onClick={() => setProcessingLeave(null)} className="rounded-xl font-bold">إغلاق</Button>
+           </div>
         </DialogContent>
       </Dialog>
     </div>
   );
 }
+
