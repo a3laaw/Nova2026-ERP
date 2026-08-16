@@ -7,13 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   CalendarDays, Plus, Loader2, CheckCircle2, 
-  XCircle, ArrowRight, MessageSquare, Clock,
-  Calendar, Hash, Pencil, ShieldAlert,
-  AlertTriangle, PlaneLanding, PlaneTakeoff, Zap,
-  UserCheck, Info, ShieldCheck, Search, Check, ChevronDown
+  XCircle, ArrowRight, Clock,
+  PlaneLanding, PlaneTakeoff, Zap,
+  Info, ShieldCheck, Search, Check, ChevronDown,
+  Pencil, Save, AlertTriangle
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy, where, doc, getDoc, updateDoc, writeBatch, serverTimestamp, increment } from 'firebase/firestore';
+import { collection, query, orderBy, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -32,7 +32,7 @@ import { canPerformOnRecord } from '@/lib/permissions/engine';
 import { parseISO, isPast, isToday } from 'date-fns';
 
 /**
- * @fileOverview رادار إدارة الإجازات السيادي.
+ * @fileOverview رادار إدارة الإجازات السيادي - يدعم التوثيق اليدوي للمغادرة والعودة عبر نوافذ منبثقة.
  */
 export function LeavesManager() {
   const { globalUser, user } = useAuthContext();
@@ -196,7 +196,7 @@ export function LeavesManager() {
                                     </Button>
                                  )}
                                  <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-slate-300 hover:text-primary group-hover:bg-primary/5 transition-all">
-                                    <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
+                                    <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-0", isRtl && "rotate-180")} />
                                  </Button>
                               </div>
                            </TableCell>
