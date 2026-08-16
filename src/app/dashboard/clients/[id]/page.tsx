@@ -84,7 +84,7 @@ export default function ClientDetailsPage() {
       const service = new TransactionService(db, companyId, permissions);
       await service.deleteTransaction(deletingTransId);
       toast({ title: t('common.deleted') });
-      setDeletingTransId(null);
+      setDeletingId(null);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
@@ -235,7 +235,7 @@ export default function ClientDetailsPage() {
                  <div className="space-y-4">
                     {history?.sort((a,b)=> (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)).map((e)=>(
                        <div key={e.id} className="relative ps-6">
-                          <div className={cn("absolute top-1 h-2 w-2 rounded-full border border-white z-10", e.type === 'status_change' ? "bg-blue-500" : e.type === 'system_log' ? "bg-primary" : "bg-amber-500", isRtl ? "right-[-4px]" : "left-[-4px]")} />
+                          <div className={cn("absolute top-1 h-2 w-2 rounded-full border border-white z-10 start-[-4px]", e.type === 'status_change' ? "bg-blue-500" : e.type === 'system_log' ? "bg-primary" : "bg-amber-500")} />
                           <div className="space-y-0.5">
                              <div className="flex justify-between items-center"><span className="text-[8px] font-bold text-slate-400 uppercase">{e.type}</span><span className="text-[8px] font-mono text-slate-300">{e.createdAt?.toDate().toLocaleDateString()}</span></div>
                              <p className="text-[11px] font-medium text-slate-700 leading-tight">{e.content}</p>
@@ -251,7 +251,7 @@ export default function ClientDetailsPage() {
       </div>
 
       {/* حوار حذف المعاملة */}
-      <AlertDialog open={!!deletingTransId} onOpenChange={(v) => !v && setDeletingTransId(null)}>
+      <AlertDialog open={!!deletingTransId} onOpenChange={(v) => !v && setDeletingId(null)}>
          <AlertDialogContent className="rounded-xl p-10 border-0 shadow-3xl bg-white" dir={dir}>
             <AlertDialogHeader>
                <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">

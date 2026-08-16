@@ -338,7 +338,7 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
                   <h4 className="font-black text-lg flex items-center gap-2 text-slate-700"><ArrowRight className="h-5 w-5 text-primary" /> {isRtl ? 'المراحل المربوطة' : 'Linked Stages'}</h4>
                 </div>
                 <ScrollArea className="flex-1">
-                  <div className="space-y-2 pr-3">
+                  <div className="space-y-2 pe-3">
                     {availableNextStages.length === 0 ? <div className="py-10 text-center bg-white/50 rounded-xl border-2 border-dashed"><p className="text-[10px] text-slate-400 font-bold px-4">لا توجد مراحل متاحة للربط.</p></div> : 
                       availableNextStages.map((s) => (
                         <div key={s.id} onClick={() => toggleNextStage(s.id!)} className={cn("p-4 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between group", form.nextStageIds?.includes(s.id!) ? "bg-white border-primary shadow-md" : "bg-white border-slate-100")}>

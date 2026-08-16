@@ -331,27 +331,27 @@ export default function LeaveDetailsPage() {
                  <CardContent className="p-6">
                     <div className="space-y-6">
                        <div className="relative ps-6 border-s-2 border-slate-100 pb-2">
-                          <div className="absolute -left-[9px] top-0 h-4 w-4 rounded-full bg-primary border-4 border-white shadow-sm" />
+                          <div className="absolute -start-[9px] top-0 h-4 w-4 rounded-full bg-primary border-4 border-white shadow-sm" />
                           <p className="text-[9px] font-black text-slate-400 uppercase">{t('hr.requestCreated')}</p>
                           <p className="text-xs font-bold text-slate-700 mt-1">{leave.createdAt?.toDate().toLocaleString()}</p>
                        </div>
                        {leave.approvedAt && (
                           <div className="relative ps-6 border-s-2 border-slate-100 pb-2">
-                             <div className="absolute -left-[9px] top-0 h-4 w-4 rounded-full bg-emerald-500 border-4 border-white shadow-sm" />
+                             <div className="absolute -start-[9px] top-0 h-4 w-4 rounded-full bg-emerald-500 border-4 border-white shadow-sm" />
                              <p className="text-[9px] font-black text-emerald-600 uppercase">{t('status.approved')}</p>
                              <p className="text-xs font-bold text-slate-700 mt-1">{leave.approvedAt?.toDate().toLocaleString()}</p>
                           </div>
                        )}
                        {leave.actualDepartureDate && (
                           <div className="relative ps-6 border-s-2 border-slate-100 pb-2">
-                             <div className="absolute -left-[9px] top-0 h-4 w-4 rounded-full bg-amber-500 border-4 border-white shadow-sm" />
+                             <div className="absolute -start-[9px] top-0 h-4 w-4 rounded-full bg-amber-500 border-4 border-white shadow-sm" />
                              <p className="text-[9px] font-black text-amber-600 uppercase">{isRtl ? 'المغادرة الفعلية' : 'Actual Departure'}</p>
                              <p className="text-xs font-bold text-slate-700 mt-1">{leave.actualDepartureDate}</p>
                           </div>
                        )}
                        {leave.actualReturnDate && (
                           <div className="relative ps-6 border-s-2 border-slate-100 pb-2">
-                             <div className="absolute -left-[9px] top-0 h-4 w-4 rounded-full bg-purple-500 border-4 border-white shadow-sm" />
+                             <div className="absolute -start-[9px] top-0 h-4 w-4 rounded-full bg-purple-500 border-4 border-white shadow-sm" />
                              <p className="text-[9px] font-black text-purple-600 uppercase">{isRtl ? 'العودة الفعلية' : 'Actual Return'}</p>
                              <p className="text-xs font-bold text-slate-700 mt-1">{leave.actualReturnDate}</p>
                           </div>

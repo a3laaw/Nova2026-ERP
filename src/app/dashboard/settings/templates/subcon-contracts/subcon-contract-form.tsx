@@ -204,7 +204,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-white/95 backdrop-blur-md px-8 shadow-sm">
         <div className="flex items-center gap-4 text-start">
           <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 border-2 rounded-xl hover:bg-slate-50 transition-all text-slate-400">
-            <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
+            <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
           </Button>
           <div className="text-start">
              <h1 className="text-xl font-black text-slate-900 leading-none">{tSafe('subcon.template.title', 'هندسة قوالب عقود الباطن', 'SubCon Template Design')}</h1>
@@ -264,10 +264,10 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                </CardContent>
             </Card>
 
-            <div className="p-6 rounded-[2rem] bg-slate-50 border-2 border-primary/20 space-y-6 relative overflow-hidden shadow-inner">
+            <div className="p-6 rounded-[2rem] bg-slate-50 border-2 border-primary/10 space-y-6 relative overflow-hidden shadow-inner">
                <div className="absolute top-0 right-0 p-6 opacity-5"><Calculator className="h-20 w-20 text-primary" /></div>
                <div className="space-y-2 text-start relative z-10">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-1">{isRtl ? 'إجمالي قيمة العقد' : 'Contract Value'}</p>
+                  <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-1">{isRtl ? 'إجمالي قيمة العقد' : 'Contract Value'}</p>
                   <Input 
                     type="number" 
                     value={formData.baseAmount === 0 ? "" : (formData.baseAmount || "")} 
@@ -279,7 +279,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                <div className="pt-4 border-t border-primary/10 relative z-10 text-start space-y-2">
                   <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'نسبة المحتجزات (Retention)' : 'Retention Rate'}</Label>
                   <div className="relative">
-                    <Input type="number" value={formData.retentionRate} onChange={e => setFormData({...formData, retentionRate: Number(e.target.value)})} className="h-11 rounded-xl border-2 bg-white text-lg font-black text-center pr-10" />
+                    <Input type="number" value={formData.retentionRate} onChange={e => setFormData({...formData, retentionRate: Number(e.target.value)})} className="h-11 rounded-xl border-2 bg-white text-lg font-black text-center pe-10" />
                     <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
                   </div>
                   <p className="text-[8px] font-bold text-slate-400 italic">يتم خصم هذه النسبة من مستحقات المقاول آلياً.</p>
@@ -288,7 +288,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
          </aside>
 
          <div className="lg:col-span-9 space-y-8 text-start">
-            <PrintWrapper className="mt-0" fullWidth={true}>
+            <PrintWrapper fullWidth={true}>
                <div className="space-y-10 text-start">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b-2 pb-8">
                      <div className="space-y-2">

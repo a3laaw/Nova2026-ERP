@@ -221,7 +221,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                  {currentDisplayAmount.toLocaleString()} KWD
               </Badge>
            </div>
-           <Button onClick={handleSave} disabled={loading} className="h-12 px-10 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 gap-3 border-b-4 border-orange-700">
+           <Button onClick={handleSave} disabled={loading} className="h-12 px-10 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 gap-3 border-b-4 border-orange-700 hover:scale-[1.02] transition-all">
               {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />} {t('common.save')}
            </Button>
         </div>
@@ -263,7 +263,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                     <Badge className={cn("h-5 border-0 font-black text-[9px]", formData.retentionRate === 0 ? "bg-slate-100 text-slate-400" : "bg-orange-100 text-orange-600")}>{formData.retentionRate}%</Badge>
                   </div>
                   <div className="relative">
-                    <Input type="number" value={formData.retentionRate} onChange={e => setFormData({...formData, retentionRate: Number(e.target.value)})} className="h-10 rounded-xl border-2 bg-white text-lg font-black text-center pr-10" />
+                    <Input type="number" value={formData.retentionRate} onChange={e => setFormData({...formData, retentionRate: Number(e.target.value)})} className="h-10 rounded-xl border-2 bg-white text-lg font-black text-center pe-10" />
                     <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
                   </div>
                   <p className="text-[8px] font-bold text-slate-400 italic">يتم ضبطها آلياً حسب نوع النشاط المختار.</p>
