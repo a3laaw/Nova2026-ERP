@@ -70,8 +70,8 @@ export function SeedTool() {
   const handleSystemPurge = async () => {
     if (!db || !globalUser?.companyId) return;
     const msg = isRtl 
-      ? 'تنبيه خطير: سيتم حذف كافة العملاء، المشاريع، القيود المحاسبية، وشجرة الحسابات نهائياً وتصفير العدادات. سيتم الحفاظ على الموظفين فقط. هل أنت متأكد؟' 
-      : 'Nuclear Warning: This will delete ALL clients, projects, accounting data, and reset counters. Employees will be kept. Proceed?';
+      ? 'تنبيه خطير: سيتم حذف كافة العملاء، المشاريع، العقود (مالك وباطن)، المقايسات، القيود المحاسبية، وشجرة الحسابات نهائياً وتصفير العدادات. سيتم الحفاظ على الموظفين فقط. هل أنت متأكد؟' 
+      : 'Nuclear Warning: This will delete ALL clients, projects, contracts (owner & subcon), quotations, BOQs, accounting data, and reset counters. Employees will be kept. Proceed?';
     
     if (!confirm(msg)) return;
 
@@ -109,7 +109,7 @@ export function SeedTool() {
                <div className="space-y-2">
                   <h4 className="font-black text-rose-800">{isRtl ? 'ماذا سيحدث عند الضغط؟' : 'What happens next?'}</h4>
                   <ul className="text-xs font-bold text-slate-500 space-y-2 list-disc ps-4">
-                     <li>{isRtl ? 'حذف كافة العملاء والملفات الفنية.' : 'Delete all clients and technical files.'}</li>
+                     <li>{isRtl ? 'حذف كافة العملاء، المعاملات، وعقود الملاك والمقاولين.' : 'Delete all clients, transactions, and owner/subcon contracts.'}</li>
                      <li>{isRtl ? 'مسح شجرة الحسابات، قيود اليومية، والسندات المالية.' : 'Wipe COA, journals, and vouchers.'}</li>
                      <li>{isRtl ? 'تصفير كافة العدادات الرقمية (الترقيم يبدأ من 1).' : 'Reset all sequential counters to 1.'}</li>
                      <li className="text-emerald-600 font-black">{isRtl ? 'سيتم الحفاظ على سجلات الموظفين والهيكل التنظيمي.' : 'Employees and Org Structure will be kept.'}</li>
@@ -119,7 +119,7 @@ export function SeedTool() {
             <Button 
               onClick={handleSystemPurge} 
               disabled={purgingSystem} 
-              className="w-full h-12 rounded-2xl bg-rose-600 text-white font-black text-sm shadow-xl shadow-rose-200 border-b-4 border-rose-800 hover:scale-[1.02] active:scale-95 transition-all gap-4"
+              className="w-full h-12 rounded-xl bg-rose-600 text-white font-black text-sm shadow-xl shadow-rose-200 border-b-4 border-rose-800 hover:scale-[1.02] active:scale-95 transition-all gap-4"
             >
                {purgingSystem ? <Loader2 className="animate-spin h-5 w-5" /> : <Trash2 className="h-5 w-5" />}
                {isRtl ? 'بدء التطهير الشامل الآن' : 'Start Complete Purge'}
@@ -138,7 +138,7 @@ export function SeedTool() {
            </div>
         </CardHeader>
         <CardContent className="p-10 pt-0 flex flex-col md:flex-row items-center justify-between gap-6">
-           <Button onClick={handleIdentityMigration} disabled={migrating} className="h-12 px-10 rounded-2xl bg-emerald-600 text-white font-black text-sm shadow-xl gap-3">
+           <Button onClick={handleIdentityMigration} disabled={migrating} className="h-12 px-10 rounded-xl bg-emerald-600 text-white font-black text-sm shadow-xl gap-3">
               {migrating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
               {isRtl ? 'بدء الهوية السيادية' : 'Run Identity Fix'}
            </Button>
@@ -152,7 +152,7 @@ export function SeedTool() {
           <CardDescription className="text-lg mt-2 font-bold opacity-70">{isRtl ? 'ضخ القواعد الجغرافية، التنظيمية، والفنية الموحدة لنظام Nova ERP' : 'Inject geography, organization, and technical paths.'}</CardDescription>
         </CardHeader>
         <CardContent className="p-12 space-y-8">
-          <Button onClick={handleRunSeed} disabled={loading || isDone} className="w-full h-12 rounded-2xl font-black text-sm bg-primary shadow-xl shadow-primary/20">
+          <Button onClick={handleRunSeed} disabled={loading || isDone} className="w-full h-12 rounded-xl font-black text-sm bg-primary shadow-xl shadow-primary/20">
             {loading ? <Loader2 className="me-3 h-5 w-5 animate-spin" /> : isDone ? <CheckCircle2 className="me-3 h-5 w-5" /> : <Sparkles className="me-3 h-5 w-5" />}
             {isRtl ? 'تشغيل محرك التهيئة الآن' : 'Run Initialization Engine'}
           </Button>

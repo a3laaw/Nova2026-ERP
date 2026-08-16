@@ -30,13 +30,15 @@ export class SeedService {
       paths.clients(this.companyId),
       paths.transactions(this.companyId),
       paths.boqs(this.companyId),
+      paths.quotations(this.companyId), // تم الإضافة
+      paths.contracts(this.companyId), // تم الإضافة
       paths.journalEntries(this.companyId),
       paths.vouchers(this.companyId),
       paths.accounts(this.companyId),
       paths.costCenters(this.companyId),
       paths.profitCenters(this.companyId),
       paths.purchaseOrders(this.companyId),
-      paths.subconContracts(this.companyId),
+      paths.subconContracts(this.companyId), // تم التأكيد على وجودها
       paths.ipcs(this.companyId),
       paths.subIpcs(this.companyId),
       paths.fieldVisits(this.companyId),
