@@ -5,15 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
   Wallet, Plus, Loader2, Save, 
-  ArrowRight, Landmark, User, Briefcase, LayoutGrid,
-  AlertTriangle, Sparkles, FileText, X, Zap
+  ArrowRight, Landmark, User, LayoutGrid,
+  Zap, DatabaseZap
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { paths } from '@/firebase/multi-tenant';
-import { Voucher, Account, VoucherDistribution } from '@/types/accounting';
+import { Voucher, Account } from '@/types/accounting';
 import { CostCenter, ProfitCenter } from '@/types/cost-profit-centers';
 import { AccountingService } from '@/services/accounting-service';
 import { toast } from '@/hooks/use-toast';
@@ -33,7 +33,6 @@ export default function PaymentVouchersPage() {
 
   const [isAdding, setIsAdding] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [autoLinkedCC, setAutoLinkedCC] = useState(false);
 
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -44,8 +43,8 @@ export default function PaymentVouchersPage() {
     cashAccountId: '',
     projectId: '',
     costCenterId: '',
-    notes: '',
-    distributions: [] as VoucherDistribution[]
+    profitCenterId: '',
+    notes: ''
   });
 
   const vouchersQuery = useMemo(() => 
@@ -64,6 +63,10 @@ export default function PaymentVouchersPage() {
     companyId && db ? query(collection(db, paths.costCenters(companyId))) : null, 
   [db, companyId]);
 
+  const profitCentersQuery = useMemo(() => 
+    companyId && db ? query(collection(db, paths.profitCenters(companyId))) : null, 
+  [db, companyId]);
+
   const pmQuery = useMemo(() => 
     companyId && db ? query(collection(db, paths.paymentMethods(companyId)), orderBy('order')) : null, 
   [db, companyId]);
@@ -72,30 +75,8 @@ export default function PaymentVouchersPage() {
   const { data: accounts } = useCollection<Account>(accountsQuery);
   const { data: projects } = useCollection<any>(projectsQuery);
   const { data: costCenters } = useCollection<CostCenter>(costCentersQuery);
+  const { data: profitCenters } = useCollection<ProfitCenter>(profitCentersQuery);
   const { data: paymentMethods } = useCollection<any>(pmQuery);
-
-  const selectedAccount = useMemo(() => accounts?.find(a => a.id === form.accountId), [accounts, form.accountId]);
-
-  useEffect(() => {
-     if (form.projectId && costCenters && selectedAccount?.type === 'expense') {
-        const matchedCC = costCenters.find(cc => cc.projectId === form.projectId || cc.id === `cc_${form.projectId}`);
-        if (matchedCC) {
-           setForm(prev => ({ ...prev, costCenterId: matchedCC.id }));
-           setAutoLinkedCC(true);
-        } else {
-           setAutoLinkedCC(false);
-           setForm(prev => ({ ...prev, costCenterId: '' }));
-        }
-     } else {
-        setAutoLinkedCC(false);
-     }
-  }, [form.projectId, costCenters, selectedAccount]);
-
-  const showCostCenterPicker = useMemo(() => {
-     if (!selectedAccount || selectedAccount.analyticalConfig?.costCenter === 'not_allowed') return false;
-     if (form.projectId && form.projectId !== 'GENERAL' && autoLinkedCC && form.costCenterId) return false;
-     return true;
-  }, [selectedAccount, autoLinkedCC, form.costCenterId, form.projectId]);
 
   const cashAccounts = useMemo(() => {
     if (!accounts || !form.paymentMethod) return [];
@@ -106,7 +87,7 @@ export default function PaymentVouchersPage() {
 
   const handleSave = async () => {
     if (!db || !companyId || !user) return;
-    if (!form.accountId || !form.cashAccountId || form.amount <= 0 || !form.paymentMethod) {
+    if (!form.accountId || !form.cashAccountId || form.amount <= 0) {
       toast({ variant: "destructive", title: t('common.error') });
       return;
     }
@@ -116,20 +97,20 @@ export default function PaymentVouchersPage() {
       await service.createVoucher({ ...form, type: 'payment' }, user.uid);
       toast({ title: t('common.saved') });
       setIsAdding(false);
-      setForm({ date: new Date().toISOString().split('T')[0], amount: 0, personName: '', paymentMethod: '', accountId: '', cashAccountId: '', projectId: '', costCenterId: '', notes: '', distributions: [] });
+      setForm({ date: new Date().toISOString().split('T')[0], amount: 0, personName: '', paymentMethod: '', accountId: '', cashAccountId: '', projectId: '', costCenterId: '', profitCenterId: '', notes: '' });
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally { setLoading(false); }
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in" dir={dir}>
+    <div className="space-y-6 animate-in fade-in max-w-[1600px] mx-auto" dir={dir}>
       <header className="flex justify-between items-center text-start">
         <div className="text-start space-y-1">
           <h1 className="text-2xl font-black font-headline flex items-center gap-3 text-slate-900">
             <Wallet className="h-7 w-7 text-rose-600" /> {t('paymentVouchers')}
           </h1>
-          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">{tSafe('inline.payment.desc', 'إدارة المصروفات وربطها بمراكز تكلفة المشاريع', 'Manage expenses and link to projects')}</p>
+          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">{isRtl ? 'إصدار سندات الصرف وربط الأبعاد المالية' : 'Issue payments and link financial dimensions'}</p>
         </div>
         <Button onClick={() => setIsAdding(!isAdding)} size="sm" className="h-10 px-8 font-black rounded-xl shadow-lg gap-2 bg-rose-600 hover:bg-rose-700 text-white border-b-4 border-rose-800 transition-all">
            {isAdding ? <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} /> : <Plus className="h-4 w-4" />}
@@ -138,129 +119,52 @@ export default function PaymentVouchersPage() {
       </header>
 
       {isAdding ? (
-        <div className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in slide-in-from-bottom-4">
-           <Card className="lg:col-span-8 rounded-[2.5rem] border-0 shadow-3xl bg-white overflow-hidden ring-1 ring-black/5">
-              <CardHeader className="bg-rose-50/50 p-8 border-b text-start">
-                 <CardTitle className="text-rose-900 font-black text-lg flex items-center gap-3">
-                    <Plus className="h-4 w-4" /> {tSafe('inline.issue.payment', 'إصدار سند صرف معتمد', 'Issue Official Payment')}
-                 </CardTitle>
-              </CardHeader>
-              <CardContent className="p-10 space-y-8 text-start bg-white">
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.date')}</Label>
-                       <Input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="h-10 rounded-xl border-2 font-bold" />
-                    </div>
-                    <div className="md:col-span-2 space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'يصرف للسيد / الجهة' : 'Paid To'}</Label>
-                       <div className="relative">
-                          <User className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
-                          <Input value={form.personName} onChange={e => setForm({...form, personName: e.target.value})} className="h-10 rounded-xl ps-11 font-black text-sm bg-slate-50/30 border-2" placeholder="..." />
-                       </div>
-                    </div>
-                 </div>
+        <Card className="rounded-[2.5rem] border-0 shadow-3xl bg-white overflow-hidden ring-1 ring-black/5">
+           <CardHeader className="bg-rose-50/50 p-8 border-b text-start">
+              <CardTitle className="text-rose-900 font-black text-lg flex items-center gap-3">
+                 <Plus className="h-4 w-4" /> {tSafe('inline.issue.payment', 'إصدار سند صرف معتمد', 'Issue Official Payment')}
+              </CardTitle>
+           </CardHeader>
+           <CardContent className="p-10 space-y-8 text-start bg-white">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                 <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{t('common.date')}</Label><Input type="date" value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="h-10 rounded-xl border-2" /></div>
+                 <div className="md:col-span-2 space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'يصرف للسيد / الجهة' : 'Paid To'}</Label><div className="relative"><User className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" /><Input value={form.personName} onChange={e => setForm({...form, personName: e.target.value})} className="h-10 rounded-xl ps-11 font-black text-sm" /></div></div>
+              </div>
 
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-4 border-t border-slate-50">
-                    <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.amount')}</Label>
-                       <div className="relative">
-                          <Input type="number" step="0.001" value={form.amount === 0 ? "" : form.amount} onChange={e => setForm({...form, amount: e.target.value === '' ? 0 : Number(e.target.value)})} className="h-12 rounded-xl border-2 border-rose-100 bg-rose-50/20 text-center font-black text-xl text-rose-600" />
-                          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-rose-300">KWD</div>
-                       </div>
-                    </div>
-                    <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('paymentMethods')}</Label>
-                       <Select value={form.paymentMethod} onValueChange={v => setForm({...form, paymentMethod: v, cashAccountId: ''})}>
-                          <SelectTrigger className="h-12 rounded-xl border-2 font-black"><SelectValue /></SelectTrigger>
-                          <SelectContent className="rounded-xl border-0 shadow-2xl">
-                             {paymentMethods?.map((pm: any) => (
-                               <SelectItem key={pm.code} value={pm.code} className="font-bold py-3 text-xs">{isRtl ? pm.name : (pm.nameEn || pm.name)}</SelectItem>
-                             ))}
-                          </SelectContent>
-                       </Select>
-                    </div>
-                    <div className="space-y-2">
-                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'من حساب الخزينة' : 'Pay From'}</Label>
-                       <SearchableDropdown
-                         disabled={!form.paymentMethod}
-                         options={(cashAccounts || []).map(a => ({ id: a.id!, name: isRtl ? a.nameAr : a.nameEn, subText: a.code }))}
-                         value={form.cashAccountId}
-                         onChange={v => setForm({...form, cashAccountId: v as string})}
-                         placeholder="..."
-                       />
-                    </div>
-                 </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-6 border-t">
+                 <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{t('common.amount')}</Label><Input type="number" step="0.001" value={form.amount || ''} onChange={e => setForm({...form, amount: Number(e.target.value)})} className="h-12 rounded-xl border-2 border-rose-100 text-center font-black text-xl text-rose-600" /></div>
+                 <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{t('paymentMethods')}</Label><Select value={form.paymentMethod} onValueChange={v => setForm({...form, paymentMethod: v, cashAccountId: ''})}><SelectTrigger className="h-12 rounded-xl border-2 font-black"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl">{paymentMethods?.map((pm: any) => <SelectItem key={pm.code} value={pm.code} className="font-bold py-3 text-xs">{isRtl ? pm.name : (pm.nameEn || pm.name)}</SelectItem>)}</SelectContent></Select></div>
+                 <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'من حساب الخزينة' : 'Pay From'}</Label><SearchableDropdown disabled={!form.paymentMethod} options={(cashAccounts || []).map(a => ({ id: a.id!, name: isRtl ? a.nameAr : a.nameEn, subText: a.code }))} value={form.cashAccountId} onChange={v => setForm({...form, cashAccountId: v as string})} /></div>
+              </div>
 
-                 <div className="pt-8 border-t space-y-6">
+              <div className="pt-8 border-t space-y-8">
+                 <div className="space-y-1.5 text-start">
                     <Label className="text-[11px] font-black uppercase text-primary tracking-widest">{isRtl ? 'تحميل المصروف على حساب' : 'Charge To Account'}</Label>
-                    <SearchableDropdown
-                      options={(expenseAccounts || []).map(a => ({ id: a.id!, name: isRtl ? a.nameAr : a.nameEn, subText: a.code }))}
-                      value={form.accountId}
-                      onChange={v => setForm({...form, accountId: v as string})}
-                      placeholder={isRtl ? "اختر حساب المصروف..." : "Choose Expense..."}
-                    />
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-top-2">
-                       <div className="space-y-1.5 text-start">
-                          <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">المشروع المستهدف</Label>
-                          <SearchableDropdown
-                             options={[{ id: 'GENERAL', name: isRtl ? '--- مصروف إداري عام ---' : '--- General Admin ---' }, ...(projects || []).map(p => ({ id: p.id!, name: p.clientName, subText: `${p.subServiceName}` }))]}
-                             value={form.projectId}
-                             onChange={v => setForm({...form, projectId: v as string})}
-                             placeholder={isRtl ? "اختيار المشروع..." : "Project..."}
-                          />
-                       </div>
-
-                       {showCostCenterPicker && (
-                         <div className="space-y-1.5 animate-in zoom-in-95 text-start">
-                            <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5"><LayoutGrid className="h-4 w-4" /> {isRtl ? 'مركز التكلفة' : 'Cost Center'}</Label>
-                            <SearchableDropdown
-                               options={costCenters?.filter(cc => cc.isAdministrative || (form.projectId && cc.projectId === form.projectId)).map(cc => ({ id: cc.id, name: cc.name, subText: cc.code })) || []}
-                               value={form.costCenterId}
-                               onChange={v => setForm({...form, costCenterId: v as string})}
-                               placeholder="..."
-                            />
-                         </div>
-                       )}
-
-                       {form.projectId && form.projectId !== 'GENERAL' && autoLinkedCC && (
-                          <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 px-6 py-2 rounded-xl border-2 border-emerald-100 animate-in fade-in h-fit self-end">
-                             <Zap className="h-4 w-4 fill-current" />
-                             <span className="text-[10px] font-black uppercase tracking-tighter">{isRtl ? 'تم الربط آلياً' : 'Linked Silently'}</span>
-                          </div>
-                       )}
-                    </div>
-
-                    <div className="space-y-2 pt-6 border-t border-slate-50">
-                       <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.notes')}</Label>
-                       <textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} className="w-full min-h-[100px] rounded-xl border-2 p-4 text-xs font-bold bg-slate-50/30 shadow-inner" placeholder="..." />
-                    </div>
+                    <SearchableDropdown options={(expenseAccounts || []).map(a => ({ id: a.id!, name: isRtl ? a.nameAr : a.nameEn, subText: a.code }))} value={form.accountId} onChange={v => setForm({...form, accountId: v as string})} />
                  </div>
 
-                 <div className="flex justify-end gap-4 pt-8">
-                    <Button variant="outline" onClick={() => setIsAdding(false)} className="h-12 rounded-xl px-10 font-black border-2">{t('common.cancel')}</Button>
-                    <Button onClick={handleSave} disabled={loading} className="h-12 rounded-xl px-16 bg-rose-600 text-white font-black text-sm shadow-xl shadow-rose-200 gap-3 border-b-4 border-rose-800">
-                       {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
-                       {tSafe('inline.confirm.issue', 'تأكيد وإصدار السند', 'Confirm & Issue')}
-                    </Button>
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المشروع' : 'Project'}</Label><SearchableDropdown options={[{ id: 'NONE', name: isRtl ? '--- بدون مشروع ---' : '--- No Project ---' }, ...(projects || []).map(p => ({ id: p.id!, name: p.clientName, subText: p.subServiceName }))]} value={form.projectId || 'NONE'} onChange={v => setForm({...form, projectId: v === 'NONE' ? '' : v as string})} /></div>
+                    <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-primary flex items-center gap-1.5"><LayoutGrid className="h-4 w-4" /> {isRtl ? 'مركز التكلفة' : 'Cost Center'}</Label><SearchableDropdown options={[{ id: '', name: '---' }, ...(costCenters || []).map(cc => ({ id: cc.id, name: cc.name, subText: cc.code }))]} value={form.costCenterId} onChange={v => setForm({...form, costCenterId: v as string})} /></div>
+                    <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-emerald-600 flex items-center gap-1.5"><DatabaseZap className="h-4 w-4" /> {isRtl ? 'مركز الربحية' : 'Profit Center'}</Label><SearchableDropdown options={[{ id: '', name: '---' }, ...(profitCenters || []).map(pc => ({ id: pc.id, name: pc.name, subText: pc.code }))]} value={form.profitCenterId} onChange={v => setForm({...form, profitCenterId: v as string})} /></div>
                  </div>
-              </CardContent>
-           </Card>
 
-           <aside className="lg:col-span-4 space-y-6 text-start">
-              <Card className="rounded-[2.5rem] border shadow-sm p-8 bg-primary/5 text-slate-900 space-y-6 overflow-hidden relative border-2 border-primary/10">
-                 <div className="absolute top-0 right-0 p-8 opacity-5"><Landmark className="h-40 w-40 text-primary" /></div>
-                 <div className="relative z-10 space-y-4">
-                    <h4 className="font-black text-xs uppercase tracking-widest text-primary flex items-center gap-2"><Sparkles className="h-5 w-5" /> {isRtl ? 'الأتمتة المحاسبية' : 'Accounting AI'}</h4>
-                    <p className="text-[11px] font-bold text-slate-500 leading-relaxed italic">
-                       {isRtl ? 'النظام يقوم بمطاردة التكاليف في الخلفية لربطها بالمشاريع آلياً.' : 'System tracks costs silently in the background.'}
-                    </p>
+                 <div className="space-y-1.5 text-start pt-6 border-t">
+                    <Label className="text-[10px] font-black uppercase text-slate-400">{t('common.notes')}</Label>
+                    <textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} className="w-full min-h-[100px] rounded-xl border-2 p-4 text-xs font-bold bg-slate-50/30" placeholder="..." />
                  </div>
-              </Card>
-           </aside>
-        </div>
+              </div>
+
+              <div className="flex justify-end gap-4 pt-8">
+                 <Button variant="outline" onClick={() => setIsAdding(false)} className="h-12 rounded-xl px-10 font-black border-2">{t('common.cancel')}</Button>
+                 <Button onClick={handleSave} disabled={loading} className="h-12 rounded-xl px-16 bg-rose-600 text-white font-black shadow-xl border-b-4 border-rose-800">
+                    {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5 me-2" />} {tSafe('inline.confirm.issue', 'تأكيد وإصدار السند', 'Confirm & Issue')}
+                 </Button>
+              </div>
+           </CardContent>
+        </Card>
       ) : (
-        <Card className="rounded-[1.5rem] shadow-sm border border-slate-100 overflow-hidden bg-white text-start">
+        <Card className="rounded-[1.5rem] shadow-sm border overflow-hidden bg-white text-start">
            <CardContent className="p-0 overflow-x-auto">
               <Table>
                  <TableHeader className="bg-slate-50/50 border-b-2">
@@ -276,7 +180,7 @@ export default function PaymentVouchersPage() {
                     {vouchersLoading ? (
                       <TableRow><TableCell colSpan={5} className="text-center py-24"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/20" /></TableCell></TableRow>
                     ) : (vouchers || []).map(v => (
-                      <TableRow key={v.id} className="hover:bg-primary/[0.01] border-b-slate-50 group">
+                      <TableRow key={v.id} className="hover:bg-primary/[0.01] border-b-slate-50">
                          <TableCell className="py-5 ps-8 text-start font-black text-slate-800">
                             <div className="flex flex-col">
                                <span className="text-sm">{v.voucherNumber}</span>
@@ -286,7 +190,7 @@ export default function PaymentVouchersPage() {
                          <TableCell className="text-start font-bold text-slate-600 text-sm">{v.personName}</TableCell>
                          <TableCell className="text-end font-mono font-black text-rose-600 text-base">{v.amount.toLocaleString()} <span className="text-[8px] opacity-40">KWD</span></TableCell>
                          <TableCell className="text-center"><Badge variant="outline" className="text-[8px] font-black uppercase px-3 h-5 border-2 bg-white">{v.paymentMethod}</Badge></TableCell>
-                         <TableCell className="pe-8 text-end"><Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-slate-300"><FileText className="h-4 w-4" /></Button></TableCell>
+                         <TableCell className="pe-8 text-end"><Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-slate-300"><ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} /></Button></TableCell>
                       </TableRow>
                     ))}
                  </TableBody>
