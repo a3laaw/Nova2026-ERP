@@ -12,7 +12,7 @@ import {
   Trash2, Edit3, ShieldCheck, ListTree,
   Filter, CheckCircle2, X, XCircle,
   LayoutGrid, DollarSign, Clock, Package, Scale, CreditCard,
-  Save, Percent
+  Save, Percent, Info
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -125,8 +125,8 @@ export default function ReferenceListsPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20" dir={dir}>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-8 border-slate-100">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-8 border-slate-100 text-start">
+        <div className="flex items-center gap-4 text-start">
            <Button variant="ghost" onClick={() => router.push('/dashboard/settings')} className="h-12 w-12 p-0 rounded-2xl bg-white shadow-sm border hover:bg-slate-50 transition-all">
              <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
            </Button>
@@ -135,7 +135,7 @@ export default function ReferenceListsPage() {
                 <ListTree className="h-10 w-10 text-primary" />
                 {t('referenceLists')}
              </h1>
-             <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic">
+             <p className="text-muted-foreground mt-1 text-sm font-bold opacity-80 italic text-start">
                 {isRtl ? 'تخصيص القواميس المرجعية والوحدات التشغيلية للمنظمة.' : 'Customize reference dictionaries and operational units.'}
              </p>
            </div>
@@ -153,8 +153,7 @@ export default function ReferenceListsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
-        <div className="lg:col-span-3 space-y-4">
+        <div className="lg:col-span-3 space-y-4 text-start">
            <div className="bg-white rounded-[2rem] shadow-xl border-2 border-slate-50 p-3 space-y-2">
               {menuItems.map((item) => {
                 const isActive = activeTab === item.id;
@@ -183,24 +182,12 @@ export default function ReferenceListsPage() {
                 );
               })}
            </div>
-
-           <Card className="border-0 shadow-lg rounded-[2rem] bg-blue-50 p-6 text-start">
-              <div className="flex items-center gap-3 text-blue-600 mb-2">
-                 <ShieldCheck className="h-5 w-5" />
-                 <h4 className="font-black text-xs uppercase tracking-widest">{isRtl ? 'الرقابة النظامية' : 'System Guard'}</h4>
-              </div>
-              <p className="text-[10px] font-bold text-blue-700/70 leading-relaxed">
-                 {isRtl 
-                   ? 'العناصر الموسومة كـ (نظامية) لا يمكن حذفها أو تعديل أكوادها البرمجية لضمان استقرار محركات الحساب.' 
-                   : 'Items marked as (System) cannot be deleted or have their codes modified to ensure calculation engine stability.'}
-              </p>
-           </Card>
         </div>
 
         <div className="lg:col-span-9 space-y-6">
-           <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5">
+           <Card className="border-0 shadow-2xl rounded-[3rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
               <CardHeader className="bg-slate-50/50 border-b p-8">
-                 <div className="relative w-full max-w-md">
+                 <div className="relative w-full max-w-md text-start">
                     <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                     <Input 
                       placeholder={t('common.search')} 
@@ -210,7 +197,7 @@ export default function ReferenceListsPage() {
                     />
                  </div>
               </CardHeader>
-              <CardContent className="p-0 overflow-x-auto">
+              <CardContent className="p-0 overflow-x-auto text-start">
                  <Table>
                     <TableHeader className="bg-muted/30">
                        <TableRow>
@@ -230,7 +217,7 @@ export default function ReferenceListsPage() {
                          filtered.map((item) => (
                            <TableRow key={item.id} className="hover:bg-slate-50 transition-colors border-b-slate-100 group">
                               <TableCell className="py-6 ps-8 text-start">
-                                 <div className="flex flex-col">
+                                 <div className="flex flex-col text-start">
                                     <span className="font-black text-slate-800">{isRtl ? item.name : (item.nameEn || item.name)}</span>
                                     {item.description && <span className="text-[10px] text-slate-400 font-bold line-clamp-1 max-w-[200px]">{item.description}</span>}
                                  </div>
@@ -324,15 +311,6 @@ export default function ReferenceListsPage() {
                   />
                </div>
 
-               <div className="space-y-2">
-                  <Label className="text-xs font-black uppercase text-slate-400">{t('common.description')}</Label>
-                  <Textarea 
-                    value={editingItem?.description || ''} 
-                    onChange={e => setEditingItem({...editingItem, description: e.target.value})} 
-                    className="min-h-[80px] rounded-xl border-2" 
-                  />
-               </div>
-
                <div className="flex items-center justify-between p-6 bg-emerald-50/50 rounded-2xl border-2 border-white">
                   <div className="space-y-1">
                      <Label className="font-black text-emerald-900">{t('common.isActive')}</Label>
@@ -346,7 +324,7 @@ export default function ReferenceListsPage() {
             </div>
 
             <DialogFooter className="p-10 bg-slate-50 border-t">
-               <Button onClick={handleSave} disabled={loadingAction === 'save'} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-3 border-b-8 border-orange-700">
+               <Button onClick={handleSave} disabled={loadingAction === 'save'} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-3 border-b-4 border-orange-700">
                   {loadingAction === 'save' ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6 me-2" />}
                   {t('common.save')}
                </Button>
@@ -360,13 +338,13 @@ export default function ReferenceListsPage() {
              <div className="mx-auto w-20 h-20 bg-rose-50 text-rose-600 rounded-3xl flex items-center justify-center mb-6 ring-8 ring-rose-50/50">
                 <Trash2 className="h-10 w-10" />
              </div>
-             <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900">{t('common.confirmDelete')}</AlertDialogTitle>
+             <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">{t('common.confirmDelete')}</AlertDialogTitle>
              <AlertDialogDescription className="text-start font-bold text-slate-400 mt-2 text-lg">
                 {isRtl ? 'هل أنت متأكد من حذف هذا العنصر؟ قد يؤثر ذلك على البيانات التاريخية المرتبطة به.' : 'Are you sure? Deleting this item may affect historical records linked to it.'}
              </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-10 gap-4 flex flex-row">
-            <AlertDialogCancel className="flex-1 h-14 rounded-2xl font-bold border-2 bg-white">{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogCancel className="flex-1 h-14 rounded-2xl font-bold border-2 bg-white text-slate-600">{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="flex-[2] h-14 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200">
                {isRtl ? 'نعم، احذف' : 'Delete'}
             </AlertDialogAction>
