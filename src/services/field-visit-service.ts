@@ -4,24 +4,21 @@ import {
   Firestore, 
   collection, 
   doc, 
-  setDoc, 
+  updateDoc, 
   serverTimestamp,
   writeBatch,
   increment,
   getDocs,
   query,
   where,
-  limit,
   getDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { FieldVisit } from '@/types/field-visit';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
-import { BillingService } from './billing-service';
+import { AccountingService } from './accounting-service';
 
 /**
- * خدمة السجلات الميدانية السيادية - محرك المطابقة المزدوجة والارتباط المالي.
+ * خدمة السجلات الميدانية السيادية - تم التحديث لدعم الاعتماد المالي والترحيل للـ WIP.
  */
 export class FieldVisitService {
   constructor(private db: Firestore, private companyId: string) {}
@@ -38,8 +35,8 @@ export class FieldVisitService {
       ...data,
       id: logRef.id,
       companyId: this.companyId,
-      status: 'approved', 
-      isVerified: true,
+      status: 'submitted', 
+      isVerified: false,
       createdBy: userId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
@@ -47,69 +44,93 @@ export class FieldVisitService {
 
     batch.set(logRef, finalData);
 
-    // 1. محرك تحديث المقايسة والمسار الفني (The Technical Core Update)
+    // تحديث المقايسة
     if (data.items && data.items.length > 0) {
       for (const item of data.items) {
         if (!item.boqId || !item.boqItemId) continue;
-
         const boqItemRef = doc(this.db, paths.boqItems(this.companyId, item.boqId), item.boqItemId);
         batch.update(boqItemRef, {
           executedQuantity: increment(Number(item.quantity) || 0),
           updatedAt: serverTimestamp()
         });
-
-        if (data.activeStageId) {
-          const stageRef = doc(this.db, paths.transactionStages(this.companyId, data.transactionId), data.activeStageId);
-          batch.update(stageRef, {
-            currentCount: increment(Number(item.quantity) || 0),
-            updatedAt: serverTimestamp()
-          });
-        }
       }
     }
 
-    // 2. توثيق الحدث في تايملاين المعاملة
-    const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, data.transactionId)));
-    batch.set(timelineRef, {
-      transactionId: data.transactionId,
-      type: 'numeric_update',
-      content: `[إنجاز ميداني] تم تسجيل كميات جديدة لـ ${data.items?.length || 0} بند. تم تحديث المقايسة المعتمدة آلياً بنظام الربط المظلي.`,
-      userId,
-      userName: data.engineerName,
-      companyId: this.companyId,
-      createdAt: serverTimestamp()
+    await batch.commit();
+    return logRef.id;
+  }
+
+  /**
+   * الاعتماد الإداري والترحيل المالي للزيارة (Financial Approval & WIP Allocation)
+   */
+  async approveFieldVisitForBilling(visitId: string, approverId: string) {
+    const visitRef = doc(this.db, paths.fieldVisits(this.companyId), visitId);
+    const visitSnap = await getDoc(visitRef);
+    if (!visitSnap.exists()) throw new Error("VISIT_NOT_FOUND");
+    const visit = visitSnap.data() as FieldVisit;
+
+    // 1. حساب إجمالي التكاليف المباشرة من الزيارة
+    let totalLaborCost = 0;
+    (visit.staffDetails || []).forEach((s: any) => {
+       totalLaborCost += (Number(s.count) || 0) * (Number(s.hours) || 8) * (Number(s.hourlyCostRef) || 0);
     });
 
-    try {
-      await batch.commit();
-      
-      // 3. المحرك المالي: فحص المطالبات المرتبطة بـ "أثناء التنفيذ" (DURING)
-      // يتم الزناد بمجرد وجود أي إنجاز في المرحلة النشطة
-      if (data.activeStageId) {
-        const stageInstanceSnap = await getDoc(doc(this.db, paths.transactionStages(this.companyId, data.transactionId), data.activeStageId));
-        if (stageInstanceSnap.exists()) {
-           const techStageId = stageInstanceSnap.data().technicalStageId;
-           const billing = new BillingService(this.db, this.companyId);
-           
-           // تفعيل زناد المطالبة المالية (أثناء التنفيذ - Progress Based)
-           await billing.triggerMilestoneBilling(
-             data.transactionId, 
-             techStageId, 
-             'during', 
-             userId, 
-             data.engineerName || 'System Financial Engine'
-           );
-        }
-      }
+    let totalEquipCost = 0;
+    (visit.equipmentUsed || []).forEach((e: any) => {
+       totalEquipCost += (Number(e.count) || 1) * (Number(e.hours) || 8) * (Number(e.hourlyRateRef) || 0);
+    });
 
-      return logRef.id;
-    } catch (serverError: any) {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: logRef.path,
-        operation: 'write',
-        requestResourceData: finalData
-      } satisfies SecurityRuleContext));
-      throw serverError;
+    const totalVisitCost = totalLaborCost + totalEquipCost;
+
+    const batch = writeBatch(this.db);
+    
+    // 2. تحديث حالة الزيارة
+    batch.update(visitRef, {
+       status: 'approved_for_billing',
+       isVerified: true,
+       billingApprovedAt: serverTimestamp(),
+       billingApprovedBy: approverId,
+       totalAllocatedCost: totalVisitCost
+    });
+
+    // 3. توليد قيد اليومية (WIP Entry)
+    if (totalVisitCost > 0) {
+       const accService = new AccountingService(this.db, this.companyId);
+       
+       // البحث عن حساب WIP المرتبط بالمشروع
+       const wipAccId = await accService.createAutomaticSubAccount('1205', visit.transactionId, `${visit.clientName} - WIP`, 'asset');
+       const accruedAccId = await accService.ensureControlAccount('2204', 'مستحقات رواتب وأجور', 'Accrued Salaries', 'liability');
+
+       // البحث عن مراكز التكلفة والربحية للمشروع
+       const ccId = `cc_${visit.transactionId}`;
+       const pcId = `pc_${visit.transactionId}`;
+
+       const jvData = {
+          date: visit.visitDate,
+          description: `ترحيل تكاليف الزيارة الميدانية #${visit.id?.slice(-6)} - مشروع: ${visit.transactionName}`,
+          lines: [
+             { 
+               accountId: wipAccId, 
+               accountName: 'أعمال تحت التنفيذ', 
+               debit: totalVisitCost, 
+               credit: 0, 
+               projectId: visit.transactionId, 
+               costCenterId: ccId, 
+               profitCenterId: pcId 
+             },
+             { 
+               accountId: accruedAccId, 
+               accountName: 'مستحقات عمالة ومعدات (خصوم)', 
+               debit: 0, 
+               credit: totalVisitCost, 
+               profitCenterId: pcId 
+             }
+          ]
+       };
+
+       await accService.createJournalEntry(jvData, approverId);
     }
+
+    await batch.commit();
   }
 }

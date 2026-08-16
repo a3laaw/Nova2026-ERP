@@ -1,58 +1,58 @@
 'use client';
 /**
- * @fileOverview خدمة التحقق التحليلي (Analytical Validation Service).
- * تقوم بفرض القواعد المالية والتشغيلية على أسطر القيود لضمان سلامة مراكز التكلفة.
+ * @fileOverview خدمة التحقق والرقابة التحليلية (Analytical Validation Service).
+ * تفرض قواعد صارمة على قيود اليومية لضمان سلامة التقارير المالية.
  */
 
 import { JournalEntryLine, Account } from '@/types/accounting';
-import { CostCenter, ProfitCenter } from '@/types/cost-profit-centers';
 
 export class AnalyticalValidationService {
   /**
-   * التحقق من صحة سطر واحد في القيد المحاسبي
+   * التحقق من صحة القيد المحاسبي بالكامل قبل الترحيل
    */
-  validateLine(
-    line: JournalEntryLine,
-    account: Account,
-    costCenters: CostCenter[],
-    profitCenters: ProfitCenter[]
-  ): { valid: boolean; error?: string } {
-    const config = account.analyticalConfig;
-    if (!config) return { valid: true };
+  validateJournalEntry(lines: JournalEntryLine[], accounts: Account[]): { valid: boolean; error?: string } {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const account = accounts.find(a => a.id === line.accountId);
+      const lineNum = i + 1;
 
-    // 1. التحقق من إلزامية مركز التكلفة
-    if (config.costCenter === 'required' && !line.costCenterId) {
-      return { 
-        valid: false, 
-        error: `[مركز التكلفة مطلوب] الحساب "${account.nameAr}" يتطلب تحديد مركز تكلفة.` 
-      };
-    }
+      if (!account) {
+        return { valid: false, error: `السطر ${lineNum}: الحساب غير موجود في الدليل.` };
+      }
 
-    // 2. التحقق من إلزامية مركز الربحية
-    if (config.profitCenter === 'required' && !line.profitCenterId) {
-      return { 
-        valid: false, 
-        error: `[مركز الربحية مطلوب] الحساب "${account.nameAr}" يتطلب تحديد مركز ربحية.` 
-      };
-    }
+      // 1. ترفض القيد إذا كان الحساب حساب مجموعة
+      if (account.isGroup) {
+        return { valid: false, error: `السطر ${lineNum}: لا يمكن تسجيل قيود على حساب رئيسي (مجموعة): ${account.nameAr}.` };
+      }
 
-    // 3. منع مراكز التكلفة غير المسموحة (مثلاً للحسابات الإدارية الصرفة)
-    if (config.costCenter === 'not_allowed' && line.costCenterId) {
-      return { 
-        valid: false, 
-        error: `[خطأ في البعد] الحساب "${account.nameAr}" لا يقبل مراكز تكلفة.` 
-      };
-    }
+      // 2. إذا كان نوع الحساب مصروف (expense)
+      if (account.type === 'expense') {
+        if (!line.costCenterId || !line.profitCenterId || !line.projectId) {
+          return { 
+            valid: false, 
+            error: `السطر ${lineNum}: حساب المصروف "${account.nameAr}" يتطلب تحديد (مركز تكلفة، مركز ربحية، ومشروع) للامتثال المالي.` 
+          };
+        }
+      }
 
-    // 4. فحص مطابقة المشروع (Project Guard)
-    // منع تحميل مشروع بمصاريف مركز تكلفة مرتبط بمشروع آخر
-    if (line.costCenterId) {
-      const center = costCenters.find(c => c.id === line.costCenterId);
-      if (center && center.projectId && center.projectId !== line.projectId) {
-        return { 
-          valid: false, 
-          error: `[تداخل مشاريع] مركز التكلفة "${center.name}" مرتبط بمشروع مختلف عن المختار في السطر.` 
-        };
+      // 3. إذا كان نوع الحساب إيراد (revenue)
+      if (account.type === 'revenue') {
+        if (!line.profitCenterId || !line.projectId) {
+          return { 
+            valid: false, 
+            error: `السطر ${lineNum}: حساب الإيراد "${account.nameAr}" يتطلب تحديد (مركز ربحية ومشروع).` 
+          };
+        }
+      }
+
+      // 4. إذا كان أصول أو خصوم (asset / liability)
+      if (account.type === 'asset' || account.type === 'liability') {
+        if (!line.profitCenterId) {
+          return { 
+            valid: false, 
+            error: `السطر ${lineNum}: الحساب "${account.nameAr}" يتطلب تحديد مركز ربحية لمطابقة البعد التشغيلي.` 
+          };
+        }
       }
     }
 

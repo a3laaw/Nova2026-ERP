@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,8 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   Loader2, ArrowRight, Hammer, Users, 
   Truck, CheckCircle2, ShieldCheck, Printer,
-  LayoutGrid, Package, Landmark, History,
-  Handshake
+  Landmark, History, Handshake, Zap
 } from "lucide-react";
 import { useFirestore, useDoc } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -21,20 +19,42 @@ import { paths } from '@/firebase/multi-tenant';
 import { cn } from '@/lib/utils';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { FieldVisitService } from '@/services/field-visit-service';
+import { toast } from '@/hooks/use-toast';
+import { usePermissions } from '@/hooks/use-permissions';
 
 export default function FieldVisitDetailsPage() {
   const visitId = useParams().id as string;
-  const { globalUser } = useAuthContext();
+  const { globalUser, user } = useAuthContext();
   const { lang, dir, t, tSafe } = useLanguage();
+  const { isAdmin, check } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const isRtl = lang === 'ar';
   const companyId = globalUser?.companyId;
 
+  const [processing, setProcessing] = useState(false);
+
+  const canApproveBilling = isAdmin || check('accounting', 'approve').can;
+
   const visitRef = useMemo(() => 
     companyId && db && visitId ? doc(db, paths.fieldVisits(companyId), visitId) : null, [db, companyId, visitId]);
   
   const { data: visit, loading } = useDoc<any>(visitRef);
+
+  const handleApproveForBilling = async () => {
+    if (!db || !companyId || !user) return;
+    setProcessing(true);
+    try {
+      const service = new FieldVisitService(db, companyId);
+      await service.approveFieldVisitForBilling(visitId, user.uid);
+      toast({ title: tSafe('inline.billing.approved', 'تم الاعتماد المالي والترحيل للـ WIP', 'Billing approved & posted to WIP') });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('common.error'), description: e.message });
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   if (loading) return <div className="h-[60vh] flex items-center justify-center bg-[#fdfaf3]"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
   if (!visit) return <div className="p-20 text-center font-black">{tSafe('inline.not.found', '404 - غير موجود', '404 - Not Found')}</div>;
@@ -54,6 +74,12 @@ export default function FieldVisitDetailsPage() {
         </div>
         
         <div className="flex gap-4">
+           {canApproveBilling && visit.status !== 'approved_for_billing' && (
+             <Button onClick={handleApproveForBilling} disabled={processing} className="h-12 px-10 rounded-2xl bg-[#FFB000] text-white shadow-xl font-black gap-3 border-b-4 border-[#FF5722] hover:scale-105 transition-all">
+                {processing ? <Loader2 className="animate-spin h-5 w-5" /> : <Zap className="h-5 w-5" />} 
+                {tSafe('inline.approve.for.billing', 'اعتماد للترحيل المالي', 'Approve for Financial Posting')}
+             </Button>
+           )}
            <Button variant="outline" size="sm" onClick={() => window.print()} className="h-12 px-10 rounded-2xl border-2 bg-white shadow-xl font-black gap-3 hover:scale-105 transition-all">
               <Printer className="h-5 w-5 text-primary" /> {t('common.print')}
            </Button>
@@ -82,6 +108,9 @@ export default function FieldVisitDetailsPage() {
                     <div className="bg-slate-50 p-8 rounded-[2.5rem] border-2 border-white shadow-inner ring-1 ring-black/[0.02]">
                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('common.date')}</p>
                        <p className="text-3xl font-black text-slate-900 font-mono">{visit.visitDate}</p>
+                       {visit.status === 'approved_for_billing' && (
+                         <Badge className="bg-emerald-600 text-white border-0 font-black mt-2 w-full justify-center">POSTED TO WIP</Badge>
+                       )}
                     </div>
                  </div>
               </div>

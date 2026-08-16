@@ -23,7 +23,7 @@ import { AccountingService } from './accounting-service';
 
 /**
  * خدمة الموارد البشرية السيادية (Sovereign HR Service).
- * تم تحديثها لتوليد "أبعاد مالية مزدوجة" (Cost & Profit Centers) لكل موظف جديد لامتثال IFRS.
+ * تم التحديث (IFRS 8): الموظف يمتلك مركز تكلفة فقط، ولا يولد مركز ربحية تلقائياً.
  */
 export class HRService {
   constructor(
@@ -53,21 +53,14 @@ export class HRService {
     try {
       await setDoc(empRef, docData);
       
-      // الأتمتة السيادية (IFRS Alignment): إنشاء الأبعاد المالية فوراً
+      // الأتمتة السيادية (IFRS 8 Alignment): إنشاء مركز تكلفة فقط للموظف
       const accService = new AccountingService(this.db, this.companyId);
       
-      // 1. مركز التكلفة: لمطاردة الرواتب والمصاريف الإدارية للموظف
+      // إنشاء مركز تكلفة: لمطاردة الرواتب والمصاريف الإدارية للموظف
       await accService.createAutomaticCostCenter(
         empRef.id, 
         `تكلفة الموظف: ${data.fullName}`, 
         `CC-EMP-${data.employeeNumber}`
-      );
-
-      // 2. مركز الربحية: لمطاردة القيمة المضافة والإيراد الميداني للموظف (Production Value)
-      await accService.createAutomaticProfitCenter(
-        empRef.id, 
-        `ربحية الموظف: ${data.fullName}`, 
-        `PC-EMP-${data.employeeNumber}`
       );
 
     } catch (err: any) {
