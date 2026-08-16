@@ -16,6 +16,9 @@ import { useLanguage } from '@/context/language-context';
 import { SeedService } from '@/services/seed-service';
 import { toast } from '@/hooks/use-toast';
 
+/**
+ * @fileOverview أدوات تهيئة وصيانة النظام السيادية (Nuclear Reset Controls).
+ */
 export function SeedTool() {
   const { globalUser } = useAuthContext();
   const { t, lang, dir, isRtl, tSafe } = useLanguage();
@@ -65,7 +68,9 @@ export function SeedTool() {
       toast({ title: t('common.deleted') });
     } catch (e) {
       toast({ variant: "destructive", title: t('common.error') });
-    } finally { setPurging(false); }
+    } finally {
+      setPurging(false);
+    }
   };
 
   const handlePurgeLeaves = async () => {
@@ -107,7 +112,7 @@ export function SeedTool() {
   };
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto">
+    <div className="space-y-8 max-w-4xl mx-auto pb-20">
       <Card className="border-4 border-rose-100 rounded-[3rem] bg-rose-50/20 overflow-hidden shadow-2xl animate-in zoom-in-95">
          <CardHeader className="p-10 text-start bg-rose-50/50 border-b border-rose-100">
             <div className="flex items-center gap-4">
@@ -154,7 +159,7 @@ export function SeedTool() {
                <div className="text-start space-y-1">
                   <h4 className="font-black text-slate-900 flex items-center gap-2"><Plane className="h-4 w-4 text-primary" /> {isRtl ? 'تطهير أرشيف الإجازات' : 'Purge All Leaves'}</h4>
                   <p className="text-[10px] font-bold text-slate-400 max-w-sm">
-                    {isRtl ? 'حذف كافة طلبات الإجازات (المعتمدة والسابقة) لتصفير سجلات الغياب. الموظفون وأرصدتهم لن تتأثر إلا عند الاحتساب القادم.' : 'Wipe all leave logs. Employees are safe.'}
+                    {isRtl ? 'حذف كافة طلبات الإجازات (المعتمدة والسابقة) لتصفير سجلات الغياب.' : 'Wipe all leave logs. Employees are safe.'}
                   </p>
                </div>
                <Button 

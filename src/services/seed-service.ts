@@ -32,13 +32,13 @@ export class SeedService {
       paths.boqs(this.companyId),
       paths.quotations(this.companyId), 
       paths.contracts(this.companyId), 
+      paths.subconContracts(this.companyId), 
       paths.journalEntries(this.companyId),
       paths.vouchers(this.companyId),
       paths.accounts(this.companyId),
       paths.costCenters(this.companyId),
       paths.profitCenters(this.companyId),
       paths.purchaseOrders(this.companyId),
-      paths.subconContracts(this.companyId), 
       paths.ipcs(this.companyId),
       paths.subIpcs(this.companyId),
       paths.fieldVisits(this.companyId),
@@ -162,10 +162,14 @@ export class SeedService {
     return !snap.empty;
   }
 
+  /**
+   * ضخ شجرة حسابات متخصصة لشركات المقاولات مع تأسيس أبعادها التحليلية (WIP & Retentions)
+   */
   async seedConstructionCOA(userId: string) {
     const batch = writeBatch(this.db);
     const coaRef = collection(this.db, paths.accounts(this.companyId));
     
+    // 1. تأسيس المراكز الإدارية والعامة لضمان عمل محرك التحقق (Validation Engine)
     const adminCCRef = doc(collection(this.db, paths.costCenters(this.companyId)), 'cc_admin_general');
     batch.set(adminCCRef, {
       id: adminCCRef.id, code: 'CC-ADMIN', name: 'مركز التكاليف الإدارية والعمومية', 
@@ -177,6 +181,37 @@ export class SeedService {
       id: generalPCRef.id, code: 'PC-GENERAL', name: 'مركز الربحية العام (المنشأة)', 
       isActive: true, companyId: this.companyId, createdAt: serverTimestamp()
     });
+
+    // 2. ضخ شجرة الحسابات (Construction Specific)
+    const accounts = [
+      { code: '11', nameAr: 'الأصول المتداولة', type: 'asset', isGroup: true },
+      { code: '1101', nameAr: 'النقدية وما في حكمها', type: 'asset', isGroup: true, parentCode: '11' },
+      { code: '110101', nameAr: 'الخزينة الرئيسية', type: 'asset', isGroup: false, parentCode: '1101' },
+      { code: '1202', nameAr: 'ذمم العملاء (الملاك)', type: 'asset', isGroup: true, parentCode: '11' },
+      { code: '1203', nameAr: 'محتجزات مدينة لدى الملاك', type: 'asset', isGroup: false, parentCode: '11' },
+      { code: '1205', nameAr: 'أعمال تحت التنفيذ (WIP)', type: 'asset', isGroup: true, parentCode: '11' },
+      { code: '21', nameAr: 'الخصوم المتداولة', type: 'liability', isGroup: true },
+      { code: '2101', nameAr: 'ذمم الموردين ومقاولي الباطن', type: 'liability', isGroup: true, parentCode: '21' },
+      { code: '2102', nameAr: 'محتجزات دائنة لمقاولي الباطن', type: 'liability', isGroup: false, parentCode: '2101' },
+      { code: '41', nameAr: 'إيرادات المشاريع', type: 'revenue', isGroup: true },
+      { code: '4101', nameAr: 'إيرادات عقود المقاولات', type: 'revenue', isGroup: false, parentCode: '41' },
+      { code: '51', nameAr: 'تكاليف النشاط المباشرة', type: 'expense', isGroup: true },
+      { code: '5101', nameAr: 'تكلفة مواد بناء', type: 'expense', isGroup: false, parentCode: '51' },
+      { code: '5102', nameAr: 'تكلفة عمالة ميدانية', type: 'expense', isGroup: false, parentCode: '51' },
+    ];
+
+    for (const acc of accounts) {
+       const ref = doc(coaRef);
+       batch.set(ref, {
+          ...acc,
+          id: ref.id,
+          companyId: this.companyId,
+          isActive: true,
+          level: acc.code.length,
+          createdAt: serverTimestamp(),
+          createdBy: userId
+       });
+    }
 
     await batch.commit();
   }
