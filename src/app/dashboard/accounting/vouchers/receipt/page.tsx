@@ -102,6 +102,22 @@ export default function ReceiptVouchersPage() {
   
   const incomeAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.type === 'revenue' || a.type === 'liability' || a.code.startsWith('1202'))), [accounts]);
 
+  // محرك الربط التلقائي في السند (Auto-Routing in Receipt)
+  useEffect(() => {
+    if (form.transactionId) {
+       const matchedCC = costCenters?.find(cc => cc.projectId === form.transactionId || cc.id === `cc_${form.transactionId}`);
+       const matchedPC = profitCenters?.find(pc => pc.projectId === form.transactionId || pc.id === `pc_${form.transactionId}`);
+       
+       setForm(prev => ({
+          ...prev,
+          costCenterId: matchedCC?.id || '',
+          profitCenterId: matchedPC?.id || ''
+       }));
+    } else {
+       setForm(prev => ({ ...prev, costCenterId: '', profitCenterId: '' }));
+    }
+  }, [form.transactionId, costCenters, profitCenters]);
+
   useEffect(() => {
     if (db && companyId && form.transactionId) {
       const q = query(collection(db, paths.contracts(companyId)), where('transactionId', '==', form.transactionId), where('status', 'in', ['approved', 'active', 'paid', 'signed']));
@@ -138,7 +154,7 @@ export default function ReceiptVouchersPage() {
           <h1 className="text-2xl font-black font-headline flex items-center gap-3 text-slate-900">
             <Receipt className="h-7 w-7 text-emerald-600" /> {tSafe('accounting.vouchers.receiptTitle', 'سندات القبض الذكية', 'Smart Receipt Vouchers')}
           </h1>
-          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">{isRtl ? 'تحصيل الإيرادات وربط الأبعاد المالية للمشاريع' : 'Revenue collection and financial dimension linking'}</p>
+          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">{isRtl ? 'تحصيل الإيرادات المربوطة آلياً بالأبعاد المالية' : 'Auto-linked revenue collection and financial routing'}</p>
         </div>
         <Button onClick={() => setIsAdding(!isAdding)} size="sm" className="h-10 px-8 font-black rounded-xl shadow-lg gap-2 bg-emerald-600 hover:bg-emerald-700 text-white border-b-4 border-emerald-800 transition-all">
           {isAdding ? <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} /> : <Plus className="h-4 w-4" />}
@@ -155,9 +171,25 @@ export default function ReceiptVouchersPage() {
            </CardHeader>
            <CardContent className="p-10 space-y-8 text-start bg-white">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                 <div className="space-y-2 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المقبوض من (العميل)' : 'Received From'}</Label><SearchableDropdown options={(clients || []).map(c => ({ id: c.id, name: c.nameAr, subText: c.fileNumber }))} value={form.clientId} onChange={(val) => { const c = clients?.find(x => x.id === val); setForm({ ...form, clientId: val as string, personName: c?.nameAr || '', transactionId: '', transactionName: '', contractId: '', notes: '' }); if(val) fetchClientTransactions(val as string); }} placeholder={t('common.search')} /></div>
-                 <div className="space-y-2 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المشروع المرتبط' : 'Project Link'}</Label><SearchableDropdown disabled={!form.clientId} options={(allTransactions || []).filter(t => t.clientId === form.clientId).map(t => ({ id: t.id, name: t.subServiceName, subText: `#${t.transactionNumber}` }))} value={form.transactionId} onChange={(val) => { const t_row = allTransactions?.find(x => x.id === val); setForm({ ...form, transactionId: val as string, transactionName: t_row?.subServiceName || '', transactionNumber: t_row?.transactionNumber || '', contractId: '', notes: '' }); }} placeholder={t('common.search')} /></div>
+                 <div className="space-y-2 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المقبوض من (العميل)' : 'Received From'}</Label><SearchableDropdown options={(clients || []).map(c => ({ id: c.id, name: c.nameAr, subText: c.fileNumber }))} value={form.clientId} onChange={(val) => { const c = clients?.find(x => x.id === val); setForm({ ...form, clientId: val as string, personName: c?.nameAr || '', transactionId: '', transactionName: '', contractId: '', notes: '' }); }} placeholder={t('common.search')} /></div>
+                 <div className="space-y-2 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المشروع المرتبط (الأتمتة)' : 'Project Link (Auto)'}</Label><SearchableDropdown disabled={!form.clientId} options={(allTransactions || []).filter(t => t.clientId === form.clientId).map(t => ({ id: t.id, name: t.subServiceName, subText: `#${t.transactionNumber}` }))} value={form.transactionId} onChange={(val) => { const t_row = allTransactions?.find(x => x.id === val); setForm({ ...form, transactionId: val as string, transactionName: t_row?.subServiceName || '', transactionNumber: t_row?.transactionNumber || '', contractId: '', notes: '' }); }} placeholder={t('common.search')} /></div>
               </div>
+
+              {form.transactionId && (
+                <div className="p-6 bg-emerald-50/30 rounded-[1.5rem] border-2 border-dashed border-emerald-200 flex items-center justify-between animate-in zoom-in-95">
+                   <div className="flex items-center gap-4">
+                      <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-emerald-600 shadow-sm"><Sparkles className="h-5 w-5" /></div>
+                      <div className="text-start">
+                         <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">{isRtl ? 'محرك الربط المزدوج مفعل' : 'Dual Dimension Routing Enabled'}</p>
+                         <div className="flex gap-4 mt-1">
+                            {form.profitCenterId && <Badge className="bg-blue-50 text-blue-600 border-blue-100 text-[8px] font-black h-5 px-3 uppercase"><DatabaseZap className="h-2.5 w-2.5 me-1" /> {isRtl ? 'مركز ربحية مربوط' : 'PC LINKED'}</Badge>}
+                            {form.costCenterId && <Badge className="bg-orange-50 text-orange-600 border-orange-100 text-[8px] font-black h-5 px-3 uppercase"><LayoutGrid className="h-2.5 w-2.5 me-1" /> {isRtl ? 'مركز تكلفة مربوط' : 'CC LINKED'}</Badge>}
+                         </div>
+                      </div>
+                   </div>
+                   <p className="text-[9px] font-bold text-slate-400 italic max-w-[200px] text-end">يتم توجيه السند آلياً للأبعاد المالية للمشروع لضمان دقة التقارير.</p>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-8 pt-6 border-t">
                  <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{t('common.amount')}</Label><Input type="number" step="0.001" value={form.amount || ''} onChange={e => setForm({...form, amount: Number(e.target.value)})} className="h-12 rounded-xl border-2 border-emerald-100 bg-emerald-50/20 text-center font-black text-xl text-emerald-600" /></div>
@@ -170,11 +202,6 @@ export default function ReceiptVouchersPage() {
                  <div className="space-y-1.5 text-start">
                     <Label className="text-[11px] font-black uppercase text-primary tracking-widest">{tSafe('inline.against.income', 'مقابل حساب (إيرادات)', 'Against Account')}</Label>
                     <SearchableDropdown options={(incomeAccounts || []).map(a => ({ id: a.id!, name: isRtl ? a.nameAr : a.nameEn, subText: a.code }))} value={form.accountId} onChange={v => setForm({...form, accountId: v as string})} />
-                 </div>
-
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-emerald-600 flex items-center gap-1.5"><DatabaseZap className="h-4 w-4" /> {isRtl ? 'مركز الربحية' : 'Profit Center'}</Label><SearchableDropdown options={[{ id: '', name: '---' }, ...(profitCenters || []).map(pc => ({ id: pc.id, name: pc.name, subText: pc.code }))]} value={form.profitCenterId} onChange={v => setForm({...form, profitCenterId: v as string})} /></div>
-                    <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-primary flex items-center gap-1.5"><LayoutGrid className="h-4 w-4" /> {isRtl ? 'مركز التكلفة' : 'Cost Center'}</Label><SearchableDropdown options={[{ id: '', name: '---' }, ...(costCenters || []).map(cc => ({ id: cc.id, name: cc.name, subText: cc.code }))]} value={form.costCenterId} onChange={v => setForm({...form, costCenterId: v as string})} /></div>
                  </div>
 
                  <div className="space-y-1.5 text-start pt-6 border-t">

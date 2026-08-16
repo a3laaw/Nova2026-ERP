@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { 
   Wallet, Plus, Loader2, Save, 
   ArrowRight, Landmark, User, LayoutGrid,
-  Zap, DatabaseZap
+  Zap, DatabaseZap, Sparkles
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, where, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -85,6 +85,22 @@ export default function PaymentVouchersPage() {
 
   const expenseAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.type === 'expense' || a.type === 'liability')), [accounts]);
 
+  // محرك الربط التلقائي في السند (Auto-Routing in Voucher)
+  useEffect(() => {
+    if (form.projectId && form.projectId !== 'NONE') {
+       const matchedCC = costCenters?.find(cc => cc.projectId === form.projectId || cc.id === `cc_${form.projectId}`);
+       const matchedPC = profitCenters?.find(pc => pc.projectId === form.projectId || pc.id === `pc_${form.projectId}`);
+       
+       setForm(prev => ({
+          ...prev,
+          costCenterId: matchedCC?.id || '',
+          profitCenterId: matchedPC?.id || ''
+       }));
+    } else {
+       setForm(prev => ({ ...prev, costCenterId: '', profitCenterId: '' }));
+    }
+  }, [form.projectId, costCenters, profitCenters]);
+
   const handleSave = async () => {
     if (!db || !companyId || !user) return;
     if (!form.accountId || !form.cashAccountId || form.amount <= 0) {
@@ -110,7 +126,7 @@ export default function PaymentVouchersPage() {
           <h1 className="text-2xl font-black font-headline flex items-center gap-3 text-slate-900">
             <Wallet className="h-7 w-7 text-rose-600" /> {t('paymentVouchers')}
           </h1>
-          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">{isRtl ? 'إصدار سندات الصرف وربط الأبعاد المالية' : 'Issue payments and link financial dimensions'}</p>
+          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">{isRtl ? 'إصدار سندات الصرف المربوطة آلياً' : 'Issue auto-linked payment vouchers'}</p>
         </div>
         <Button onClick={() => setIsAdding(!isAdding)} size="sm" className="h-10 px-8 font-black rounded-xl shadow-lg gap-2 bg-rose-600 hover:bg-rose-700 text-white border-b-4 border-rose-800 transition-all">
            {isAdding ? <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} /> : <Plus className="h-4 w-4" />}
@@ -138,18 +154,34 @@ export default function PaymentVouchersPage() {
               </div>
 
               <div className="pt-8 border-t space-y-8">
-                 <div className="space-y-1.5 text-start">
-                    <Label className="text-[11px] font-black uppercase text-primary tracking-widest">{isRtl ? 'تحميل المصروف على حساب' : 'Charge To Account'}</Label>
-                    <SearchableDropdown options={(expenseAccounts || []).map(a => ({ id: a.id!, name: isRtl ? a.nameAr : a.nameEn, subText: a.code }))} value={form.accountId} onChange={v => setForm({...form, accountId: v as string})} />
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-1.5 text-start">
+                       <Label className="text-[11px] font-black uppercase text-primary tracking-widest">{isRtl ? 'تحميل المصروف على حساب' : 'Charge To Account'}</Label>
+                       <SearchableDropdown options={(expenseAccounts || []).map(a => ({ id: a.id!, name: isRtl ? a.nameAr : a.nameEn, subText: a.code }))} value={form.accountId} onChange={v => setForm({...form, accountId: v as string})} />
+                    </div>
+                    <div className="space-y-1.5 text-start">
+                       <Label className="text-[11px] font-black uppercase text-primary tracking-widest">{isRtl ? 'المشروع المرتبط (الأتمتة)' : 'Linked Project (Auto)'}</Label>
+                       <SearchableDropdown options={[{ id: 'NONE', name: isRtl ? '--- بدون مشروع ---' : '--- No Project ---' }, ...(projects || []).map(p => ({ id: p.id!, name: p.clientName, subText: p.subServiceName }))]} value={form.projectId || 'NONE'} onChange={v => setForm({...form, projectId: v === 'NONE' ? '' : v as string})} />
+                    </div>
                  </div>
 
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المشروع' : 'Project'}</Label><SearchableDropdown options={[{ id: 'NONE', name: isRtl ? '--- بدون مشروع ---' : '--- No Project ---' }, ...(projects || []).map(p => ({ id: p.id!, name: p.clientName, subText: p.subServiceName }))]} value={form.projectId || 'NONE'} onChange={v => setForm({...form, projectId: v === 'NONE' ? '' : v as string})} /></div>
-                    <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-primary flex items-center gap-1.5"><LayoutGrid className="h-4 w-4" /> {isRtl ? 'مركز التكلفة' : 'Cost Center'}</Label><SearchableDropdown options={[{ id: '', name: '---' }, ...(costCenters || []).map(cc => ({ id: cc.id, name: cc.name, subText: cc.code }))]} value={form.costCenterId} onChange={v => setForm({...form, costCenterId: v as string})} /></div>
-                    <div className="space-y-1.5 text-start"><Label className="text-[10px] font-black uppercase text-emerald-600 flex items-center gap-1.5"><DatabaseZap className="h-4 w-4" /> {isRtl ? 'مركز الربحية' : 'Profit Center'}</Label><SearchableDropdown options={[{ id: '', name: '---' }, ...(profitCenters || []).map(pc => ({ id: pc.id, name: pc.name, subText: pc.code }))]} value={form.profitCenterId} onChange={v => setForm({...form, profitCenterId: v as string})} /></div>
-                 </div>
+                 {form.projectId && (
+                   <div className="p-6 bg-primary/5 rounded-[1.5rem] border-2 border-dashed border-primary/20 flex items-center justify-between animate-in zoom-in-95">
+                      <div className="flex items-center gap-3">
+                         <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-primary shadow-sm"><Sparkles className="h-5 w-5" /></div>
+                         <div className="text-start">
+                            <p className="text-[10px] font-black text-primary uppercase tracking-widest">{isRtl ? 'محرك الربط المزدوج مفعل' : 'Dual Dimension Routing Enabled'}</p>
+                            <div className="flex gap-4 mt-1">
+                               {form.costCenterId && <Badge className="bg-orange-50 text-orange-600 border-orange-100 text-[8px] font-black h-5 px-3 uppercase"><LayoutGrid className="h-2.5 w-2.5 me-1" /> {isRtl ? 'مركز تكلفة مربوط' : 'CC LINKED'}</Badge>}
+                               {form.profitCenterId && <Badge className="bg-blue-50 text-blue-600 border-blue-100 text-[8px] font-black h-5 px-3 uppercase"><DatabaseZap className="h-2.5 w-2.5 me-1" /> {isRtl ? 'مركز ربحية مربوط' : 'PC LINKED'}</Badge>}
+                            </div>
+                         </div>
+                      </div>
+                      <p className="text-[9px] font-bold text-slate-400 italic max-w-[200px] text-end">يتم توجيه السند آلياً للأبعاد المالية للمشروع لضمان دقة رادار الربحية.</p>
+                   </div>
+                 )}
 
-                 <div className="space-y-1.5 text-start pt-6 border-t">
+                 <div className="space-y-1.5 text-start pt-4 border-t">
                     <Label className="text-[10px] font-black uppercase text-slate-400">{t('common.notes')}</Label>
                     <textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} className="w-full min-h-[100px] rounded-xl border-2 p-4 text-xs font-bold bg-slate-50/30" placeholder="..." />
                  </div>

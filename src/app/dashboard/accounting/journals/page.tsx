@@ -8,7 +8,8 @@ import {
   Plus, Loader2, Save, 
   Trash2, ArrowRight, Calculator,
   Zap, Search, ChevronDown,
-  Sparkles, Hash, DatabaseZap, LayoutGrid
+  Sparkles, Hash, DatabaseZap, LayoutGrid,
+  CheckCircle2, Link as LinkIcon
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -25,15 +26,6 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { SearchableDropdown } from '@/components/ui/searchable-dropdown';
-
-const normalizeArabic = (text: string): string => {
-  return text
-    .replace(/[أإآ]/g, 'ا')
-    .replace(/ة/g, 'ه')
-    .replace(/ى/g, 'ي')
-    .replace(/\s+/g, ' ')
-    .trim();
-};
 
 export default function JournalEntriesPage() {
   const { globalUser, user } = useAuthContext();
@@ -81,22 +73,7 @@ export default function JournalEntriesPage() {
 
   const availableAccounts = useMemo(() => (accounts || []).filter(a => !a.isGroup), [accounts]);
 
-  useEffect(() => {
-    if (isAdding) {
-       const uniqueMemosMap = new Map<string, string>();
-       form.lines.forEach(l => {
-          const rawMemo = l.memo?.trim();
-          if (!rawMemo) return;
-          const normalized = normalizeArabic(rawMemo);
-          if (!uniqueMemosMap.has(normalized)) uniqueMemosMap.set(normalized, rawMemo);
-       });
-       const aggregatedDescription = Array.from(uniqueMemosMap.values()).join(' - ');
-       if (aggregatedDescription !== form.description) {
-          setForm(prev => ({ ...prev, description: aggregatedDescription }));
-       }
-    }
-  }, [form.lines, isAdding]);
-
+  // محرك الربط التلقائي في الخلفية (Background Routing Engine)
   const autoLinkLine = (idx: number, projectId: string, accId: string, currentLines: any[]) => {
     const lines = [...currentLines];
     const acc = accounts?.find(a => a.id === accId);
@@ -105,12 +82,14 @@ export default function JournalEntriesPage() {
     let isAuto = false;
 
     if (projectId && projectId !== 'NONE') {
+       // البحث عن مراكز التكلفة والربحية المربوطة بهذا المشروع برمجياً
        const matchedCC = costCenters?.find(cc => cc.projectId === projectId || cc.id === `cc_${projectId}`);
        const matchedPC = profitCenters?.find(pc => pc.projectId === projectId || pc.id === `pc_${projectId}`);
        
+       // الربط الذكي: المصاريف لمركز التكلفة، والإيرادات لمركز الربحية
        if (acc?.type === 'expense' && matchedCC) { ccId = matchedCC.id; isAuto = true; }
        if (acc?.type === 'revenue' && matchedPC) { pcId = matchedPC.id; isAuto = true; }
-       if (acc?.code.startsWith('1205') && matchedCC) { ccId = matchedCC.id; isAuto = true; }
+       if (acc?.code.startsWith('1205') && matchedCC) { ccId = matchedCC.id; isAuto = true; } // WIP
     }
 
     lines[idx].costCenterId = ccId;
@@ -134,14 +113,10 @@ export default function JournalEntriesPage() {
        const acc = accounts?.find(a => a.id === val);
        newLines[idx].accountId = val;
        newLines[idx].accountName = isRtl ? acc?.nameAr || '' : acc?.nameEn || '';
-       if (acc?.referenceId) {
-          const matchProj = projects?.find(p => p.id === acc.referenceId);
-          if (matchProj) newLines[idx].projectId = matchProj.id;
-       }
-       newLines = autoLinkLine(idx, newLines[idx].projectId, val, newLines);
+       newLines = autoLinkLine(idx, newLines[idx].projectId || '', val, newLines);
     } else if (field === 'projectId') {
        newLines[idx].projectId = val === 'NONE' ? '' : val;
-       newLines = autoLinkLine(idx, newLines[idx].projectId, newLines[idx].accountId, newLines);
+       newLines = autoLinkLine(idx, newLines[idx].projectId || '', newLines[idx].accountId, newLines);
     } else { (newLines[idx] as any)[field] = val; }
     setForm({ ...form, lines: newLines });
   };
@@ -190,12 +165,11 @@ export default function JournalEntriesPage() {
                  <Table>
                     <TableHeader className="bg-slate-50">
                        <TableRow className="border-0">
-                          <TableHead className="py-4 ps-6 text-[10px] font-black uppercase w-[240px]">{isRtl ? 'الحساب الفرعي' : 'Account'}</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase w-[200px]">{isRtl ? 'المشروع' : 'Project'}</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase w-[160px]">{isRtl ? 'مركز التكلفة' : 'Cost Center'}</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase w-[160px]">{isRtl ? 'مركز الربحية' : 'Profit Center'}</TableHead>
-                          <TableHead className="text-center text-[10px] font-black uppercase w-[90px]">{isRtl ? 'مدين' : 'Debit'}</TableHead>
-                          <TableHead className="text-center text-[10px] font-black uppercase w-[90px]">{isRtl ? 'دائن' : 'Credit'}</TableHead>
+                          <TableHead className="py-4 ps-6 text-[10px] font-black uppercase w-[280px]">{isRtl ? 'الحساب' : 'Account'}</TableHead>
+                          <TableHead className="text-[10px] font-black uppercase w-[250px]">{isRtl ? 'المشروع' : 'Project'}</TableHead>
+                          <TableHead className="text-center text-[10px] font-black uppercase w-[180px]">{isRtl ? 'الارتباط التحليلي' : 'Analytical Link'}</TableHead>
+                          <TableHead className="text-center text-[10px] font-black uppercase w-[100px]">{isRtl ? 'مدين' : 'Debit'}</TableHead>
+                          <TableHead className="text-center text-[10px] font-black uppercase w-[100px]">{isRtl ? 'دائن' : 'Credit'}</TableHead>
                           <TableHead className="w-[40px]"></TableHead>
                        </TableRow>
                     </TableHeader>
@@ -208,21 +182,36 @@ export default function JournalEntriesPage() {
                             <TableCell className="p-2">
                                <SearchableDropdown options={[{ id: 'NONE', name: isRtl ? '--- بدون مشروع ---' : '--- No Project ---' }, ...(projects || []).map(p => ({ id: p.id!, name: p.clientName, subText: p.subServiceName }))]} value={line.projectId || 'NONE'} onChange={v => updateLine(idx, 'projectId', v as string)} />
                             </TableCell>
-                            <TableCell className="p-2">
-                               <SearchableDropdown options={[{ id: '', name: '---' }, ...(costCenters || []).map(cc => ({ id: cc.id, name: cc.name, subText: cc.code }))]} value={line.costCenterId || ''} onChange={v => updateLine(idx, 'costCenterId', v as string)} />
-                            </TableCell>
-                            <TableCell className="p-2">
-                               <SearchableDropdown options={[{ id: '', name: '---' }, ...(profitCenters || []).map(pc => ({ id: pc.id, name: pc.name, subText: pc.code }))]} value={line.profitCenterId || ''} onChange={v => updateLine(idx, 'profitCenterId', v as string)} />
+                            <TableCell className="p-2 text-center">
+                               {line.projectId ? (
+                                 <div className="flex flex-col gap-1 items-center animate-in zoom-in-95">
+                                    {line.costCenterId && (
+                                       <Badge className="bg-orange-50 text-orange-600 border-orange-100 text-[8px] font-black h-5 px-3 uppercase gap-1">
+                                          <LayoutGrid className="h-2.5 w-2.5" /> {isRtl ? 'مركز تكلفة' : 'CC'}
+                                       </Badge>
+                                    )}
+                                    {line.profitCenterId && (
+                                       <Badge className="bg-blue-50 text-blue-600 border-blue-100 text-[8px] font-black h-5 px-3 uppercase gap-1">
+                                          <DatabaseZap className="h-2.5 w-2.5" /> {isRtl ? 'مركز ربحية' : 'PC'}
+                                       </Badge>
+                                    )}
+                                    {!line.costCenterId && !line.profitCenterId && (
+                                       <span className="text-[8px] text-slate-300 font-bold italic">{isRtl ? 'بانتظار التحليل' : 'Awaiting Routing'}</span>
+                                    )}
+                                 </div>
+                               ) : (
+                                 <span className="text-[8px] text-slate-200 uppercase font-black">{isRtl ? 'إداري عام' : 'ADMIN'}</span>
+                               )}
                             </TableCell>
                             <TableCell className="p-2"><Input type="number" step="0.001" value={line.debit || ''} onChange={e => updateLine(idx, 'debit', Number(e.target.value))} className="h-10 text-center font-black text-blue-600 border-2" /></TableCell>
                             <TableCell className="p-2"><Input type="number" step="0.001" value={line.credit || ''} onChange={e => updateLine(idx, 'credit', Number(e.target.value))} className="h-10 text-center font-black text-rose-600 border-2" /></TableCell>
-                            <TableCell className="pe-4 text-center"><Button variant="ghost" size="icon" onClick={() => setForm({...form, lines: form.lines.filter((_, i) => i !== idx)})} className="h-8 w-8 text-slate-300 hover:text-rose-500"><Trash2 className="h-4 w-4" /></Button></TableCell>
+                            <TableCell className="pe-4 text-center"><Button variant="ghost" size="icon" onClick={() => setForm({...form, lines: form.lines.filter((_, i) => i !== idx)})} className="h-8 w-8 text-slate-300 hover:text-rose-50"><Trash2 className="h-4 w-4" /></Button></TableCell>
                          </TableRow>
                        ))}
                     </TableBody>
                     <tfoot className="bg-slate-50/50 border-t-2">
                        <tr className="font-black text-lg">
-                          <td colSpan={4} className="p-4 ps-6"><Button variant="outline" size="sm" onClick={() => setForm({...form, lines: [...form.lines, { accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '', costCenterId: '', profitCenterId: '', isAutoLinked: false }]})} className="h-9 px-6 rounded-xl border-2">+ {t('common.add')}</Button></td>
+                          <td colSpan={3} className="p-4 ps-6"><Button variant="outline" size="sm" onClick={() => setForm({...form, lines: [...form.lines, { accountId: '', accountName: '', debit: 0, credit: 0, memo: '', projectId: '', costCenterId: '', profitCenterId: '', isAutoLinked: false }]})} className="h-9 px-6 rounded-xl border-2">+ {t('common.add')}</Button></td>
                           <td className="p-4 text-center text-blue-600">{totals.debit.toLocaleString()}</td>
                           <td className="p-4 text-center text-rose-600">{totals.credit.toLocaleString()}</td>
                           <td></td>
@@ -232,10 +221,11 @@ export default function JournalEntriesPage() {
               </div>
 
               <div className="flex justify-between items-center bg-slate-50 p-6 rounded-2xl border-2 border-white shadow-inner">
-                 <div className={cn("px-6 py-2 rounded-full font-black text-xs", isBalanced ? "bg-emerald-600 text-white" : "bg-rose-100 text-rose-600")}>
+                 <div className={cn("px-6 py-2 rounded-full font-black text-xs flex items-center gap-2", isBalanced ? "bg-emerald-600 text-white" : "bg-rose-100 text-rose-600")}>
+                    {isBalanced ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
                     {isBalanced ? t('accounting.journals.balanced') : t('accounting.journals.unbalanced')}
                  </div>
-                 <Button onClick={handleSave} disabled={loading || !isBalanced} className="h-12 px-12 font-black rounded-xl shadow-xl">
+                 <Button onClick={handleSave} disabled={loading || !isBalanced} className="h-12 px-12 font-black rounded-xl shadow-xl border-b-4 border-orange-700">
                     {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />} {t('accounting.journals.postToLedger')}
                  </Button>
               </div>
