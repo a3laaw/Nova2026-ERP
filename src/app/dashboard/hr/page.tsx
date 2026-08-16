@@ -1,14 +1,14 @@
+
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   UserCircle, Calculator, UserPlus, 
   Users, Clock, ShieldCheck, TrendingUp,
-  ShieldAlert, Loader2, Plane, LayoutGrid,
+  Loader2, Plane, LayoutGrid,
   FileSpreadsheet, ArrowRight, Scale, BarChart3,
   History, Wallet, Landmark, Sparkles
 } from "lucide-react";
@@ -33,10 +33,8 @@ export default function HRDashboard() {
   const { check, isAdmin } = usePermissions();
   const { globalUser } = useAuthContext();
   const db = useFirestore();
-  const [activeTab, setActiveTab] = useState("overview");
 
   const companyId = globalUser?.companyId;
-  const hrView = check('hr', 'view');
   const canHire = check('hr', 'create').can && check('hr', 'create').scope !== 'own';
   const canSeePayroll = check('hr', 'approve').can;
 

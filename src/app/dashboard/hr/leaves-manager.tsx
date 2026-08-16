@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -6,11 +7,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
-  CalendarDays, Plus, Loader2, CheckCircle2, 
-  XCircle, ArrowRight, Clock,
+  CalendarDays, Loader2, CheckCircle2, 
+  ArrowRight, Clock,
   PlaneLanding, PlaneTakeoff, Zap,
-  Info, ShieldCheck, Search, Check, ChevronDown,
-  Pencil, Save, AlertTriangle
+  ShieldCheck, Pencil, Save, AlertTriangle, X
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -184,7 +184,7 @@ export function LeavesManager() {
                                     </Button>
                                  )}
                                  <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-slate-300 hover:text-primary group-hover:bg-primary/5 transition-all">
-                                    <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-0", isRtl && "rotate-180")} />
+                                    <ArrowRight className={cn("h-5 w-5", isRtl ? "rotate-180" : "rotate-0")} />
                                  </Button>
                               </div>
                            </TableCell>
@@ -309,3 +309,4 @@ export function LeavesManager() {
     </div>
   );
 }
+
