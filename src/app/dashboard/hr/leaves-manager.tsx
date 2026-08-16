@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -31,10 +30,6 @@ import { SmartDateInput } from '@/components/ui/smart-date-input';
 import { canPerformOnRecord } from '@/lib/permissions/engine';
 import { parseISO, isPast, isToday } from 'date-fns';
 
-/**
- * @fileOverview رادار إدارة الإجازات السيادي.
- * يفرض التوثيق اليدوي للمغادرة والعودة عبر نوافذ منبثقة (Dialogs) لضمان الدقة.
- */
 export function LeavesManager() {
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir, isRtl, tSafe } = useLanguage();
@@ -197,7 +192,6 @@ export function LeavesManager() {
          </CardContent>
       </Card>
 
-      {/* النافذة المنبثقة الإلزامية لتسجيل التواريخ */}
       <Dialog open={!!processingLeave} onOpenChange={open => !open && setProcessingLeave(null)}>
         <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-2xl text-start" dir={dir}>
            <div className="bg-primary/5 p-10 text-slate-900 border-b relative">
@@ -309,4 +303,3 @@ export function LeavesManager() {
     </div>
   );
 }
-

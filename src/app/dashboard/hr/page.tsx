@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -23,10 +22,6 @@ import { LeavesManager } from './leaves-manager';
 import { Employee } from '@/types/hr';
 import { cn } from '@/lib/utils';
 
-/**
- * @fileOverview لوحة تحكم الموارد البشرية السيادية المحدثة (The HR Hub).
- * تم تقسيمها لقطاعات مستقلة: موظفين، رواتب، إجازات، تقارير، نهاية خدمة.
- */
 export default function HRDashboard() {
   const { t, lang, dir, isRtl, tSafe } = useLanguage();
   const router = useRouter();
@@ -77,7 +72,7 @@ export default function HRDashboard() {
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-8 text-start">
         <div className="flex items-center gap-4 text-start">
           <div className="h-16 w-16 rounded-[1.5rem] bg-primary/10 flex items-center justify-center text-primary shadow-inner border border-primary/5">
-            <UserCircle className="h-10 w-10" />
+            <UserCircle className="h-10 w-10 />
           </div>
           <div className="text-start">
             <h1 className="text-4xl font-black font-headline text-slate-900 tracking-tight">{t('hr')}</h1>

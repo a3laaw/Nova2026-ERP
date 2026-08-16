@@ -17,8 +17,8 @@ import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
 import { paths } from '@/firebase/multi-tenant';
-import { LeaveService } from '@/services/leave-service';
 import { LeaveRequest } from '@/types/hr';
+import { LeaveService } from '@/services/leave-service';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Label } from "@/components/ui/label";
@@ -28,10 +28,6 @@ import { SmartDateInput } from '@/components/ui/smart-date-input';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
-/**
- * @fileOverview صفحة تفاصيل الإجازة السيادية.
- * تم تحديثها لفرض التوثيق اليدوي للمغادرة والعودة عبر نوافذ منبثقة (Popups).
- */
 export default function LeaveDetailsPage() {
   const leaveId = useParams().id as string;
   const { user, globalUser } = useAuthContext();
@@ -131,7 +127,6 @@ export default function LeaveDetailsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
            <div className="lg:col-span-8 space-y-8">
               
-              {/* لوحة التحكم التنفيذية - أزرار تفتح نوافذ منبثقة */}
               {isAdmin && ['approved', 'on-leave', 'returned'].includes(leave.status) && (
                 <Card className="border-4 border-dashed border-primary/20 rounded-[2.5rem] bg-white overflow-hidden shadow-2xl print:hidden">
                    <div className="bg-primary/5 p-8 border-b text-start">
@@ -243,7 +238,6 @@ export default function LeaveDetailsPage() {
         </div>
       </PrintWrapper>
 
-      {/* النوافذ المنبثقة الإلزامية */}
       <Dialog open={!!showExecutionDialog} onOpenChange={() => setShowExecutionDialog(null)}>
          <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-xl text-start" dir={dir}>
             <div className="bg-primary/5 p-10 text-slate-900 border-b">

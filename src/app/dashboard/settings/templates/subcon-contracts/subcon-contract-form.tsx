@@ -218,7 +218,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
               </Badge>
            </div>
            <Button onClick={handleSave} disabled={loading} size="sm" className="h-12 px-10 rounded-xl bg-primary text-white font-black shadow-xl shadow-primary/20 gap-3 border-b-4 border-orange-700 hover:scale-[1.02] transition-all">
-              {loading ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
+              {loading ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
               {t('common.save')}
            </Button>
         </div>
@@ -276,7 +276,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                </div>
 
                <div className="pt-4 border-t border-primary/10 relative z-10 text-start space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'نسبة المحتجزات (Retention)' : 'Retention Rate'}</Label>
+                  <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'نسبة المحتجزات' : 'Retention'}</Label>
                   <div className="relative">
                     <Input type="number" value={formData.retentionRate} onChange={e => setFormData({...formData, retentionRate: Number(e.target.value)})} className="h-11 rounded-xl border-2 bg-white text-lg font-black text-center pe-10" />
                     <Percent className="absolute end-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
@@ -320,7 +320,7 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                                  <th className="p-8 text-start">{tSafe('name', 'مسمى الدفعة', 'Milestone Name')}</th>
                                  {formData.pricingMode === 'percentage' && <th className="p-8 text-center w-32">%</th>}
                                  <th className="p-8 text-center w-32">{tSafe('timing', 'التوقيت', 'Timing')}</th>
-                                 <th className="p-8 text-start w-48">{tSafe('technicalLink', 'الارتباط الميداني', 'Execution Link')}</th>
+                                 <th className="p-8 text-start w-56">{tSafe('technicalLink', 'الارتباط الميداني', 'Execution Link')}</th>
                                  <th className="p-8 text-end pe-10 w-48">{t('common.amount')}</th>
                                  <th className="p-6 w-14"></th>
                               </tr>
@@ -392,13 +392,13 @@ export function SubConContractTemplateForm({ template, onClose }: Props) {
                            </tbody>
                            <tfoot className="bg-slate-50 border-t-8 border-primary">
                               <tr>
-                                 <td colSpan={formData.pricingMode === 'percentage' ? 5 : 4} className="p-10 text-start">
+                                 <td colSpan={formData.pricingMode === 'percentage' ? 5 : 4} className="p-12 text-start">
                                     <h3 className="text-xl font-black font-headline uppercase tracking-tighter text-slate-800">{tSafe('subcon.totalPayable', 'إجمالي قيمة عقد الباطن', 'Total SubCon Contract Value')}</h3>
                                     <Badge className={cn("mt-3 border-0 text-[10px] font-black h-7 px-5 shadow-lg", stats.isValid ? "bg-emerald-600 text-white" : "bg-rose-600 text-white")}>
                                        {stats.isValid ? `BALANCED` : `MISMATCH: ${stats.totalPercentage}%`}
                                     </Badge>
                                  </td>
-                                 <td colSpan={2} className="p-10 text-end pe-10">
+                                 <td colSpan={2} className="p-12 text-end pe-10">
                                     <div className="space-y-1">
                                        <h2 className="text-5xl font-black font-headline text-primary">{(currentDisplayAmount || 0).toLocaleString()}</h2>
                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em]">{tSafe('currency.kwdOnly', 'دينار كويتي لا غير', 'KUWAITI DINARS ONLY')}</p>

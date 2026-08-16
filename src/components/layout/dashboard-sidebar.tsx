@@ -47,7 +47,6 @@ export function DashboardSidebar() {
     return [
       { title: t('dashboard'), icon: LayoutDashboard, url: "/dashboard", resource: 'dashboard' },
       
-      // 1. CRM والمبيعات
       { 
         title: t('crm'), 
         icon: Users, 
@@ -62,7 +61,6 @@ export function DashboardSidebar() {
         ]
       },
       
-      // 2. المشاريع والمالية الفنية
       { 
         title: t('projects'), 
         icon: HardHat, 
@@ -77,7 +75,6 @@ export function DashboardSidebar() {
         ]
       },
       
-      // 3. المقاولات والميدان
       { 
         title: t('construction'), 
         icon: Hammer, 
@@ -90,7 +87,6 @@ export function DashboardSidebar() {
         ]
       },
       
-      // 4. المشتريات والتعاقدات
       { 
         title: t('procurement'), 
         icon: ShoppingCart, 
@@ -106,7 +102,6 @@ export function DashboardSidebar() {
         ]
       },
       
-      // 5. الموارد البشرية والرواتب
       { 
         title: isHrManager ? t('hr') : t('userProfile'), 
         icon: UserCircle, 
@@ -125,7 +120,6 @@ export function DashboardSidebar() {
         ]
       },
       
-      // 6. المحاسبة المالية
       { 
         title: t('accounting'), 
         icon: Calculator, 
@@ -140,7 +134,6 @@ export function DashboardSidebar() {
         ]
       },
 
-      // 7. مركز التقارير الشامل
       {
         title: t('reports'),
         icon: BarChart3,
@@ -153,7 +146,6 @@ export function DashboardSidebar() {
         ]
       },
       
-      // 8. المخازن والإعدادات
       { 
         title: t('inventory'), 
         icon: Package, 
@@ -177,7 +169,6 @@ export function DashboardSidebar() {
           { title: tSafe('settings.costRates', 'تعريفة العمالة', 'Cost Rates'), url: "/dashboard/settings/cost-rates", icon: Wallet },
           { title: tSafe('settings.referenceLists', 'القوائم المرجعية', 'Reference Lists'), url: "/dashboard/settings/reference-lists", icon: List },
           { title: tSafe('settings.templates', 'القوالب', 'Templates'), url: "/dashboard/settings/templates", icon: FileText },
-          { title: tSafe('settings.boqMaster', 'شجرة BOQ', 'BOQ Master'), url: "/dashboard/settings/checklists/boq-master", icon: GitBranch },
           { title: tSafe('settings.boqNodes', 'بنود الأعمال', 'BOQ Nodes'), url: "/dashboard/settings/checklists/boq-nodes", icon: Network },
           { title: tSafe('settings.halls', 'إدارة القاعات', 'Halls'), url: "/dashboard/settings/checklists/halls", icon: Building },
           { title: t('rolesPermissions'), url: "/dashboard/settings/roles", icon: ShieldCheck },

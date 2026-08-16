@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -17,9 +16,6 @@ import { useLanguage } from '@/context/language-context';
 import { SeedService } from '@/services/seed-service';
 import { toast } from '@/hooks/use-toast';
 
-/**
- * @fileOverview أدوات تهيئة وصيانة النظام السيادية (Nuclear Reset Controls).
- */
 export function SeedTool() {
   const { globalUser } = useAuthContext();
   const { t, lang, dir, isRtl, tSafe } = useLanguage();

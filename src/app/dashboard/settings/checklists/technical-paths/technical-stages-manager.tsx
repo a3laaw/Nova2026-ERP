@@ -354,8 +354,7 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
         </Dialog>
       )}
 
-      {/* Professional AlertDialog for Deletion */}
-      <AlertDialog open={!!deletingId} onOpenChange={(v) => !v && setDeletingId(null)}>
+      <AlertDialog open={!!deletingId} onOpenChange={(v) => { if(!v) setDeletingId(null); }}>
         <AlertDialogContent className="rounded-[2.5rem] p-10 border-0 shadow-3xl bg-white" dir={dir}>
           <AlertDialogHeader>
              <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">

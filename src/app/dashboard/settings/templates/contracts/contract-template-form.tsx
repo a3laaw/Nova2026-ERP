@@ -204,7 +204,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-500 bg-white min-h-screen text-start" dir={dir}>
       <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-white/95 backdrop-blur-md px-8 shadow-sm">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 text-start">
           <Button variant="ghost" size="icon" onClick={onClose} className="h-10 w-10 border-2 rounded-xl text-slate-400"><ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} /></Button>
           <div className="text-start">
              <h1 className="text-xl font-black text-slate-900 leading-none">{tSafe('inline.contract.engineering', 'هندسة قوالب العقود المتخصصة', 'Specialized Contract Engineering')}</h1>
@@ -305,12 +305,36 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                                    )}
                                    <td className="p-4 text-center"><Select value={m.timing || 'at'} onValueChange={v => updateMilestone(idx, 'timing', v)}><SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl"><SelectItem value="at" className="font-bold text-xs">عند البدء</SelectItem><SelectItem value="during" className="font-bold text-xs">أثناء التنفيذ</SelectItem><SelectItem value="after" className="font-bold text-xs">بعد الإتمام</SelectItem></SelectContent></Select></td>
                                    <td className="p-4 text-start"><Select value={m.technicalStageId || 'SIGNING'} onValueChange={v => updateMilestone(idx, 'technicalStageId', v)}><SelectTrigger className={cn("h-10 rounded-xl border-2 font-black text-xs", m.technicalStageId ? "bg-primary/5 text-primary border-primary/20" : "bg-white")}><SelectValue placeholder="..." /></SelectTrigger><SelectContent className="rounded-xl z-[160]"><SelectItem value="SIGNING" className="font-black text-[10px] py-3 border-b">توقيع العقد</SelectItem>{pathStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3 border-b last:border-0"><span className="flex items-center gap-2"><Workflow className="h-3 w-3 text-primary" /> {s.name}</span></SelectItem>)}</SelectContent></Select></td>
-                                   <td className="p-4 text-end pe-10"><div className="flex items-center gap-2 justify-end"><Input type="number" step="0.001" readOnly={formData.pricingMode === 'percentage'} value={m.amount || 0} onChange={e => updateMilestone(idx, 'amount', e.target.value)} className="h-10 w-32 text-end font-black text-emerald-600 text-sm bg-slate-50 border-2 rounded-xl" /><span className="text-[10px] font-bold text-slate-300">KWD</span></div></td>
-                                   <td className="p-4 text-center"><button type="button" onClick={() => setFormData({...formData, defaultMilestones: formData.defaultMilestones?.filter((_, i) => i !== idx)})} className="text-rose-300 hover:text-rose-600 transition-colors"><Trash2 className="h-5 w-5" /></button></td>
+                                   <td className="p-4 text-end pe-10">
+                                      <div className="flex items-center gap-2 justify-end">
+                                         <Input 
+                                           type="number" 
+                                           step="0.001" 
+                                           readOnly={formData.pricingMode === 'percentage'} 
+                                           value={m.amount || 0} 
+                                           onChange={e => updateMilestone(idx, 'amount', e.target.value)} 
+                                           className="h-10 w-32 text-end font-black text-emerald-600 text-sm bg-slate-50 border-2 rounded-xl" 
+                                         />
+                                         <span className="text-[10px] font-bold text-slate-300">KWD</span>
+                                      </div>
+                                   </td>
+                                   <td className="p-4 text-center">
+                                      <button type="button" onClick={() => setFormData({...formData, defaultMilestones: formData.defaultMilestones?.filter((_, i) => i !== idx)})} className="text-rose-300 hover:text-rose-600 transition-colors"><Trash2 className="h-5 w-5" /></button>
+                                   </td>
                                 </tr>
                               ))}
                            </tbody>
-                           <tfoot className="bg-slate-50 border-t-8 border-primary"><tr className="font-black text-slate-800"><td colSpan={formData.pricingMode === 'percentage' ? 5 : 4} className="p-10 text-xl font-headline uppercase text-start">{isRtl ? 'إجمالي قيمة التعاقد المعتمدة' : 'Total Contract Value'}</td><td colSpan={2} className="p-10 text-end pe-10"><div className="space-y-1"><h2 className="text-5xl font-black font-headline text-primary">{(currentDisplayAmount || 0).toLocaleString()}</h2><p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em]">{isRtl ? 'دينار كويتي لا غير' : 'KUWAITI DINARS ONLY'}</p></div></td></tr></tfoot>
+                           <tfoot className="bg-slate-50 border-t-8 border-primary">
+                              <tr className="font-black text-slate-800">
+                                 <td colSpan={formData.pricingMode === 'percentage' ? 5 : 4} className="p-10 text-xl font-headline uppercase text-start">{isRtl ? 'إجمالي قيمة التعاقد المعتمدة' : 'Total Contract Value'}</td>
+                                 <td colSpan={2} className="p-10 text-end pe-10">
+                                    <div className="space-y-1">
+                                       <h2 className="text-5xl font-black font-headline text-primary">{(currentDisplayAmount || 0).toLocaleString()}</h2>
+                                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em]">{isRtl ? 'دينار كويتي لا غير' : 'KUWAITI DINARS ONLY'}</p>
+                                    </div>
+                                 </td>
+                              </tr>
+                           </tfoot>
                         </table>
                      </div>
                   </div>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -345,7 +344,7 @@ export default function BOQNodesPage() {
          <CardHeader className="bg-slate-50/50 border-b p-6">
             <div className="relative w-full max-w-sm">
                <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
-               <Input placeholder={t('common.search')} className="ps-11 h-11 rounded-xl border-slate-200 bg-white font-bold" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+               <Input placeholder={t('common.search')} className="ps-12 h-11 rounded-xl border-slate-200 bg-white font-bold" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
             </div>
          </CardHeader>
          <CardContent className="p-6 space-y-2 max-h-[70vh] overflow-y-auto scrollbar-hide">
