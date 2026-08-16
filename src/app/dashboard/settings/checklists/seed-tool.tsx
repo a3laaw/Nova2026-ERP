@@ -181,7 +181,7 @@ export function SeedTool() {
                  variant="outline" 
                  className="rounded-xl h-11 px-8 font-black gap-2 border-2"
                >
-                  {purging ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  {purging ? <Loader2 className="animate-spin h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                   {isRtl ? 'حذف المواعيد' : 'Purge Logs'}
                </Button>
             </div>

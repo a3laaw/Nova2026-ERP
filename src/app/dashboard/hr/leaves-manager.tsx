@@ -10,7 +10,7 @@ import {
   XCircle, ArrowRight, MessageSquare, Clock,
   Calendar, Hash, Pencil, ShieldAlert,
   AlertTriangle, PlaneLanding, PlaneTakeoff, Zap,
-  UserCheck
+  UserCheck, Info
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -31,6 +31,10 @@ import { SmartDateInput } from '@/components/ui/smart-date-input';
 import { canPerformOnRecord } from '@/lib/permissions/engine';
 import { parseISO, isPast, isToday } from 'date-fns';
 
+/**
+ * @fileOverview رادار إدارة الإجازات السيادي.
+ * يدعم دورة حياة كاملة بنوافذ منبثقة إجبارية للتواريخ الفعلية (Depart, Return, Activate).
+ */
 export function LeavesManager() {
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir, isRtl } = useLanguage();
@@ -96,7 +100,7 @@ export function LeavesManager() {
         actualDepartureDate: status === 'on-leave' ? editForm.actualDate : undefined,
         actualReturnDate: status === 'returned' ? editForm.actualDate : undefined
       });
-      toast({ title: isRtl ? "تم تحديث الحالة بنجاح" : "Status Updated" });
+      toast({ title: isRtl ? "تم تحديث السجل بنجاح" : "Record updated successfully" });
       setProcessingLeave(null);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error') });
@@ -109,85 +113,92 @@ export function LeavesManager() {
     <div className="space-y-6">
       <div className="flex justify-between items-center px-1">
         <div className="text-start">
-           <h3 className="text-xl font-black flex items-center gap-2">
+           <h3 className="text-xl font-black flex items-center gap-3">
              <CalendarDays className="h-6 w-6 text-primary" />
              {isRtl ? 'إدارة إجازات القوى العاملة' : 'Workforce Leaves'}
            </h3>
+           <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">{isRtl ? 'توثيق المغادرة والعودة الفعلية' : 'Document actual departure & return'}</p>
         </div>
-        <Button onClick={() => router.push('/dashboard/hr/leaves/new')} className="rounded-xl font-bold h-12 px-6 shadow-lg">
+        <Button onClick={() => router.push('/dashboard/hr/leaves/new')} className="rounded-xl font-black h-12 px-8 shadow-xl shadow-primary/20 border-b-4 border-orange-700">
           <Plus className="me-2 h-4 w-4" /> {t('common.add')}
         </Button>
       </div>
 
-      <Card className="border-0 shadow-xl rounded-xl bg-white overflow-hidden ring-1 ring-black/5">
+      <Card className="border-0 shadow-2xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/5">
          <CardContent className="p-0 overflow-x-auto">
             <Table>
-               <TableHeader className="bg-muted/30">
+               <TableHeader className="bg-slate-50/50">
                   <TableRow>
-                     <TableHead className="py-6 ps-8 text-start">{isRtl ? 'الموظف' : 'Employee'}</TableHead>
-                     <TableHead className="text-start">{isRtl ? 'الفترة المخططة' : 'Period'}</TableHead>
-                     <TableHead className="text-start">{isRtl ? 'الحالة' : 'Status'}</TableHead>
-                     <TableHead className="pe-8 text-end">{isRtl ? 'الإجراءات التنفيذية' : 'Execution'}</TableHead>
+                     <TableHead className="py-6 ps-10 text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'الموظف' : 'Employee'}</TableHead>
+                     <TableHead className="text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'الفترة المخططة' : 'Planned Period'}</TableHead>
+                     <TableHead className="text-start text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'الحالة الحالية' : 'Current Status'}</TableHead>
+                     <TableHead className="pe-10 text-end text-[10px] font-black uppercase text-slate-500 tracking-widest">{isRtl ? 'الإجراءات التنفيذية' : 'Execution'}</TableHead>
                   </TableRow>
                </TableHeader>
                <TableBody>
                   {loading ? (
-                    <TableRow><TableCell colSpan={4} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
+                    <TableRow><TableCell colSpan={4} className="text-center py-40"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/20" /></TableCell></TableRow>
                   ) : (
                     leaves?.map((leave) => {
                       const isOverdue = leave.status === 'approved' && (isPast(parseISO(leave.startDate)) || isToday(parseISO(leave.startDate)));
                       
                       return (
-                        <TableRow key={leave.id} className="hover:bg-slate-50 transition-colors border-b-slate-100 cursor-pointer" onClick={() => router.push(`/dashboard/hr/leaves/${leave.id}`)}>
-                           <TableCell className="py-6 ps-8 text-start font-black text-slate-800">
-                              <div className="flex flex-col gap-1">
-                                 <span>{leave.userName}</span>
-                                 <Badge variant="outline" className="w-fit text-[8px] uppercase">{leave.type}</Badge>
+                        <TableRow key={leave.id} className="hover:bg-slate-50 transition-colors border-b-slate-100 group cursor-pointer" onClick={() => router.push(`/dashboard/hr/leaves/${leave.id}`)}>
+                           <TableCell className="py-6 ps-10 text-start font-black text-slate-800">
+                              <div className="flex flex-col gap-1.5">
+                                 <span className="text-base">{leave.userName}</span>
+                                 <Badge variant="outline" className="w-fit text-[8px] font-black uppercase border-slate-200 bg-white">{leave.type}</Badge>
                               </div>
                            </TableCell>
                            <TableCell className="text-start">
                               <div className="flex flex-col text-[10px] font-bold text-slate-400">
-                                 <span>{leave.startDate} → {leave.endDate}</span>
-                                 <span className="text-primary">{leave.workingDays} {t('hr.workDays')}</span>
+                                 <div className="flex items-center gap-2">
+                                    <Clock className="h-3 w-3 text-primary opacity-30" />
+                                    <span>{leave.startDate} → {leave.endDate}</span>
+                                 </div>
+                                 <span className="text-primary font-black mt-1">{leave.workingDays} {t('hr.workDays')}</span>
                               </div>
                            </TableCell>
                            <TableCell className="text-start">
                               <div className="flex flex-col gap-2">
                                  <Badge className={cn(
-                                   "font-black px-3 py-1 border-0 shadow-sm w-fit uppercase text-[9px]",
+                                   "font-black px-4 py-1.5 border-0 shadow-sm w-fit uppercase text-[10px]",
                                    ['approved', 'on-leave', 'returned', 'commenced'].includes(leave.status) ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
                                  )}>
                                     {leave.status}
                                  </Badge>
                                  {isOverdue && (
-                                    <Badge className="bg-rose-50 text-rose-600 border-rose-100 font-black text-[8px] animate-pulse w-fit">
-                                       {isRtl ? 'تنبيه: موعد المغادرة حان' : 'DELAYED DEPARTURE'}
+                                    <Badge className="bg-rose-100 text-rose-600 border-rose-200 font-black text-[9px] animate-pulse w-fit flex items-center gap-1.5">
+                                       <AlertTriangle className="h-3 w-3" /> {isRtl ? 'تنبيه: حان موعد المغادرة' : 'PENDING DEPARTURE'}
                                     </Badge>
                                  )}
                               </div>
                            </TableCell>
-                           <TableCell className="pe-8" onClick={e => e.stopPropagation()}>
-                              <div className="flex justify-end gap-2">
+                           <TableCell className="pe-10" onClick={e => e.stopPropagation()}>
+                              <div className="flex justify-end gap-3">
                                  {leave.status === 'pending' && canApprove && (
-                                    <Button onClick={() => setProcessingLeave(leave)} className="h-9 px-4 rounded-lg bg-primary font-black text-[10px] gap-2">
-                                       <Pencil className="h-3.5 w-3.5" /> {isRtl ? 'قرار الإدارة' : 'Decision'}
+                                    <Button onClick={() => setProcessingLeave(leave)} className="h-10 px-6 rounded-xl bg-primary text-white font-black text-xs shadow-lg">
+                                       <Pencil className="h-4 w-4 me-2" /> {isRtl ? 'قرار الإدارة' : 'Admin Decision'}
                                     </Button>
                                  )}
                                  {leave.status === 'approved' && canApprove && (
-                                    <Button onClick={() => setProcessingLeave(leave)} className="h-9 px-4 rounded-lg bg-[#FFB000] font-black text-[10px] gap-2 text-white shadow-md">
-                                       <PlaneTakeoff className="h-3.5 w-3.5" /> {isRtl ? 'تسجيل مغادرة' : 'Depart'}
+                                    <Button onClick={() => setProcessingLeave(leave)} className="h-10 px-6 rounded-xl bg-[#FFB000] text-white font-black text-xs shadow-xl border-b-4 border-[#FF5722]">
+                                       <PlaneTakeoff className="h-4 w-4 me-2" /> {isRtl ? 'تسجيل مغادرة' : 'Depart'}
                                     </Button>
                                  )}
                                  {leave.status === 'on-leave' && canApprove && (
-                                    <Button onClick={() => setProcessingLeave(leave)} className="h-9 px-4 rounded-lg bg-blue-600 font-black text-[10px] gap-2 text-white shadow-md">
-                                       <PlaneLanding className="h-3.5 w-3.5" /> {isRtl ? 'تسجيل عودة' : 'Return'}
+                                    <Button onClick={() => setProcessingLeave(leave)} className="h-10 px-6 rounded-xl bg-blue-600 text-white font-black text-xs shadow-xl border-b-4 border-blue-800">
+                                       <PlaneLanding className="h-4 w-4 me-2" /> {isRtl ? 'تسجيل عودة' : 'Register Return'}
                                     </Button>
                                  )}
                                  {leave.status === 'returned' && canApprove && (
-                                    <Button onClick={() => setProcessingLeave(leave)} className="h-9 px-4 rounded-lg bg-emerald-600 font-black text-[10px] gap-2 text-white shadow-md">
-                                       <Zap className="h-3.5 w-3.5" /> {isRtl ? 'اعتماد مباشرة' : 'Activate'}
+                                    <Button onClick={() => setProcessingLeave(leave)} className="h-10 px-6 rounded-xl bg-emerald-600 text-white font-black text-xs shadow-xl border-b-4 border-emerald-800">
+                                       <Zap className="h-4 w-4 me-2" /> {isRtl ? 'اعتماد مباشرة' : 'Final Activate'}
                                     </Button>
                                  )}
+                                 <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-slate-300 hover:text-primary group-hover:bg-primary/5 transition-all">
+                                    <ArrowRight className={cn("h-5 w-5", isRtl && "rotate-180")} />
+                                 </Button>
                               </div>
                            </TableCell>
                         </TableRow>
@@ -199,81 +210,192 @@ export function LeavesManager() {
          </CardContent>
       </Card>
 
+      {/* النافذة المنبثقة الإجبارية لدورة حياة الإجازة */}
       <Dialog open={!!processingLeave} onOpenChange={open => !open && setProcessingLeave(null)}>
-        <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-2xl text-start" dir={dir}>
-           <div className="bg-primary/5 p-10 text-slate-900 border-b">
-              <DialogTitle className="text-3xl font-black font-headline flex items-center gap-3 text-slate-900">
-                 <Clock className="h-9 w-9 text-primary" />
-                 {processingLeave?.status === 'pending' ? (isRtl ? 'قرار الإدارة وتصحيح البيانات' : 'Admin Decision') : (isRtl ? 'توثيق التاريخ الفعلي' : 'Document Actual Date')}
+        <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-2xl text-start" dir={dir}>
+           <div className="bg-primary/5 p-10 text-slate-900 border-b relative">
+              <div className="absolute top-0 right-0 p-8 opacity-5"><CalendarDays className="h-32 w-32" /></div>
+              <DialogTitle className="text-3xl font-black font-headline flex items-center gap-4 text-slate-900 relative z-10">
+                 {processingLeave?.status === 'pending' ? <Clock className="h-9 w-9 text-primary" /> : <ShieldAlert className="h-9 w-9 text-primary" />}
+                 {processingLeave?.status === 'pending' ? (isRtl ? 'قرار الإدارة وتدقيق البيانات' : 'Admin Decision & Audit') : 
+                  processingLeave?.status === 'approved' ? (isRtl ? 'توثيق مغادرة الموظف' : 'Document Departure') :
+                  processingLeave?.status === 'on-leave' ? (isRtl ? 'توثيق العودة الفعلية' : 'Document Actual Return') :
+                  (isRtl ? 'اعتماد المباشرة النهائية' : 'Final Commencement')}
               </DialogTitle>
-              <p className="text-slate-500 font-bold mt-2">الموظف: {processingLeave?.userName}</p>
+              <p className="text-slate-500 font-bold mt-2 relative z-10">{isRtl ? 'الموظف المستهدف:' : 'Target Staff:'} {processingLeave?.userName}</p>
            </div>
            
            <div className="p-10 space-y-8 bg-white max-h-[65vh] overflow-y-auto scrollbar-hide">
-              {/* الخطوة 1: الموافقة */}
+              
+              {/* الخطوة 1: الموافقة الإدارية (للحالة Pending) */}
               {processingLeave?.status === 'pending' && (
                 <div className="space-y-6">
-                   <div className="grid grid-cols-2 gap-6 p-6 bg-slate-50 rounded-2xl border-2 border-dashed border-primary/20">
-                      <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">تاريخ البدء المعتمد</Label><SmartDateInput value={editForm.startDate} onChange={v => setEditForm({...editForm, startDate: v})} /></div>
-                      <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">تاريخ العودة المعتمد</Label><SmartDateInput value={editForm.endDate} onChange={v => setEditForm({...editForm, endDate: v})} /></div>
-                      <div className="col-span-2 space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">أيام الخصم المعتمدة</Label><Input type="number" value={editForm.workingDays} onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})} className="h-14 rounded-xl font-black text-2xl text-center border-2" /></div>
+                   <div className="grid grid-cols-2 gap-6 p-8 bg-slate-50 rounded-[2rem] border-2 border-dashed border-primary/20 shadow-inner">
+                      <div className="space-y-2">
+                         <Label className="text-[10px] font-black uppercase text-slate-400">تاريخ البدء المعتمد</Label>
+                         <SmartDateInput value={editForm.startDate} onChange={v => setEditForm({...editForm, startDate: v})} />
+                      </div>
+                      <div className="space-y-2">
+                         <Label className="text-[10px] font-black uppercase text-slate-400">تاريخ العودة المعتمد</Label>
+                         <SmartDateInput value={editForm.endDate} onChange={v => setEditForm({...editForm, endDate: v})} />
+                      </div>
+                      <div className="col-span-2 space-y-2">
+                         <Label className="text-[10px] font-black uppercase text-slate-400">أيام الخصم المعتمدة للطلب</Label>
+                         <Input type="number" value={editForm.workingDays} onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})} className="h-16 rounded-2xl font-black text-4xl text-center border-2 bg-white text-primary" />
+                         <p className="text-[9px] text-center font-bold text-slate-400 mt-2 italic">سيقوم النظام بخصم هذه الأيام من الرصيد فور إتمام المباشرة لاحقاً.</p>
+                      </div>
+                   </div>
+                   <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-slate-400">ملاحظات إدارية</Label>
+                      <Textarea value={editForm.comment} onChange={e => setEditForm({...editForm, comment: e.target.value})} className="min-h-[100px] rounded-2xl border-2 shadow-sm" />
                    </div>
                    <div className="flex gap-4">
-                      <Button onClick={() => handleAction('rejected')} variant="outline" className="flex-1 h-14 rounded-xl border-rose-100 text-rose-600 font-black">رفض الطلب</Button>
-                      <Button onClick={() => handleAction('approved')} className="flex-1 h-14 rounded-xl bg-emerald-600 text-white font-black shadow-lg">اعتماد الإجازة</Button>
+                      <Button onClick={() => handleAction('rejected')} disabled={isProcessing} variant="outline" className="flex-1 h-16 rounded-2xl border-2 text-rose-600 font-black text-lg hover:bg-rose-50 shadow-sm">{t('status.rejected')}</Button>
+                      <Button onClick={() => handleAction('approved')} disabled={isProcessing} className="flex-1 h-16 rounded-2xl bg-emerald-600 text-white font-black shadow-xl shadow-emerald-100 text-lg border-b-8 border-emerald-800">{t('common.confirm')}</Button>
                    </div>
                 </div>
               )}
 
-              {/* الخطوة 2: المغادرة */}
+              {/* الخطوة 2: نافذة المغادرة (للحالة Approved) */}
               {processingLeave?.status === 'approved' && (
-                <div className="space-y-6 animate-in zoom-in-95">
-                   <div className="space-y-2 text-start">
-                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">تاريخ المغادرة الفعلي للموظف</Label>
-                      <SmartDateInput value={editForm.actualDate} onChange={v => setEditForm({...editForm, actualDate: v})} />
+                <div className="space-y-6 animate-in zoom-in-95 duration-300">
+                   <div className="p-8 bg-orange-50/50 rounded-[2.5rem] border-2 border-orange-100 space-y-6 shadow-inner text-center">
+                      <div className="space-y-2">
+                         <Label className="text-[11px] font-black uppercase text-orange-600 tracking-widest flex items-center justify-center gap-2">
+                            <PlaneTakeoff className="h-4 w-4" /> تاريخ خروج الموظف الفعلي من المنشأة
+                         </Label>
+                         <div className="max-w-xs mx-auto">
+                            <SmartDateInput value={editForm.actualDate} onChange={v => setEditForm({...editForm, actualDate: v})} />
+                         </div>
+                      </div>
+                      <div className="p-5 bg-white/80 rounded-2xl border border-orange-100 flex items-start gap-4 text-start">
+                         <Info className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
+                         <p className="text-[10px] font-bold text-orange-800 leading-relaxed italic">بمجرد التأكيد، سيتم تحديث حالة الموظف في رادار الحضور إلى (في إجازة) ولن يظهر ضمن كشوف الرواتب المباشرة لهذه الفترة.</p>
+                      </div>
                    </div>
-                   <Button onClick={() => handleAction('on-leave')} className="w-full h-16 rounded-2xl bg-[#FFB000] text-white font-black text-lg gap-3 border-b-8 border-[#FF5722] shadow-xl">
-                      <PlaneTakeoff className="h-6 w-6" /> تسجيل مغادرة الموظف (Depart)
+                   <Button onClick={() => handleAction('on-leave')} disabled={isProcessing} className="w-full h-20 rounded-[2.5rem] bg-[#FFB000] text-white font-black text-2xl gap-4 border-b-8 border-[#FF5722] shadow-2xl shadow-primary/20 hover:scale-[1.02] transition-all">
+                      {isProcessing ? <Loader2 className="animate-spin h-8 w-8" /> : <CheckCircle2 className="h-8 w-8" />} تأكيد المغادرة الفعلية
                    </Button>
                 </div>
               )}
 
-              {/* الخطوة 3: العودة */}
+              {/* الخطوة 3: نافذة العودة (للحالة On-Leave) */}
               {processingLeave?.status === 'on-leave' && (
-                <div className="space-y-6 animate-in zoom-in-95">
-                   <div className="space-y-2 text-start">
-                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">تاريخ العودة الفعلي من الإجازة</Label>
-                      <SmartDateInput value={editForm.actualDate} onChange={v => setEditForm({...editForm, actualDate: v})} />
+                <div className="space-y-6 animate-in zoom-in-95 duration-300">
+                   <div className="p-8 bg-blue-50/50 rounded-[2.5rem] border-2 border-blue-100 space-y-6 shadow-inner text-center">
+                      <div className="space-y-2">
+                         <Label className="text-[11px] font-black uppercase text-blue-600 tracking-widest flex items-center justify-center gap-2">
+                            <PlaneLanding className="h-4 w-4" /> تاريخ رجوع الموظف الفعلي ومباشرة الحضور
+                         </Label>
+                         <div className="max-w-xs mx-auto">
+                            <SmartDateInput value={editForm.actualDate} onChange={v => setEditForm({...editForm, actualDate: v})} />
+                         </div>
+                      </div>
+                      <div className="p-5 bg-white/80 rounded-2xl border border-blue-100 flex items-start gap-4 text-start">
+                         <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+                         <p className="text-[10px] font-bold text-blue-800 leading-relaxed italic">سيتم استخدام هذا التاريخ في الخطوة النهائية لتدقيق الخصم المالي الحقيقي من رصيد الإجازات السنوي المتبقي.</p>
+                      </div>
                    </div>
-                   <div className="p-5 bg-blue-50 border-2 border-blue-100 rounded-2xl flex items-start gap-3 shadow-inner">
-                      <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
-                      <p className="text-[11px] font-bold text-blue-800 leading-relaxed">يرجى تسجيل التاريخ الذي باشر فيه الموظف الحضور الفعلي للمنشأة. سيتم استخدام هذا التاريخ لتدقيق الخصم النهائي من الرصيد.</p>
-                   </div>
-                   <Button onClick={() => handleAction('returned')} className="w-full h-16 rounded-2xl bg-blue-600 text-white font-black text-lg gap-3 shadow-xl border-b-8 border-blue-800">
-                      <PlaneLanding className="h-6 w-6" /> تسجيل عودة الموظف (Return)
+                   <Button onClick={() => handleAction('returned')} disabled={isProcessing} className="w-full h-20 rounded-[2.5rem] bg-blue-600 text-white font-black text-2xl gap-4 shadow-2xl shadow-blue-200 border-b-8 border-blue-800 hover:scale-[1.02] transition-all">
+                      {isProcessing ? <Loader2 className="animate-spin h-8 w-8" /> : <CheckCircle2 className="h-8 w-8" />} تسجيل العودة والوصول
                    </Button>
                 </div>
               )}
 
-              {/* الخطوة 4: المباشرة النهائية */}
+              {/* الخطوة 4: المباشرة النهائية (للحالة Returned) */}
               {processingLeave?.status === 'returned' && (
-                <div className="space-y-6 animate-in zoom-in-95">
-                   <div className="p-8 bg-emerald-50 rounded-[2.5rem] border-2 border-emerald-100 space-y-6 shadow-inner">
-                      <div className="flex items-center gap-3 text-emerald-700 font-black mb-2"><CheckCircle2 className="h-6 w-6" /> مراجعة الخصم النهائي</div>
-                      <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">إجمالي أيام الخصم من الرصيد (بعد المراجعة)</Label><Input type="number" value={editForm.workingDays} onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})} className="h-16 rounded-xl font-black text-4xl text-emerald-700 text-center bg-white border-2" /></div>
+                <div className="space-y-6 animate-in zoom-in-95 duration-300">
+                   <div className="p-10 bg-emerald-50 rounded-[3rem] border-2 border-emerald-100 space-y-8 shadow-inner">
+                      <div className="flex items-center gap-4 text-emerald-700 font-black text-xl border-b border-emerald-100 pb-4">
+                         <ShieldCheck className="h-8 w-8" /> مراجعة الاستحقاق المالي النهائي
+                      </div>
+                      
+                      <div className="space-y-2 text-start">
+                         <Label className="text-[11px] font-black uppercase text-emerald-600 tracking-[0.2em]">إجمالي أيام الخصم من الرصيد (بعد المراجعة)</Label>
+                         <Input 
+                           type="number" 
+                           value={editForm.workingDays} 
+                           onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})} 
+                           className="h-20 rounded-2xl font-black text-6xl text-emerald-700 text-center bg-white border-2 border-emerald-200 shadow-xl" 
+                         />
+                         <p className="text-[10px] text-center font-bold text-slate-400 mt-4 italic">بناءً على تاريخ المغادرة والعودة المسجل، يرجى تأكيد عدد أيام العمل التي سيتم خصمها فعلياً من رصيد الموظف السنوي.</p>
+                      </div>
                    </div>
-                   <Button onClick={() => handleAction('commenced')} className="w-full h-20 rounded-[2.5rem] bg-emerald-600 text-white font-black text-2xl shadow-xl shadow-emerald-100 border-b-8 border-emerald-800 gap-4">
-                      <Zap className="h-8 w-8" /> اعتماد المباشرة وتفعيل الموظف
+                   <Button onClick={() => handleAction('commenced')} disabled={isProcessing} className="w-full h-24 rounded-[3rem] bg-emerald-600 text-white font-black text-3xl shadow-2xl shadow-emerald-100 border-b-8 border-emerald-800 gap-6 hover:scale-[1.02] transition-all">
+                      {isProcessing ? <Loader2 className="animate-spin h-10 w-10" /> : <Zap className="h-10 w-10" />} اعتماد المباشرة وتفعيل الموظف
                    </Button>
                 </div>
               )}
            </div>
            
            <div className="p-8 bg-slate-50 border-t flex justify-end shrink-0">
-              <Button variant="ghost" onClick={() => setProcessingLeave(null)} className="rounded-xl font-bold px-8">إغلاق</Button>
+              <Button variant="ghost" onClick={() => setProcessingLeave(null)} className="rounded-xl font-bold px-10 text-slate-400 hover:text-slate-900 transition-all">{t('common.cancel')}</Button>
            </div>
         </DialogContent>
       </Dialog>
     </div>
   );
+}
+
+function StreamItem({ item, isRtl, user, boqItems }: any) {
+   const { t } = useLanguage();
+   const isLog = item.streamType === 'log' || item.streamType === 'timeline_log';
+   const displayName = item.userName || item.createdByName || t('inline.engineer');
+
+   if (isLog) {
+      const boqItem = boqItems?.find((i: any) => i.id === item.boqItemId);
+      const isRevision = item.type === 'revision_logged';
+      return (
+         <div className="flex justify-center animate-in fade-in duration-500 px-1 text-start">
+            <div className={cn(
+              "border-2 shadow-md rounded-xl p-4 w-full relative transition-all",
+              isRevision ? "bg-amber-50 border-amber-200" : "bg-emerald-50/30 border-emerald-100"
+            )}>
+               <div className="flex items-start gap-4">
+                 <div className={cn(
+                   "h-9 w-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm border",
+                   isRevision ? "bg-white text-amber-600" : "bg-white text-emerald-600"
+                 )}>
+                   {isRevision ? <RotateCcw className="h-4 w-4" /> : <Hammer className="h-4 w-4" />}
+                 </div>
+                 <div className="text-start flex-1">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                       <Badge variant="outline" className="text-[8px] font-black border-slate-200 bg-white text-slate-600 px-2">
+                          {isRevision ? t('inline.revision') : (boqItem?.referenceTitle || t('inline.progress'))}
+                       </Badge>
+                       {item.quantity > 0 && <Badge className="bg-emerald-600 text-white border-0 text-[8px] h-4 px-2">{item.quantity} QTY</Badge>}
+                    </div>
+                    <p className="text-[10px] font-black text-slate-800 leading-relaxed">{item.content}</p>
+                    <div className="flex items-center gap-3 mt-3 pt-2 border-t border-black/[0.03] text-[7px] font-black text-slate-400 uppercase">
+                       <span className="flex items-center gap-1"><User className="h-2 w-2" /> {displayName}</span>
+                       <span className="flex items-center gap-1"><Clock className="h-2 w-2" /> {item.createdAt ? formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true, locale: isRtl ? ar : enUS }) : '...'}</span>
+                    </div>
+                 </div>
+               </div>
+            </div>
+         </div>
+      );
+   }
+
+   const isMine = item.createdBy === user?.uid;
+   return (
+     <div className={cn("flex gap-3 text-start animate-in fade-in slide-in-from-bottom-2 duration-300", isMine ? "flex-row-reverse" : "flex-row")}>
+        <Avatar className="h-8 w-8 rounded-xl shrink-0 border-2 border-white shadow-sm ring-1 ring-slate-100">
+           <AvatarImage src={`https://picsum.photos/seed/${item.createdBy}/40/40`} />
+           <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-black">{displayName?.charAt(0)}</AvatarFallback>
+        </Avatar>
+        <div className={cn("flex flex-col space-y-1 max-w-[85%]", isMine ? "items-end" : "items-start")}>
+           <div className="flex items-center gap-2 px-1">
+              <span className="text-[9px] font-black text-slate-700">{displayName}</span>
+              <span className="text-[7px] font-bold text-slate-300">{item.createdAt ? formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true, locale: isRtl ? ar : enUS }) : '...'}</span>
+           </div>
+           <div className={cn(
+             "p-3 rounded-xl shadow-sm text-xs font-bold leading-relaxed",
+             isMine ? "bg-[#e87c24] text-white rounded-te-none" : "bg-white border-2 border-slate-50 text-slate-700 rounded-ts-none"
+           )}>
+              <p className="whitespace-pre-wrap">{item.content}</p>
+           </div>
+        </div>
+     </div>
+   );
 }
