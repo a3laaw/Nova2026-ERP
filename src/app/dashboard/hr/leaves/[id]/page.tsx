@@ -9,7 +9,7 @@ import {
   Loader2, CheckCircle2, XCircle,
   User, History, Printer, PlaneTakeoff, PlaneLanding, Scale,
   Clock, ShieldAlert, AlertTriangle, Info, CalendarDays,
-  ArrowRight
+  ArrowRight, Landmark, Zap, ShieldCheck
 } from "lucide-react";
 import { useFirestore, useDoc } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -30,7 +30,7 @@ import { PrintWrapper } from '@/components/layout/print-wrapper';
 export default function LeaveDetailsPage() {
   const leaveId = useParams().id as string;
   const { user, globalUser } = useAuthContext();
-  const { t, lang, dir } = useLanguage();
+  const { t, lang, dir, tSafe } = useLanguage();
   const { isAdmin, check, permissions } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
@@ -112,29 +112,32 @@ export default function LeaveDetailsPage() {
   const canPrint = check('hr', 'print').can;
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto pb-20 animate-in fade-in duration-500" dir={dir}>
+    <div className="space-y-8 max-w-5xl mx-auto pb-20 animate-in fade-in duration-500 text-start" dir={dir}>
       <div className="flex items-center justify-between print:hidden">
-        <div className="flex items-center gap-4">
-          <div className="text-start">
-             <div className="flex items-center gap-3">
-                <h1 className="text-3xl font-black font-headline text-slate-900">{t('hr.leaveStatus')}</h1>
-                <Badge className={cn(
-                  "font-black px-4 py-1 rounded-xl shadow-sm uppercase",
-                  leave.status === 'approved' ? 'bg-blue-500 text-white' : 
-                  leave.status === 'on-leave' ? 'bg-amber-500 text-white' :
-                  leave.status === 'returned' ? 'bg-purple-500 text-white' :
-                  leave.status === 'commenced' ? 'bg-emerald-500 text-white' :
-                  leave.status === 'pending' ? 'bg-amber-50 text-amber-600 border-amber-200 border' : 
-                  'bg-rose-500 text-white'
-                )}>
-                   {t('status.' + leave.status)}
-                </Badge>
-             </div>
-          </div>
+        <div className="flex items-center gap-4 text-start">
+           <Button variant="ghost" onClick={() => router.back()} className="h-10 w-10 p-0 rounded-xl border-2 bg-white shadow-sm hover:text-primary transition-all">
+             <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
+           </Button>
+           <div className="text-start">
+              <div className="flex items-center gap-3">
+                 <h1 className="text-3xl font-black font-headline text-slate-900">{t('hr.leaveStatus')}</h1>
+                 <Badge className={cn(
+                   "font-black px-4 py-1 rounded-xl shadow-sm uppercase text-[10px]",
+                   leave.status === 'approved' ? 'bg-blue-500 text-white' : 
+                   leave.status === 'on-leave' ? 'bg-amber-500 text-white' :
+                   leave.status === 'returned' ? 'bg-purple-500 text-white' :
+                   leave.status === 'commenced' ? 'bg-emerald-500 text-white' :
+                   leave.status === 'pending' ? 'bg-amber-50 text-amber-600 border-amber-200 border' : 
+                   'bg-rose-500 text-white'
+                 )}>
+                    {t('status.' + leave.status)}
+                 </Badge>
+              </div>
+           </div>
         </div>
         <div className="flex gap-3">
            {canPrint && (
-              <Button onClick={() => window.print()} className="h-12 px-6 rounded-xl bg-white border-2 text-slate-900 font-black gap-2 hover:bg-slate-50 shadow-sm">
+              <Button onClick={() => window.print()} className="h-12 px-6 rounded-xl bg-white border-2 text-slate-900 font-black gap-2 hover:bg-slate-50 shadow-sm transition-all">
                  <Printer className="h-5 w-5 text-primary" /> {t('common.print')}
               </Button>
            )}
@@ -145,43 +148,66 @@ export default function LeaveDetailsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
            
            <div className="lg:col-span-8 space-y-8">
-              {isAdmin && leave.status === 'pending' && (
-                <div className="space-y-6">
-                   {loadingConflict ? (
-                      <div className="p-6 bg-slate-50 rounded-3xl animate-pulse flex items-center gap-3">
-                         <Loader2 className="h-5 w-5 animate-spin text-primary/30" />
-                         <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Analyzing Team Availability...</span>
-                      </div>
-                   ) : conflictData && conflictData.count > 0 && (
-                      <div className="p-8 bg-rose-50 border-4 border-rose-100 rounded-[2.5rem] space-y-4 animate-in shake-in duration-500 shadow-xl shadow-rose-200/20">
-                         <div className="flex items-center gap-4 text-rose-600">
-                            <ShieldAlert className="h-10 w-10" />
-                            <div className="text-start">
-                               <h3 className="font-black text-xl uppercase tracking-tighter">{t('hr.operationalConflict')}</h3>
-                               <p className="text-sm font-bold opacity-80">{t('hr.departmentOverlap')}</p>
-                            </div>
-                         </div>
-                         
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                            {conflictData.peers.map((p, i) => (
-                              <div key={i} className="bg-white/80 p-4 rounded-2xl border border-rose-100 flex items-center justify-between">
-                                 <div className="text-start">
-                                    <p className="font-black text-xs text-slate-800">{p.name}</p>
-                                    <p className="text-[9px] font-bold text-rose-400">{p.period}</p>
-                                 </div>
-                                 <Badge className={cn("text-[8px] font-black uppercase border-0", p.status === 'pending' ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700")}>
-                                    {t('status.' + p.status)}
-                                 </Badge>
+              
+              {/* قسم التنفيذ الإداري (Departure / Return Flow) */}
+              {isAdmin && ['approved', 'on-leave', 'returned'].includes(leave.status) && (
+                <Card className="border-4 border-dashed border-primary/20 rounded-[2.5rem] bg-white overflow-hidden shadow-2xl print:hidden">
+                   <div className="bg-primary/5 p-8 border-b text-start">
+                      <h3 className="text-xl font-black font-headline flex items-center gap-3">
+                         <Zap className="h-6 w-6 text-primary" />
+                         {isRtl ? 'لوحة تحكم تنفيذ الإجازة' : 'Leave Execution Panel'}
+                      </h3>
+                   </div>
+                   <CardContent className="p-8 space-y-8 text-start">
+                      
+                      {/* الحالة 1: الموظف سيغادر */}
+                      {leave.status === 'approved' && (
+                        <div className="space-y-6 animate-in zoom-in-95">
+                           <div className="p-6 bg-slate-50 rounded-2xl space-y-4">
+                              <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'تاريخ المغادرة الفعلي' : 'Actual Departure Date'}</Label>
+                              <SmartDateInput value={actualDepartureDate} onChange={setActualDepartureDate} />
+                           </div>
+                           <Button onClick={() => handleAction('on-leave')} disabled={processing} className="w-full h-16 rounded-2xl bg-[#FFB000] text-white font-black text-lg shadow-xl border-b-4 border-[#FF5722] gap-3">
+                              <PlaneTakeoff className="h-6 w-6" /> {isRtl ? 'تسجيل مغادرة الموظف (بدء الإجازة)' : 'Confirm Departure'}
+                           </Button>
+                        </div>
+                      )}
+
+                      {/* الحالة 2: الموظف عاد (هذا ما يبحث عنه المستخدم) */}
+                      {leave.status === 'on-leave' && (
+                        <div className="space-y-6 animate-in zoom-in-95">
+                           <div className="p-6 bg-slate-50 rounded-2xl space-y-4">
+                              <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'تاريخ العودة الفعلي' : 'Actual Return Date'}</Label>
+                              <SmartDateInput value={actualReturnDate} onChange={setActualReturnDate} />
+                           </div>
+                           <Button onClick={() => handleAction('returned')} disabled={processing} className="w-full h-16 rounded-2xl bg-purple-600 text-white font-black text-lg shadow-xl border-b-4 border-purple-800 gap-3">
+                              <PlaneLanding className="h-6 w-6" /> {isRtl ? 'تسجيل عودة الموظف من الإجازة' : 'Register Return'}
+                           </Button>
+                        </div>
+                      )}
+
+                      {/* الحالة 3: اعتماد المباشرة النهائية */}
+                      {leave.status === 'returned' && (
+                        <div className="space-y-6 animate-in zoom-in-95">
+                           <div className="p-8 bg-emerald-50 rounded-[2rem] border-2 border-emerald-100 space-y-4">
+                              <div className="flex items-center gap-3 text-emerald-700">
+                                 <ShieldCheck className="h-6 w-6" />
+                                 <h4 className="font-black">{isRtl ? 'اعتماد مباشرة العمل' : 'Final Commencement'}</h4>
                               </div>
-                            ))}
-                         </div>
-                         <div className="p-4 bg-rose-600 text-white rounded-2xl flex items-center gap-3">
-                            <AlertTriangle className="h-5 w-5" />
-                            <p className="text-xs font-black">{t('hr.reviewSchedule')}</p>
-                         </div>
-                      </div>
-                   )}
-                </div>
+                              <p className="text-xs font-bold text-emerald-600 leading-relaxed italic">
+                                 {isRtl 
+                                   ? 'برجاء مراجعة "أيام العمل" النهائية في الطلب بالأسفل قبل الاعتماد لضمان صحة خصم الرصيد في حال تأخر أو تقدم الموظف.' 
+                                   : 'Please review final "Work Days" below before confirmation to ensure correct balance deduction.'}
+                              </p>
+                           </div>
+                           <Button onClick={() => handleAction('commenced')} disabled={processing} className="w-full h-20 rounded-[2.5rem] bg-emerald-600 text-white font-black text-2xl shadow-xl shadow-emerald-100 border-b-8 border-emerald-800 gap-4">
+                              <Zap className="h-8 w-8" /> {isRtl ? 'اعتماد المباشرة وتفعيل الموظف' : 'Approve & Activate'}
+                           </Button>
+                        </div>
+                      )}
+
+                   </CardContent>
+                </Card>
               )}
 
               {isAdmin && leave.status === 'pending' && (
@@ -193,15 +219,15 @@ export default function LeaveDetailsPage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-slate-50 rounded-[2rem] border-2 border-dashed border-primary/10">
                          <div className="space-y-2"><Label className="text-[10px] font-black text-slate-400 uppercase">{t('hr.approveStart')}</Label><SmartDateInput value={editForm.startDate} onChange={v => setEditForm({...editForm, startDate: v})} /></div>
                          <div className="space-y-2"><Label className="text-[10px] font-black text-slate-400 uppercase">{t('hr.approveReturn')}</Label><SmartDateInput value={editForm.endDate} onChange={v => setEditForm({...editForm, endDate: v})} /></div>
-                         <div className="space-y-2 md:col-span-2"><Label className="text-[10px] font-black text-slate-400 uppercase">{t('hr.deductionDays')}</Label><Input type="number" value={editForm.workingDays} onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})} className="h-14 rounded-2xl border-2 font-black text-primary text-xl" /></div>
+                         <div className="space-y-2 md:col-span-2"><Label className="text-[10px] font-black text-slate-400 uppercase">{t('hr.deductionDays')}</Label><Input type="number" value={editForm.workingDays} onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})} className="h-14 rounded-2xl border-2 font-black text-primary text-xl shadow-inner" /></div>
                       </div>
                       <div className="space-y-3">
                          <Label className="text-[10px] font-black uppercase text-slate-400">{t('hr.internalNotes')}</Label>
-                         <Textarea value={editForm.comment} onChange={e => setEditForm({...editForm, comment: e.target.value})} className="min-h-[100px] rounded-2xl border-2" />
+                         <Textarea value={editForm.comment} onChange={e => setEditForm({...editForm, comment: e.target.value})} className="min-h-[100px] rounded-2xl border-2 shadow-sm" />
                       </div>
                       <div className="flex gap-4">
-                         <Button onClick={() => handleAction('rejected')} disabled={processing} variant="outline" className="flex-1 h-16 rounded-2xl border-2 text-rose-600 font-black">{t('status.rejected')}</Button>
-                         <Button onClick={() => handleAction('approved')} disabled={processing} className="flex-1 h-16 rounded-2xl bg-emerald-600 text-white font-black shadow-xl shadow-emerald-100">{t('common.confirm')}</Button>
+                         <Button onClick={() => handleAction('rejected')} disabled={processing} variant="outline" className="flex-1 h-16 rounded-2xl border-2 text-rose-600 font-black text-lg hover:bg-rose-50">{t('status.rejected')}</Button>
+                         <Button onClick={() => handleAction('approved')} disabled={processing} className="flex-1 h-16 rounded-2xl bg-emerald-600 text-white font-black shadow-xl shadow-emerald-100 text-lg border-b-4 border-emerald-800">{t('common.confirm')}</Button>
                       </div>
                    </CardContent>
                 </Card>
@@ -286,11 +312,18 @@ export default function LeaveDetailsPage() {
                              <p className="text-xs font-bold text-slate-700 mt-1">{leave.approvedAt?.toDate().toLocaleString()}</p>
                           </div>
                        )}
-                       {leave.rejectedAt && (
+                       {leave.actualDepartureDate && (
                           <div className="relative ps-6 border-s-2 border-slate-100 pb-2">
-                             <div className="absolute -left-[9px] top-0 h-4 w-4 rounded-full bg-rose-500 border-4 border-white shadow-sm" />
-                             <p className="text-[9px] font-black text-rose-600 uppercase">{t('status.rejected')}</p>
-                             <p className="text-xs font-bold text-slate-700 mt-1">{leave.rejectedAt?.toDate().toLocaleString()}</p>
+                             <div className="absolute -left-[9px] top-0 h-4 w-4 rounded-full bg-amber-500 border-4 border-white shadow-sm" />
+                             <p className="text-[9px] font-black text-amber-600 uppercase">{isRtl ? 'المغادرة الفعلية' : 'Actual Departure'}</p>
+                             <p className="text-xs font-bold text-slate-700 mt-1">{leave.actualDepartureDate}</p>
+                          </div>
+                       )}
+                       {leave.actualReturnDate && (
+                          <div className="relative ps-6 border-s-2 border-slate-100 pb-2">
+                             <div className="absolute -left-[9px] top-0 h-4 w-4 rounded-full bg-purple-500 border-4 border-white shadow-sm" />
+                             <p className="text-[9px] font-black text-purple-600 uppercase">{isRtl ? 'العودة الفعلية' : 'Actual Return'}</p>
+                             <p className="text-xs font-bold text-slate-700 mt-1">{leave.actualReturnDate}</p>
                           </div>
                        )}
                     </div>
