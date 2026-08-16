@@ -112,7 +112,7 @@ export default function EmployeeJoinPage() {
   if (loading) return <div className="h-screen flex items-center justify-center bg-[#fdfaf3]"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#fdfaf3] p-6" dir="rtl">
+    <div className="min-h-screen flex items-center justify-center bg-[#fdfaf3] p-6" dir="auto">
       <Card className="w-full max-w-lg border-0 shadow-3xl rounded-[3rem] overflow-hidden bg-white">
         <div className="bg-slate-50 p-12 text-slate-900 text-center border-b">
            <div className="mx-auto w-24 h-24 bg-primary/10 rounded-[2.5rem] flex items-center justify-center text-primary mb-6 shadow-inner ring-8 ring-white/50">

@@ -75,7 +75,7 @@ export default function RegisterPage() {
 
   if (isSubmitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#fdfaf3] p-6" dir="rtl">
+      <div className="min-h-screen flex items-center justify-center bg-[#fdfaf3] p-6" dir="auto">
         <Card className="w-full max-w-md border-0 shadow-3xl rounded-[3rem] overflow-hidden bg-white text-center">
           <CardHeader className="pt-16 pb-10">
             <div className="mx-auto w-24 h-24 bg-amber-50 text-amber-600 rounded-[2.5rem] flex items-center justify-center mb-6 shadow-inner ring-8 ring-amber-50/50">
@@ -96,7 +96,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#fdfaf3] p-6" dir="rtl">
+    <div className="min-h-screen flex items-center justify-center bg-[#fdfaf3] p-6" dir="auto">
       <Card className="w-full max-w-2xl border-0 shadow-3xl rounded-[3rem] overflow-hidden bg-white">
         <CardHeader className="space-y-4 pt-12 pb-8 text-center bg-slate-50 border-b">
           <div className="mx-auto w-20 h-20 bg-primary/10 rounded-[2rem] flex items-center justify-center text-primary shadow-inner mb-2 rotate-3 transition-transform duration-500">

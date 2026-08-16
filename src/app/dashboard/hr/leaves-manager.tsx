@@ -29,6 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SmartDateInput } from '@/components/ui/smart-date-input';
 import { canPerformOnRecord } from '@/lib/permissions/engine';
+import { parseISO, isPast, isToday } from 'date-fns';
 
 export function LeavesManager() {
   const { globalUser, user } = useAuthContext();
@@ -40,8 +41,6 @@ export function LeavesManager() {
 
   const [processingLeave, setProcessingLeave] = useState<LeaveRequest | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [conflictData, setConflictData] = useState<{ count: number; peers: any[] } | null>(null);
-  const [loadingConflict, setLoadingConflict] = useState(false);
   
   const [editForm, setEditForm] = useState({
     comment: '',
@@ -82,21 +81,8 @@ export function LeavesManager() {
         workingDays: processingLeave.workingDays,
         actualDate: new Date().toISOString().split('T')[0]
       });
-
-      if (leaveService && (processingLeave as any).departmentId) {
-        setLoadingConflict(true);
-        leaveService.getDepartmentLeaveDensity(
-          (processingLeave as any).departmentId,
-          processingLeave.startDate,
-          processingLeave.endDate
-        ).then(res => {
-          setConflictData(res);
-        }).finally(() => setLoadingConflict(false));
-      }
-    } else {
-      setConflictData(null);
     }
-  }, [processingLeave, leaveService]);
+  }, [processingLeave]);
 
   const handleAction = async (status: LeaveRequest['status']) => {
     if (!leaveService || !user || !processingLeave) return;
@@ -110,10 +96,10 @@ export function LeavesManager() {
         actualDepartureDate: status === 'on-leave' ? editForm.actualDate : undefined,
         actualReturnDate: status === 'returned' ? editForm.actualDate : undefined
       });
-      toast({ title: isRtl ? "تم تحديث حالة الإجازة" : "Leave Status Updated" });
+      toast({ title: isRtl ? "تم تحديث الحالة بنجاح" : "Status Updated" });
       setProcessingLeave(null);
     } catch (e: any) {
-      toast({ variant: "destructive", title: t('error') });
+      toast({ variant: "destructive", title: t('common.error') });
     } finally {
       setIsProcessing(false);
     }
@@ -128,7 +114,7 @@ export function LeavesManager() {
              {isRtl ? 'إدارة إجازات القوى العاملة' : 'Workforce Leaves'}
            </h3>
         </div>
-        <Button onClick={() => router.push('/dashboard/hr/leaves/new')} className="rounded-xl font-bold h-12 px-6">
+        <Button onClick={() => router.push('/dashboard/hr/leaves/new')} className="rounded-xl font-bold h-12 px-6 shadow-lg">
           <Plus className="me-2 h-4 w-4" /> {t('common.add')}
         </Button>
       </div>
@@ -139,7 +125,7 @@ export function LeavesManager() {
                <TableHeader className="bg-muted/30">
                   <TableRow>
                      <TableHead className="py-6 ps-8 text-start">{isRtl ? 'الموظف' : 'Employee'}</TableHead>
-                     <TableHead className="text-start">{isRtl ? 'النوع' : 'Type'}</TableHead>
+                     <TableHead className="text-start">{isRtl ? 'الفترة المخططة' : 'Period'}</TableHead>
                      <TableHead className="text-start">{isRtl ? 'الحالة' : 'Status'}</TableHead>
                      <TableHead className="pe-8 text-end">{isRtl ? 'الإجراءات التنفيذية' : 'Execution'}</TableHead>
                   </TableRow>
@@ -148,46 +134,65 @@ export function LeavesManager() {
                   {loading ? (
                     <TableRow><TableCell colSpan={4} className="text-center py-20"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/30" /></TableCell></TableRow>
                   ) : (
-                    leaves?.map((leave) => (
-                      <TableRow key={leave.id} className="hover:bg-slate-50 transition-colors border-b-slate-100 cursor-pointer" onClick={() => router.push(`/dashboard/hr/leaves/${leave.id}`)}>
-                         <TableCell className="py-6 ps-8 text-start font-black text-slate-800">{leave.userName}</TableCell>
-                         <TableCell className="text-start">
-                            <Badge variant="outline" className="font-black uppercase text-[9px] px-3">{leave.type}</Badge>
-                         </TableCell>
-                         <TableCell className="text-start">
-                            <Badge className={cn(
-                              "font-black px-3 py-1 border-0 shadow-sm",
-                              ['approved', 'on-leave', 'returned', 'commenced'].includes(leave.status) ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
-                            )}>
-                               {leave.status.toUpperCase()}
-                            </Badge>
-                         </TableCell>
-                         <TableCell className="pe-8" onClick={e => e.stopPropagation()}>
-                            <div className="flex justify-end gap-2">
-                               {leave.status === 'pending' && canApprove && (
-                                  <Button onClick={() => setProcessingLeave(leave)} className="h-9 px-4 rounded-lg bg-primary font-black text-[10px] gap-2">
-                                     <Pencil className="h-3.5 w-3.5" /> {isRtl ? 'قرار الإدارة' : 'Decision'}
-                                  </Button>
-                               )}
-                               {leave.status === 'approved' && canApprove && (
-                                  <Button onClick={() => setProcessingLeave(leave)} className="h-9 px-4 rounded-lg bg-amber-500 font-black text-[10px] gap-2 text-white">
-                                     <PlaneTakeoff className="h-3.5 w-3.5" /> {isRtl ? 'تسجيل ذهاب' : 'Departure'}
-                                  </Button>
-                               )}
-                               {leave.status === 'on-leave' && canApprove && (
-                                  <Button onClick={() => setProcessingLeave(leave)} className="h-9 px-4 rounded-lg bg-blue-600 font-black text-[10px] gap-2 text-white">
-                                     <PlaneLanding className="h-3.5 w-3.5" /> {isRtl ? 'تسجيل عودة' : 'Return'}
-                                  </Button>
-                               )}
-                               {leave.status === 'returned' && canApprove && (
-                                  <Button onClick={() => setProcessingLeave(leave)} className="h-9 px-4 rounded-lg bg-emerald-600 font-black text-[10px] gap-2 text-white">
-                                     <Zap className="h-3.5 w-3.5" /> {isRtl ? 'اعتماد مباشرة' : 'Commence'}
-                                  </Button>
-                               )}
-                            </div>
-                         </TableCell>
-                      </TableRow>
-                    ))
+                    leaves?.map((leave) => {
+                      const isOverdue = leave.status === 'approved' && (isPast(parseISO(leave.startDate)) || isToday(parseISO(leave.startDate)));
+                      
+                      return (
+                        <TableRow key={leave.id} className="hover:bg-slate-50 transition-colors border-b-slate-100 cursor-pointer" onClick={() => router.push(`/dashboard/hr/leaves/${leave.id}`)}>
+                           <TableCell className="py-6 ps-8 text-start font-black text-slate-800">
+                              <div className="flex flex-col gap-1">
+                                 <span>{leave.userName}</span>
+                                 <Badge variant="outline" className="w-fit text-[8px] uppercase">{leave.type}</Badge>
+                              </div>
+                           </TableCell>
+                           <TableCell className="text-start">
+                              <div className="flex flex-col text-[10px] font-bold text-slate-400">
+                                 <span>{leave.startDate} → {leave.endDate}</span>
+                                 <span className="text-primary">{leave.workingDays} {t('hr.workDays')}</span>
+                              </div>
+                           </TableCell>
+                           <TableCell className="text-start">
+                              <div className="flex flex-col gap-2">
+                                 <Badge className={cn(
+                                   "font-black px-3 py-1 border-0 shadow-sm w-fit uppercase text-[9px]",
+                                   ['approved', 'on-leave', 'returned', 'commenced'].includes(leave.status) ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
+                                 )}>
+                                    {leave.status}
+                                 </Badge>
+                                 {isOverdue && (
+                                    <Badge className="bg-rose-50 text-rose-600 border-rose-100 font-black text-[8px] animate-pulse w-fit">
+                                       {isRtl ? 'تنبيه: موعد المغادرة حان' : 'DELAYED DEPARTURE'}
+                                    </Badge>
+                                 )}
+                              </div>
+                           </TableCell>
+                           <TableCell className="pe-8" onClick={e => e.stopPropagation()}>
+                              <div className="flex justify-end gap-2">
+                                 {leave.status === 'pending' && canApprove && (
+                                    <Button onClick={() => setProcessingLeave(leave)} className="h-9 px-4 rounded-lg bg-primary font-black text-[10px] gap-2">
+                                       <Pencil className="h-3.5 w-3.5" /> {isRtl ? 'قرار الإدارة' : 'Decision'}
+                                    </Button>
+                                 )}
+                                 {leave.status === 'approved' && canApprove && (
+                                    <Button onClick={() => setProcessingLeave(leave)} className="h-9 px-4 rounded-lg bg-[#FFB000] font-black text-[10px] gap-2 text-white shadow-md">
+                                       <PlaneTakeoff className="h-3.5 w-3.5" /> {isRtl ? 'تسجيل مغادرة' : 'Depart'}
+                                    </Button>
+                                 )}
+                                 {leave.status === 'on-leave' && canApprove && (
+                                    <Button onClick={() => setProcessingLeave(leave)} className="h-9 px-4 rounded-lg bg-blue-600 font-black text-[10px] gap-2 text-white shadow-md">
+                                       <PlaneLanding className="h-3.5 w-3.5" /> {isRtl ? 'تسجيل عودة' : 'Return'}
+                                    </Button>
+                                 )}
+                                 {leave.status === 'returned' && canApprove && (
+                                    <Button onClick={() => setProcessingLeave(leave)} className="h-9 px-4 rounded-lg bg-emerald-600 font-black text-[10px] gap-2 text-white shadow-md">
+                                       <Zap className="h-3.5 w-3.5" /> {isRtl ? 'اعتماد مباشرة' : 'Activate'}
+                                    </Button>
+                                 )}
+                              </div>
+                           </TableCell>
+                        </TableRow>
+                      );
+                    })
                   )}
                </TableBody>
             </Table>
@@ -197,7 +202,7 @@ export function LeavesManager() {
       <Dialog open={!!processingLeave} onOpenChange={open => !open && setProcessingLeave(null)}>
         <DialogContent className="rounded-xl p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-2xl text-start" dir={dir}>
            <div className="bg-primary/5 p-10 text-slate-900 border-b">
-              <DialogTitle className="text-3xl font-black font-headline flex items-center gap-3">
+              <DialogTitle className="text-3xl font-black font-headline flex items-center gap-3 text-slate-900">
                  <Clock className="h-9 w-9 text-primary" />
                  {processingLeave?.status === 'pending' ? (isRtl ? 'قرار الإدارة وتصحيح البيانات' : 'Admin Decision') : (isRtl ? 'توثيق التاريخ الفعلي' : 'Document Actual Date')}
               </DialogTitle>
@@ -208,14 +213,14 @@ export function LeavesManager() {
               {/* الخطوة 1: الموافقة */}
               {processingLeave?.status === 'pending' && (
                 <div className="space-y-6">
-                   <div className="grid grid-cols-2 gap-6 p-6 bg-slate-50 rounded-2xl border-2 border-dashed">
+                   <div className="grid grid-cols-2 gap-6 p-6 bg-slate-50 rounded-2xl border-2 border-dashed border-primary/20">
                       <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">تاريخ البدء المعتمد</Label><SmartDateInput value={editForm.startDate} onChange={v => setEditForm({...editForm, startDate: v})} /></div>
                       <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">تاريخ العودة المعتمد</Label><SmartDateInput value={editForm.endDate} onChange={v => setEditForm({...editForm, endDate: v})} /></div>
-                      <div className="col-span-2 space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">أيام الخصم المعتمدة</Label><Input type="number" value={editForm.workingDays} onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})} className="h-14 rounded-xl font-black text-2xl text-center" /></div>
+                      <div className="col-span-2 space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">أيام الخصم المعتمدة</Label><Input type="number" value={editForm.workingDays} onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})} className="h-14 rounded-xl font-black text-2xl text-center border-2" /></div>
                    </div>
                    <div className="flex gap-4">
                       <Button onClick={() => handleAction('rejected')} variant="outline" className="flex-1 h-14 rounded-xl border-rose-100 text-rose-600 font-black">رفض الطلب</Button>
-                      <Button onClick={() => handleAction('approved')} className="flex-1 h-14 rounded-xl bg-emerald-600 text-white font-black">اعتماد وصرف</Button>
+                      <Button onClick={() => handleAction('approved')} className="flex-1 h-14 rounded-xl bg-emerald-600 text-white font-black shadow-lg">اعتماد الإجازة</Button>
                    </div>
                 </div>
               )}
@@ -223,29 +228,29 @@ export function LeavesManager() {
               {/* الخطوة 2: المغادرة */}
               {processingLeave?.status === 'approved' && (
                 <div className="space-y-6 animate-in zoom-in-95">
-                   <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase text-slate-400">تاريخ المغادرة الفعلي</Label>
+                   <div className="space-y-2 text-start">
+                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">تاريخ المغادرة الفعلي للموظف</Label>
                       <SmartDateInput value={editForm.actualDate} onChange={v => setEditForm({...editForm, actualDate: v})} />
                    </div>
-                   <Button onClick={() => handleAction('on-leave')} className="w-full h-16 rounded-2xl bg-amber-500 text-white font-black text-lg gap-3">
-                      <PlaneTakeoff className="h-6 w-6" /> تسجيل مغادرة الموظف
+                   <Button onClick={() => handleAction('on-leave')} className="w-full h-16 rounded-2xl bg-[#FFB000] text-white font-black text-lg gap-3 border-b-8 border-[#FF5722] shadow-xl">
+                      <PlaneTakeoff className="h-6 w-6" /> تسجيل مغادرة الموظف (Depart)
                    </Button>
                 </div>
               )}
 
-              {/* الخطوة 3: العودة (المطلوبة بوضوح) */}
+              {/* الخطوة 3: العودة */}
               {processingLeave?.status === 'on-leave' && (
                 <div className="space-y-6 animate-in zoom-in-95">
-                   <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase text-slate-400">تاريخ العودة الفعلي من الإجازة</Label>
+                   <div className="space-y-2 text-start">
+                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">تاريخ العودة الفعلي من الإجازة</Label>
                       <SmartDateInput value={editForm.actualDate} onChange={v => setEditForm({...editForm, actualDate: v})} />
                    </div>
-                   <div className="p-4 bg-blue-50 border-2 border-blue-100 rounded-2xl flex items-start gap-3">
+                   <div className="p-5 bg-blue-50 border-2 border-blue-100 rounded-2xl flex items-start gap-3 shadow-inner">
                       <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
-                      <p className="text-[10px] font-bold text-blue-800">سجل التاريخ الذي باشر فيه الموظف الحضور الفعلي للمنشأة.</p>
+                      <p className="text-[11px] font-bold text-blue-800 leading-relaxed">يرجى تسجيل التاريخ الذي باشر فيه الموظف الحضور الفعلي للمنشأة. سيتم استخدام هذا التاريخ لتدقيق الخصم النهائي من الرصيد.</p>
                    </div>
-                   <Button onClick={() => handleAction('returned')} className="w-full h-16 rounded-2xl bg-blue-600 text-white font-black text-lg gap-3 shadow-xl">
-                      <PlaneLanding className="h-6 w-6" /> تسجيل العودة من الإجازة
+                   <Button onClick={() => handleAction('returned')} className="w-full h-16 rounded-2xl bg-blue-600 text-white font-black text-lg gap-3 shadow-xl border-b-8 border-blue-800">
+                      <PlaneLanding className="h-6 w-6" /> تسجيل عودة الموظف (Return)
                    </Button>
                 </div>
               )}
@@ -253,22 +258,22 @@ export function LeavesManager() {
               {/* الخطوة 4: المباشرة النهائية */}
               {processingLeave?.status === 'returned' && (
                 <div className="space-y-6 animate-in zoom-in-95">
-                   <div className="p-8 bg-emerald-50 rounded-[2rem] border-2 border-emerald-100 space-y-6">
-                      <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">أيام الخصم النهائية بعد المراجعة</Label><Input type="number" value={editForm.workingDays} onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})} className="h-14 rounded-xl font-black text-2xl text-emerald-700 text-center" /></div>
+                   <div className="p-8 bg-emerald-50 rounded-[2.5rem] border-2 border-emerald-100 space-y-6 shadow-inner">
+                      <div className="flex items-center gap-3 text-emerald-700 font-black mb-2"><CheckCircle2 className="h-6 w-6" /> مراجعة الخصم النهائي</div>
+                      <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">إجمالي أيام الخصم من الرصيد (بعد المراجعة)</Label><Input type="number" value={editForm.workingDays} onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})} className="h-16 rounded-xl font-black text-4xl text-emerald-700 text-center bg-white border-2" /></div>
                    </div>
-                   <Button onClick={() => handleAction('commenced')} className="w-full h-16 rounded-2xl bg-emerald-600 text-white font-black text-lg gap-3">
-                      <Zap className="h-6 w-6" /> اعتماد المباشرة وتفعيل الموظف
+                   <Button onClick={() => handleAction('commenced')} className="w-full h-20 rounded-[2.5rem] bg-emerald-600 text-white font-black text-2xl shadow-xl shadow-emerald-100 border-b-8 border-emerald-800 gap-4">
+                      <Zap className="h-8 w-8" /> اعتماد المباشرة وتفعيل الموظف
                    </Button>
                 </div>
               )}
            </div>
            
-           <div className="p-8 bg-slate-50 border-t flex justify-end">
-              <Button variant="ghost" onClick={() => setProcessingLeave(null)} className="rounded-xl font-bold">إغلاق</Button>
+           <div className="p-8 bg-slate-50 border-t flex justify-end shrink-0">
+              <Button variant="ghost" onClick={() => setProcessingLeave(null)} className="rounded-xl font-bold px-8">إغلاق</Button>
            </div>
         </DialogContent>
       </Dialog>
     </div>
   );
 }
-

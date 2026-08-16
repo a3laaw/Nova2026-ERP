@@ -29,7 +29,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ar" suppressHydrationWarning>
-      <body className={`${bodyFont.variable} ${headlineFont.variable} font-body antialiased selection:bg-primary/20`} dir="rtl">
+      <body className={`${bodyFont.variable} ${headlineFont.variable} font-body antialiased selection:bg-primary/20`}>
         <Providers>
           {children}
         </Providers>

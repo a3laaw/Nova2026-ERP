@@ -181,43 +181,11 @@ export function SeedTool() {
                  variant="outline" 
                  className="rounded-xl h-11 px-8 font-black gap-2 border-2"
                >
-                  {purging ? <Loader2 className="animate-spin h-4 w-4" /> : <Trash2 className="h-4 w-4" />}
+                  {purging ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                   {isRtl ? 'حذف المواعيد' : 'Purge Logs'}
                </Button>
             </div>
          </CardContent>
-      </Card>
-
-      <Card className="border-4 border-emerald-100 rounded-[3rem] bg-emerald-50/20 overflow-hidden shadow-xl">
-        <CardHeader className="p-10 text-start">
-           <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-lg"><Fingerprint className="h-6 w-6" /></div>
-              <div className="text-start">
-                 <CardTitle className="text-2xl font-black text-slate-800">{isRtl ? 'توحيد هويات النظام' : 'Identity Standardization'}</CardTitle>
-                 <CardDescription className="font-bold">{isRtl ? 'إصلاح تباين الصلاحيات وتوحيد الأكواد المرجعية لكافة المستخدمين.' : 'Fix permission variances and unify roles.'}</CardDescription>
-              </div>
-           </div>
-        </CardHeader>
-        <CardContent className="p-10 pt-0 flex flex-col md:flex-row items-center justify-between gap-6">
-           <Button onClick={handleIdentityMigration} disabled={migrating} className="h-12 px-10 rounded-xl bg-emerald-600 text-white font-black text-sm shadow-xl gap-3">
-              {migrating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
-              {isRtl ? 'بدء الهوية السيادية' : 'Run Identity Fix'}
-           </Button>
-        </CardContent>
-      </Card>
-
-      <Card className="border-4 border-dashed border-primary/20 rounded-[3rem] bg-white overflow-hidden shadow-xl">
-        <CardHeader className="bg-primary/5 p-12 text-center">
-          <div className="mx-auto w-20 h-20 bg-primary text-white rounded-[2rem] flex items-center justify-center shadow-2xl mb-6"><Database className="h-10 w-10" /></div>
-          <CardTitle className="text-3xl font-black font-headline tracking-tight text-slate-800">{isRtl ? 'تهيئة المصنع المرجعي' : 'Reference Factory Initialization'}</CardTitle>
-          <CardDescription className="text-lg mt-2 font-bold opacity-70">{isRtl ? 'ضخ القواعد الجغرافية، التنظيمية، والفنية الموحدة لنظام Nova ERP' : 'Inject geography, organization, and technical paths.'}</CardDescription>
-        </CardHeader>
-        <CardContent className="p-12 space-y-8">
-          <Button onClick={handleRunSeed} disabled={loading || isDone} className="w-full h-12 rounded-xl font-black text-sm bg-primary shadow-xl shadow-primary/20">
-            {loading ? <Loader2 className="me-3 h-5 w-5 animate-spin" /> : isDone ? <CheckCircle2 className="me-3 h-5 w-5" /> : <Sparkles className="me-3 h-5 w-5" />}
-            {isRtl ? 'تشغيل محرك التهيئة الآن' : 'Run Initialization Engine'}
-          </Button>
-        </CardContent>
       </Card>
     </div>
   );

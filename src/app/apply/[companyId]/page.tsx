@@ -57,7 +57,7 @@ export default function PublicJobApplicationPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-[#fdfaf3] flex items-center justify-center p-6" dir="rtl">
+      <div className="min-h-screen bg-[#fdfaf3] flex items-center justify-center p-6" dir="auto">
         <Card className="max-w-md w-full border-0 shadow-2xl rounded-[3rem] p-10 text-center animate-in zoom-in-95">
            <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle2 className="h-12 w-12" />
@@ -73,7 +73,7 @@ export default function PublicJobApplicationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fdfaf3] py-12 px-6" dir="rtl">
+    <div className="min-h-screen bg-[#fdfaf3] py-12 px-6" dir="auto">
       <div className="max-w-3xl mx-auto space-y-8">
         
         {/* Header */}

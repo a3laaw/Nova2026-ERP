@@ -125,12 +125,6 @@ export class LeaveService {
       
       const finalWorkingDays = payload.workingDays !== undefined ? payload.workingDays : leaveData.workingDays;
       updateData.workingDays = finalWorkingDays;
-
-      if (leaveData.type === 'annual') {
-        batch.update(empRef, { annualLeaveBalance: increment(-finalWorkingDays) });
-      } else if (leaveData.type === 'sick') {
-        batch.update(empRef, { sickLeaveBalance: increment(-finalWorkingDays) });
-      }
     } 
     else if (status === 'rejected') {
       updateData.rejectedBy = adminId;
@@ -154,14 +148,12 @@ export class LeaveService {
       if (payload.actualReturnDate) updateData.actualReturnDate = payload.actualReturnDate;
       
       if (payload.workingDays !== undefined) {
-         const diff = payload.workingDays - (leaveData.workingDays || 0);
-         if (diff !== 0) {
-            updateData.workingDays = payload.workingDays;
-            if (leaveData.type === 'annual') {
-               batch.update(empRef, { annualLeaveBalance: increment(-diff) });
-            } else if (leaveData.type === 'sick') {
-               batch.update(empRef, { sickLeaveBalance: increment(-diff) });
-            }
+         const diff = payload.workingDays; // الخصم النهائي من الرصيد
+         updateData.workingDays = payload.workingDays;
+         if (leaveData.type === 'annual') {
+            batch.update(empRef, { annualLeaveBalance: increment(-diff) });
+         } else if (leaveData.type === 'sick') {
+            batch.update(empRef, { sickLeaveBalance: increment(-diff) });
          }
       }
 

@@ -55,7 +55,7 @@ export function FirebaseClientProvider({ children }: { children: React.ReactNode
   // واجهة إرشادية في حال عدم اكتمال الإعدادات
   if (error || !initializedApp || !initializedAuth || !initializedDb) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-6 text-center" dir="rtl">
+      <div className="min-h-screen flex items-center justify-center bg-background p-6 text-center" dir="auto">
         <div className="max-w-md space-y-6 bg-white p-10 rounded-3xl shadow-2xl border-2 border-primary/10">
           <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto text-primary">
             <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>
