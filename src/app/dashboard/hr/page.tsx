@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -8,7 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   UserCircle, Calculator, UserPlus, 
   Users, Clock, ShieldCheck, TrendingUp,
-  ShieldAlert, Loader2
+  ShieldAlert, Loader2, Plane, LayoutGrid,
+  FileSpreadsheet
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useRouter } from 'next/navigation';
@@ -21,13 +23,16 @@ import { LeavesManager } from './leaves-manager';
 import { Employee } from '@/types/hr';
 import { cn } from '@/lib/utils';
 
+/**
+ * @fileOverview لوحة تحكم الموارد البشرية السيادية (Unified HR Dashboard).
+ * تم إعادة دمج كافة الوظائف لضمان عدم "إخفاء" أي مديول عن المدير.
+ */
 export default function HRDashboard() {
-  const { t, lang, dir } = useLanguage();
+  const { t, lang, dir, isRtl } = useLanguage();
   const router = useRouter();
-  const { check } = usePermissions();
+  const { check, isAdmin } = usePermissions();
   const { globalUser } = useAuthContext();
   const db = useFirestore();
-  const isRtl = lang === 'ar';
   const [activeTab, setActiveTab] = useState("overview");
 
   const companyId = globalUser?.companyId;
@@ -35,6 +40,7 @@ export default function HRDashboard() {
   const canHire = check('hr', 'create').can && check('hr', 'create').scope !== 'own';
   const canSeePayroll = check('hr', 'approve').can;
 
+  // توجيه الموظف العادي لملفه الشخصي فقط (عزل معلوماتي سيادي)
   useEffect(() => {
     if (hrView.can && hrView.scope === 'own' && globalUser?.employeeId) {
        router.replace(`/dashboard/hr/reports/dossier/${globalUser.employeeId}`);
@@ -47,7 +53,7 @@ export default function HRDashboard() {
   if (hrView.scope === 'own' || empsLoading) return <div className="h-[60vh] flex flex-col items-center justify-center gap-4"><Loader2 className="animate-spin text-primary" /></div>;
 
   return (
-    <div className="space-y-4 w-full animate-in fade-in" dir={dir}>
+    <div className="space-y-6 w-full animate-in fade-in" dir={dir}>
       {/* Unified Header Design (H-14) */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-6 text-start">
         <div className="flex items-center gap-4 text-start">
@@ -60,22 +66,42 @@ export default function HRDashboard() {
           </div>
         </div>
         <div className="flex gap-2">
-           {canSeePayroll && <Button onClick={() => router.push('/dashboard/hr/payroll')} size="sm" className="h-11 font-black px-6 rounded-xl shadow-lg shadow-primary/20"><Calculator className="me-2 h-4 w-4" /> {t('payroll')}</Button>}
-           {canHire && <Button onClick={() => router.push('/dashboard/hr/employees/new')} size="sm" className="h-11 font-black px-6 rounded-xl shadow-lg shadow-primary/20"><UserPlus className="me-2 h-4 w-4" /> {t('hr.hire')}</Button>}
+           {canSeePayroll && (
+              <Button onClick={() => router.push('/dashboard/hr/payroll/new')} size="sm" className="h-11 font-black px-6 rounded-xl shadow-lg shadow-primary/20 bg-emerald-600 text-white hover:bg-emerald-700 border-b-4 border-emerald-800">
+                <Calculator className="me-2 h-4 w-4" /> {isRtl ? 'توليد الرواتب' : 'Generate Payroll'}
+              </Button>
+           )}
+           {canHire && (
+              <Button onClick={() => router.push('/dashboard/hr/employees/new')} size="sm" className="h-11 font-black px-6 rounded-xl shadow-lg shadow-primary/20 border-b-4 border-orange-700">
+                <UserPlus className="me-2 h-4 w-4" /> {t('hr.hire')}
+              </Button>
+           )}
         </div>
       </header>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="bg-white p-1.5 rounded-xl border shadow-sm mb-4 inline-flex">
-          <TabsList className="bg-transparent h-10 gap-1 p-0">
-            <TabsTrigger value="overview" className="rounded-lg font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all h-full">{t('common.overview')}</TabsTrigger>
-            <TabsTrigger value="leaves" className="rounded-lg font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all h-full">{t('leaverequests')}</TabsTrigger>
+        <div className="bg-white p-1.5 rounded-2xl border shadow-sm mb-6 inline-flex overflow-x-auto scrollbar-hide max-w-full">
+          <TabsList className="bg-transparent h-12 gap-1 p-0">
+            <TabsTrigger value="overview" className="rounded-xl font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all h-full gap-2">
+              <LayoutGrid className="h-4 w-4" /> {t('common.overview')}
+            </TabsTrigger>
+            <TabsTrigger value="leaves" className="rounded-xl font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all h-full gap-2">
+              <Plane className="h-4 w-4" /> {t('leaverequests')}
+            </TabsTrigger>
+            {canSeePayroll && (
+              <TabsTrigger value="payroll_list" className="rounded-xl font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all h-full gap-2">
+                <Calculator className="h-4 w-4" /> {t('payroll')}
+              </TabsTrigger>
+            )}
+            <TabsTrigger value="staff" className="rounded-xl font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all h-full gap-2">
+              <Users className="h-4 w-4" /> {t('staffRecords')}
+            </TabsTrigger>
           </TabsList>
         </div>
 
-        <TabsContent value="overview" className="space-y-4">
+        <TabsContent value="overview" className="space-y-6">
            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <Card className="rounded-[1.5rem] shadow-sm border bg-white p-6 text-start flex items-center justify-between group hover:shadow-lg transition-all">
+              <Card className="rounded-[2.5rem] shadow-sm border bg-white p-6 text-start flex items-center justify-between group hover:shadow-lg transition-all">
                  <div>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('hr.staffCount')}</p>
                     <h3 className="text-3xl font-black text-slate-900">{employees?.length || 0}</h3>
@@ -84,11 +110,62 @@ export default function HRDashboard() {
                     <Users className="h-6 w-6" />
                  </div>
               </Card>
+              
+              <Card className="rounded-[2.5rem] shadow-sm border bg-white p-6 text-start flex items-center justify-between group hover:shadow-lg transition-all" onClick={() => router.push('/dashboard/hr/attendance/import')}>
+                 <div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'سجل البصمة (XLSX)' : 'Attendance Sync'}</p>
+                    <h3 className="text-sm font-black text-primary uppercase">{isRtl ? 'مزامنة الآن' : 'Sync Now'}</h3>
+                 </div>
+                 <div className="h-12 w-12 rounded-2xl bg-primary/5 text-primary flex items-center justify-center group-hover:scale-110 transition-transform cursor-pointer">
+                    <FileSpreadsheet className="h-6 w-6" />
+                 </div>
+              </Card>
+           </div>
+
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-start">
+              <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
+                 <CardHeader className="bg-slate-50/50 p-6 border-b">
+                    <CardTitle className="text-lg font-black">{isRtl ? 'إجراءات سريعة' : 'Quick Actions'}</CardTitle>
+                 </CardHeader>
+                 <CardContent className="p-6 grid grid-cols-2 gap-4">
+                    <Button variant="outline" className="h-20 rounded-2xl border-2 flex flex-col gap-2 font-black text-xs" onClick={() => router.push('/dashboard/hr/permissions/new')}>
+                       <Clock className="h-5 w-5 text-primary" /> {isRtl ? 'طلب استئذان' : 'Request Permission'}
+                    </Button>
+                    <Button variant="outline" className="h-20 rounded-2xl border-2 flex flex-col gap-2 font-black text-xs" onClick={() => router.push('/dashboard/hr/gratuity-calculator')}>
+                       <ShieldCheck className="h-5 w-5 text-emerald-600" /> {isRtl ? 'حاسبة المستحقات' : 'Gratuity Calc'}
+                    </Button>
+                 </CardContent>
+              </Card>
            </div>
         </TabsContent>
 
         <TabsContent value="leaves" className="animate-in fade-in duration-300">
           <LeavesManager />
+        </TabsContent>
+
+        <TabsContent value="payroll_list" className="animate-in fade-in duration-300">
+           {/* استدعاء مكون قائمة الرواتب أو إعادة توجيه (لضمان الوحدة) */}
+           <div className="py-20 text-center flex flex-col items-center gap-6 opacity-40">
+              <Calculator className="h-20 w-20 text-slate-200" />
+              <div className="space-y-2">
+                 <h3 className="text-xl font-black text-slate-400">{isRtl ? 'مركز إدارة الرواتب' : 'Payroll Center'}</h3>
+                 <Button onClick={() => router.push('/dashboard/hr/payroll')} className="rounded-xl h-10 px-8 font-black gap-2">
+                    {isRtl ? 'فتح سجل الرواتب الكامل' : 'Open Payroll Registry'} <ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} />
+                 </Button>
+              </div>
+           </div>
+        </TabsContent>
+
+        <TabsContent value="staff" className="animate-in fade-in duration-300">
+           <div className="py-20 text-center flex flex-col items-center gap-6 opacity-40">
+              <Users className="h-20 w-20 text-slate-200" />
+              <div className="space-y-2">
+                 <h3 className="text-xl font-black text-slate-400">{isRtl ? 'سجل الموظفين والمهن' : 'Staff Master Registry'}</h3>
+                 <Button onClick={() => router.push('/dashboard/hr/employees')} className="rounded-xl h-10 px-8 font-black gap-2">
+                    {isRtl ? 'فتح قاعدة بيانات الموظفين' : 'Open Employee Database'} <ArrowRight className={cn("h-4 w-4", isRtl && "rotate-180")} />
+                 </Button>
+              </div>
+           </div>
         </TabsContent>
       </Tabs>
     </div>

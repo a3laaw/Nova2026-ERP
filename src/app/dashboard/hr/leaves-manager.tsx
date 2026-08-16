@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -10,10 +11,10 @@ import {
   XCircle, ArrowRight, MessageSquare, Clock,
   Calendar, Hash, Pencil, ShieldAlert,
   AlertTriangle, PlaneLanding, PlaneTakeoff, Zap,
-  UserCheck, Info, ShieldCheck
+  UserCheck, Info, ShieldCheck, Search, Check, ChevronDown
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, where, doc, getDoc, updateDoc, writeBatch, serverTimestamp, increment } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -216,7 +217,7 @@ export function LeavesManager() {
            <div className="bg-primary/5 p-10 text-slate-900 border-b relative">
               <div className="absolute top-0 right-0 p-8 opacity-5"><CalendarDays className="h-32 w-32" /></div>
               <DialogTitle className="text-3xl font-black font-headline flex items-center gap-4 text-slate-900 relative z-10">
-                 {processingLeave?.status === 'pending' ? <Clock className="h-9 w-9 text-primary" /> : <ShieldAlert className="h-9 w-9 text-primary" />}
+                 {processingLeave?.status === 'pending' ? <Clock className="h-9 w-9 text-primary" /> : <ShieldCheck className="h-9 w-9 text-primary" />}
                  {processingLeave?.status === 'pending' ? (isRtl ? 'قرار الإدارة وتدقيق البيانات' : 'Admin Decision & Audit') : 
                   processingLeave?.status === 'approved' ? (isRtl ? 'توثيق مغادرة الموظف' : 'Document Departure') :
                   processingLeave?.status === 'on-leave' ? (isRtl ? 'توثيق العودة الفعلية' : 'Document Actual Return') :
@@ -227,7 +228,6 @@ export function LeavesManager() {
            
            <div className="p-10 space-y-8 bg-white max-h-[65vh] overflow-y-auto scrollbar-hide">
               
-              {/* الخطوة 1: الموافقة الإدارية (للحالة Pending) */}
               {processingLeave?.status === 'pending' && (
                 <div className="space-y-6">
                    <div className="grid grid-cols-2 gap-6 p-8 bg-slate-50 rounded-[2rem] border-2 border-dashed border-primary/20 shadow-inner">
@@ -256,7 +256,6 @@ export function LeavesManager() {
                 </div>
               )}
 
-              {/* الخطوة 2: نافذة المغادرة (للحالة Approved) */}
               {processingLeave?.status === 'approved' && (
                 <div className="space-y-6 animate-in zoom-in-95 duration-300">
                    <div className="p-8 bg-orange-50/50 rounded-[2.5rem] border-2 border-orange-100 space-y-6 shadow-inner text-center">
@@ -270,7 +269,7 @@ export function LeavesManager() {
                       </div>
                       <div className="p-5 bg-white/80 rounded-2xl border border-orange-100 flex items-start gap-4 text-start">
                          <Info className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
-                         <p className="text-[10px] font-bold text-orange-800 leading-relaxed italic">بمجرد التأكيد، سيتم تحديث حالة الموظف في رادار الحضور إلى (في إجازة) ولن يظهر ضمن كشوف الرواتب المباشرة لهذه الفترة.</p>
+                         <p className="text-[10px] font-bold text-orange-800 leading-relaxed italic">بمجرد التأكيد، سيتم تحديث حالة الموظف في رادار الحضور إلى (في إجازة).</p>
                       </div>
                    </div>
                    <Button onClick={() => handleAction('on-leave')} disabled={isProcessing} className="w-full h-20 rounded-[2.5rem] bg-[#FFB000] text-white font-black text-2xl gap-4 border-b-8 border-[#FF5722] shadow-2xl shadow-primary/20 hover:scale-[1.02] transition-all">
@@ -279,7 +278,6 @@ export function LeavesManager() {
                 </div>
               )}
 
-              {/* الخطوة 3: نافذة العودة (للحالة On-Leave) */}
               {processingLeave?.status === 'on-leave' && (
                 <div className="space-y-6 animate-in zoom-in-95 duration-300">
                    <div className="p-8 bg-blue-50/50 rounded-[2.5rem] border-2 border-blue-100 space-y-6 shadow-inner text-center">
@@ -291,10 +289,6 @@ export function LeavesManager() {
                             <SmartDateInput value={editForm.actualDate} onChange={v => setEditForm({...editForm, actualDate: v})} />
                          </div>
                       </div>
-                      <div className="p-5 bg-white/80 rounded-2xl border border-blue-100 flex items-start gap-4 text-start">
-                         <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
-                         <p className="text-[10px] font-bold text-blue-800 leading-relaxed italic">سيتم استخدام هذا التاريخ في الخطوة النهائية لتدقيق الخصم المالي الحقيقي من رصيد الإجازات السنوي المتبقي.</p>
-                      </div>
                    </div>
                    <Button onClick={() => handleAction('returned')} disabled={isProcessing} className="w-full h-20 rounded-[2.5rem] bg-blue-600 text-white font-black text-2xl gap-4 shadow-2xl shadow-blue-200 border-b-8 border-blue-800 hover:scale-[1.02] transition-all">
                       {isProcessing ? <Loader2 className="animate-spin h-8 w-8" /> : <CheckCircle2 className="h-8 w-8" />} تسجيل العودة والوصول
@@ -302,7 +296,6 @@ export function LeavesManager() {
                 </div>
               )}
 
-              {/* الخطوة 4: المباشرة النهائية (للحالة Returned) */}
               {processingLeave?.status === 'returned' && (
                 <div className="space-y-6 animate-in zoom-in-95 duration-300">
                    <div className="p-10 bg-emerald-50 rounded-[3rem] border-2 border-emerald-100 space-y-8 shadow-inner">
@@ -318,7 +311,7 @@ export function LeavesManager() {
                            onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})} 
                            className="h-20 rounded-2xl font-black text-6xl text-emerald-700 text-center bg-white border-2 border-emerald-200 shadow-xl" 
                          />
-                         <p className="text-[10px] text-center font-bold text-slate-400 mt-4 italic">بناءً على تاريخ المغادرة والعودة المسجل، يرجى تأكيد عدد أيام العمل التي سيتم خصمها فعلياً من رصيد الموظف السنوي.</p>
+                         <p className="text-[10px] text-center font-bold text-slate-400 mt-4 italic">بناءً على تاريخ المغادرة والعودة المسجل، يرجى تأكيد عدد أيام العمل التي سيتم خصمها فعلياً.</p>
                       </div>
                    </div>
                    <Button onClick={() => handleAction('commenced')} disabled={isProcessing} className="w-full h-24 rounded-[3rem] bg-emerald-600 text-white font-black text-3xl shadow-xl shadow-emerald-100 border-b-8 border-emerald-800 gap-6 hover:scale-[1.02] transition-all">
