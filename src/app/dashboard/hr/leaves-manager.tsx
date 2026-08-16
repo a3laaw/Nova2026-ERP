@@ -10,7 +10,7 @@ import {
   XCircle, ArrowRight, MessageSquare, Clock,
   Calendar, Hash, Pencil, ShieldAlert,
   AlertTriangle, PlaneLanding, PlaneTakeoff, Zap,
-  UserCheck, Info
+  UserCheck, Info, ShieldCheck
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -113,7 +113,7 @@ export function LeavesManager() {
     <div className="space-y-6">
       <div className="flex justify-between items-center px-1">
         <div className="text-start">
-           <h3 className="text-xl font-black flex items-center gap-3">
+           <h3 className="text-xl font-black flex items-center gap-3 text-slate-900">
              <CalendarDays className="h-6 w-6 text-primary" />
              {isRtl ? 'إدارة إجازات القوى العاملة' : 'Workforce Leaves'}
            </h3>
@@ -197,7 +197,7 @@ export function LeavesManager() {
                                     </Button>
                                  )}
                                  <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-slate-300 hover:text-primary group-hover:bg-primary/5 transition-all">
-                                    <ArrowRight className={cn("h-5 w-5", isRtl && "rotate-180")} />
+                                    <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
                                  </Button>
                               </div>
                            </TableCell>
@@ -231,21 +231,21 @@ export function LeavesManager() {
               {processingLeave?.status === 'pending' && (
                 <div className="space-y-6">
                    <div className="grid grid-cols-2 gap-6 p-8 bg-slate-50 rounded-[2rem] border-2 border-dashed border-primary/20 shadow-inner">
-                      <div className="space-y-2">
+                      <div className="space-y-2 text-start">
                          <Label className="text-[10px] font-black uppercase text-slate-400">تاريخ البدء المعتمد</Label>
                          <SmartDateInput value={editForm.startDate} onChange={v => setEditForm({...editForm, startDate: v})} />
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-2 text-start">
                          <Label className="text-[10px] font-black uppercase text-slate-400">تاريخ العودة المعتمد</Label>
                          <SmartDateInput value={editForm.endDate} onChange={v => setEditForm({...editForm, endDate: v})} />
                       </div>
-                      <div className="col-span-2 space-y-2">
+                      <div className="col-span-2 space-y-2 text-start">
                          <Label className="text-[10px] font-black uppercase text-slate-400">أيام الخصم المعتمدة للطلب</Label>
                          <Input type="number" value={editForm.workingDays} onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})} className="h-16 rounded-2xl font-black text-4xl text-center border-2 bg-white text-primary" />
                          <p className="text-[9px] text-center font-bold text-slate-400 mt-2 italic">سيقوم النظام بخصم هذه الأيام من الرصيد فور إتمام المباشرة لاحقاً.</p>
                       </div>
                    </div>
-                   <div className="space-y-2">
+                   <div className="space-y-2 text-start">
                       <Label className="text-[10px] font-black uppercase text-slate-400">ملاحظات إدارية</Label>
                       <Textarea value={editForm.comment} onChange={e => setEditForm({...editForm, comment: e.target.value})} className="min-h-[100px] rounded-2xl border-2 shadow-sm" />
                    </div>
@@ -321,7 +321,7 @@ export function LeavesManager() {
                          <p className="text-[10px] text-center font-bold text-slate-400 mt-4 italic">بناءً على تاريخ المغادرة والعودة المسجل، يرجى تأكيد عدد أيام العمل التي سيتم خصمها فعلياً من رصيد الموظف السنوي.</p>
                       </div>
                    </div>
-                   <Button onClick={() => handleAction('commenced')} disabled={isProcessing} className="w-full h-24 rounded-[3rem] bg-emerald-600 text-white font-black text-3xl shadow-2xl shadow-emerald-100 border-b-8 border-emerald-800 gap-6 hover:scale-[1.02] transition-all">
+                   <Button onClick={() => handleAction('commenced')} disabled={isProcessing} className="w-full h-24 rounded-[3rem] bg-emerald-600 text-white font-black text-3xl shadow-xl shadow-emerald-100 border-b-8 border-emerald-800 gap-6 hover:scale-[1.02] transition-all">
                       {isProcessing ? <Loader2 className="animate-spin h-10 w-10" /> : <Zap className="h-10 w-10" />} اعتماد المباشرة وتفعيل الموظف
                    </Button>
                 </div>
@@ -335,67 +335,4 @@ export function LeavesManager() {
       </Dialog>
     </div>
   );
-}
-
-function StreamItem({ item, isRtl, user, boqItems }: any) {
-   const { t } = useLanguage();
-   const isLog = item.streamType === 'log' || item.streamType === 'timeline_log';
-   const displayName = item.userName || item.createdByName || t('inline.engineer');
-
-   if (isLog) {
-      const boqItem = boqItems?.find((i: any) => i.id === item.boqItemId);
-      const isRevision = item.type === 'revision_logged';
-      return (
-         <div className="flex justify-center animate-in fade-in duration-500 px-1 text-start">
-            <div className={cn(
-              "border-2 shadow-md rounded-xl p-4 w-full relative transition-all",
-              isRevision ? "bg-amber-50 border-amber-200" : "bg-emerald-50/30 border-emerald-100"
-            )}>
-               <div className="flex items-start gap-4">
-                 <div className={cn(
-                   "h-9 w-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm border",
-                   isRevision ? "bg-white text-amber-600" : "bg-white text-emerald-600"
-                 )}>
-                   {isRevision ? <RotateCcw className="h-4 w-4" /> : <Hammer className="h-4 w-4" />}
-                 </div>
-                 <div className="text-start flex-1">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                       <Badge variant="outline" className="text-[8px] font-black border-slate-200 bg-white text-slate-600 px-2">
-                          {isRevision ? t('inline.revision') : (boqItem?.referenceTitle || t('inline.progress'))}
-                       </Badge>
-                       {item.quantity > 0 && <Badge className="bg-emerald-600 text-white border-0 text-[8px] h-4 px-2">{item.quantity} QTY</Badge>}
-                    </div>
-                    <p className="text-[10px] font-black text-slate-800 leading-relaxed">{item.content}</p>
-                    <div className="flex items-center gap-3 mt-3 pt-2 border-t border-black/[0.03] text-[7px] font-black text-slate-400 uppercase">
-                       <span className="flex items-center gap-1"><User className="h-2 w-2" /> {displayName}</span>
-                       <span className="flex items-center gap-1"><Clock className="h-2 w-2" /> {item.createdAt ? formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true, locale: isRtl ? ar : enUS }) : '...'}</span>
-                    </div>
-                 </div>
-               </div>
-            </div>
-         </div>
-      );
-   }
-
-   const isMine = item.createdBy === user?.uid;
-   return (
-     <div className={cn("flex gap-3 text-start animate-in fade-in slide-in-from-bottom-2 duration-300", isMine ? "flex-row-reverse" : "flex-row")}>
-        <Avatar className="h-8 w-8 rounded-xl shrink-0 border-2 border-white shadow-sm ring-1 ring-slate-100">
-           <AvatarImage src={`https://picsum.photos/seed/${item.createdBy}/40/40`} />
-           <AvatarFallback className="text-[10px] bg-primary/10 text-primary font-black">{displayName?.charAt(0)}</AvatarFallback>
-        </Avatar>
-        <div className={cn("flex flex-col space-y-1 max-w-[85%]", isMine ? "items-end" : "items-start")}>
-           <div className="flex items-center gap-2 px-1">
-              <span className="text-[9px] font-black text-slate-700">{displayName}</span>
-              <span className="text-[7px] font-bold text-slate-300">{item.createdAt ? formatDistanceToNow(item.createdAt.toDate(), { addSuffix: true, locale: isRtl ? ar : enUS }) : '...'}</span>
-           </div>
-           <div className={cn(
-             "p-3 rounded-xl shadow-sm text-xs font-bold leading-relaxed",
-             isMine ? "bg-[#e87c24] text-white rounded-te-none" : "bg-white border-2 border-slate-50 text-slate-700 rounded-ts-none"
-           )}>
-              <p className="whitespace-pre-wrap">{item.content}</p>
-           </div>
-        </div>
-     </div>
-   );
 }
