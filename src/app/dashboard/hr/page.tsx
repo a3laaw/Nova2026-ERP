@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -10,7 +9,7 @@ import {
   UserCircle, Calculator, UserPlus, 
   Users, Clock, ShieldCheck, TrendingUp,
   ShieldAlert, Loader2, Plane, LayoutGrid,
-  FileSpreadsheet
+  FileSpreadsheet, ArrowRight
 } from "lucide-react";
 import { useLanguage } from '@/context/language-context';
 import { useRouter } from 'next/navigation';
@@ -25,7 +24,6 @@ import { cn } from '@/lib/utils';
 
 /**
  * @fileOverview لوحة تحكم الموارد البشرية السيادية (Unified HR Dashboard).
- * تم إعادة دمج كافة الوظائف لضمان عدم "إخفاء" أي مديول عن المدير.
  */
 export default function HRDashboard() {
   const { t, lang, dir, isRtl } = useLanguage();
@@ -40,7 +38,7 @@ export default function HRDashboard() {
   const canHire = check('hr', 'create').can && check('hr', 'create').scope !== 'own';
   const canSeePayroll = check('hr', 'approve').can;
 
-  // توجيه الموظف العادي لملفه الشخصي فقط (عزل معلوماتي سيادي)
+  // توجيه الموظف العادي لملفه الشخصي فقط
   useEffect(() => {
     if (hrView.can && hrView.scope === 'own' && globalUser?.employeeId) {
        router.replace(`/dashboard/hr/reports/dossier/${globalUser.employeeId}`);
@@ -54,7 +52,6 @@ export default function HRDashboard() {
 
   return (
     <div className="space-y-6 w-full animate-in fade-in" dir={dir}>
-      {/* Unified Header Design (H-14) */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-6 text-start">
         <div className="flex items-center gap-4 text-start">
           <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/5">
@@ -144,7 +141,6 @@ export default function HRDashboard() {
         </TabsContent>
 
         <TabsContent value="payroll_list" className="animate-in fade-in duration-300">
-           {/* استدعاء مكون قائمة الرواتب أو إعادة توجيه (لضمان الوحدة) */}
            <div className="py-20 text-center flex flex-col items-center gap-6 opacity-40">
               <Calculator className="h-20 w-20 text-slate-200" />
               <div className="space-y-2">

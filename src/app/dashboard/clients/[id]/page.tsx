@@ -84,7 +84,7 @@ export default function ClientDetailsPage() {
       const service = new TransactionService(db, companyId, permissions);
       await service.deleteTransaction(deletingTransId);
       toast({ title: t('common.deleted') });
-      setDeletingId(null);
+      setDeletingTransId(null);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
@@ -231,7 +231,7 @@ export default function ClientDetailsPage() {
            </CardHeader>
            <CardContent className="p-0 flex-1 overflow-y-auto scrollbar-hide text-start">
               <div className="relative p-4">
-                 <div className={cn("absolute top-0 bottom-0 w-[1px] bg-slate-100", isRtl ? "right-6" : "left-6")} />
+                 <div className="absolute top-0 bottom-0 w-[1px] bg-slate-100 start-6" />
                  <div className="space-y-4">
                     {history?.sort((a,b)=> (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)).map((e)=>(
                        <div key={e.id} className="relative ps-6">
@@ -250,8 +250,7 @@ export default function ClientDetailsPage() {
         </Card>
       </div>
 
-      {/* حوار حذف المعاملة */}
-      <AlertDialog open={!!deletingTransId} onOpenChange={(v) => !v && setDeletingId(null)}>
+      <AlertDialog open={!!deletingTransId} onOpenChange={(v) => !v && setDeletingTransId(null)}>
          <AlertDialogContent className="rounded-xl p-10 border-0 shadow-3xl bg-white" dir={dir}>
             <AlertDialogHeader>
                <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
@@ -277,7 +276,6 @@ export default function ClientDetailsPage() {
          </AlertDialogContent>
       </AlertDialog>
 
-      {/* حوار حذف العميل */}
       <AlertDialog open={clientDeleteDialogOpen} onOpenChange={setClientDeleteDialogOpen}>
          <AlertDialogContent className="rounded-xl p-10 border-0 shadow-3xl bg-white" dir={dir}>
             <AlertDialogHeader>

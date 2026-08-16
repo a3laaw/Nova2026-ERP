@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -34,7 +33,6 @@ import { parseISO, isPast, isToday } from 'date-fns';
 
 /**
  * @fileOverview رادار إدارة الإجازات السيادي.
- * يدعم دورة حياة كاملة بنوافذ منبثقة إجبارية للتواريخ الفعلية (Depart, Return, Activate).
  */
 export function LeavesManager() {
   const { globalUser, user } = useAuthContext();
@@ -211,11 +209,10 @@ export function LeavesManager() {
          </CardContent>
       </Card>
 
-      {/* النافذة المنبثقة الإجبارية لدورة حياة الإجازة */}
       <Dialog open={!!processingLeave} onOpenChange={open => !open && setProcessingLeave(null)}>
         <DialogContent className="rounded-[2.5rem] p-0 overflow-hidden border-0 shadow-3xl bg-white max-w-2xl text-start" dir={dir}>
            <div className="bg-primary/5 p-10 text-slate-900 border-b relative">
-              <div className="absolute top-0 right-0 p-8 opacity-5"><CalendarDays className="h-32 w-32" /></div>
+              <div className="absolute top-0 end-0 p-8 opacity-5"><CalendarDays className="h-32 w-32" /></div>
               <DialogTitle className="text-3xl font-black font-headline flex items-center gap-4 text-slate-900 relative z-10">
                  {processingLeave?.status === 'pending' ? <Clock className="h-9 w-9 text-primary" /> : <ShieldCheck className="h-9 w-9 text-primary" />}
                  {processingLeave?.status === 'pending' ? (isRtl ? 'قرار الإدارة وتدقيق البيانات' : 'Admin Decision & Audit') : 

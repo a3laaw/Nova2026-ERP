@@ -562,7 +562,7 @@ export default function BOQNodesPage() {
                                                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{stage.code}</span>
                                                 </div>
                                               </div>
-                                              {isChecked && editingNode?.technicalStageId === stage.id && <Badge className="bg-emerald-500 text-white text-[7px] font-black h-4 px-2 border-0">{tSafe('inline.primary', 'رئيسي', 'PRIMARY')}</Badge>}
+                                              {isChecked && editingNode?.technicalStageId === stage.id && <Badge className="bg-emerald-50 text-white text-[7px] font-black h-4 px-2 border-0">{tSafe('inline.primary', 'رئيسي', 'PRIMARY')}</Badge>}
                                             </div>
                                           );
                                         })
@@ -616,7 +616,7 @@ export default function BOQNodesPage() {
                               )}
                             </div>
                           ) : (
-                            <div className="flex items-center gap-4 text-rose-500 p-6 bg-rose-50/50 rounded-[2rem] border-2 border-rose-100 ring-4 ring-rose-50/20 text-start">
+                            <div className="flex items-center gap-4 text-rose-50 p-6 bg-rose-50/50 rounded-[2rem] border-2 border-rose-100 ring-4 ring-rose-50/20 text-start">
                                <AlertTriangle className="h-7 w-7 shrink-0" />
                                <div className="text-start space-y-1">
                                   <p className="text-[11px] font-black uppercase tracking-widest">{tSafe('ref.node.unknownPath', 'تنبيه: مسار مجهول', 'Unknown Path')}</p>
@@ -666,7 +666,7 @@ export default function BOQNodesPage() {
                      </div>
                      <Switch checked={editingNode?.isExecutable || false} onCheckedChange={v => setEditingNode({...editingNode!, isExecutable: v, nodeRole: v ? 'work_item' : 'group'})} />
                   </div>
-                  <div className="flex items-center justify-between border-s border-white/10 md:ps-8">
+                  <div className="flex items-center justify-between border-start border-white/10 md:ps-8">
                      <div className="space-y-0.5 text-start">
                         <Label className="font-black text-xs uppercase tracking-tighter">{t('common.isActive')}</Label>
                         <p className="text-[8px] text-slate-400 font-bold">{tSafe('ref.node.activeDesc', 'إتاحة البند للاستخدام الميداني', 'Enable item')}</p>

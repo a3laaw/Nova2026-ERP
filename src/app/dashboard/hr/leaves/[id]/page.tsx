@@ -149,7 +149,6 @@ export default function LeaveDetailsPage() {
            
            <div className="lg:col-span-8 space-y-8">
               
-              {/* قسم التنفيذ الإداري اليدوي (Manual Departure / Return Flow) */}
               {isAdmin && ['approved', 'on-leave', 'returned'].includes(leave.status) && (
                 <Card className="border-4 border-dashed border-primary/20 rounded-[2.5rem] bg-white overflow-hidden shadow-2xl print:hidden">
                    <div className="bg-primary/5 p-8 border-b text-start">
@@ -160,7 +159,6 @@ export default function LeaveDetailsPage() {
                    </div>
                    <CardContent className="p-8 space-y-8 text-start">
                       
-                      {/* الحالة 1: الموظف سيغادر (يدوي) */}
                       {leave.status === 'approved' && (
                         <div className="space-y-6 animate-in zoom-in-95">
                            <div className="p-8 bg-slate-50 rounded-[2rem] border-2 border-white space-y-6">
@@ -181,7 +179,6 @@ export default function LeaveDetailsPage() {
                         </div>
                       )}
 
-                      {/* الحالة 2: الموظف عاد (يدوي) */}
                       {leave.status === 'on-leave' && (
                         <div className="space-y-6 animate-in zoom-in-95">
                            <div className="p-8 bg-slate-50 rounded-[2rem] border-2 border-white space-y-6">
@@ -202,7 +199,6 @@ export default function LeaveDetailsPage() {
                         </div>
                       )}
 
-                      {/* الحالة 3: اعتماد المباشرة النهائية (مع مراجعة الأيام) */}
                       {leave.status === 'returned' && (
                         <div className="space-y-6 animate-in zoom-in-95">
                            <div className="p-8 bg-emerald-50 rounded-[2rem] border-2 border-emerald-100 space-y-8">
@@ -294,7 +290,7 @@ export default function LeaveDetailsPage() {
                     </div>
 
                     <div className="p-8 rounded-[2rem] border-2 border-dashed border-slate-200 flex flex-col md:flex-row justify-between items-center gap-8 relative overflow-hidden">
-                       <div className="absolute top-0 right-0 p-4 opacity-5"><CalendarDays className="h-20 w-20" /></div>
+                       <div className="absolute top-0 end-0 p-4 opacity-5"><CalendarDays className="h-20 w-20" /></div>
                        <div className="text-center md:text-start space-y-1">
                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('hr.startDate') || 'Start Date'}</p>
                           <p className="text-2xl font-black text-slate-900">{leave.startDate}</p>
@@ -330,27 +326,27 @@ export default function LeaveDetailsPage() {
                  </CardHeader>
                  <CardContent className="p-6">
                     <div className="space-y-6">
-                       <div className="relative ps-6 border-s-2 border-slate-100 pb-2">
+                       <div className="relative ps-6 border-start-2 border-slate-100 pb-2">
                           <div className="absolute -start-[9px] top-0 h-4 w-4 rounded-full bg-primary border-4 border-white shadow-sm" />
                           <p className="text-[9px] font-black text-slate-400 uppercase">{t('hr.requestCreated')}</p>
                           <p className="text-xs font-bold text-slate-700 mt-1">{leave.createdAt?.toDate().toLocaleString()}</p>
                        </div>
                        {leave.approvedAt && (
-                          <div className="relative ps-6 border-s-2 border-slate-100 pb-2">
+                          <div className="relative ps-6 border-start-2 border-slate-100 pb-2">
                              <div className="absolute -start-[9px] top-0 h-4 w-4 rounded-full bg-emerald-500 border-4 border-white shadow-sm" />
                              <p className="text-[9px] font-black text-emerald-600 uppercase">{t('status.approved')}</p>
                              <p className="text-xs font-bold text-slate-700 mt-1">{leave.approvedAt?.toDate().toLocaleString()}</p>
                           </div>
                        )}
                        {leave.actualDepartureDate && (
-                          <div className="relative ps-6 border-s-2 border-slate-100 pb-2">
+                          <div className="relative ps-6 border-start-2 border-slate-100 pb-2">
                              <div className="absolute -start-[9px] top-0 h-4 w-4 rounded-full bg-amber-500 border-4 border-white shadow-sm" />
                              <p className="text-[9px] font-black text-amber-600 uppercase">{isRtl ? 'المغادرة الفعلية' : 'Actual Departure'}</p>
                              <p className="text-xs font-bold text-slate-700 mt-1">{leave.actualDepartureDate}</p>
                           </div>
                        )}
                        {leave.actualReturnDate && (
-                          <div className="relative ps-6 border-s-2 border-slate-100 pb-2">
+                          <div className="relative ps-6 border-start-2 border-slate-100 pb-2">
                              <div className="absolute -start-[9px] top-0 h-4 w-4 rounded-full bg-purple-500 border-4 border-white shadow-sm" />
                              <p className="text-[9px] font-black text-purple-600 uppercase">{isRtl ? 'العودة الفعلية' : 'Actual Return'}</p>
                              <p className="text-xs font-bold text-slate-700 mt-1">{leave.actualReturnDate}</p>

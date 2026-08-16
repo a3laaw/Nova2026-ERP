@@ -233,7 +233,6 @@ export function TechnicalStagesManager({ activityType, service: mainService, sub
         </div>
       )}
 
-      {/* Dialog for Edit/Create */}
       {form && (
         <Dialog open onOpenChange={() => setForm(null)}>
           <DialogContent className="rounded-xl p-0 overflow-hidden max-w-5xl border-0 shadow-3xl bg-white" dir={dir}>

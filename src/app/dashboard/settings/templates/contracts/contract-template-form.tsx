@@ -113,17 +113,14 @@ export function ContractTemplateForm({ template, onClose }: Props) {
     }
   }, [db, companyId, formData.subServiceId, formData.activityTypeId, formData.serviceId]);
 
-  // الضبط التلقائي للمحتجزات بناءً على نوع النشاط
   useEffect(() => {
     if (formData.activityTypeId && activities) {
       const act = activities.find(a => a.id === formData.activityTypeId);
       if (act) {
         const isConsulting = act.code === 'CONSULTING' || act.nameEn?.includes('Consulting');
-        // إذا كان تصميم هندسي، المحتجزات غالباً 0%
         if (isConsulting && formData.retentionRate !== 0) {
            setFormData(prev => ({ ...prev, retentionRate: 0 }));
         } 
-        // إذا كان مقاولات، المحتجزات 5%
         else if (!isConsulting && formData.retentionRate === 0) {
            setFormData(prev => ({ ...prev, retentionRate: 5 }));
         }
@@ -251,7 +248,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
             </Card>
 
             <div className="p-6 rounded-[2rem] bg-slate-50 border-2 border-primary/10 space-y-6 relative overflow-hidden shadow-inner">
-               <div className="absolute top-0 right-0 p-6 opacity-5"><Calculator className="h-20 w-20 text-primary" /></div>
+               <div className="absolute top-0 end-0 p-6 opacity-5"><Calculator className="h-20 w-20 text-primary" /></div>
                <div className="space-y-2 text-start relative z-10">
                   <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-1">{isRtl ? 'الميزانية التقديرية' : 'Estimated Budget'}</p>
                   <Input type="number" value={formData.baseAmount || 0} onChange={e => setFormData({...formData, baseAmount: Number(e.target.value)})} className="h-14 rounded-2xl border-2 bg-white text-2xl text-center font-black text-primary" />
@@ -264,7 +261,7 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                   </div>
                   <div className="relative">
                     <Input type="number" value={formData.retentionRate} onChange={e => setFormData({...formData, retentionRate: Number(e.target.value)})} className="h-10 rounded-xl border-2 bg-white text-lg font-black text-center pe-10" />
-                    <Percent className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+                    <Percent className="absolute end-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
                   </div>
                   <p className="text-[8px] font-bold text-slate-400 italic">يتم ضبطها آلياً حسب نوع النشاط المختار.</p>
                </div>
@@ -289,36 +286,36 @@ export function ContractTemplateForm({ template, onClose }: Props) {
                         <table className="w-full text-xs text-start">
                            <thead className="bg-slate-50 border-b-2 text-slate-600 font-black uppercase text-[10px] tracking-widest">
                               <tr>
-                                 <th className="p-6 w-12">#</th>
-                                 <th className="p-6">مسمى الدفعة</th>
+                                 <th className="p-6 w-12 text-start">#</th>
+                                 <th className="p-6 text-start">مسمى الدفعة</th>
                                  {formData.pricingMode === 'percentage' && <th className="p-6 text-center w-24">%</th>}
                                  <th className="p-6 text-center w-32">التوقيت</th>
-                                 <th className="p-6 w-56">الارتباط الفني (Link)</th>
-                                 <th className="p-6 text-end pe-12 w-48">القيمة التقديرية</th>
-                                 <th className="p-6 w-14"></th>
+                                 <th className="p-6 text-start w-56">الارتباط الفني (Link)</th>
+                                 <th className="p-6 text-end pe-10 w-48">القيمة التقديرية</th>
+                                 <th className="p-6 w-14 text-center"></th>
                               </tr>
                            </thead>
                            <tbody className="divide-y divide-slate-100">
                               {(formData.defaultMilestones || []).map((m, idx) => (
                                 <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                                   <td className="p-6 font-black text-slate-300">{idx + 1}</td>
-                                   <td className="p-4"><Input value={m.name || ''} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-10 rounded-xl border-2 font-black text-sm bg-white" /></td>
+                                   <td className="p-6 font-black text-slate-300 text-start">{idx + 1}</td>
+                                   <td className="p-4 text-start"><Input value={m.name || ''} onChange={e => updateMilestone(idx, 'name', e.target.value)} className="h-10 rounded-xl border-2 font-black text-sm bg-white" /></td>
                                    {formData.pricingMode === 'percentage' && (
-                                      <td className="p-4"><div className="relative w-20 mx-auto"><Input type="number" value={m.percentage || 0} onChange={e => updateMilestone(idx, 'percentage', e.target.value)} className="h-10 rounded-xl border-2 font-black text-center pe-6" /><Percent className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" /></div></td>
+                                      <td className="p-4 text-center"><div className="relative w-20 mx-auto"><Input type="number" value={m.percentage || 0} onChange={e => updateMilestone(idx, 'percentage', e.target.value)} className="h-10 rounded-xl border-2 font-black text-center pe-6" /><Percent className="absolute end-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-300" /></div></td>
                                    )}
-                                   <td className="p-4"><Select value={m.timing || 'at'} onValueChange={v => updateMilestone(idx, 'timing', v)}><SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl"><SelectItem value="at" className="font-bold text-xs">عند البدء</SelectItem><SelectItem value="during" className="font-bold text-xs">أثناء التنفيذ</SelectItem><SelectItem value="after" className="font-bold text-xs">بعد الإتمام</SelectItem></SelectContent></Select></td>
-                                   <td className="p-4"><Select value={m.technicalStageId || 'SIGNING'} onValueChange={v => updateMilestone(idx, 'technicalStageId', v)}><SelectTrigger className={cn("h-10 rounded-xl border-2 font-black text-xs", m.technicalStageId ? "bg-primary/5 text-primary border-primary/20" : "bg-white")}><SelectValue placeholder="..." /></SelectTrigger><SelectContent className="rounded-xl z-[160]"><SelectItem value="SIGNING" className="font-black text-[10px] py-3 border-b">توقيع العقد</SelectItem>{pathStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3 border-b last:border-0"><span className="flex items-center gap-2"><Workflow className="h-3 w-3 text-primary" /> {s.name}</span></SelectItem>)}</SelectContent></Select></td>
-                                   <td className="p-4 text-end pe-12"><div className="flex items-center gap-2 justify-end"><Input type="number" step="0.001" readOnly={formData.pricingMode === 'percentage'} value={m.amount || 0} onChange={e => updateMilestone(idx, 'amount', e.target.value)} className="h-10 w-32 text-end font-black text-emerald-600 text-sm bg-slate-50 border-2 rounded-xl" /><span className="text-[10px] font-bold text-slate-300">KWD</span></div></td>
+                                   <td className="p-4 text-center"><Select value={m.timing || 'at'} onValueChange={v => updateMilestone(idx, 'timing', v)}><SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl"><SelectItem value="at" className="font-bold text-xs">عند البدء</SelectItem><SelectItem value="during" className="font-bold text-xs">أثناء التنفيذ</SelectItem><SelectItem value="after" className="font-bold text-xs">بعد الإتمام</SelectItem></SelectContent></Select></td>
+                                   <td className="p-4 text-start"><Select value={m.technicalStageId || 'SIGNING'} onValueChange={v => updateMilestone(idx, 'technicalStageId', v)}><SelectTrigger className={cn("h-10 rounded-xl border-2 font-black text-xs", m.technicalStageId ? "bg-primary/5 text-primary border-primary/20" : "bg-white")}><SelectValue placeholder="..." /></SelectTrigger><SelectContent className="rounded-xl z-[160]"><SelectItem value="SIGNING" className="font-black text-[10px] py-3 border-b">توقيع العقد</SelectItem>{pathStages.map(s => <SelectItem key={s.id} value={s.id!} className="font-bold text-xs py-3 border-b last:border-0"><span className="flex items-center gap-2"><Workflow className="h-3 w-3 text-primary" /> {s.name}</span></SelectItem>)}</SelectContent></Select></td>
+                                   <td className="p-4 text-end pe-10"><div className="flex items-center gap-2 justify-end"><Input type="number" step="0.001" readOnly={formData.pricingMode === 'percentage'} value={m.amount || 0} onChange={e => updateMilestone(idx, 'amount', e.target.value)} className="h-10 w-32 text-end font-black text-emerald-600 text-sm bg-slate-50 border-2 rounded-xl" /><span className="text-[10px] font-bold text-slate-300">KWD</span></div></td>
                                    <td className="p-4 text-center"><button type="button" onClick={() => setFormData({...formData, defaultMilestones: formData.defaultMilestones?.filter((_, i) => i !== idx)})} className="text-rose-300 hover:text-rose-600 transition-colors"><Trash2 className="h-5 w-5" /></button></td>
                                 </tr>
                               ))}
                            </tbody>
-                           <tfoot className="bg-slate-50 border-t-8 border-primary"><tr className="font-black text-slate-800"><td colSpan={formData.pricingMode === 'percentage' ? 5 : 4} className="p-10 text-xl font-headline uppercase">{isRtl ? 'إجمالي قيمة التعاقد المعتمدة' : 'Total Contract Value'}</td><td colSpan={2} className="p-10 text-end pe-12"><div className="space-y-1"><h2 className="text-5xl font-black font-headline text-primary">{(currentDisplayAmount || 0).toLocaleString()}</h2><p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em]">{isRtl ? 'دينار كويتي لا غير' : 'KUWAITI DINARS ONLY'}</p></div></td></tr></tfoot>
+                           <tfoot className="bg-slate-50 border-t-8 border-primary"><tr className="font-black text-slate-800"><td colSpan={formData.pricingMode === 'percentage' ? 5 : 4} className="p-10 text-xl font-headline uppercase text-start">{isRtl ? 'إجمالي قيمة التعاقد المعتمدة' : 'Total Contract Value'}</td><td colSpan={2} className="p-10 text-end pe-10"><div className="space-y-1"><h2 className="text-5xl font-black font-headline text-primary">{(currentDisplayAmount || 0).toLocaleString()}</h2><p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.5em]">{isRtl ? 'دينار كويتي لا غير' : 'KUWAITI DINARS ONLY'}</p></div></td></tr></tfoot>
                         </table>
                      </div>
                   </div>
 
-                  <div className="space-y-4 pt-10"><h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 border-b-4 border-primary/20 pb-3"><Gavel className="h-6 w-6 text-primary" /> {isRtl ? 'البنود والالتزامات القانونية المرجعية' : 'Legal Clauses & Obligations'}</h4><Textarea value={formData.legalText || ''} onChange={e => setFormData({...formData, legalText: e.target.value})} className="min-h-[400px] rounded-[3rem] border-2 p-10 text-base font-bold leading-relaxed bg-slate-50 focus:bg-white transition-all shadow-inner" /></div>
+                  <div className="space-y-4 pt-10 text-start"><h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 border-b-4 border-primary/20 pb-3"><Gavel className="h-6 w-6 text-primary" /> {isRtl ? 'البنود والالتزامات القانونية المرجعية' : 'Legal Clauses & Obligations'}</h4><Textarea value={formData.legalText || ''} onChange={e => setFormData({...formData, legalText: e.target.value})} className="min-h-[400px] rounded-[3rem] border-2 p-10 text-base font-bold leading-relaxed bg-slate-50 focus:bg-white transition-all shadow-inner" /></div>
                </div>
             </PrintWrapper>
          </div>
