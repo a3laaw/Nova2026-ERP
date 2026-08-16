@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -11,7 +12,7 @@ import {
   Trash2, Edit3, ShieldCheck, ListTree,
   Filter, CheckCircle2, X, XCircle,
   LayoutGrid, DollarSign, Clock, Package, Scale, CreditCard,
-  Save
+  Save, Percent
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
@@ -24,7 +25,6 @@ import { BaseReferenceList } from '@/types/reference';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
@@ -38,6 +38,7 @@ import {
   AlertDialogTitle 
 } from "@/components/ui/alert-dialog";
 import { toast } from '@/hooks/use-toast';
+import { Textarea } from '@/components/ui/textarea';
 
 export default function ReferenceListsPage() {
   const { globalUser, user } = useAuthContext();
@@ -339,14 +340,14 @@ export default function ReferenceListsPage() {
                   </div>
                   <Switch 
                     checked={editingItem?.isActive !== false} 
-                    onCheckedChange={v => setEditingItem({...editingItem, isActive: v})} 
+                    onCheckedChange={v => setEditingItem({...editingItem!, isActive: v})} 
                   />
                </div>
             </div>
 
             <DialogFooter className="p-10 bg-slate-50 border-t">
                <Button onClick={handleSave} disabled={loadingAction === 'save'} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-3 border-b-8 border-orange-700">
-                  {loadingAction === 'save' ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6" />}
+                  {loadingAction === 'save' ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6 me-2" />}
                   {t('common.save')}
                </Button>
             </DialogFooter>
