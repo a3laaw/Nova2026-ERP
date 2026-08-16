@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { 
   Sparkles, Loader2, Database, ShieldCheck, 
   CheckCircle2, AlertTriangle, Trash2, CalendarX,
@@ -96,8 +97,8 @@ export function SeedTool() {
          <CardHeader className="p-10 text-start bg-rose-50/50 border-b border-rose-100">
             <div className="flex items-center gap-4">
                <div className="h-12 w-12 rounded-2xl bg-rose-600 text-white flex items-center justify-center shadow-lg"><DatabaseZap className="h-6 w-6" /></div>
-               <div>
-                  <CardTitle className="text-2xl font-black text-rose-900">{isRtl ? 'التطهير الشامل للنظام' : 'System-Wide Data Purge'}</CardTitle>
+               <div className="text-start">
+                  <CardTitle className="text-2xl font-black text-slate-800">{isRtl ? 'التطهير الشامل للنظام' : 'System-Wide Data Purge'}</CardTitle>
                   <Badge variant="destructive" className="mt-2 font-black uppercase text-[10px] tracking-widest px-3">NUCLEAR RESET</Badge>
                </div>
             </div>
@@ -118,9 +119,9 @@ export function SeedTool() {
             <Button 
               onClick={handleSystemPurge} 
               disabled={purgingSystem} 
-              className="w-full h-20 rounded-[2.5rem] bg-rose-600 text-white font-black text-2xl shadow-xl shadow-rose-200 border-b-8 border-rose-800 hover:scale-[1.02] active:scale-95 transition-all gap-4"
+              className="w-full h-12 rounded-2xl bg-rose-600 text-white font-black text-sm shadow-xl shadow-rose-200 border-b-4 border-rose-800 hover:scale-[1.02] active:scale-95 transition-all gap-4"
             >
-               {purgingSystem ? <Loader2 className="animate-spin h-8 w-8" /> : <Trash2 className="h-8 w-8" />}
+               {purgingSystem ? <Loader2 className="animate-spin h-5 w-5" /> : <Trash2 className="h-5 w-5" />}
                {isRtl ? 'بدء التطهير الشامل الآن' : 'Start Complete Purge'}
             </Button>
          </CardContent>
@@ -130,15 +131,15 @@ export function SeedTool() {
         <CardHeader className="p-10 text-start">
            <div className="flex items-center gap-4">
               <div className="h-12 w-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-lg"><Fingerprint className="h-6 w-6" /></div>
-              <div>
-                 <CardTitle className="text-2xl font-black">{isRtl ? 'توحيد هويات النظام' : 'Identity Standardization'}</CardTitle>
+              <div className="text-start">
+                 <CardTitle className="text-2xl font-black text-slate-800">{isRtl ? 'توحيد هويات النظام' : 'Identity Standardization'}</CardTitle>
                  <CardDescription className="font-bold">{isRtl ? 'إصلاح تباين الصلاحيات وتوحيد الأكواد المرجعية لكافة المستخدمين.' : 'Fix permission variances and unify roles.'}</CardDescription>
               </div>
            </div>
         </CardHeader>
         <CardContent className="p-10 pt-0 flex flex-col md:flex-row items-center justify-between gap-6">
-           <Button onClick={handleIdentityMigration} disabled={migrating} className="h-16 px-10 rounded-2xl bg-emerald-600 text-white font-black shadow-xl gap-3">
-              {migrating ? <Loader2 className="animate-spin h-6 w-6" /> : <RefreshCcw className="h-6 w-6" />}
+           <Button onClick={handleIdentityMigration} disabled={migrating} className="h-12 px-10 rounded-2xl bg-emerald-600 text-white font-black text-sm shadow-xl gap-3">
+              {migrating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
               {isRtl ? 'بدء الهوية السيادية' : 'Run Identity Fix'}
            </Button>
         </CardContent>
@@ -146,13 +147,13 @@ export function SeedTool() {
 
       <Card className="border-4 border-dashed border-primary/20 rounded-[3rem] bg-white overflow-hidden shadow-xl">
         <CardHeader className="bg-primary/5 p-12 text-center">
-          <div className="mx-auto w-24 h-24 bg-primary text-white rounded-[2rem] flex items-center justify-center shadow-2xl mb-6"><Database className="h-12 w-12" /></div>
-          <CardTitle className="text-3xl font-black font-headline tracking-tight">{isRtl ? 'تهيئة المصنع المرجعي' : 'Reference Factory Initialization'}</CardTitle>
+          <div className="mx-auto w-20 h-20 bg-primary text-white rounded-[2rem] flex items-center justify-center shadow-2xl mb-6"><Database className="h-10 w-10" /></div>
+          <CardTitle className="text-3xl font-black font-headline tracking-tight text-slate-800">{isRtl ? 'تهيئة المصنع المرجعي' : 'Reference Factory Initialization'}</CardTitle>
           <CardDescription className="text-lg mt-2 font-bold opacity-70">{isRtl ? 'ضخ القواعد الجغرافية، التنظيمية، والفنية الموحدة لنظام Nova ERP' : 'Inject geography, organization, and technical paths.'}</CardDescription>
         </CardHeader>
         <CardContent className="p-12 space-y-8">
-          <Button onClick={handleRunSeed} disabled={loading || isDone} className="w-full h-20 rounded-[2rem] font-black text-2xl bg-primary shadow-2xl shadow-primary/20">
-            {loading ? <Loader2 className="me-3 h-8 w-8 animate-spin" /> : isDone ? <CheckCircle2 className="me-3 h-8 w-8" /> : <Sparkles className="me-3 h-8 w-8" />}
+          <Button onClick={handleRunSeed} disabled={loading || isDone} className="w-full h-12 rounded-2xl font-black text-sm bg-primary shadow-xl shadow-primary/20">
+            {loading ? <Loader2 className="me-3 h-5 w-5 animate-spin" /> : isDone ? <CheckCircle2 className="me-3 h-5 w-5" /> : <Sparkles className="me-3 h-5 w-5" />}
             {isRtl ? 'تشغيل محرك التهيئة الآن' : 'Run Initialization Engine'}
           </Button>
         </CardContent>
