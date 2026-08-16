@@ -8,7 +8,7 @@ import {
   Sparkles, Loader2, Database, ShieldCheck, 
   CheckCircle2, AlertTriangle, Trash2, CalendarX,
   Settings2, Fingerprint, RefreshCcw, DatabaseZap,
-  UserCheck
+  UserCheck, Plane
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
@@ -22,6 +22,7 @@ export function SeedTool() {
   const db = useFirestore();
   const [loading, setLoading] = useState(false);
   const [purging, setPurging] = useState(false);
+  const [purgingLeaves, setPurgingLeaves] = useState(false);
   const [purgingSystem, setPurgingSystem] = useState(false);
   const [migrating, setMigrating] = useState(false);
   const [isDone, setIsDone] = useState(false);
@@ -67,6 +68,19 @@ export function SeedTool() {
     } finally { setPurging(false); }
   };
 
+  const handlePurgeLeaves = async () => {
+    if (!db || !globalUser?.companyId) return;
+    if (!confirm(isRtl ? 'تنبيه خطير: سيتم حذف كافة طلبات الإجازات نهائياً مع المحافظة على سجلات الموظفين. هل أنت متأكد؟' : 'Danger: This will delete all leave requests permanently. Employees will be kept. Proceed?')) return;
+    setPurgingLeaves(true);
+    const service = new SeedService(db, globalUser.companyId);
+    try {
+      await service.purgeAllLeaves();
+      toast({ title: isRtl ? "تم تطهير أرشيف الإجازات" : "Leaves Purged Successfully" });
+    } catch (e) {
+      toast({ variant: "destructive", title: t('common.error') });
+    } finally { setPurgingLeaves(false); }
+  };
+
   const handleSystemPurge = async () => {
     if (!db || !globalUser?.companyId) return;
     const msg = isRtl 
@@ -92,7 +106,6 @@ export function SeedTool() {
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
-      {/* قسم التطهير الشامل السيادي */}
       <Card className="border-4 border-rose-100 rounded-[3rem] bg-rose-50/20 overflow-hidden shadow-2xl animate-in zoom-in-95">
          <CardHeader className="p-10 text-start bg-rose-50/50 border-b border-rose-100">
             <div className="flex items-center gap-4">
@@ -124,6 +137,52 @@ export function SeedTool() {
                {purgingSystem ? <Loader2 className="animate-spin h-5 w-5" /> : <Trash2 className="h-5 w-5" />}
                {isRtl ? 'بدء التطهير الشامل الآن' : 'Start Complete Purge'}
             </Button>
+         </CardContent>
+      </Card>
+
+      <Card className="border-2 border-slate-200 rounded-[2.5rem] bg-white overflow-hidden shadow-xl">
+         <CardHeader className="bg-slate-50 border-b p-8 text-start">
+            <CardTitle className="text-lg font-black flex items-center gap-3 text-slate-800">
+               <Settings2 className="h-5 w-5 text-primary" />
+               {isRtl ? 'أدوات تنظيف الأقسام المتخصصة' : 'Specific Data Cleaning Tools'}
+            </CardTitle>
+         </CardHeader>
+         <CardContent className="p-8 space-y-6">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-6 rounded-3xl bg-slate-50 border-2 border-slate-100">
+               <div className="text-start space-y-1">
+                  <h4 className="font-black text-slate-900 flex items-center gap-2"><Plane className="h-4 w-4 text-primary" /> {isRtl ? 'تطهير أرشيف الإجازات' : 'Purge All Leaves'}</h4>
+                  <p className="text-[10px] font-bold text-slate-400 max-w-sm">
+                    {isRtl ? 'حذف كافة طلبات الإجازات (المعتمدة والسابقة) لتصفير سجلات الغياب. الموظفون وأرصدتهم لن تتأثر إلا عند الاحتساب القادم.' : 'Wipe all leave logs. Employees are safe.'}
+                  </p>
+               </div>
+               <Button 
+                 onClick={handlePurgeLeaves} 
+                 disabled={purgingLeaves}
+                 variant="destructive" 
+                 className="rounded-xl h-11 px-8 font-black gap-2 shadow-lg shadow-rose-100"
+               >
+                  {purgingLeaves ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  {isRtl ? 'تطهير الإجازات' : 'Purge Leaves'}
+               </Button>
+            </div>
+
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-6 rounded-3xl bg-slate-50 border-2 border-slate-100">
+               <div className="text-start space-y-1">
+                  <h4 className="font-black text-slate-900 flex items-center gap-2"><CalendarX className="h-4 w-4 text-primary" /> {isRtl ? 'تطهير سجل المواعيد' : 'Purge All Appointments'}</h4>
+                  <p className="text-[10px] font-bold text-slate-400 max-w-sm">
+                    {isRtl ? 'حذف كافة المواعيد المجدولة في الرادار لضمان بداية نظيفة لجدول العمل.' : 'Wipe all appointments logs.'}
+                  </p>
+               </div>
+               <Button 
+                 onClick={handlePurgeAppointments} 
+                 disabled={purging}
+                 variant="outline" 
+                 className="rounded-xl h-11 px-8 font-black gap-2 border-2"
+               >
+                  {purging ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  {isRtl ? 'حذف المواعيد' : 'Purge Logs'}
+               </Button>
+            </div>
          </CardContent>
       </Card>
 

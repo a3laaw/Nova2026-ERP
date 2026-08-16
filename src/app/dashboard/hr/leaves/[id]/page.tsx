@@ -149,7 +149,7 @@ export default function LeaveDetailsPage() {
            
            <div className="lg:col-span-8 space-y-8">
               
-              {/* قسم التنفيذ الإداري (Departure / Return Flow) */}
+              {/* قسم التنفيذ الإداري اليدوي (Manual Departure / Return Flow) */}
               {isAdmin && ['approved', 'on-leave', 'returned'].includes(leave.status) && (
                 <Card className="border-4 border-dashed border-primary/20 rounded-[2.5rem] bg-white overflow-hidden shadow-2xl print:hidden">
                    <div className="bg-primary/5 p-8 border-b text-start">
@@ -160,45 +160,75 @@ export default function LeaveDetailsPage() {
                    </div>
                    <CardContent className="p-8 space-y-8 text-start">
                       
-                      {/* الحالة 1: الموظف سيغادر */}
+                      {/* الحالة 1: الموظف سيغادر (يدوي) */}
                       {leave.status === 'approved' && (
                         <div className="space-y-6 animate-in zoom-in-95">
-                           <div className="p-6 bg-slate-50 rounded-2xl space-y-4">
-                              <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'تاريخ المغادرة الفعلي' : 'Actual Departure Date'}</Label>
-                              <SmartDateInput value={actualDepartureDate} onChange={setActualDepartureDate} />
+                           <div className="p-8 bg-slate-50 rounded-[2rem] border-2 border-white space-y-6">
+                              <div className="space-y-2">
+                                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'تاريخ المغادرة الفعلي' : 'Actual Departure Date'}</Label>
+                                 <SmartDateInput value={actualDepartureDate} onChange={setActualDepartureDate} />
+                              </div>
+                              <div className="p-4 bg-amber-50 rounded-2xl flex items-start gap-3 border border-amber-100">
+                                 <Info className="h-4 w-4 text-amber-600 mt-1 shrink-0" />
+                                 <p className="text-[10px] font-bold text-amber-800 leading-relaxed">
+                                    {isRtl ? 'يرجى تسجيل التاريخ الحقيقي لخروج الموظف، سيقوم النظام بتحديث حالة الموظف لـ (في إجازة) فوراً.' : 'Register the actual day the employee left office.'}
+                                 </p>
+                              </div>
                            </div>
                            <Button onClick={() => handleAction('on-leave')} disabled={processing} className="w-full h-16 rounded-2xl bg-[#FFB000] text-white font-black text-lg shadow-xl border-b-4 border-[#FF5722] gap-3">
-                              <PlaneTakeoff className="h-6 w-6" /> {isRtl ? 'تسجيل مغادرة الموظف (بدء الإجازة)' : 'Confirm Departure'}
+                              <PlaneTakeoff className="h-6 w-6" /> {isRtl ? 'تسجيل مغادرة الموظف' : 'Confirm Departure'}
                            </Button>
                         </div>
                       )}
 
-                      {/* الحالة 2: الموظف عاد (هذا ما يبحث عنه المستخدم) */}
+                      {/* الحالة 2: الموظف عاد (يدوي) */}
                       {leave.status === 'on-leave' && (
                         <div className="space-y-6 animate-in zoom-in-95">
-                           <div className="p-6 bg-slate-50 rounded-2xl space-y-4">
-                              <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'تاريخ العودة الفعلي' : 'Actual Return Date'}</Label>
-                              <SmartDateInput value={actualReturnDate} onChange={setActualReturnDate} />
+                           <div className="p-8 bg-slate-50 rounded-[2rem] border-2 border-white space-y-6">
+                              <div className="space-y-2">
+                                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'تاريخ العودة الفعلي' : 'Actual Return Date'}</Label>
+                                 <SmartDateInput value={actualReturnDate} onChange={setActualReturnDate} />
+                              </div>
+                              <div className="p-4 bg-blue-50 rounded-2xl flex items-start gap-3 border border-blue-100">
+                                 <Info className="h-4 w-4 text-blue-600 mt-1 shrink-0" />
+                                 <p className="text-[10px] font-bold text-blue-800 leading-relaxed">
+                                    {isRtl ? 'سجل التاريخ الفعلي لرجوع الموظف. في الخطوة القادمة ستتمكن من مراجعة رصيد الإجازات المخصوم.' : 'Register the actual day the employee returned.'}
+                                 </p>
+                              </div>
                            </div>
                            <Button onClick={() => handleAction('returned')} disabled={processing} className="w-full h-16 rounded-2xl bg-purple-600 text-white font-black text-lg shadow-xl border-b-4 border-purple-800 gap-3">
-                              <PlaneLanding className="h-6 w-6" /> {isRtl ? 'تسجيل عودة الموظف من الإجازة' : 'Register Return'}
+                              <PlaneLanding className="h-6 w-6" /> {isRtl ? 'تسجيل عودة الموظف' : 'Register Return'}
                            </Button>
                         </div>
                       )}
 
-                      {/* الحالة 3: اعتماد المباشرة النهائية */}
+                      {/* الحالة 3: اعتماد المباشرة النهائية (مع مراجعة الأيام) */}
                       {leave.status === 'returned' && (
                         <div className="space-y-6 animate-in zoom-in-95">
-                           <div className="p-8 bg-emerald-50 rounded-[2rem] border-2 border-emerald-100 space-y-4">
+                           <div className="p-8 bg-emerald-50 rounded-[2rem] border-2 border-emerald-100 space-y-8">
                               <div className="flex items-center gap-3 text-emerald-700">
-                                 <ShieldCheck className="h-6 w-6" />
-                                 <h4 className="font-black">{isRtl ? 'اعتماد مباشرة العمل' : 'Final Commencement'}</h4>
+                                 <ShieldCheck className="h-7 w-7" />
+                                 <h4 className="font-black text-xl">{isRtl ? 'اعتماد مباشرة العمل النهائية' : 'Final Commencement'}</h4>
                               </div>
-                              <p className="text-xs font-bold text-emerald-600 leading-relaxed italic">
-                                 {isRtl 
-                                   ? 'برجاء مراجعة "أيام العمل" النهائية في الطلب بالأسفل قبل الاعتماد لضمان صحة خصم الرصيد في حال تأخر أو تقدم الموظف.' 
-                                   : 'Please review final "Work Days" below before confirmation to ensure correct balance deduction.'}
-                              </p>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-6 rounded-2xl shadow-inner border border-emerald-100">
+                                 <div className="space-y-2 text-start">
+                                    <Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'أيام العمل النهائية المخصومة' : 'Final Work Days Deduction'}</Label>
+                                    <Input 
+                                      type="number" 
+                                      value={editForm.workingDays} 
+                                      onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})} 
+                                      className="h-14 rounded-xl border-2 font-black text-2xl text-emerald-600 text-center" 
+                                    />
+                                    <p className="text-[9px] text-slate-400 font-bold italic">{isRtl ? 'يمكنك تعديل الأيام بناءً على التواريخ الفعلية.' : 'You can adjust days based on actual dates.'}</p>
+                                 </div>
+                                 <div className="p-4 bg-emerald-50/50 rounded-xl flex items-center justify-center text-center">
+                                    <div className="space-y-1">
+                                       <p className="text-[8px] font-black text-emerald-600 uppercase">المغادرة / العودة الفعلية</p>
+                                       <p className="text-xs font-mono font-bold text-emerald-700">{leave.actualDepartureDate} → {leave.actualReturnDate}</p>
+                                    </div>
+                                 </div>
+                              </div>
                            </div>
                            <Button onClick={() => handleAction('commenced')} disabled={processing} className="w-full h-20 rounded-[2.5rem] bg-emerald-600 text-white font-black text-2xl shadow-xl shadow-emerald-100 border-b-8 border-emerald-800 gap-4">
                               <Zap className="h-8 w-8" /> {isRtl ? 'اعتماد المباشرة وتفعيل الموظف' : 'Approve & Activate'}

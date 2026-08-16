@@ -46,6 +46,7 @@ export class SeedService {
       paths.payroll(this.companyId),
       paths.leads(this.companyId),
       paths.executions(this.companyId),
+      paths.leaveRequests(this.companyId),
       `companies/${this.companyId}/counters` 
     ];
 
@@ -66,6 +67,18 @@ export class SeedService {
         if (snap.size < batchSize) hasMore = false;
       }
     }
+  }
+
+  /**
+   * تطهير سجل الإجازات فقط مع المحافظة على الموظفين
+   */
+  async purgeAllLeaves() {
+    const q = query(collection(this.db, paths.leaveRequests(this.companyId)));
+    const snap = await getDocs(q);
+    if (snap.empty) return;
+    const batch = writeBatch(this.db);
+    snap.docs.forEach(d => batch.delete(d.ref));
+    return batch.commit();
   }
 
   /**
@@ -280,7 +293,7 @@ export class SeedService {
       defaultMilestones: [
         { name: 'دفعة عند توقيع العقد', percentage: 20, timing: 'at', technicalStageId: 'SIGNING' },
         { name: 'دفعة عند اعتماد المسقط الأفقي المعماري', percentage: 40, timing: 'after', technicalStageId: stageRefs['ARCH-APPR'] },
-        { name: 'دفعة عند تسليم المخططات النهائية والمختومة', percentage: 40, timing: 'after', technicalStageId: stageRefs['ENG-STAMP'] },
+        { name: 'دفعة عند تسليم المخطط النهائي والمختوم', percentage: 40, timing: 'after', technicalStageId: stageRefs['ENG-STAMP'] },
       ],
       companyId: this.companyId,
       createdAt: serverTimestamp(),
