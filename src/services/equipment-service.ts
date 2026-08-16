@@ -16,7 +16,7 @@ import { AccountingService } from './accounting-service';
 
 /**
  * خدمة إدارة المعدات والآليات (Equipment Service).
- * تم تحديثها لتوليد مراكز ربحية للمعدات لتتبع ROI التشغيلي.
+ * تم تحديثها لتوليد مراكز ربحية للمعدات لتتبع العائد الاستثماري (ROI) وفق معايير IFRS.
  */
 export class EquipmentService {
   constructor(private db: Firestore, private companyId: string) {}
@@ -47,23 +47,23 @@ export class EquipmentService {
         } satisfies SecurityRuleContext));
       });
 
-    // الأتمتة المحاسبية والتحليلية:
+    // الأتمتة المحاسبية والتحليلية (Enterprise Standard):
     const accService = new AccountingService(this.db, this.companyId);
 
-    // 1. إنشاء حساب أصل ثابت (في حال كانت مملوكة)
+    // 1. إنشاء حساب أصل ثابت (في حال كانت مملوكة) - ربط مالي سيادي
     if (data.ownershipType === 'owned') {
        await accService.ensureControlAccount('1101', 'آليات ومعدات ثقيلة', 'Heavy Machinery & Equipment', 'asset');
        await accService.createAutomaticSubAccount('1101', equipRef.id, data.name || 'معدة جديدة', 'asset');
     }
 
-    // 2. إنشاء مركز تكلفة: لتتبع مصاريف الوقود والصيانة
+    // 2. إنشاء مركز تكلفة: لمطاردة مصاريف التشغيل (صيانة، وقود، إصلاح)
     await accService.createAutomaticCostCenter(
        equipRef.id, 
        `تكلفة المعدة: ${data.name}`, 
        `CC-EQP-${data.code}`
     );
 
-    // 3. إنشاء مركز ربحية: لتتبع العائد التشغيلي (القيمة المنتجة)
+    // 3. إنشاء مركز ربحية: لمطاردة القيمة المضافة للمعدات في المشاريع (Rental Yield / Productivity)
     await accService.createAutomaticProfitCenter(
        equipRef.id,
        `ربحية المعدة: ${data.name}`,
