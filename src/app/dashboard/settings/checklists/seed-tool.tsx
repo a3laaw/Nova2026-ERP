@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { 
   Sparkles, Loader2, Database, ShieldCheck, 
   CheckCircle2, AlertTriangle, Trash2, CalendarX,
-  Settings2, Fingerprint, RefreshCcw
+  Settings2, Fingerprint, RefreshCcw, DatabaseZap,
+  UserCheck
 } from "lucide-react";
 import { useFirestore } from '@/firebase';
 import { useAuthContext } from '@/context/auth-context';
@@ -16,10 +17,11 @@ import { toast } from '@/hooks/use-toast';
 
 export function SeedTool() {
   const { globalUser } = useAuthContext();
-  const { t, lang, dir, isRtl } = useLanguage();
+  const { t, lang, dir, isRtl, tSafe } = useLanguage();
   const db = useFirestore();
   const [loading, setLoading] = useState(false);
   const [purging, setPurging] = useState(false);
+  const [purgingSystem, setPurgingSystem] = useState(false);
   const [migrating, setMigrating] = useState(false);
   const [isDone, setIsDone] = useState(false);
 
@@ -47,9 +49,7 @@ export function SeedTool() {
     const service = new SeedService(db, globalUser.companyId);
     try {
       const count = await service.runIdentityMigration();
-      toast({ title: t('common.saved'), description: `Updated ${count} users.` });
-    } catch (e) {
-      toast({ variant: "destructive", title: t('common.error') });
+      toast({ title: tSafe('inline.identity.fixed', 'تم إصلاح الهويات', 'Identity Fixed'), description: `Updated ${count} users.` });
     } finally { setMigrating(false); }
   };
 
@@ -66,9 +66,67 @@ export function SeedTool() {
     } finally { setPurging(false); }
   };
 
+  const handleSystemPurge = async () => {
+    if (!db || !globalUser?.companyId) return;
+    const msg = isRtl 
+      ? 'تنبيه خطير: سيتم حذف كافة العملاء، المشاريع، القيود المحاسبية، وشجرة الحسابات نهائياً وتصفير العدادات. سيتم الحفاظ على الموظفين فقط. هل أنت متأكد؟' 
+      : 'Nuclear Warning: This will delete ALL clients, projects, accounting data, and reset counters. Employees will be kept. Proceed?';
+    
+    if (!confirm(msg)) return;
+
+    setPurgingSystem(true);
+    const service = new SeedService(db, globalUser.companyId);
+    try {
+      await service.purgeSystemData();
+      toast({ 
+        title: isRtl ? "اكتمل التطهير الشامل" : "System Purge Complete",
+        description: isRtl ? "تم تصفير النظام بنجاح مع الحفاظ على القوى العاملة." : "System reset successfully, employees kept."
+      });
+    } catch (e) {
+      toast({ variant: "destructive", title: t('common.error') });
+    } finally {
+      setPurgingSystem(false);
+    }
+  };
+
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
-      <Card className="border-4 border-emerald-100 rounded-[3rem] bg-emerald-50/20 overflow-hidden shadow-2xl">
+      {/* قسم التطهير الشامل السيادي */}
+      <Card className="border-4 border-rose-100 rounded-[3rem] bg-rose-50/20 overflow-hidden shadow-2xl animate-in zoom-in-95">
+         <CardHeader className="p-10 text-start bg-rose-50/50 border-b border-rose-100">
+            <div className="flex items-center gap-4">
+               <div className="h-12 w-12 rounded-2xl bg-rose-600 text-white flex items-center justify-center shadow-lg"><DatabaseZap className="h-6 w-6" /></div>
+               <div>
+                  <CardTitle className="text-2xl font-black text-rose-900">{isRtl ? 'التطهير الشامل للنظام' : 'System-Wide Data Purge'}</CardTitle>
+                  <Badge variant="destructive" className="mt-2 font-black uppercase text-[10px] tracking-widest px-3">NUCLEAR RESET</Badge>
+               </div>
+            </div>
+         </CardHeader>
+         <CardContent className="p-10 space-y-6 text-start">
+            <div className="flex items-start gap-4 p-6 bg-white rounded-3xl border-2 border-rose-100 shadow-inner">
+               <AlertTriangle className="h-8 w-8 text-rose-600 shrink-0 mt-1" />
+               <div className="space-y-2">
+                  <h4 className="font-black text-rose-800">{isRtl ? 'ماذا سيحدث عند الضغط؟' : 'What happens next?'}</h4>
+                  <ul className="text-xs font-bold text-slate-500 space-y-2 list-disc ps-4">
+                     <li>{isRtl ? 'حذف كافة العملاء والملفات الفنية.' : 'Delete all clients and technical files.'}</li>
+                     <li>{isRtl ? 'مسح شجرة الحسابات، قيود اليومية، والسندات المالية.' : 'Wipe COA, journals, and vouchers.'}</li>
+                     <li>{isRtl ? 'تصفير كافة العدادات الرقمية (الترقيم يبدأ من 1).' : 'Reset all sequential counters to 1.'}</li>
+                     <li className="text-emerald-600 font-black">{isRtl ? 'سيتم الحفاظ على سجلات الموظفين والهيكل التنظيمي.' : 'Employees and Org Structure will be kept.'}</li>
+                  </ul>
+               </div>
+            </div>
+            <Button 
+              onClick={handleSystemPurge} 
+              disabled={purgingSystem} 
+              className="w-full h-20 rounded-[2.5rem] bg-rose-600 text-white font-black text-2xl shadow-xl shadow-rose-200 border-b-8 border-rose-800 hover:scale-[1.02] active:scale-95 transition-all gap-4"
+            >
+               {purgingSystem ? <Loader2 className="animate-spin h-8 w-8" /> : <Trash2 className="h-8 w-8" />}
+               {isRtl ? 'بدء التطهير الشامل الآن' : 'Start Complete Purge'}
+            </Button>
+         </CardContent>
+      </Card>
+
+      <Card className="border-4 border-emerald-100 rounded-[3rem] bg-emerald-50/20 overflow-hidden shadow-xl">
         <CardHeader className="p-10 text-start">
            <div className="flex items-center gap-4">
               <div className="h-12 w-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-lg"><Fingerprint className="h-6 w-6" /></div>
@@ -86,7 +144,7 @@ export function SeedTool() {
         </CardContent>
       </Card>
 
-      <Card className="border-4 border-dashed border-primary/20 rounded-[3rem] bg-white overflow-hidden shadow-2xl">
+      <Card className="border-4 border-dashed border-primary/20 rounded-[3rem] bg-white overflow-hidden shadow-xl">
         <CardHeader className="bg-primary/5 p-12 text-center">
           <div className="mx-auto w-24 h-24 bg-primary text-white rounded-[2rem] flex items-center justify-center shadow-2xl mb-6"><Database className="h-12 w-12" /></div>
           <CardTitle className="text-3xl font-black font-headline tracking-tight">{isRtl ? 'تهيئة المصنع المرجعي' : 'Reference Factory Initialization'}</CardTitle>
@@ -98,16 +156,6 @@ export function SeedTool() {
             {isRtl ? 'تشغيل محرك التهيئة الآن' : 'Run Initialization Engine'}
           </Button>
         </CardContent>
-      </Card>
-
-      <Card className="border-2 border-rose-100 rounded-[2.5rem] bg-white overflow-hidden shadow-xl">
-         <CardHeader className="bg-rose-50/50 p-8 border-b text-start"><CardTitle className="text-lg font-black flex items-center gap-3 text-rose-800"><Settings2 className="h-5 w-5" /> {isRtl ? 'أدوات سلامة وصيانة البيانات' : 'Data Maintenance Tools'}</CardTitle></CardHeader>
-         <CardContent className="p-8">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-6 rounded-3xl bg-slate-50 border-2">
-               <div className="text-start space-y-1"><h4 className="font-black text-slate-900">{isRtl ? 'تطهير سجل المواعيد' : 'Purge All Appointments'}</h4></div>
-               <Button onClick={handlePurgeAppointments} disabled={purging} variant="destructive" className="rounded-xl h-12 px-8 font-black gap-2 shadow-lg">{isRtl ? 'حذف كافة المواعيد' : 'Purge Logs'}</Button>
-            </div>
-         </CardContent>
       </Card>
     </div>
   );

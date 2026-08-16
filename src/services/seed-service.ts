@@ -21,6 +21,52 @@ export class SeedService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
+   * تطهير شامل لكافة البيانات التشغيلية والمالية (Nuclear Reset)
+   * يحذف كل شيء ما عدا الموظفين، الأقسام، المسميات الوظيفية، والأدوار.
+   */
+  async purgeSystemData() {
+    const batchSize = 500;
+    const collectionsToPurge = [
+      paths.clients(this.companyId),
+      paths.transactions(this.companyId),
+      paths.boqs(this.companyId),
+      paths.journalEntries(this.companyId),
+      paths.vouchers(this.companyId),
+      paths.accounts(this.companyId),
+      paths.costCenters(this.companyId),
+      paths.profitCenters(this.companyId),
+      paths.purchaseOrders(this.companyId),
+      paths.subconContracts(this.companyId),
+      paths.ipcs(this.companyId),
+      paths.subIpcs(this.companyId),
+      paths.fieldVisits(this.companyId),
+      paths.attendance(this.companyId),
+      paths.payroll(this.companyId),
+      paths.leads(this.companyId),
+      paths.executions(this.companyId),
+      `companies/${this.companyId}/counters` // تصفير العدادات الرقمية
+    ];
+
+    for (const path of collectionsToPurge) {
+      let hasMore = true;
+      while (hasMore) {
+        const q = query(collection(this.db, path), limit(batchSize));
+        const snap = await getDocs(q);
+        if (snap.empty) {
+          hasMore = false;
+          continue;
+        }
+
+        const batch = writeBatch(this.db);
+        snap.docs.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+
+        if (snap.size < batchSize) hasMore = false;
+      }
+    }
+  }
+
+  /**
    * سكربت هجرة الهوية السيادي (The Great Identity Migration)
    * يحل مشاكل الصلاحيات بتوحيد حالة أحرف roleCode ومعالجة السجلات المفقودة.
    */
