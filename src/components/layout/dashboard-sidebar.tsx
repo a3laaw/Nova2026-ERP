@@ -11,7 +11,9 @@ import {
   Building2, Settings2, ChevronDown,
   Database, FileSpreadsheet, CalendarDays, Gavel,
   MapPinned, Hammer, MapPin, Landmark, Receipt,
-  GitBranch, BarChart3, Wallet, Handshake
+  GitBranch, BarChart3, Wallet, Handshake,
+  Upload, UserPlus, TrendingUp, Briefcase,
+  List, Network, Building
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/language-context"
@@ -72,11 +74,10 @@ export function DashboardSidebar() {
           { title: t('subcontractors'), url: "/dashboard/procurement/subcontractors", icon: HardHat },
           { title: t('ownerClaims'), url: "/dashboard/accounting/claims", icon: Receipt },
           { title: t('subConClaims'), url: "/dashboard/procurement/sub-claims", icon: Handshake },
-          { title: t('reports'), url: "/dashboard/reports", icon: FileText },
         ]
       },
       
-      // 3. المقاولات والميدان (تم توحيده وحذف الرادار لعدم التكرار)
+      // 3. المقاولات والميدان
       { 
         title: t('construction'), 
         icon: Hammer, 
@@ -99,6 +100,8 @@ export function DashboardSidebar() {
           { title: t('suppliers'), url: "/dashboard/procurement/suppliers", icon: Truck },
           { title: t('contracts'), url: "/dashboard/procurement/contracts", icon: Gavel },
           { title: tSafe('subcon.contracts.title', 'عقود مقاولي الباطن', 'SubCon Contracts'), url: "/dashboard/procurement/subcontractors/contracts", icon: Handshake },
+          { title: tSafe('procurement.orders', 'أوامر الشراء', 'Purchase Orders'), url: "/dashboard/procurement/orders", icon: ShoppingCart },
+          { title: tSafe('procurement.quotes', 'عروض الأسعار', 'Quotes'), url: "/dashboard/procurement/quotes", icon: FileSearch },
           { title: t('aiAnalysis'), url: "/dashboard/ai", icon: FileSearch },
         ]
       },
@@ -112,7 +115,13 @@ export function DashboardSidebar() {
         subItems: [
           { title: t('staffRecords'), url: "/dashboard/hr/employees", icon: Users, hideIfOwnScope: true },
           { title: t('leaveRequests'), url: "/dashboard/hr/leaves", icon: Calendar },
+          { title: tSafe('hr.permissions', 'الاستئذانات', 'Permissions'), url: "/dashboard/hr/permissions", icon: Clock },
+          { title: tSafe('hr.attendance.import', 'استيراد البصمات', 'Import Attendance'), url: "/dashboard/hr/attendance/import", icon: Upload },
           { title: t('payroll'), url: "/dashboard/hr/payroll", icon: Calculator, requiredAction: 'approve', hideIfOwnScope: true },
+          { title: tSafe('hr.gratuity', 'نهاية الخدمة', 'Gratuity'), url: "/dashboard/hr/gratuity", icon: Calculator },
+          { title: tSafe('hr.recruitment', 'التوظيف', 'Recruitment'), url: "/dashboard/hr/recruitment", icon: UserPlus, hideIfOwnScope: true },
+          { title: tSafe('hr.legalGuide', 'الدليل القانوني', 'Legal Guide'), url: "/dashboard/hr/legal-guide", icon: ShieldCheck, hideIfOwnScope: true },
+          { title: tSafe('hr.reports', 'تقارير الموارد البشرية', 'HR Reports'), url: "/dashboard/hr/reports", icon: BarChart3 },
         ]
       },
       
@@ -130,8 +139,21 @@ export function DashboardSidebar() {
           { title: t('financialReports'), url: "/dashboard/accounting/reports", icon: BarChart3 },
         ]
       },
+
+      // 7. مركز التقارير الشامل
+      {
+        title: t('reports'),
+        icon: BarChart3,
+        url: "/dashboard/reports",
+        resource: 'dashboard',
+        subItems: [
+          { title: tSafe('reports.analytics', 'التحليلات المالية', 'Analytics'), url: "/dashboard/reports/analytics", icon: TrendingUp },
+          { title: tSafe('reports.executive', 'التقرير التنفيذي', 'Executive'), url: "/dashboard/reports/executive", icon: Briefcase },
+          { title: t('visitsDossier'), url: "/dashboard/projects/reports/client-visits", icon: MapPinned },
+        ]
+      },
       
-      // 7. المخازن والإعدادات
+      // 8. المخازن والإعدادات
       { 
         title: t('inventory'), 
         icon: Package, 
@@ -150,6 +172,14 @@ export function DashboardSidebar() {
           { title: t('usersManagement'), url: "/dashboard/settings/users", icon: Users },
           { title: t('companyIdentity'), url: "/dashboard/settings/company", icon: Building2 },
           { title: t('settings.checklists'), url: "/dashboard/settings/checklists", icon: Database },
+          { title: tSafe('settings.costCenters', 'مراكز التكلفة', 'Cost Centers'), url: "/dashboard/settings/cost-centers", icon: Calculator },
+          { title: tSafe('settings.profitCenters', 'مراكز الربحية', 'Profit Centers'), url: "/dashboard/settings/profit-centers", icon: TrendingUp },
+          { title: tSafe('settings.costRates', 'تعريفة العمالة', 'Cost Rates'), url: "/dashboard/settings/cost-rates", icon: Wallet },
+          { title: tSafe('settings.referenceLists', 'القوائم المرجعية', 'Reference Lists'), url: "/dashboard/settings/reference-lists", icon: List },
+          { title: tSafe('settings.templates', 'القوالب', 'Templates'), url: "/dashboard/settings/templates", icon: FileText },
+          { title: tSafe('settings.boqMaster', 'شجرة BOQ', 'BOQ Master'), url: "/dashboard/settings/checklists/boq-master", icon: GitBranch },
+          { title: tSafe('settings.boqNodes', 'بنود الأعمال', 'BOQ Nodes'), url: "/dashboard/settings/checklists/boq-nodes", icon: Network },
+          { title: tSafe('settings.halls', 'إدارة القاعات', 'Halls'), url: "/dashboard/settings/checklists/halls", icon: Building },
           { title: t('rolesPermissions'), url: "/dashboard/settings/roles", icon: ShieldCheck },
           { title: t('workHours'), url: "/dashboard/settings/work-hours", icon: Clock },
           { title: t('userProfile'), url: "/dashboard/settings/profile", icon: UserCircle },
