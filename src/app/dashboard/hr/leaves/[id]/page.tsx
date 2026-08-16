@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -103,7 +102,7 @@ export default function LeaveDetailsPage() {
     <div className="space-y-8 max-w-5xl mx-auto pb-20 animate-in fade-in duration-500 text-start" dir={dir}>
       <div className="flex items-center justify-between print:hidden">
         <div className="flex items-center gap-4 text-start">
-           <Button variant="ghost" onClick={() => router.back()} className="h-10 w-10 p-0 rounded-xl border-2 bg-white shadow-sm hover:text-primary transition-all">
+           <Button variant="ghost" onClick={() => router.back()} className="h-10 w-10 p-0 rounded-xl border-2 bg-white shadow-sm hover:text-primary transition-all text-slate-400">
              <ArrowRight className={cn("h-4 w-4", !isRtl && "rotate-180")} />
            </Button>
            <div className="text-start">
@@ -123,6 +122,9 @@ export default function LeaveDetailsPage() {
               </div>
            </div>
         </div>
+        <Button onClick={() => window.print()} variant="outline" className="rounded-xl h-10 px-6 font-black gap-2 border-2">
+           <Printer className="h-4 w-4" /> {t('common.print')}
+        </Button>
       </div>
 
       <PrintWrapper title={t('hr.officialAuthorization')}>
@@ -215,20 +217,20 @@ export default function LeaveDetailsPage() {
                  </CardHeader>
                  <CardContent className="p-6">
                     <div className="space-y-6 text-start">
-                       <div className="relative ps-6 border-start-2 border-slate-100 pb-2">
+                       <div className="relative ps-6 border-s-2 border-slate-100 pb-2">
                           <div className="absolute -start-[9px] top-0 h-4 w-4 rounded-full bg-primary border-4 border-white shadow-sm" />
                           <p className="text-[9px] font-black text-slate-400 uppercase">تاريخ الطلب</p>
                           <p className="text-xs font-bold text-slate-700 mt-1">{leave.createdAt?.toDate().toLocaleString()}</p>
                        </div>
                        {leave.actualDepartureDate && (
-                          <div className="relative ps-6 border-start-2 border-slate-100 pb-2">
+                          <div className="relative ps-6 border-s-2 border-slate-100 pb-2">
                              <div className="absolute -start-[9px] top-0 h-4 w-4 rounded-full bg-amber-500 border-4 border-white shadow-sm" />
                              <p className="text-[9px] font-black text-amber-600 uppercase">المغادرة الفعلية</p>
                              <p className="text-xs font-bold text-slate-700 mt-1">{leave.actualDepartureDate}</p>
                           </div>
                        )}
                        {leave.actualReturnDate && (
-                          <div className="relative ps-6 border-start-2 border-slate-100 pb-2">
+                          <div className="relative ps-6 border-s-2 border-slate-100 pb-2">
                              <div className="absolute -start-[9px] top-0 h-4 w-4 rounded-full bg-purple-500 border-4 border-white shadow-sm" />
                              <p className="text-[9px] font-black text-purple-600 uppercase">العودة الفعلية</p>
                              <p className="text-xs font-bold text-slate-700 mt-1">{leave.actualReturnDate}</p>
@@ -310,4 +312,3 @@ export default function LeaveDetailsPage() {
     </div>
   );
 }
-
