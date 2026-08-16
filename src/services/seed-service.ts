@@ -30,15 +30,15 @@ export class SeedService {
       paths.clients(this.companyId),
       paths.transactions(this.companyId),
       paths.boqs(this.companyId),
-      paths.quotations(this.companyId), // تم الإضافة
-      paths.contracts(this.companyId), // تم الإضافة
+      paths.quotations(this.companyId), 
+      paths.contracts(this.companyId), 
       paths.journalEntries(this.companyId),
       paths.vouchers(this.companyId),
       paths.accounts(this.companyId),
       paths.costCenters(this.companyId),
       paths.profitCenters(this.companyId),
       paths.purchaseOrders(this.companyId),
-      paths.subconContracts(this.companyId), // تم التأكيد على وجودها
+      paths.subconContracts(this.companyId), 
       paths.ipcs(this.companyId),
       paths.subIpcs(this.companyId),
       paths.fieldVisits(this.companyId),
@@ -46,7 +46,7 @@ export class SeedService {
       paths.payroll(this.companyId),
       paths.leads(this.companyId),
       paths.executions(this.companyId),
-      `companies/${this.companyId}/counters` // تصفير العدادات الرقمية
+      `companies/${this.companyId}/counters` 
     ];
 
     for (const path of collectionsToPurge) {
@@ -182,7 +182,7 @@ export class SeedService {
       }
     }
 
-    // 3. الهيكل الفني مع توفير القوالب المتخصصة (Seed Templates)
+    // 3. الهيكل الفني
     const activityRefs: Record<string, string> = {};
     const serviceRefs: Record<string, string> = {};
     const subServiceRefs: Record<string, string> = {};
@@ -273,7 +273,7 @@ export class SeedService {
       serviceId: serviceRefs['RESIDENTIAL_DESIGN'],
       subServiceId: subServiceRefs['MUN-PERMIT'],
       baseAmount: 1500,
-      retentionRate: 0, // لا توجد محتجزات في التصميم عادة
+      retentionRate: 0, 
       pricingMode: 'fixed',
       isActive: true,
       isDefault: true,
@@ -298,7 +298,7 @@ export class SeedService {
       serviceId: serviceRefs['SKELETON_WORKS'],
       subServiceId: subServiceRefs['VILLA-SKELETON'],
       baseAmount: 45000,
-      retentionRate: 5, // استقطاع سيادي 5%
+      retentionRate: 5, 
       pricingMode: 'percentage',
       isActive: true,
       isDefault: true,
@@ -331,43 +331,55 @@ export class SeedService {
     return !snap.empty;
   }
 
+  /**
+   * ضخ شجرة الحسابات القياسية لشركات المقاولات
+   * يتم تأسيس مراكز التكلفة والربحية الإدارية آلياً لضمان التوافق مع محرك التحقق
+   */
   async seedConstructionCOA(userId: string) {
     const batch = writeBatch(this.db);
     const coaRef = collection(this.db, paths.accounts(this.companyId));
     
+    // 1. تأسيس مراكز الأبعاد المالية الإدارية (Sovereign Foundations)
+    const adminCCRef = doc(collection(this.db, paths.costCenters(this.companyId)), 'cc_admin_general');
+    batch.set(adminCCRef, {
+      id: adminCCRef.id, code: 'CC-ADMIN', name: 'مركز التكاليف الإدارية والعمومية', 
+      isAdministrative: true, isActive: true, companyId: this.companyId, createdAt: serverTimestamp()
+    });
+
+    const generalPCRef = doc(collection(this.db, paths.profitCenters(this.companyId)), 'pc_corp_general');
+    batch.set(generalPCRef, {
+      id: generalPCRef.id, code: 'PC-GENERAL', name: 'مركز الربحية العام (المنشأة)', 
+      isActive: true, companyId: this.companyId, createdAt: serverTimestamp()
+    });
+
     const tree = [
       { code: '1', nameAr: 'الأصول', nameEn: 'Assets', type: 'asset', isGroup: true, parentId: null, level: 1 },
       { code: '11', nameAr: 'الأصول غير المتداولة', nameEn: 'Non-Current Assets', type: 'asset', isGroup: true, parentId: '1', level: 2 },
       { code: '1101', nameAr: 'آليات ومعدات ثقيلة', nameEn: 'Heavy Machinery & Equipment', type: 'asset', isGroup: true, parentId: '11', level: 3 },
-      { code: '1102', nameAr: 'مجمع إهلاك المعدات', nameEn: 'Accumulated Depreciation', type: 'asset', isGroup: true, parentId: '11', level: 3 },
       { code: '12', nameAr: 'الأصول المتداولة', nameEn: 'Current Assets', type: 'asset', isGroup: true, parentId: '1', level: 2 },
       { code: '1201', nameAr: 'الصناديق والبنوك', nameEn: 'Cash & Banks', type: 'asset', isGroup: true, parentId: '12', level: 3 },
       { code: '1202', nameAr: 'ذمم العملاء', nameEn: 'Accounts Receivable', type: 'asset', isGroup: true, parentId: '12', level: 3 },
       { code: '1203', nameAr: 'محتجزات لدى العملاء', nameEn: 'Retentions Receivable', type: 'asset', isGroup: true, parentId: '12', level: 3 },
       { code: '1204', nameAr: 'مخزون مواد البناء', nameEn: 'Inventory - Raw Materials', type: 'asset', isGroup: true, parentId: '12', level: 3 },
       { code: '1205', nameAr: 'أعمال تحت التنفيذ (WIP)', nameEn: 'Work In Progress', type: 'asset', isGroup: true, parentId: '12', level: 3 },
-      { code: '1206', nameAr: 'عهد موظفين', nameEn: 'Employee Advances', type: 'asset', isGroup: true, parentId: '12', level: 3 },
+      
       { code: '2', nameAr: 'الالتزامات', nameEn: 'Liabilities', type: 'liability', isGroup: true, parentId: null, level: 1 },
       { code: '22', nameAr: 'الالتزامات المتداولة', nameEn: 'Current Liabilities', type: 'liability', isGroup: true, parentId: '2', level: 2 },
       { code: '2201', nameAr: 'ذمم الموردين', nameEn: 'Accounts Payable', type: 'liability', isGroup: true, parentId: '22', level: 3 },
       { code: '2202', nameAr: 'محتجزات لمقاولي الباطن', nameEn: 'Retentions Payable', type: 'liability', isGroup: true, parentId: '22', level: 3 },
-      { code: '2203', nameAr: 'دفعات مقدمة من العملاء', nameEn: 'Advanced Payments (Clients)', type: 'liability', isGroup: true, parentId: '22', level: 3 },
-      { code: '2204', nameAr: 'مستحقات رواتب وأجور', nameEn: 'Accrued Salaries', type: 'liability', isGroup: true, parentId: '22', level: 3 },
+      
       { code: '3', nameAr: 'حقوق الملكية', nameEn: 'Equity', type: 'equity', isGroup: true, parentId: null, level: 1 },
       { code: '301', nameAr: 'رأس المال', nameEn: 'Capital', type: 'equity', isGroup: false, parentId: '3', level: 2 },
-      { code: '302', nameAr: 'الأرباح والخسائر المدورة', nameEn: 'Retained Earnings', type: 'equity', isGroup: false, parentId: '3', level: 2 },
+      
       { code: '4', nameAr: 'الإيرادات', nameEn: 'Revenue', type: 'revenue', isGroup: true, parentId: null, level: 1 },
       { code: '401', nameAr: 'إيرادات عقود المقاولات', nameEn: 'Construction Contracts Revenue', type: 'revenue', isGroup: false, parentId: '4', level: 2 },
-      { code: '402', nameAr: 'إيرادات أوامر تغييرية', nameEn: 'Variation Orders Revenue', type: 'revenue', isGroup: false, parentId: '4', level: 2 },
+      
       { code: '5', nameAr: 'المصروفات', nameEn: 'Expenses', type: 'expense', isGroup: true, parentId: null, level: 1 },
       { code: '501', nameAr: 'تكاليف تشغيلية مباشرة', nameEn: 'Direct Operational Costs', type: 'expense', isGroup: true, parentId: '5', level: 2 },
       { code: '50101', nameAr: 'تكاليف مواد', nameEn: 'Material Costs', type: 'expense', isGroup: false, parentId: '501', level: 3 },
       { code: '50102', nameAr: 'تكاليف عمالة موقع', nameEn: 'Site Labor Costs', type: 'expense', isGroup: false, parentId: '501', level: 3 },
-      { code: '50103', nameAr: 'إيجار آليات ومعدات', nameEn: 'Equipment Rental Costs', type: 'expense', isGroup: false, parentId: '501', level: 3 },
-      { code: '50104', nameAr: 'تكاليف مقاولي باطن', nameEn: 'Subcontractor Costs', type: 'expense', isGroup: false, parentId: '501', level: 3 },
       { code: '502', nameAr: 'مصاريف إدارية وعمومية', nameEn: 'General & Admin Expenses', type: 'expense', isGroup: true, parentId: '5', level: 2 },
       { code: '50201', nameAr: 'رواتب إدارية', nameEn: 'Admin Salaries', type: 'expense', isGroup: false, parentId: '502', level: 3 },
-      { code: '50202', nameAr: 'إيجار مكتب', nameEn: 'Office Rent', type: 'expense', isGroup: false, parentId: '502', level: 3 },
     ];
 
     const idMap: Record<string, string> = {};

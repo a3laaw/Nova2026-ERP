@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { 
   GitBranch, Plus, Loader2, Folder, 
   FileText, Search, ChevronRight, ChevronDown,
-  Save, Landmark
+  Save, Landmark, Sparkles, DatabaseZap
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -19,6 +19,7 @@ import { paths } from '@/firebase/multi-tenant';
 import { Account } from '@/types/accounting';
 import { cn } from '@/lib/utils';
 import { AccountingService } from '@/services/accounting-service';
+import { SeedService } from '@/services/seed-service';
 import { toast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -37,7 +38,7 @@ import {
 
 export default function ChartOfAccountsPage() {
   const { globalUser, user } = useAuthContext();
-  const { t, dir, isRtl } = useLanguage();
+  const { t, dir, isRtl, tSafe } = useLanguage();
   const db = useFirestore();
   const companyId = globalUser?.companyId;
 
@@ -45,6 +46,7 @@ export default function ChartOfAccountsPage() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [isAdding, setIsAdding] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [seeding, setSeeding] = useState(false);
 
   const [form, setForm] = useState<Partial<Account>>({
     nameAr: '', nameEn: '', code: '', type: 'asset', isGroup: false, parentId: null
@@ -71,6 +73,26 @@ export default function ChartOfAccountsPage() {
       setIsAdding(false);
       setForm({ nameAr: '', nameEn: '', code: '', type: 'asset', isGroup: false, parentId: null });
     } finally { setSaving(false); }
+  };
+
+  const handleSeedCOA = async () => {
+    if (!db || !companyId || !user) return;
+    const msg = isRtl 
+      ? 'هل تريد تنزيل شجرة الحسابات القياسية للمقاولات؟ سيتم أيضاً تأسيس مراكز التكلفة والربحية الإدارية اللازمة آلياً.' 
+      : 'Download standard construction COA? Administrative centers will also be auto-provisioned.';
+    
+    if (!confirm(msg)) return;
+
+    setSeeding(true);
+    try {
+      const seedService = new SeedService(db, companyId);
+      await seedService.seedConstructionCOA(user.uid);
+      toast({ title: tSafe('inline.coa.activated', 'تم تفعيل الشجرة المحاسبية بنجاح', 'Standard COA Activated') });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('common.error'), description: e.message });
+    } finally {
+      setSeeding(false);
+    }
   };
 
   const renderTree = (parentId: string | null = null, level = 0) => {
@@ -103,7 +125,7 @@ export default function ChartOfAccountsPage() {
             >
               <div className="flex items-center gap-2">
                 {account.isGroup ? (
-                  isExpanded ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className={cn("h-4 w-4 text-slate-400", isRtl && "rotate-180")} />
+                  isExpanded ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className={cn("h-4 w-4", isRtl && "rotate-180")} />
                 ) : <div className="w-4" />}
                 {account.isGroup ? <Folder className="h-4 w-4 text-amber-500 fill-current" /> : <FileText className="h-4 w-4 text-blue-400" />}
               </div>
@@ -132,9 +154,22 @@ export default function ChartOfAccountsPage() {
           </h1>
           <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Sovereign Financial Registry V2.9</p>
         </div>
-        <Button onClick={() => { setForm({ nameAr: '', nameEn: '', code: '', type: 'asset', isGroup: false }); setIsAdding(true); }} size="sm" className="h-10 px-8 font-black rounded-xl shadow-lg gap-2">
-          <Plus className="h-4 w-4" /> {isRtl ? 'إضافة حساب' : 'Add Account'}
-        </Button>
+        <div className="flex gap-3">
+          {accounts?.length === 0 && !loading && (
+             <Button 
+               onClick={handleSeedCOA} 
+               disabled={seeding}
+               variant="outline"
+               className="h-10 px-6 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-700 font-black gap-2 shadow-sm hover:bg-emerald-100 transition-all"
+             >
+                {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                {isRtl ? 'تنشيط الشجرة القياسية' : 'Activate Standard COA'}
+             </Button>
+          )}
+          <Button onClick={() => { setForm({ nameAr: '', nameEn: '', code: '', type: 'asset', isGroup: false }); setIsAdding(true); }} size="sm" className="h-10 px-8 font-black rounded-xl shadow-lg gap-2">
+            <Plus className="h-4 w-4" /> {isRtl ? 'إضافة حساب' : 'Add Account'}
+          </Button>
+        </div>
       </header>
 
       <Card className="rounded-[2rem] shadow-2xl border-0 bg-white overflow-hidden ring-1 ring-black/5">
@@ -155,6 +190,14 @@ export default function ChartOfAccountsPage() {
                <Loader2 className="animate-spin h-10 w-10 text-primary/20" />
                <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest italic">Loading Chart...</p>
             </div>
+          ) : accounts?.length === 0 ? (
+             <div className="py-40 text-center space-y-6 opacity-30">
+                <DatabaseZap className="h-20 w-20 mx-auto text-slate-200" />
+                <div className="space-y-2">
+                   <h3 className="text-xl font-black text-slate-400">{isRtl ? 'لا توجد حسابات مسجلة' : 'No Accounts Found'}</h3>
+                   <p className="text-xs font-bold text-slate-300">{isRtl ? 'يرجى تنزيل الشجرة القياسية أو إضافة حساب يدوي للبدء.' : 'Please seed standard COA or add manually.'}</p>
+                </div>
+             </div>
           ) : renderTree(null)}
         </CardContent>
       </Card>
