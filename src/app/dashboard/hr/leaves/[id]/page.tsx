@@ -27,18 +27,21 @@ import { Input } from "@/components/ui/input";
 import { SmartDateInput } from '@/components/ui/smart-date-input';
 import { PrintWrapper } from '@/components/layout/print-wrapper';
 
+/**
+ * @fileOverview صفحة تفاصيل الإجازة السيادية.
+ * تم تحديثها لفرض التوثيق اليدوي للمغادرة والعودة (Actual Dates Policy).
+ */
 export default function LeaveDetailsPage() {
   const leaveId = useParams().id as string;
   const { user, globalUser } = useAuthContext();
-  const { t, lang, dir, tSafe } = useLanguage();
+  const { t, lang, dir, isRtl, tSafe } = useLanguage();
   const { isAdmin, check, permissions } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
-  const isRtl = lang === 'ar';
 
   const [processing, setProcessing] = useState(false);
-  const [actualDepartureDate, setActualDepartureDate] = useState('');
-  const [actualReturnDate, setActualReturnDate] = useState('');
+  const [actualDepartureDate, setActualDepartureDate] = useState(new Date().toISOString().split('T')[0]);
+  const [actualReturnDate, setActualReturnDate] = useState(new Date().toISOString().split('T')[0]);
   
   const [conflictData, setConflictData] = useState<{ count: number; peers: any[] } | null>(null);
   const [loadingConflict, setLoadingConflict] = useState(false);
@@ -69,8 +72,8 @@ export default function LeaveDetailsPage() {
         endDate: leave.endDate,
         workingDays: leave.workingDays
       });
-      setActualDepartureDate(leave.actualDepartureDate || leave.startDate);
-      setActualReturnDate(leave.actualReturnDate || leave.endDate);
+      setActualDepartureDate(leave.actualDepartureDate || new Date().toISOString().split('T')[0]);
+      setActualReturnDate(leave.actualReturnDate || new Date().toISOString().split('T')[0]);
 
       if (leaveService && (leave as any).departmentId) {
         setLoadingConflict(true);
@@ -95,8 +98,8 @@ export default function LeaveDetailsPage() {
         startDate: editForm.startDate,
         endDate: editForm.endDate,
         workingDays: editForm.workingDays,
-        actualReturnDate: actualReturnDate,
-        actualDepartureDate: actualDepartureDate
+        actualReturnDate: status === 'returned' ? actualReturnDate : undefined,
+        actualDepartureDate: status === 'on-leave' ? actualDepartureDate : undefined
       });
       toast({ title: t('common.saved') });
     } catch (e) {
@@ -157,18 +160,18 @@ export default function LeaveDetailsPage() {
                          {isRtl ? 'لوحة تحكم تنفيذ الإجازة' : 'Leave Execution Panel'}
                       </h3>
                    </div>
-                   <CardContent className="p-8 space-y-8 text-start">
+                   <CardContent className="p-8 space-y-8 text-start bg-white">
                       
                       {leave.status === 'approved' && (
                         <div className="space-y-6 animate-in zoom-in-95">
                            <div className="p-8 bg-slate-50 rounded-[2rem] border-2 border-white space-y-6">
-                              <div className="space-y-2">
+                              <div className="space-y-2 text-start">
                                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'تاريخ المغادرة الفعلي' : 'Actual Departure Date'}</Label>
                                  <SmartDateInput value={actualDepartureDate} onChange={setActualDepartureDate} />
                               </div>
                               <div className="p-4 bg-amber-50 rounded-2xl flex items-start gap-3 border border-amber-100">
                                  <Info className="h-4 w-4 text-amber-600 mt-1 shrink-0" />
-                                 <p className="text-[10px] font-bold text-amber-800 leading-relaxed">
+                                 <p className="text-[10px] font-bold text-amber-800 leading-relaxed text-start">
                                     {isRtl ? 'يرجى تسجيل التاريخ الحقيقي لخروج الموظف، سيقوم النظام بتحديث حالة الموظف لـ (في إجازة) فوراً.' : 'Register the actual day the employee left office.'}
                                  </p>
                               </div>
@@ -182,18 +185,18 @@ export default function LeaveDetailsPage() {
                       {leave.status === 'on-leave' && (
                         <div className="space-y-6 animate-in zoom-in-95">
                            <div className="p-8 bg-slate-50 rounded-[2rem] border-2 border-white space-y-6">
-                              <div className="space-y-2">
+                              <div className="space-y-2 text-start">
                                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{isRtl ? 'تاريخ العودة الفعلي' : 'Actual Return Date'}</Label>
                                  <SmartDateInput value={actualReturnDate} onChange={setActualReturnDate} />
                               </div>
                               <div className="p-4 bg-blue-50 rounded-2xl flex items-start gap-3 border border-blue-100">
                                  <Info className="h-4 w-4 text-blue-600 mt-1 shrink-0" />
-                                 <p className="text-[10px] font-bold text-blue-800 leading-relaxed">
+                                 <p className="text-[10px] font-bold text-blue-800 leading-relaxed text-start">
                                     {isRtl ? 'سجل التاريخ الفعلي لرجوع الموظف. في الخطوة القادمة ستتمكن من مراجعة رصيد الإجازات المخصوم.' : 'Register the actual day the employee returned.'}
                                  </p>
                               </div>
                            </div>
-                           <Button onClick={() => handleAction('returned')} disabled={processing} className="w-full h-16 rounded-2xl bg-purple-600 text-white font-black text-lg shadow-xl border-b-4 border-purple-800 gap-3">
+                           <Button onClick={() => handleAction('returned')} disabled={processing} className="w-full h-16 rounded-2xl bg-blue-600 text-white font-black text-lg shadow-xl border-b-4 border-blue-800 gap-3">
                               <PlaneLanding className="h-6 w-6" /> {isRtl ? 'تسجيل عودة الموظف' : 'Register Return'}
                            </Button>
                         </div>
@@ -216,12 +219,12 @@ export default function LeaveDetailsPage() {
                                       onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})} 
                                       className="h-14 rounded-xl border-2 font-black text-2xl text-emerald-600 text-center" 
                                     />
-                                    <p className="text-[9px] text-slate-400 font-bold italic">{isRtl ? 'يمكنك تعديل الأيام بناءً على التواريخ الفعلية.' : 'You can adjust days based on actual dates.'}</p>
+                                    <p className="text-[9px] text-slate-400 font-bold italic text-start mt-2">{isRtl ? 'يمكنك تعديل الأيام بناءً على التواريخ الفعلية لضمان صحة الرصيد.' : 'You can adjust days based on actual dates.'}</p>
                                  </div>
                                  <div className="p-4 bg-emerald-50/50 rounded-xl flex items-center justify-center text-center">
                                     <div className="space-y-1">
                                        <p className="text-[8px] font-black text-emerald-600 uppercase">المغادرة / العودة الفعلية</p>
-                                       <p className="text-xs font-mono font-bold text-emerald-700">{leave.actualDepartureDate} → {leave.actualReturnDate}</p>
+                                       <p className="text-xs font-mono font-bold text-emerald-700">{leave.actualDepartureDate || '---'} → {leave.actualReturnDate || '---'}</p>
                                     </div>
                                  </div>
                               </div>
@@ -243,11 +246,11 @@ export default function LeaveDetailsPage() {
                    </div>
                    <CardContent className="p-8 space-y-8 text-start bg-white">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-slate-50 rounded-[2rem] border-2 border-dashed border-primary/10">
-                         <div className="space-y-2"><Label className="text-[10px] font-black text-slate-400 uppercase">{t('hr.approveStart')}</Label><SmartDateInput value={editForm.startDate} onChange={v => setEditForm({...editForm, startDate: v})} /></div>
-                         <div className="space-y-2"><Label className="text-[10px] font-black text-slate-400 uppercase">{t('hr.approveReturn')}</Label><SmartDateInput value={editForm.endDate} onChange={v => setEditForm({...editForm, endDate: v})} /></div>
-                         <div className="space-y-2 md:col-span-2"><Label className="text-[10px] font-black text-slate-400 uppercase">{t('hr.deductionDays')}</Label><Input type="number" value={editForm.workingDays} onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})} className="h-14 rounded-2xl border-2 font-black text-primary text-xl shadow-inner" /></div>
+                         <div className="space-y-2 text-start"><Label className="text-[10px] font-black text-slate-400 uppercase">{t('hr.approveStart')}</Label><SmartDateInput value={editForm.startDate} onChange={v => setEditForm({...editForm, startDate: v})} /></div>
+                         <div className="space-y-2 text-start"><Label className="text-[10px] font-black text-slate-400 uppercase">{t('hr.approveReturn')}</Label><SmartDateInput value={editForm.endDate} onChange={v => setEditForm({...editForm, endDate: v})} /></div>
+                         <div className="space-y-2 md:col-span-2 text-start"><Label className="text-[10px] font-black text-slate-400 uppercase">{t('hr.deductionDays')}</Label><Input type="number" value={editForm.workingDays} onChange={e => setEditForm({...editForm, workingDays: Number(e.target.value)})} className="h-14 rounded-2xl border-2 font-black text-primary text-xl shadow-inner text-center" /></div>
                       </div>
-                      <div className="space-y-3">
+                      <div className="space-y-3 text-start">
                          <Label className="text-[10px] font-black uppercase text-slate-400">{t('hr.internalNotes')}</Label>
                          <Textarea value={editForm.comment} onChange={e => setEditForm({...editForm, comment: e.target.value})} className="min-h-[100px] rounded-2xl border-2 shadow-sm" />
                       </div>
@@ -261,14 +264,14 @@ export default function LeaveDetailsPage() {
 
               <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
                  <CardHeader className="bg-slate-50/50 border-b p-8">
-                    <CardTitle className="text-xl font-black">{t('hr.requestDetails')}</CardTitle>
+                    <CardTitle className="text-xl font-black text-start">{t('hr.requestDetails')}</CardTitle>
                  </CardHeader>
                  <CardContent className="p-8 space-y-10 text-start">
                     <div className="flex items-center gap-6">
                        <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner border border-primary/10">
                           <User className="h-8 w-8" />
                        </div>
-                       <div>
+                       <div className="text-start">
                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('common.name')}</p>
                           <h4 className="text-2xl font-black text-slate-900">{leave.userName}</h4>
                        </div>
@@ -304,11 +307,11 @@ export default function LeaveDetailsPage() {
                        </div>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="space-y-4 text-start">
                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                           <Info className="h-3 w-3" /> {t('hr.justification')}
                        </p>
-                       <p className="p-6 bg-slate-50/50 rounded-2xl border-2 border-white shadow-inner text-sm font-bold text-slate-700 leading-relaxed italic">
+                       <p className="p-6 bg-slate-50/50 rounded-2xl border-2 border-white shadow-inner text-sm font-bold text-slate-700 leading-relaxed italic text-start">
                           {leave.reason}
                        </p>
                     </div>
@@ -325,28 +328,28 @@ export default function LeaveDetailsPage() {
                     </CardTitle>
                  </CardHeader>
                  <CardContent className="p-6">
-                    <div className="space-y-6">
-                       <div className="relative ps-6 border-start-2 border-slate-100 pb-2">
+                    <div className="space-y-6 text-start">
+                       <div className="relative ps-6 border-s-2 border-slate-100 pb-2">
                           <div className="absolute -start-[9px] top-0 h-4 w-4 rounded-full bg-primary border-4 border-white shadow-sm" />
                           <p className="text-[9px] font-black text-slate-400 uppercase">{t('hr.requestCreated')}</p>
                           <p className="text-xs font-bold text-slate-700 mt-1">{leave.createdAt?.toDate().toLocaleString()}</p>
                        </div>
                        {leave.approvedAt && (
-                          <div className="relative ps-6 border-start-2 border-slate-100 pb-2">
+                          <div className="relative ps-6 border-s-2 border-slate-100 pb-2">
                              <div className="absolute -start-[9px] top-0 h-4 w-4 rounded-full bg-emerald-500 border-4 border-white shadow-sm" />
                              <p className="text-[9px] font-black text-emerald-600 uppercase">{t('status.approved')}</p>
                              <p className="text-xs font-bold text-slate-700 mt-1">{leave.approvedAt?.toDate().toLocaleString()}</p>
                           </div>
                        )}
                        {leave.actualDepartureDate && (
-                          <div className="relative ps-6 border-start-2 border-slate-100 pb-2">
+                          <div className="relative ps-6 border-s-2 border-slate-100 pb-2">
                              <div className="absolute -start-[9px] top-0 h-4 w-4 rounded-full bg-amber-500 border-4 border-white shadow-sm" />
                              <p className="text-[9px] font-black text-amber-600 uppercase">{isRtl ? 'المغادرة الفعلية' : 'Actual Departure'}</p>
                              <p className="text-xs font-bold text-slate-700 mt-1">{leave.actualDepartureDate}</p>
                           </div>
                        )}
                        {leave.actualReturnDate && (
-                          <div className="relative ps-6 border-start-2 border-slate-100 pb-2">
+                          <div className="relative ps-6 border-s-2 border-slate-100 pb-2">
                              <div className="absolute -start-[9px] top-0 h-4 w-4 rounded-full bg-purple-500 border-4 border-white shadow-sm" />
                              <p className="text-[9px] font-black text-purple-600 uppercase">{isRtl ? 'العودة الفعلية' : 'Actual Return'}</p>
                              <p className="text-xs font-bold text-slate-700 mt-1">{leave.actualReturnDate}</p>

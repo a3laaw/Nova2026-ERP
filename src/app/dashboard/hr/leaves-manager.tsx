@@ -32,11 +32,11 @@ import { canPerformOnRecord } from '@/lib/permissions/engine';
 import { parseISO, isPast, isToday } from 'date-fns';
 
 /**
- * @fileOverview رادار إدارة الإجازات السيادي - يدعم التوثيق اليدوي للمغادرة والعودة عبر نوافذ منبثقة.
+ * @fileOverview رادار إدارة الإجازات السيادي - يدعم التوثيق اليدوي للمغادرة والعودة عبر نوافذ منبثقة إلزامية.
  */
 export function LeavesManager() {
   const { globalUser, user } = useAuthContext();
-  const { t, lang, dir, isRtl } = useLanguage();
+  const { t, lang, dir, isRtl, tSafe } = useLanguage();
   const { check, permissions } = usePermissions();
   const db = useFirestore();
   const router = useRouter();

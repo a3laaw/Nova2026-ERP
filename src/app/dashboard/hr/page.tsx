@@ -79,18 +79,18 @@ export default function HRDashboard() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="bg-white p-1.5 rounded-2xl border shadow-sm mb-6 inline-flex overflow-x-auto scrollbar-hide max-w-full">
           <TabsList className="bg-transparent h-12 gap-1 p-0">
-            <TabsTrigger value="overview" className="rounded-xl font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all h-full gap-2">
+            <TabsTrigger value="overview" className="rounded-xl font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all h-full gap-2 text-start">
               <LayoutGrid className="h-4 w-4" /> {t('common.overview')}
             </TabsTrigger>
-            <TabsTrigger value="leaves" className="rounded-xl font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all h-full gap-2">
+            <TabsTrigger value="leaves" className="rounded-xl font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all h-full gap-2 text-start">
               <Plane className="h-4 w-4" /> {t('leaverequests')}
             </TabsTrigger>
             {canSeePayroll && (
-              <TabsTrigger value="payroll_list" className="rounded-xl font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all h-full gap-2">
+              <TabsTrigger value="payroll_list" className="rounded-xl font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all h-full gap-2 text-start">
                 <Calculator className="h-4 w-4" /> {t('payroll')}
               </TabsTrigger>
             )}
-            <TabsTrigger value="staff" className="rounded-xl font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all h-full gap-2">
+            <TabsTrigger value="staff" className="rounded-xl font-black text-xs px-8 data-[state=active]:bg-primary data-[state=active]:text-white transition-all h-full gap-2 text-start">
               <Users className="h-4 w-4" /> {t('staffRecords')}
             </TabsTrigger>
           </TabsList>
@@ -99,7 +99,7 @@ export default function HRDashboard() {
         <TabsContent value="overview" className="space-y-6">
            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <Card className="rounded-[2.5rem] shadow-sm border bg-white p-6 text-start flex items-center justify-between group hover:shadow-lg transition-all">
-                 <div>
+                 <div className="text-start">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('hr.staffCount')}</p>
                     <h3 className="text-3xl font-black text-slate-900">{employees?.length || 0}</h3>
                  </div>
@@ -108,12 +108,12 @@ export default function HRDashboard() {
                  </div>
               </Card>
               
-              <Card className="rounded-[2.5rem] shadow-sm border bg-white p-6 text-start flex items-center justify-between group hover:shadow-lg transition-all" onClick={() => router.push('/dashboard/hr/attendance/import')}>
-                 <div>
+              <Card className="rounded-[2.5rem] shadow-sm border bg-white p-6 text-start flex items-center justify-between group hover:shadow-lg transition-all cursor-pointer" onClick={() => router.push('/dashboard/hr/attendance/import')}>
+                 <div className="text-start">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{isRtl ? 'سجل البصمة (XLSX)' : 'Attendance Sync'}</p>
                     <h3 className="text-sm font-black text-primary uppercase">{isRtl ? 'مزامنة الآن' : 'Sync Now'}</h3>
                  </div>
-                 <div className="h-12 w-12 rounded-2xl bg-primary/5 text-primary flex items-center justify-center group-hover:scale-110 transition-transform cursor-pointer">
+                 <div className="h-12 w-12 rounded-2xl bg-primary/5 text-primary flex items-center justify-center group-hover:scale-110 transition-transform">
                     <FileSpreadsheet className="h-6 w-6" />
                  </div>
               </Card>
@@ -121,7 +121,7 @@ export default function HRDashboard() {
 
            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-start">
               <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5">
-                 <CardHeader className="bg-slate-50/50 p-6 border-b">
+                 <CardHeader className="bg-slate-50/50 p-6 border-b text-start">
                     <CardTitle className="text-lg font-black">{isRtl ? 'إجراءات سريعة' : 'Quick Actions'}</CardTitle>
                  </CardHeader>
                  <CardContent className="p-6 grid grid-cols-2 gap-4">
