@@ -76,6 +76,28 @@ export class SeedService {
   }
 
   /**
+   * إصلاح أرصدة الإجازات للموظفين (Migration)
+   * يرفع الرصيد إلى 30 لمن لديهم رصيد 0 أو أقل نتيجة أخطاء سابقة
+   */
+  async fixLeaveBalances() {
+    const q = query(collection(this.db, paths.employees(this.companyId)));
+    const snap = await getDocs(q);
+    const batch = writeBatch(this.db);
+    let count = 0;
+
+    snap.docs.forEach(d => {
+      const data = d.data();
+      if (!data.annualLeaveBalance || data.annualLeaveBalance <= 0) {
+        batch.update(d.ref, { annualLeaveBalance: 30, updatedAt: serverTimestamp() });
+        count++;
+      }
+    });
+
+    if (count > 0) await batch.commit();
+    return count;
+  }
+
+  /**
    * تطهير سجل الإجازات فقط مع المحافظة على الموظفين
    */
   async purgeAllLeaves() {

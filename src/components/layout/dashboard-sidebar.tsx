@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -98,7 +97,6 @@ export function DashboardSidebar() {
           { title: tSafe('subcon.contracts.title', 'عقود مقاولي الباطن', 'SubCon Contracts'), url: "/dashboard/procurement/subcontractors/contracts", icon: Handshake },
           { title: tSafe('procurement.orders', 'أوامر الشراء', 'Purchase Orders'), url: "/dashboard/procurement/orders", icon: ShoppingCart },
           { title: tSafe('procurement.quotes', 'عروض الأسعار', 'Quotes'), url: "/dashboard/procurement/quotes", icon: FileSearch },
-          { title: t('aiAnalysis'), url: "/dashboard/ai", icon: FileSearch },
         ]
       },
       
@@ -163,6 +161,8 @@ export function DashboardSidebar() {
           { title: t('companyIdentity'), url: "/dashboard/settings/company", icon: Building2 },
           { title: t('settings.checklists'), url: "/dashboard/settings/checklists", icon: Database },
           { title: tSafe('settings.templates', 'قوالب المستندات', 'Templates'), url: "/dashboard/settings/templates", icon: FileText },
+          { title: tSafe('settings.costCenters', 'مراكز التكلفة', 'Cost Centers'), url: "/dashboard/settings/cost-centers", icon: Calculator },
+          { title: tSafe('settings.profitCenters', 'مراكز الربحية', 'Profit Centers'), url: "/dashboard/settings/profit-centers", icon: TrendingUp },
           { title: t('rolesPermissions'), url: "/dashboard/settings/roles", icon: ShieldCheck },
           { title: t('workHours'), url: "/dashboard/settings/work-hours", icon: Clock },
           { title: t('userProfile'), url: "/dashboard/settings/profile", icon: UserCircle },
