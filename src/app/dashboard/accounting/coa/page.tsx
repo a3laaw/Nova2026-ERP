@@ -10,7 +10,8 @@ import {
   GitBranch, Plus, Loader2, Folder, 
   FileText, Search, ChevronRight, ChevronDown,
   Save, Landmark, Sparkles, DatabaseZap,
-  RotateCcw, Trash2, FolderOpen, CheckCircle2
+  RotateCcw, Trash2, FolderOpen, CheckCircle2,
+  AlertTriangle
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -86,6 +87,8 @@ export default function ChartOfAccountsPage() {
       toast({ title: t('common.saved') });
       setIsAdding(false);
       setForm({ nameAr: '', nameEn: '', code: '', type: 'asset', isGroup: false, parentId: null });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally { setSaving(false); }
   };
 
@@ -117,12 +120,18 @@ export default function ChartOfAccountsPage() {
     }
   };
 
-  const handleAddSubAccount = (parent: Account, e: React.MouseEvent) => {
+  const handleAddSubAccount = async (parent: Account, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!db || !companyId) return;
+    
+    // استدعاء محرك الترقيم التلقائي السيادي
+    const service = new AccountingService(db, companyId);
+    const nextCode = await service.getNextAccountCode(parent.id);
+
     setForm({
       nameAr: '', 
       nameEn: '', 
-      code: parent.code + '.', 
+      code: nextCode, 
       type: parent.type, 
       isGroup: false, 
       parentId: parent.id 
@@ -130,11 +139,11 @@ export default function ChartOfAccountsPage() {
     setIsAdding(true);
   };
 
-  const renderTree = (parentId: string | null = null, level = 0) => {
+  const renderTree = (parentId: string | "" = "", level = 0) => {
     return (accounts || [])
       .filter(a => {
-        if (parentId === null) return !a.parentId || a.parentId === "";
-        return a.parentId === parentId;
+        const pId = a.parentId || "";
+        return pId === parentId;
       })
       .filter(a => {
         if (searchTerm === "") return true;
@@ -180,7 +189,6 @@ export default function ChartOfAccountsPage() {
               <span className="text-sm truncate">{isRtl ? account.nameAr : (account.nameEn || account.nameAr)}</span>
               
               <div className="ms-auto flex items-center gap-2">
-                {/* زر الإضافة متاح للجميع - أي حساب معرض أن يكون أب بذكاء تشغيلي */}
                 <button 
                   onClick={(e) => handleAddSubAccount(account, e)}
                   className="h-8 w-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all border border-emerald-100 hover:bg-emerald-600 hover:text-white"
@@ -223,7 +231,12 @@ export default function ChartOfAccountsPage() {
                 {isRtl ? 'تنشيط الشجرة الهرمية' : 'Activate Hierarchy'}
              </Button>
           )}
-          <Button onClick={() => { setForm({ nameAr: '', nameEn: '', code: '', type: 'asset', isGroup: false, parentId: null }); setIsAdding(true); }} size="sm" className="h-10 px-8 font-black rounded-xl shadow-lg gap-2">
+          <Button onClick={async () => { 
+            const service = new AccountingService(db!, companyId!);
+            const nextRoot = await service.getNextAccountCode(null);
+            setForm({ nameAr: '', nameEn: '', code: nextRoot, type: 'asset', isGroup: false, parentId: null }); 
+            setIsAdding(true); 
+          }} size="sm" className="h-10 px-8 font-black rounded-xl shadow-lg gap-2">
             <Plus className="h-4 w-4" /> {isRtl ? 'إضافة حساب جذري' : 'Add Root Account'}
           </Button>
         </div>
@@ -255,7 +268,7 @@ export default function ChartOfAccountsPage() {
                    <p className="text-xs font-bold text-slate-300">{isRtl ? 'يرجى تنزيل الشجرة القياسية أو إضافة حساب يدوي للبدء.' : 'Please seed standard COA or add manually.'}</p>
                 </div>
              </div>
-          ) : renderTree(null)}
+          ) : renderTree("")}
         </CardContent>
       </Card>
 

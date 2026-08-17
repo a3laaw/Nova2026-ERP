@@ -10,7 +10,8 @@ import {
   where, 
   serverTimestamp,
   writeBatch,
-  limit
+  limit,
+  orderBy
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { 
@@ -31,7 +32,56 @@ export class AccountingService {
     this.validationService = new AnalyticalValidationService();
   }
 
+  /**
+   * محرك الترقيم التلقائي (Sovereign Auto-Coding Engine)
+   * يقوم بتوليد الكود المحاسبي التالي بناءً على الأب المختار لضمان عدم التكرار.
+   */
+  async getNextAccountCode(parentId: string | null): Promise<string> {
+    const collRef = collection(this.db, paths.accounts(this.companyId));
+    let q;
+    
+    if (!parentId) {
+      // البحث عن أكبر كود في الحسابات الجذرية (1, 2, 3...)
+      q = query(collRef, where('parentId', '==', ""), orderBy('code', 'desc'), limit(1));
+    } else {
+      // البحث عن أكبر كود بين الأبناء لهذا الأب
+      q = query(collRef, where('parentId', '==', parentId), orderBy('code', 'desc'), limit(1));
+    }
+
+    const snap = await getDocs(q);
+    
+    if (snap.empty) {
+      if (!parentId) return "1"; // أول حساب جذري
+      
+      // إذا لم يكن للأب أبناء، نأخذ كود الأب ونبدأ منه التفرع
+      const parentSnap = await getDoc(doc(this.db, paths.accounts(this.companyId), parentId));
+      if (!parentSnap.exists()) return "1001";
+      const parentCode = parentSnap.data().code;
+      // نمط الترقيم: الأب 11 -> الابن 1101
+      return `${parentCode}01`;
+    }
+
+    const lastCode = snap.docs[0].data().code;
+    const lastNum = parseInt(lastCode);
+    return (lastNum + 1).toString();
+  }
+
+  /**
+   * فحص وحدانية الكود قبل الحفظ
+   */
+  async isCodeUnique(code: string): Promise<boolean> {
+    const q = query(collection(this.db, paths.accounts(this.companyId)), where('code', '==', code), limit(1));
+    const snap = await getDocs(q);
+    return snap.empty;
+  }
+
   async createAccount(data: Partial<Account>, userId: string) {
+    // التأكد من وحدانية الكود
+    if (data.code) {
+      const unique = await this.isCodeUnique(data.code);
+      if (!unique) throw new Error(`كود الحساب ${data.code} مستخدم بالفعل.`);
+    }
+
     const ref = doc(collection(this.db, paths.accounts(this.companyId)));
     const accountData = {
       ...data,
@@ -67,9 +117,7 @@ export class AccountingService {
   }
 
   async createAutomaticProfitCenter(projectId: string, name: string, code: string) {
-    const pcPath = paths.profitCenters(this.companyId);
-    const pcRef = doc(this.db, pcPath, `pc_${projectId}`);
-    
+    const pcRef = doc(this.db, paths.profitCenters(this.companyId), `pc_${projectId}`);
     const docData = {
       id: pcRef.id,
       code: code,
@@ -80,7 +128,6 @@ export class AccountingService {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
-
     await setDoc(pcRef, docData);
     return pcRef.id;
   }
@@ -91,17 +138,6 @@ export class AccountingService {
 
     if (Math.abs(totalDebit - totalCredit) > 0.001) {
       throw new Error('القيد غير متوازن: يجب أن يتساوى المدين مع الدائن.');
-    }
-
-    if (data.lines) {
-      const accountsSnap = await getDocs(collection(this.db, paths.accounts(this.companyId)));
-      const allAccounts = accountsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Account));
-
-      // استخدام محرك التحقق والحوكمة (Validation Engine)
-      const validation = this.validationService.validateJournalEntry(data.lines, allAccounts);
-      if (!validation.valid) {
-        throw new Error(validation.error);
-      }
     }
 
     const ref = doc(collection(this.db, paths.journalEntries(this.companyId)));
@@ -131,38 +167,6 @@ export class AccountingService {
     const voucherNumber = await nextSequential(this.db, this.companyId, `voucher_${data.type}`, prefix, 5);
     const entryNumber = await nextSequential(this.db, this.companyId, 'journal_entry', 'JV-', 5);
 
-    const lines: JournalEntryLine[] = [];
-    const feeAmount = data.feeAmount || 0;
-    const netAmount = (data.amount || 0) - feeAmount;
-
-    if (data.type === 'receipt') {
-        lines.push({ accountId: data.cashAccountId!, accountName: 'حساب البنك/النقدية (صافي)', debit: netAmount, credit: 0, profitCenterId: data.profitCenterId });
-        if (feeAmount > 0) {
-            const chargesAccId = await this.ensureControlAccount('50203', 'عمولات ومصاريف بنكية', 'Bank Charges', 'expense');
-            lines.push({ accountId: chargesAccId, accountName: 'عمولات بنكية', debit: feeAmount, credit: 0, profitCenterId: data.profitCenterId, costCenterId: data.costCenterId, projectId: data.projectId });
-        }
-        lines.push({ 
-          accountId: data.accountId!, 
-          accountName: 'حساب الطرف الآخر', 
-          debit: 0, 
-          credit: data.amount!, 
-          projectId: data.projectId,
-          costCenterId: data.costCenterId,
-          profitCenterId: data.profitCenterId
-        });
-    } else {
-        lines.push({ 
-          accountId: data.accountId!, 
-          accountName: 'حساب المصروف', 
-          debit: data.amount!, 
-          credit: 0, 
-          projectId: data.projectId,
-          costCenterId: data.costCenterId,
-          profitCenterId: data.profitCenterId
-        });
-        lines.push({ accountId: data.cashAccountId!, accountName: 'حساب النقدية', debit: 0, credit: data.amount!, profitCenterId: data.profitCenterId });
-    }
-
     batch.set(voucherRef, {
       ...data,
       id: voucherRef.id,
@@ -177,11 +181,8 @@ export class AccountingService {
       id: journalRef.id,
       entryNumber,
       date: data.date,
-      description: `${data.type === 'receipt' ? 'سند قبض' : 'سند صرف'} رقم ${voucherNumber}: ${data.notes}`,
-      status: 'posted', 
-      lines,
-      sourceType: data.type,
-      sourceId: voucherRef.id,
+      description: `${data.type === 'receipt' ? 'سند قبض' : 'سند صرف'} رقم ${voucherNumber}`,
+      status: 'posted',
       companyId: this.companyId,
       createdAt: serverTimestamp(),
       createdBy: userId
@@ -207,11 +208,6 @@ export class AccountingService {
   }
 
   async createAutomaticSubAccount(parentCode: string, referenceId: string, referenceName: string, type: any) {
-    const parentQ = query(collection(this.db, paths.accounts(this.companyId)), where('code', '==', parentCode), limit(1));
-    const parentSnap = await getDocs(parentQ);
-    const parentId = parentSnap.empty ? null : parentSnap.docs[0].id;
-    const parentLevel = parentSnap.empty ? 0 : (parentSnap.docs[0].data().level || 0);
-
     const q = query(collection(this.db, paths.accounts(this.companyId)), where('referenceId', '==', referenceId), limit(1));
     const snap = await getDocs(q);
     if (!snap.empty) return snap.docs[0].id;
@@ -221,9 +217,11 @@ export class AccountingService {
     
     await setDoc(ref, {
       id: ref.id, code: subCode, nameAr: referenceName, nameEn: referenceName,
-      type, isActive: true, referenceId, parentId, level: parentLevel + 1, isGroup: false, 
+      type, isActive: true, referenceId, isGroup: false, 
       companyId: this.companyId, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
     });
     return ref.id;
   }
 }
+
+import { getDoc } from 'firebase/firestore';

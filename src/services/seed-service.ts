@@ -31,14 +31,14 @@ export class SeedService {
   }
 
   /**
-   * تنشيط شجرة الحسابات مع ربط هرمي حقيقي (True Hierarchy Fix)
-   * يضمن أن parentId يشير إلى الـ Document ID الفعلي وليس الكود لتعمل الشجرة
+   * تنشيط شجرة الحسابات الهرمية (Sovereign COA Activation)
+   * تضمن ربط الأب بالابن عبر المعرفات الفرعية (UUID) لضمان توسعة الشجرة.
    */
   async seedConstructionCOA(userId: string) {
     const batch = writeBatch(this.db);
     const accountsRef = collection(this.db, paths.accounts(this.companyId));
     
-    // تعريف الهيكل المالي (Sovereign COA V3.1)
+    // تعريف الهيكل المالي الهرمي
     const rawHierarchy = [
       { code: '1', nameAr: 'الأصول', nameEn: 'Assets', type: 'asset', isGroup: true, level: 1, parentCode: null },
       { code: '11', nameAr: 'أصول متداولة', nameEn: 'Current Assets', type: 'asset', isGroup: true, level: 2, parentCode: '1' },
@@ -61,14 +61,15 @@ export class SeedService {
       { code: '5201', nameAr: 'رواتب ومصاريف إدارية', nameEn: 'G&A Expenses', type: 'expense', isGroup: false, level: 2, parentCode: '5' }
     ];
 
+    // خريطة لربط الكود بالمعرف الفريد (ID) المتولد
     const codeToIdMap: Record<string, string> = {};
 
-    // 1. حجز المعرفات مسبقاً لكل كود
+    // 1. توليد معرفات Firestore مسبقاً لكل حساب
     rawHierarchy.forEach(item => {
       codeToIdMap[item.code] = doc(accountsRef).id;
     });
 
-    // 2. بناء الشجرة بربط المعرفات الحقيقية (ID-based Linking)
+    // 2. بناء الشجرة بربط المعرفات الحقيقية
     rawHierarchy.forEach(item => {
       const myId = codeToIdMap[item.code];
       const parentId = item.parentCode ? codeToIdMap[item.parentCode] : "";
@@ -81,7 +82,7 @@ export class SeedService {
         type: item.type,
         isGroup: item.isGroup,
         level: item.level,
-        parentId: parentId,
+        parentId: parentId, // الربط بالمعرف الفريد للأب
         companyId: this.companyId,
         isActive: true,
         createdAt: serverTimestamp(),
