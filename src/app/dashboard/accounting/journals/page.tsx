@@ -9,7 +9,7 @@ import {
   Trash2, ArrowRight, Calculator,
   Zap, Search, ChevronDown,
   Sparkles, Hash, DatabaseZap, LayoutGrid,
-  CheckCircle2, Link as LinkIcon
+  CheckCircle2, Link as LinkIcon, AlertTriangle
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';

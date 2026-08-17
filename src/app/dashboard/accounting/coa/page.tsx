@@ -10,7 +10,7 @@ import {
   GitBranch, Plus, Loader2, Folder, 
   FileText, Search, ChevronRight, ChevronDown,
   Save, Landmark, Sparkles, DatabaseZap,
-  RotateCcw, Trash2, FolderOpen
+  RotateCcw, Trash2, FolderOpen, CheckCircle2
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -133,7 +133,6 @@ export default function ChartOfAccountsPage() {
   const renderTree = (parentId: string | null = null, level = 0) => {
     return (accounts || [])
       .filter(a => {
-        // التحقق من الجذور: parentId قد يكون null أو string فارغ
         if (parentId === null) return !a.parentId || a.parentId === "";
         return a.parentId === parentId;
       })
@@ -181,7 +180,7 @@ export default function ChartOfAccountsPage() {
               <span className="text-sm truncate">{isRtl ? account.nameAr : (account.nameEn || account.nameAr)}</span>
               
               <div className="ms-auto flex items-center gap-2">
-                {/* زر الإضافة متاح للجميع - أي حساب معرض أن يكون أب */}
+                {/* زر الإضافة متاح للجميع - أي حساب معرض أن يكون أب بذكاء تشغيلي */}
                 <button 
                   onClick={(e) => handleAddSubAccount(account, e)}
                   className="h-8 w-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all border border-emerald-100 hover:bg-emerald-600 hover:text-white"
