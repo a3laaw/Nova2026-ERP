@@ -102,11 +102,12 @@ export default function ChartOfAccountsPage() {
     }
   };
 
-  // دالة عرض الشجرة المحسنة لضمان ظهور الحسابات الرئيسية
+  // دالة عرض الشجرة المحسنة لضمان ظهور الحسابات الرئيسية (Root Nodes Fix)
   const renderTree = (parentId: string | null = null, level = 0) => {
-    return accounts
-      ?.filter(a => {
-        if (parentId === null) return !a.parentId;
+    return (accounts || [])
+      .filter(a => {
+        // حوكمة الجذور: اعتبار null أو empty string كجذور
+        if (parentId === null) return !a.parentId || a.parentId === "";
         return a.parentId === parentId;
       })
       .filter(a => {
@@ -115,7 +116,7 @@ export default function ChartOfAccountsPage() {
       })
       .map(account => {
         const isExpanded = expanded[account.id] || searchTerm !== "";
-        const hasChildren = accounts.some(child => child.parentId === account.id);
+        const hasChildren = accounts?.some(child => child.parentId === account.id);
 
         return (
           <div key={account.id} className="select-none">
@@ -145,7 +146,7 @@ export default function ChartOfAccountsPage() {
               <span className="text-sm truncate">{account.nameAr}</span>
               
               {account.referenceId && (
-                <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-0 text-[8px] font-black uppercase">Project Link</Badge>
+                <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-0 text-[8px] font-black uppercase">Auto-Linked</Badge>
               )}
               
               <Badge variant="outline" className="ms-auto text-[8px] uppercase font-black border-2 h-5 bg-white opacity-40 group-hover:opacity-100 transition-opacity">{account.type}</Badge>
@@ -166,7 +167,7 @@ export default function ChartOfAccountsPage() {
           <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Sovereign Financial Registry V2.9</p>
         </div>
         <div className="flex gap-3">
-          {accounts?.length === 0 && !loading && (
+          {(!accounts || accounts.length === 0) && !loading && (
              <Button 
                onClick={() => setShowSeedConfirm(true)} 
                disabled={seeding}
@@ -174,7 +175,7 @@ export default function ChartOfAccountsPage() {
                className="h-10 px-6 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-700 font-black gap-2 shadow-sm hover:bg-emerald-100 transition-all"
              >
                 {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                {isRtl ? 'تنشيط الشجرة القياسية' : 'Activate Standard COA'}
+                {isRtl ? 'تنشيط الشجرة والمراكز الإدارية' : 'Activate Financial Centers'}
              </Button>
           )}
           <Button onClick={() => { setForm({ nameAr: '', nameEn: '', code: '', type: 'asset', isGroup: false }); setIsAdding(true); }} size="sm" className="h-10 px-8 font-black rounded-xl shadow-lg gap-2">
@@ -201,7 +202,7 @@ export default function ChartOfAccountsPage() {
                <Loader2 className="animate-spin h-10 w-10 text-primary/20" />
                <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest italic">Loading Chart...</p>
             </div>
-          ) : accounts?.length === 0 ? (
+          ) : (!accounts || accounts.length === 0) ? (
              <div className="py-40 text-center space-y-6 opacity-30">
                 <DatabaseZap className="h-20 w-20 mx-auto text-slate-200" />
                 <div className="space-y-2">
@@ -281,7 +282,7 @@ export default function ChartOfAccountsPage() {
                <AlertDialogAction 
                  onClick={handleSeedCOA} 
                  disabled={seeding}
-                 className="flex-[2] h-14 rounded-2xl font-black bg-emerald-600 text-white shadow-xl shadow-emerald-200"
+                 className="flex-[2] h-14 rounded-2xl font-black bg-emerald-600 text-white shadow-xl shadow-emerald-100"
                >
                   {seeding ? <Loader2 className="animate-spin h-5 w-5" /> : <CheckCircle2 className="h-5 w-5 me-2" />} {isRtl ? 'تنشيط الآن' : 'Activate Now'}
                </AlertDialogAction>

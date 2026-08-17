@@ -20,13 +20,13 @@ export class SeedService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * تنشيط شجرة الحسابات مع إنشاء مراكز التكلفة والربحية آلياً (التكامل المالي)
+   * تنشيط شجرة الحسابات مع إنشاء مراكز التكلفة والربحية آلياً (التكامل المالي السيادي)
    */
   async seedConstructionCOA(userId: string) {
     const batch = writeBatch(this.db);
     const accountsRef = collection(this.db, paths.accounts(this.companyId));
     
-    // 1. تعريف شجرة الحسابات القياسية للمقاولات
+    // 1. تعريف شجرة الحسابات القياسية للمقاولات (Sovereign COA V2)
     const standardAccounts = [
       { code: '1', nameAr: 'الأصول', nameEn: 'Assets', type: 'asset', isGroup: true, level: 1, parentId: null },
       { code: '11', nameAr: 'أصول متداولة', nameEn: 'Current Assets', type: 'asset', isGroup: true, level: 2, parentId: '1' },
@@ -63,7 +63,7 @@ export class SeedService {
       });
     });
 
-    // 2. إنشاء مراكز التكلفة والربحية الإدارية (تلقائي)
+    // 2. إنشاء مراكز التكلفة والربحية الإدارية (تلقائي مع التنشيط)
     const ccRef = doc(this.db, paths.costCenters(this.companyId), 'cc_admin_general');
     batch.set(ccRef, {
       id: 'cc_admin_general',
@@ -89,7 +89,7 @@ export class SeedService {
   }
 
   /**
-   * مزامنة وإصلاح أرصدة الإجازات لكافة الموظفين بناءً على تاريخ التعيين (Historical Sync)
+   * مزامنة وإصلاح أرصدة الإجازات لكافة الموظفين بناءً على تاريخ التعيين (Retroactive Sync)
    */
   async syncAllEmployeeBalances() {
     const whService = new WorkHoursService(this.db, this.companyId);
@@ -110,7 +110,10 @@ export class SeedService {
       const emp = empDoc.data();
       if (!emp.hireDate) continue;
 
+      // حساب الاستحقاق التراكمي منذ التعيين
       const totalAccrued = wdService.calculateAccruedLeave(emp.hireDate);
+      
+      // حساب المستهلك فعلياً
       const empUsed = leavesSnap.docs
         .filter(d => d.data().employeeId === empDoc.id && d.data().type === 'annual')
         .reduce((sum, d) => sum + (d.data().workingDays || 0), 0);
