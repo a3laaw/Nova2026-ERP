@@ -123,9 +123,6 @@ export default function ReferenceListsPage() {
     <div className="space-y-8 animate-in fade-in duration-500 pb-20 text-start" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-8 border-slate-100 text-start">
         <div className="flex items-center gap-4 text-start">
-           <Button variant="ghost" onClick={() => router.push('/dashboard/settings')} className="h-12 w-12 p-0 rounded-2xl bg-white shadow-sm border hover:bg-slate-50 transition-all">
-             <ArrowRight className={cn("h-5 w-5", !isRtl && "rotate-180")} />
-           </Button>
            <div className="text-start">
              <h1 className="text-4xl font-black font-headline flex items-center gap-3 text-slate-900">
                 <ListTree className="h-10 w-10 text-primary" />
@@ -140,9 +137,9 @@ export default function ReferenceListsPage() {
         {canCreate && (
            <Button 
              onClick={() => setEditingItem({ name: '', nameEn: '', code: '', order: items.length + 1, isActive: true, isEditable: true, isSystem: false })}
-             className="bg-primary text-white font-black rounded-2xl px-10 py-8 text-xl shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-8 border-orange-700"
+             className="bg-primary text-white font-black rounded-2xl px-10 h-12 shadow-xl shadow-primary/20 hover:scale-[1.02] transition-all gap-3 border-b-4 border-orange-700"
            >
-              <Plus className="h-7 w-7" />
+              <Plus className="h-6 w-6" />
               {tSafe('inline.addNewItem', 'إضافة بند جديد', 'Add New Item')}
            </Button>
         )}
@@ -187,7 +184,7 @@ export default function ReferenceListsPage() {
                     <Search className="absolute start-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                     <Input 
                       placeholder={t('common.search')} 
-                      className="ps-12 rounded-2xl h-14 bg-white border-2 border-slate-100 font-bold" 
+                      className="ps-12 h-11 bg-white border-slate-200 font-bold rounded-xl" 
                       value={searchTerm}
                       onChange={e => setSearchTerm(e.target.value)}
                     />
@@ -340,7 +337,7 @@ export default function ReferenceListsPage() {
              </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-10 gap-4 flex flex-row">
-            <AlertDialogCancel className="flex-1 h-14 rounded-2xl font-bold border-2 bg-white text-slate-600">{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogCancel className="flex-1 h-14 rounded-2xl font-bold border-2 bg-white text-slate-600">إلغاء</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="flex-[2] h-14 rounded-2xl font-black bg-rose-600 hover:bg-rose-700 text-white shadow-xl shadow-rose-200">
                {isRtl ? 'نعم، احذف' : 'Delete'}
             </AlertDialogAction>

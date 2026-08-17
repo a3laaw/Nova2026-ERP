@@ -20,6 +20,17 @@ export class SeedService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
+   * تنظيف شجرة الحسابات (Purge COA)
+   */
+  async purgeCOA() {
+    const q = query(collection(this.db, paths.accounts(this.companyId)), limit(500));
+    const snap = await getDocs(q);
+    const batch = writeBatch(this.db);
+    snap.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  }
+
+  /**
    * تنشيط شجرة الحسابات مع ربط هرمي حقيقي (Hierarchy Fix)
    * يضمن أن parentId يشير إلى الـ Document ID الفعلي وليس الكود لتعمل الشجرة
    */
@@ -32,7 +43,7 @@ export class SeedService {
       { code: '1', nameAr: 'الأصول', nameEn: 'Assets', type: 'asset', isGroup: true, level: 1, parentCode: null },
       { code: '11', nameAr: 'أصول متداولة', nameEn: 'Current Assets', type: 'asset', isGroup: true, level: 2, parentCode: '1' },
       { code: '1101', nameAr: 'النقدية والبنك', nameEn: 'Cash & Bank', type: 'asset', isGroup: false, level: 3, parentCode: '11' },
-      { code: '12', nameAr: 'ذمم وحسابات مدينة', nameEn: 'Accounts Receivable', type: 'asset', isGroup: true, level: 2, parentCode: '1' },
+      { code: '12', nameAr: 'ذمم مدينة', nameEn: 'Accounts Receivable', type: 'asset', isGroup: true, level: 2, parentCode: '1' },
       { code: '1202', nameAr: 'ذمم العملاء (AR)', nameEn: 'Clients Receivable', type: 'asset', isGroup: true, level: 3, parentCode: '12' },
       { code: '1205', nameAr: 'أعمال تحت التنفيذ (WIP)', nameEn: 'Work In Progress', type: 'asset', isGroup: true, level: 3, parentCode: '12' },
       
@@ -50,19 +61,17 @@ export class SeedService {
       { code: '5201', nameAr: 'رواتب ومصاريف إدارية', nameEn: 'G&A Expenses', type: 'expense', isGroup: false, level: 2, parentCode: '5' }
     ];
 
-    // خريطة لتخزين المعرفات المولدة (Code -> DocumentID) لضمان الربط الهيكلي
     const codeToIdMap: Record<string, string> = {};
 
-    // 1. توليد المعرفات وحفظها في الخريطة أولاً
+    // 1. حجز المعرفات مسبقاً
     rawHierarchy.forEach(item => {
-      const newId = doc(accountsRef).id;
-      codeToIdMap[item.code] = newId;
+      codeToIdMap[item.code] = doc(accountsRef).id;
     });
 
-    // 2. بناء القيود مع الربط الصحيح بالآباء عبر المعرفات وليس الأكواد
+    // 2. بناء الشجرة بربط المعرفات (ID-based Linking)
     rawHierarchy.forEach(item => {
       const myId = codeToIdMap[item.code];
-      const parentId = item.parentCode ? codeToIdMap[item.parentCode] : null;
+      const parentId = item.parentCode ? codeToIdMap[item.parentCode] : "";
       
       batch.set(doc(accountsRef, myId), {
         id: myId,
@@ -72,7 +81,7 @@ export class SeedService {
         type: item.type,
         isGroup: item.isGroup,
         level: item.level,
-        parentId: parentId || "", // ضمان قيمة نصية لتوافق عامل التصفية
+        parentId: parentId,
         companyId: this.companyId,
         isActive: true,
         createdAt: serverTimestamp(),
@@ -81,35 +90,22 @@ export class SeedService {
       });
     });
 
-    // 3. إنشاء مراكز التكلفة والربحية الإدارية آلياً
+    // 3. إنشاء مراكز التكلفة والربحية الإدارية
     const ccRef = doc(this.db, paths.costCenters(this.companyId), 'cc_admin_general');
     batch.set(ccRef, {
-      id: 'cc_admin_general',
-      code: 'CC-100',
-      name: 'الإدارة العامة والمصاريف المشتركة',
-      isAdministrative: true,
-      isActive: true,
-      companyId: this.companyId,
-      createdAt: serverTimestamp()
+      id: 'cc_admin_general', code: 'CC-100', name: 'الإدارة العامة والمصاريف المشتركة',
+      isAdministrative: true, isActive: true, companyId: this.companyId, createdAt: serverTimestamp()
     });
 
     const pcRef = doc(this.db, paths.profitCenters(this.companyId), 'pc_corp_general');
     batch.set(pcRef, {
-      id: 'pc_corp_general',
-      code: 'PC-100',
-      name: 'مركز أرباح العمليات المؤسسية',
-      isActive: true,
-      companyId: this.companyId,
-      createdAt: serverTimestamp()
+      id: 'pc_corp_general', code: 'PC-100', name: 'مركز أرباح العمليات المؤسسية',
+      isActive: true, companyId: this.companyId, createdAt: serverTimestamp()
     });
 
     await batch.commit();
   }
 
-  /**
-   * مزامنة وإصلاح أرصدة الإجازات التاريخية (Retroactive Accrual Fix)
-   * يعيد حساب الرصيد من تاريخ التعيين (2.5 يوم/شهر) مطروحاً منها الإجازات الفعلية.
-   */
   async syncAllEmployeeBalances() {
     const whService = new WorkHoursService(this.db, this.companyId);
     let settings = await whService.getSettings();
@@ -128,24 +124,17 @@ export class SeedService {
     for (const empDoc of empsSnap.docs) {
       const emp = empDoc.data();
       if (!emp.hireDate) continue;
-
-      // حساب الاستحقاق التراكمي منذ التعيين
       const totalAccrued = wdService.calculateAccruedLeave(emp.hireDate);
       const empUsed = leavesSnap.docs
         .filter(d => d.data().employeeId === empDoc.id && d.data().type === 'annual')
         .reduce((sum, d) => sum + (d.data().workingDays || 0), 0);
 
       const trueBalance = Math.max(0, Math.round((totalAccrued - empUsed) * 10) / 10);
-
       if (emp.annualLeaveBalance !== trueBalance) {
-        batch.update(empDoc.ref, { 
-          annualLeaveBalance: trueBalance, 
-          updatedAt: serverTimestamp() 
-        });
+        batch.update(empDoc.ref, { annualLeaveBalance: trueBalance, updatedAt: serverTimestamp() });
         count++;
       }
     }
-
     if (count > 0) await batch.commit();
     return count;
   }

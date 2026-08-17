@@ -11,7 +11,7 @@ import {
   FileText, Search, ChevronRight, ChevronDown,
   Save, Landmark, Sparkles, DatabaseZap,
   AlertTriangle, CheckCircle2,
-  FolderOpen
+  FolderOpen, Trash2, RotateCcw
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -59,7 +59,9 @@ export default function ChartOfAccountsPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const [purging, setPurging] = useState(false);
   const [showSeedConfirm, setShowSeedConfirm] = useState(false);
+  const [showPurgeConfirm, setShowPurgeConfirm] = useState(false);
 
   const [form, setForm] = useState<Partial<Account>>({
     nameAr: '', nameEn: '', code: '', type: 'asset', isGroup: false, parentId: null
@@ -103,6 +105,19 @@ export default function ChartOfAccountsPage() {
     }
   };
 
+  const handlePurgeCOA = async () => {
+    if (!db || !companyId) return;
+    setPurging(true);
+    try {
+      const seedService = new SeedService(db, companyId);
+      await seedService.purgeCOA();
+      toast({ title: isRtl ? 'تم تنظيف الدليل' : 'COA Purged' });
+      setShowPurgeConfirm(false);
+    } finally {
+      setPurging(false);
+    }
+  };
+
   const toggleExpand = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
@@ -142,7 +157,7 @@ export default function ChartOfAccountsPage() {
             >
               <div className="flex items-center gap-2">
                 {account.isGroup ? (
-                  <div onClick={(e) => toggleExpand(account.id, e)} className="p-1 hover:bg-primary/10 rounded-md transition-colors">
+                  <div className="p-1 hover:bg-primary/10 rounded-md transition-colors">
                      {isExpanded ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className={cn("h-4 w-4", isRtl && "rotate-180")} />}
                   </div>
                 ) : <div className="w-6" />}
@@ -157,10 +172,6 @@ export default function ChartOfAccountsPage() {
               </span>
               
               <span className="text-sm truncate">{isRtl ? account.nameAr : (account.nameEn || account.nameAr)}</span>
-              
-              {account.referenceId && (
-                <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-0 text-[8px] font-black uppercase">Auto-Linked</Badge>
-              )}
               
               <Badge variant="outline" className="ms-auto text-[8px] uppercase font-black border-2 h-5 bg-white opacity-40 group-hover:opacity-100 transition-opacity">
                 {account.type}
@@ -182,6 +193,9 @@ export default function ChartOfAccountsPage() {
           <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Sovereign Financial Registry V2.9</p>
         </div>
         <div className="flex gap-3">
+          <Button onClick={() => setShowPurgeConfirm(true)} variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50 border-2 border-transparent hover:border-rose-100 transition-all">
+             <Trash2 className="h-5 w-5" />
+          </Button>
           {(!accounts || accounts.length === 0) && !loading && (
              <Button 
                onClick={() => setShowSeedConfirm(true)} 
@@ -300,6 +314,32 @@ export default function ChartOfAccountsPage() {
                  className="flex-[2] h-14 rounded-2xl font-black bg-emerald-600 text-white shadow-xl shadow-emerald-100"
                >
                   {seeding ? <Loader2 className="animate-spin h-5 w-5" /> : <CheckCircle2 className="h-5 w-5 me-2" />} {isRtl ? 'تنشيط الآن' : 'Activate Now'}
+               </AlertDialogAction>
+            </AlertDialogFooter>
+         </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showPurgeConfirm} onOpenChange={setShowPurgeConfirm}>
+         <AlertDialogContent className="rounded-xl p-10 border-0 shadow-3xl bg-white" dir={dir}>
+            <AlertDialogHeader>
+               <div className="mx-auto w-24 h-24 bg-rose-50 text-rose-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-rose-50/50">
+                  <RotateCcw className="h-10 w-10" />
+               </div>
+               <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">{tSafe('inline.confirm.purge.coa', 'تطهير دليل الحسابات', 'Purge Chart of Accounts')}</AlertDialogTitle>
+               <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
+                  {isRtl 
+                    ? 'تحذير: هذا الإجراء سيقوم بمسح كافة الحسابات الحالية من النظام. لن يتأثر تاريخ القيود، ولكنها ستفقد ربطها بالدليل الحالي. هل أنت متأكد؟' 
+                    : 'Warning: This will delete all current accounts. Transactions will remain but lose their master link. Proceed?'}
+               </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
+               <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white">{t('common.cancel')}</AlertDialogCancel>
+               <AlertDialogAction 
+                 onClick={handlePurgeCOA} 
+                 disabled={purging}
+                 className="flex-[2] h-16 rounded-2xl font-black bg-rose-600 text-white shadow-xl"
+               >
+                  {purging ? <Loader2 className="animate-spin h-5 w-5" /> : tSafe('inline.purge.now', 'مسح الدليل الآن', 'Purge Now')}
                </AlertDialogAction>
             </AlertDialogFooter>
          </AlertDialogContent>
