@@ -40,7 +40,7 @@ import { toast } from '@/hooks/use-toast';
 
 export default function ReferenceListsPage() {
   const { globalUser, user } = useAuthContext();
-  const { t, lang, dir, isRtl, tSafe } = useLanguage();
+  const { t, tSafe, lang, dir, isRtl } = useLanguage();
   const { check } = usePermissions();
   const db = useFirestore();
   const router = useRouter();

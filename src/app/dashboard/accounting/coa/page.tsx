@@ -102,9 +102,13 @@ export default function ChartOfAccountsPage() {
     }
   };
 
+  // دالة عرض الشجرة المحسنة لضمان ظهور الحسابات الرئيسية
   const renderTree = (parentId: string | null = null, level = 0) => {
     return accounts
-      ?.filter(a => a.parentId === parentId)
+      ?.filter(a => {
+        if (parentId === null) return !a.parentId;
+        return a.parentId === parentId;
+      })
       .filter(a => {
         if (searchTerm === "") return true;
         return a.nameAr.toLowerCase().includes(searchTerm.toLowerCase()) || a.code.includes(searchTerm);
