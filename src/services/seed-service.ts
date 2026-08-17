@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -16,13 +17,60 @@ import {
 import { paths } from '@/firebase/multi-tenant';
 import { SEED_DATA } from '@/lib/seed-data';
 import { BOQReferenceNode } from '@/types/reference';
+import { WorkingDaysService } from './working-days-service';
+import { WorkHoursService } from './work-hours-service';
 
 export class SeedService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
+   * مزامنة وإصلاح أرصدة الإجازات لكافة الموظفين بناءً على تاريخ التعيين (Historical Sync)
+   * يحل مشكلة الرصيد السالب للموظفين القدامى مثل "أسماء".
+   */
+  async syncAllEmployeeBalances() {
+    const whService = new WorkHoursService(this.db, this.companyId);
+    let settings = await whService.getSettings();
+    if (!settings) settings = whService.getDefaultSettings() as any;
+    const wdService = new WorkingDaysService(settings!);
+
+    const empsSnap = await getDocs(collection(this.db, paths.employees(this.companyId)));
+    const leavesSnap = await getDocs(query(
+      collection(this.db, paths.leaveRequests(this.companyId)),
+      where('status', 'in', ['approved', 'on-leave', 'returned', 'commenced'])
+    ));
+
+    const batch = writeBatch(this.db);
+    let count = 0;
+
+    for (const empDoc of empsSnap.docs) {
+      const emp = empDoc.data();
+      if (!emp.hireDate) continue;
+
+      // 1. حساب الاستحقاق التاريخي
+      const totalAccrued = wdService.calculateAccruedLeave(emp.hireDate);
+      
+      // 2. حساب المستهلك الفعلي من سجلات الإجازات
+      const empUsed = leavesSnap.docs
+        .filter(d => d.data().employeeId === empDoc.id && d.data().type === 'annual')
+        .reduce((sum, d) => sum + (d.data().workingDays || 0), 0);
+
+      const trueBalance = Math.max(0, Math.round((totalAccrued - empUsed) * 10) / 10);
+
+      if (emp.annualLeaveBalance !== trueBalance) {
+        batch.update(empDoc.ref, { 
+          annualLeaveBalance: trueBalance, 
+          updatedAt: serverTimestamp() 
+        });
+        count++;
+      }
+    }
+
+    if (count > 0) await batch.commit();
+    return count;
+  }
+
+  /**
    * تطهير شامل لكافة البيانات التشغيلية والمالية (Nuclear Reset)
-   * يحذف كل شيء ما عدا الموظفين، الأقسام، المسميات الوظيفية، والأدوار.
    */
   async purgeSystemData() {
     const batchSize = 500;
@@ -73,40 +121,6 @@ export class SeedService {
         }
       }
     }
-  }
-
-  /**
-   * إصلاح أرصدة الإجازات للموظفين (Migration)
-   * يرفع الرصيد إلى 30 لمن لديهم رصيد 0 أو أقل نتيجة أخطاء سابقة
-   */
-  async fixLeaveBalances() {
-    const q = query(collection(this.db, paths.employees(this.companyId)));
-    const snap = await getDocs(q);
-    const batch = writeBatch(this.db);
-    let count = 0;
-
-    snap.docs.forEach(d => {
-      const data = d.data();
-      if (!data.annualLeaveBalance || data.annualLeaveBalance <= 0) {
-        batch.update(d.ref, { annualLeaveBalance: 30, updatedAt: serverTimestamp() });
-        count++;
-      }
-    });
-
-    if (count > 0) await batch.commit();
-    return count;
-  }
-
-  /**
-   * تطهير سجل الإجازات فقط مع المحافظة على الموظفين
-   */
-  async purgeAllLeaves() {
-    const q = query(collection(this.db, paths.leaveRequests(this.companyId)));
-    const snap = await getDocs(q);
-    if (snap.empty) return;
-    const batch = writeBatch(this.db);
-    snap.docs.forEach(d => batch.delete(d.ref));
-    return batch.commit();
   }
 
   async runIdentityMigration() {
@@ -182,59 +196,5 @@ export class SeedService {
     const q = query(collection(this.db, paths.boqReferenceNodes(this.companyId)), limit(1));
     const snap = await getDocs(q);
     return !snap.empty;
-  }
-
-  /**
-   * ضخ شجرة حسابات متخصصة لشركات المقاولات مع تأسيس أبعادها التحليلية (WIP & Retentions)
-   */
-  async seedConstructionCOA(userId: string) {
-    const batch = writeBatch(this.db);
-    const coaRef = collection(this.db, paths.accounts(this.companyId));
-    
-    // 1. تأسيس المراكز الإدارية والعامة لضمان عمل محرك التحقق (Validation Engine)
-    const adminCCRef = doc(collection(this.db, paths.costCenters(this.companyId)), 'cc_admin_general');
-    batch.set(adminCCRef, {
-      id: adminCCRef.id, code: 'CC-ADMIN', name: 'مركز التكاليف الإدارية والعمومية', 
-      isAdministrative: true, isActive: true, companyId: this.companyId, createdAt: serverTimestamp()
-    });
-
-    const generalPCRef = doc(collection(this.db, paths.profitCenters(this.companyId)), 'pc_corp_general');
-    batch.set(generalPCRef, {
-      id: generalPCRef.id, code: 'PC-GENERAL', name: 'مركز الربحية العام (المنشأة)', 
-      isActive: true, companyId: this.companyId, createdAt: serverTimestamp()
-    });
-
-    // 2. ضخ شجرة الحسابات (Construction Specific)
-    const accounts = [
-      { code: '11', nameAr: 'الأصول المتداولة', type: 'asset', isGroup: true },
-      { code: '1101', nameAr: 'النقدية وما في حكمها', type: 'asset', isGroup: true, parentCode: '11' },
-      { code: '110101', nameAr: 'الخزينة الرئيسية', type: 'asset', isGroup: false, parentCode: '1101' },
-      { code: '1202', nameAr: 'ذمم العملاء (الملاك)', type: 'asset', isGroup: true, parentCode: '11' },
-      { code: '1203', nameAr: 'محتجزات مدينة لدى الملاك', type: 'asset', isGroup: false, parentCode: '11' },
-      { code: '1205', nameAr: 'أعمال تحت التنفيذ (WIP)', type: 'asset', isGroup: true, parentCode: '11' },
-      { code: '21', nameAr: 'الخصوم المتداولة', type: 'liability', isGroup: true },
-      { code: '2101', nameAr: 'ذمم الموردين ومقاولي الباطن', type: 'liability', isGroup: true, parentCode: '21' },
-      { code: '2102', nameAr: 'محتجزات دائنة لمقاولي الباطن', type: 'liability', isGroup: false, parentCode: '2101' },
-      { code: '41', nameAr: 'إيرادات المشاريع', type: 'revenue', isGroup: true },
-      { code: '4101', nameAr: 'إيرادات عقود المقاولات', type: 'revenue', isGroup: false, parentCode: '41' },
-      { code: '51', nameAr: 'تكاليف النشاط المباشرة', type: 'expense', isGroup: true },
-      { code: '5101', nameAr: 'تكلفة مواد بناء', type: 'expense', isGroup: false, parentCode: '51' },
-      { code: '5102', nameAr: 'تكلفة عمالة ميدانية', type: 'expense', isGroup: false, parentCode: '51' },
-    ];
-
-    for (const acc of accounts) {
-       const ref = doc(coaRef);
-       batch.set(ref, {
-          ...acc,
-          id: ref.id,
-          companyId: this.companyId,
-          isActive: true,
-          level: acc.code.length,
-          createdAt: serverTimestamp(),
-          createdBy: userId
-       });
-    }
-
-    await batch.commit();
   }
 }

@@ -1,25 +1,28 @@
+
 'use client';
 
-import { format, eachDayOfInterval, parseISO, differenceInMonths, differenceInDays } from 'date-fns';
+import { format, eachDayOfInterval, parseISO, differenceInMonths, differenceInDays, isValid, startOfMonth } from 'date-fns';
 import { WorkHoursSettings, DayOfWeek } from '@/types/work-hours';
 
 /**
  * محرك حساب أيام العمل الفعلية والاستحقاقات القانونية.
  * يطبق قواعد قانون العمل الكويتي (مادة 69، 70، 72).
+ * تم تحديثه ليدعم حساب الاستحقاق التراكمي منذ تاريخ التعيين.
  */
 export class WorkingDaysService {
   constructor(private settings: WorkHoursSettings) {}
 
   /**
    * حساب أيام العمل الفعلية بين تاريخين (استبعاد الجمعة والعطلات)
-   * يستخدم هذا لحساب عدد الأيام التي سيتم خصمها فعلياً من رصيد الموظف عند قيامه بإجازة.
    */
   calculateWorkingDays(startDate: string, endDate: string): number {
     try {
-      const interval = eachDayOfInterval({
-        start: parseISO(startDate),
-        end: parseISO(endDate)
-      });
+      if (!startDate || !endDate) return 0;
+      const start = parseISO(startDate);
+      const end = parseISO(endDate);
+      if (!isValid(start) || !isValid(end) || end < start) return 0;
+
+      const interval = eachDayOfInterval({ start, end });
 
       let workingDays = 0;
       const publicHolidayDates = new Set(this.settings.publicHolidays.map(h => h.date));
@@ -45,22 +48,20 @@ export class WorkingDaysService {
   }
 
   /**
-   * حساب رصيد الإجازات السنوية المستحق (Accrued Leave)
-   * المادة 70: يستحق العامل إجازة سنوية مدتها 30 يوماً عن كل سنة كاملة من الخدمة.
-   * القاعدة الرقمية: 30 يوماً / 12 شهراً = 2.5 يوم عن كل شهر عمل فعلي.
+   * حساب رصيد الإجازات السنوية المستحق تراكمياً منذ التعيين
+   * المادة 70: 30 يوماً / 12 شهراً = 2.5 يوم عن كل شهر عمل.
    */
   calculateAccruedLeave(hireDate: string, targetDate: string = format(new Date(), 'yyyy-MM-dd')): number {
     try {
       const start = parseISO(hireDate);
       const end = parseISO(targetDate);
       
-      if (end < start) return 0;
+      if (!isValid(start) || !isValid(end) || end < start) return 0;
 
-      // حساب إجمالي الأيام بين التاريخين
+      // حساب إجمالي الشهور المكتملة + كسر الشهر
       const totalDays = differenceInDays(end, start);
       
-      // القاعدة: كل 365 يوم تمنح 30 يوم إجازة
-      // أو: كل شهر (30.44 يوم تقريباً) يمنح 2.5 يوم
+      // المعادلة السيادية: كل 365.25 يوم تمنح 30 يوم إجازة
       const accrued = (totalDays / 365.25) * 30;
       
       return Math.round(accrued * 100) / 100;
@@ -71,17 +72,22 @@ export class WorkingDaysService {
 
   /**
    * التحقق من أهلية القيام بالإجازة (قاعدة الـ 6 أشهر)
-   * لا يجوز القيام بالإجازة السنوية إلا بعد قضاء 6 أشهر متصلة في الخدمة.
    */
   isEligibleForLeave(hireDate: string, startDate: string): { eligible: boolean; months: number } {
-    const start = parseISO(hireDate);
-    const leaveStart = parseISO(startDate);
-    const months = (differenceInDays(leaveStart, start)) / 30.44;
-    
-    return {
-      eligible: months >= 6,
-      months: Math.round(months * 10) / 10
-    };
+    try {
+      const start = parseISO(hireDate);
+      const leaveStart = parseISO(startDate);
+      if (!isValid(start) || !isValid(leaveStart)) return { eligible: true, months: 0 };
+
+      const months = (differenceInDays(leaveStart, start)) / 30.44;
+      
+      return {
+        eligible: months >= 6,
+        months: Math.round(months * 10) / 10
+      };
+    } catch (e) {
+      return { eligible: true, months: 0 };
+    }
   }
 
   /**

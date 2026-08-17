@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -41,7 +42,7 @@ import { toast } from '@/hooks/use-toast';
 export default function ReferenceListsPage() {
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir, isRtl, tSafe } = useLanguage();
-  const { check } = usePermissions();
+  const { check, isAdmin } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const companyId = globalUser?.companyId;
