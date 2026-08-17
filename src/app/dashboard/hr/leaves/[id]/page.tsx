@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -38,7 +37,9 @@ export default function LeaveDetailsPage() {
   const router = useRouter();
 
   const [processing, setProcessing] = useState(false);
-  const [showExecutionDialog, setShowExecutionDialog] = useState<'depart' | 'return' | 'commence' | null>(null);
+  const [showExecutionDialog, setShowExecutionDialog] = useState<'depart' | 'return' | 'commence' | 'approve' | null>(null);
+  const [densityCheck, setDensityCheck] = useState<{ count: number; peers: any[] }>({ count: 0, peers: [] });
+  const [loadingDensity, setLoadingDensity] = useState(false);
   
   const [editForm, setEditForm] = useState({
     comment: '',
@@ -68,8 +69,15 @@ export default function LeaveDetailsPage() {
         endDate: leave.endDate,
         workingDays: leave.workingDays
       }));
+
+      if (leaveService && leave.departmentId && leave.status === 'pending') {
+        setLoadingDensity(true);
+        leaveService.getDepartmentLeaveDensity(leave.departmentId, leave.startDate, leave.endDate, leave.id)
+          .then(setDensityCheck)
+          .finally(() => setLoadingDensity(false));
+      }
     }
-  }, [leave]);
+  }, [leave, leaveService]);
 
   const handleAction = async (status: LeaveRequest['status']) => {
     if (!leaveService || !user) return;
@@ -128,7 +136,7 @@ export default function LeaveDetailsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
            <div className="lg:col-span-8 space-y-8">
               
-              {isAdmin && ['approved', 'on-leave', 'returned'].includes(leave.status) && (
+              {isAdmin && ['pending', 'approved', 'on-leave', 'returned'].includes(leave.status) && (
                 <Card className="border-4 border-dashed border-primary/20 rounded-[2.5rem] bg-white overflow-hidden shadow-2xl print:hidden">
                    <div className="bg-primary/5 p-8 border-b text-start">
                       <h3 className="text-xl font-black font-headline flex items-center gap-3">
@@ -136,7 +144,12 @@ export default function LeaveDetailsPage() {
                          {isRtl ? 'إجراءات التنفيذ الميداني' : 'Field Execution Actions'}
                       </h3>
                    </div>
-                   <CardContent className="p-10 flex gap-4">
+                   <CardContent className="p-10 flex flex-wrap gap-4">
+                      {leave.status === 'pending' && (
+                        <Button onClick={() => setShowExecutionDialog('approve')} className="flex-1 h-20 rounded-3xl bg-primary text-white font-black text-xl shadow-xl border-b-8 border-orange-700 gap-4 hover:scale-[1.02] transition-all">
+                           <ShieldCheck className="h-8 w-8" /> {isRtl ? 'اتخاذ قرار الإدارة' : 'Make Decision'}
+                        </Button>
+                      )}
                       {leave.status === 'approved' && (
                         <Button onClick={() => setShowExecutionDialog('depart')} className="flex-1 h-20 rounded-3xl bg-[#FFB000] text-white font-black text-xl shadow-xl border-b-8 border-[#FF5722] gap-4 hover:scale-[1.02] transition-all">
                            <PlaneTakeoff className="h-8 w-8" /> {isRtl ? 'تسجيل مغادرة الموظف' : 'Register Departure'}
@@ -246,14 +259,38 @@ export default function LeaveDetailsPage() {
                   {showExecutionDialog === 'depart' && <PlaneTakeoff className="h-9 w-9 text-orange-500" />}
                   {showExecutionDialog === 'return' && <PlaneLanding className="h-9 w-9 text-blue-600" />}
                   {showExecutionDialog === 'commence' && <ShieldCheck className="h-9 w-9 text-emerald-600" />}
+                  {showExecutionDialog === 'approve' && <Clock className="h-9 w-9 text-primary" />}
                   {showExecutionDialog === 'depart' ? 'توثيق مغادرة الموظف' : 
                    showExecutionDialog === 'return' ? 'توثيق العودة الفعلية' : 
+                   showExecutionDialog === 'approve' ? 'قرار الإدارة' :
                    'اعتماد المباشرة النهائية'}
                </DialogTitle>
                <p className="text-slate-500 font-bold mt-2 italic">{leave.userName}</p>
             </div>
 
-            <div className="p-10 space-y-8 bg-white">
+            <div className="p-10 space-y-8 bg-white max-h-[60vh] overflow-y-auto scrollbar-hide">
+               {showExecutionDialog === 'approve' && (
+                 <div className="space-y-6 animate-in zoom-in-95">
+                    {loadingDensity ? (
+                      <div className="p-4 bg-slate-50 rounded-xl flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> فحص الكثافة...</div>
+                    ) : densityCheck.count > 0 && (
+                      <div className="p-6 bg-rose-50 border-4 border-rose-100 rounded-3xl space-y-4">
+                         <div className="flex items-center gap-3 text-rose-600"><ShieldAlert className="h-6 w-6" /><h4 className="font-black text-sm uppercase">تنبيه: تعارض في القسم</h4></div>
+                         <p className="text-xs font-bold text-rose-700 leading-relaxed">يوجد ({densityCheck.count}) موظفين من نفس القسم في إجازة حالياً خلال هذه الفترة.</p>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-6 p-8 bg-slate-50 rounded-[2rem] border-2 border-dashed border-primary/20">
+                      <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">البدء المعتمد</Label><SmartDateInput value={editForm.startDate} onChange={v => setEditForm({...editForm, startDate: v})} /></div>
+                      <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">العودة المعتمدة</Label><SmartDateInput value={editForm.endDate} onChange={v => setEditForm({...editForm, endDate: v})} /></div>
+                    </div>
+                    <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">ملاحظات إدارية</Label><Textarea value={editForm.comment} onChange={e => setEditForm({...editForm, comment: e.target.value})} className="rounded-xl border-2" /></div>
+                    <div className="flex gap-4">
+                       <Button onClick={() => handleAction('rejected')} disabled={processing} variant="outline" className="flex-1 h-16 rounded-2xl border-2 text-rose-600 font-black">رفض</Button>
+                       <Button onClick={() => handleAction('approved')} disabled={processing} className="flex-1 h-16 rounded-2xl bg-emerald-600 text-white font-black">موافقة واعتماد</Button>
+                    </div>
+                 </div>
+               )}
+
                {showExecutionDialog === 'depart' && (
                   <div className="space-y-6">
                      <div className="p-8 bg-orange-50/50 rounded-[2.5rem] border-2 border-orange-100 space-y-4 shadow-inner">

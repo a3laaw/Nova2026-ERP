@@ -62,7 +62,13 @@ export class LeaveService {
     }
   }
 
+  /**
+   * محرك فحص كثافة الإجازات في القسم (Department Density Radar)
+   * يفحص من هم في إجازة من نفس القسم خلال فترة محددة
+   */
   async getDepartmentLeaveDensity(departmentId: string, startDate: string, endDate: string, currentRequestId?: string) {
+    if (!departmentId) return { count: 0, peers: [] };
+
     const q = query(
       collection(this.db, paths.leaveRequests(this.companyId)),
       where('departmentId', '==', departmentId),
@@ -70,19 +76,21 @@ export class LeaveService {
     );
 
     const snap = await getDocs(q);
-    const peersOnLeave = snap.docs.filter(d => {
-       const data = d.data();
-       if (currentRequestId && d.id === currentRequestId) return false;
-       return (startDate <= data.endDate && endDate >= data.startDate);
-    });
+    const peersOnLeave = snap.docs
+      .map(d => ({ id: d.id, ...d.data() } as any))
+      .filter(d => {
+        if (currentRequestId && d.id === currentRequestId) return false;
+        // التحقق من تداخل الفترات: (StartA <= EndB) and (EndA >= StartB)
+        return (startDate <= d.endDate && endDate >= d.startDate);
+      });
 
     return {
       count: peersOnLeave.length,
       peers: peersOnLeave.map(d => ({ 
         id: d.id, 
-        name: d.data().userName,
-        status: d.data().status,
-        period: `${d.data().startDate} -> ${d.data().endDate}`
+        name: d.userName || d.employeeName,
+        status: d.status,
+        period: `${d.startDate} → ${d.endDate}`
       }))
     };
   }
@@ -148,7 +156,7 @@ export class LeaveService {
       if (payload.actualReturnDate) updateData.actualReturnDate = payload.actualReturnDate;
       
       if (payload.workingDays !== undefined) {
-         const diff = payload.workingDays; // الخصم النهائي من الرصيد
+         const diff = payload.workingDays; 
          updateData.workingDays = payload.workingDays;
          if (leaveData.type === 'annual') {
             batch.update(empRef, { annualLeaveBalance: increment(-diff) });

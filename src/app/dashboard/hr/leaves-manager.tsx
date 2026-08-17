@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -10,7 +9,8 @@ import {
   CalendarDays, Loader2, CheckCircle2, 
   ArrowRight, Clock,
   PlaneLanding, PlaneTakeoff, Zap,
-  ShieldCheck, Pencil, Save, AlertTriangle, X
+  ShieldCheck, Pencil, Save, AlertTriangle, X,
+  ShieldAlert, Users, Info
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -41,6 +41,8 @@ export function LeavesManager() {
 
   const [processingLeave, setProcessingLeave] = useState<LeaveRequest | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [densityCheck, setDensityCheck] = useState<{ count: number; peers: any[] }>({ count: 0, peers: [] });
+  const [loadingDensity, setLoadingDensity] = useState(false);
   
   const [editForm, setEditForm] = useState({
     comment: '',
@@ -81,8 +83,24 @@ export function LeavesManager() {
         workingDays: processingLeave.workingDays,
         actualDate: new Date().toISOString().split('T')[0]
       });
+
+      // تشغيل فحص الكثافة فوراً عند فتح نافذة القرار
+      if (leaveService && processingLeave.departmentId && processingLeave.status === 'pending') {
+        setLoadingDensity(true);
+        leaveService.getDepartmentLeaveDensity(
+          processingLeave.departmentId, 
+          processingLeave.startDate, 
+          processingLeave.endDate, 
+          processingLeave.id
+        ).then(res => {
+          setDensityCheck(res);
+          setLoadingDensity(false);
+        });
+      }
+    } else {
+      setDensityCheck({ count: 0, peers: [] });
     }
-  }, [processingLeave]);
+  }, [processingLeave, leaveService]);
 
   const handleAction = async (status: LeaveRequest['status']) => {
     if (!leaveService || !user || !processingLeave) return;
@@ -211,6 +229,33 @@ export function LeavesManager() {
               
               {processingLeave?.status === 'pending' && (
                 <div className="space-y-6">
+                   {/* محرك كشف التعارض والتعارض */}
+                   {loadingDensity ? (
+                     <div className="p-4 flex items-center gap-3 bg-slate-50 rounded-xl">
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        <span className="text-xs font-bold">{isRtl ? 'جاري فحص تعارض الأقسام...' : 'Checking department conflicts...'}</span>
+                     </div>
+                   ) : densityCheck.count > 0 && (
+                     <div className="p-6 bg-rose-50 border-4 border-rose-100 rounded-3xl space-y-4 animate-in shake-in duration-500 text-start">
+                        <div className="flex items-center gap-3 text-rose-600">
+                           <ShieldAlert className="h-6 w-6" />
+                           <h4 className="font-black text-sm uppercase tracking-tight">{isRtl ? 'تنبيه: تعارض في كفاية القسم' : 'ALERT: Department Capacity Conflict'}</h4>
+                        </div>
+                        <p className="text-xs font-bold text-rose-700 leading-relaxed">
+                           {isRtl 
+                             ? `يوجد حالياً (${densityCheck.count}) موظفين من نفس القسم في إجازة خلال هذه الفترة. الموافقة قد تؤثر على سير العمل.` 
+                             : `There are (${densityCheck.count}) employees from the same department on leave during this period.`}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                           {densityCheck.peers.map(p => (
+                             <Badge key={p.id} variant="outline" className="bg-white border-rose-200 text-rose-600 font-black text-[9px] h-6">
+                                {p.name} ({p.status})
+                             </Badge>
+                           ))}
+                        </div>
+                     </div>
+                   )}
+
                    <div className="grid grid-cols-2 gap-6 p-8 bg-slate-50 rounded-[2rem] border-2 border-dashed border-primary/20 shadow-inner">
                       <div className="space-y-2 text-start">
                          <Label className="text-[10px] font-black uppercase text-slate-400">تاريخ البدء المعتمد</Label>
