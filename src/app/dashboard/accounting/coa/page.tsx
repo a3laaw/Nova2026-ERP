@@ -10,9 +10,7 @@ import {
   GitBranch, Plus, Loader2, Folder, 
   FileText, Search, ChevronRight, ChevronDown,
   Save, Landmark, Sparkles, DatabaseZap,
-  AlertTriangle, CheckCircle2,
-  FolderOpen, Trash2, RotateCcw,
-  PlusCircle
+  RotateCcw, Trash2, FolderOpen
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -97,7 +95,7 @@ export default function ChartOfAccountsPage() {
     try {
       const seedService = new SeedService(db, companyId);
       await seedService.seedConstructionCOA(user.uid);
-      toast({ title: tSafe('inline.coa.activated', 'تم تفعيل الشجرة والمراكز المالية بنجاح', 'COA & Centers Activated') });
+      toast({ title: tSafe('inline.coa.activated', 'تم تفعيل الشجرة الهرمية بنجاح', 'COA Activated') });
       setShowSeedConfirm(false);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
@@ -124,7 +122,7 @@ export default function ChartOfAccountsPage() {
     setForm({
       nameAr: '', 
       nameEn: '', 
-      code: parent.code + '.', // تلميح للكود
+      code: parent.code + '.', 
       type: parent.type, 
       isGroup: false, 
       parentId: parent.id 
@@ -135,6 +133,7 @@ export default function ChartOfAccountsPage() {
   const renderTree = (parentId: string | null = null, level = 0) => {
     return (accounts || [])
       .filter(a => {
+        // التحقق من الجذور: parentId قد يكون null أو string فارغ
         if (parentId === null) return !a.parentId || a.parentId === "";
         return a.parentId === parentId;
       })
@@ -143,19 +142,19 @@ export default function ChartOfAccountsPage() {
         return a.nameAr.toLowerCase().includes(searchTerm.toLowerCase()) || a.code.includes(searchTerm);
       })
       .map(account => {
-        const isExpanded = expanded[account.id] || searchTerm !== "";
         const hasChildren = accounts?.some(child => child.parentId === account.id);
+        const isExpanded = expanded[account.id] || searchTerm !== "";
 
         return (
           <div key={account.id} className="select-none">
             <div 
               className={cn(
                 "flex items-center gap-3 p-2.5 hover:bg-primary/5 rounded-xl cursor-pointer transition-all border-b border-slate-50 group", 
-                account.isGroup ? "font-black text-slate-900" : "font-medium text-slate-600"
+                (account.isGroup || hasChildren) ? "font-black text-slate-900" : "font-medium text-slate-600"
               )} 
               style={{ paddingInlineStart: `${level * 24 + 12}px` }} 
               onClick={() => {
-                if (account.isGroup) {
+                if (hasChildren || account.isGroup) {
                   setExpanded(prev => ({...prev, [account.id]: !prev[account.id]}));
                 } else {
                   setForm(account);
@@ -164,13 +163,13 @@ export default function ChartOfAccountsPage() {
               }}
             >
               <div className="flex items-center gap-2">
-                {account.isGroup ? (
+                {(account.isGroup || hasChildren) ? (
                   <div className="p-1 hover:bg-primary/10 rounded-md transition-colors">
                      {isExpanded ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className={cn("h-4 w-4", isRtl && "rotate-180")} />}
                   </div>
                 ) : <div className="w-6" />}
                 
-                {account.isGroup ? (
+                {(account.isGroup || hasChildren) ? (
                    isExpanded ? <FolderOpen className="h-4 w-4 text-primary fill-current opacity-20" /> : <Folder className="h-4 w-4 text-amber-500 fill-current opacity-40" />
                 ) : <FileText className="h-4 w-4 text-blue-400 opacity-60" />}
               </div>
@@ -182,16 +181,15 @@ export default function ChartOfAccountsPage() {
               <span className="text-sm truncate">{isRtl ? account.nameAr : (account.nameEn || account.nameAr)}</span>
               
               <div className="ms-auto flex items-center gap-2">
-                {account.isGroup && (
-                   <button 
-                     onClick={(e) => handleAddSubAccount(account, e)}
-                     className="h-8 w-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all border border-emerald-100 hover:bg-emerald-600 hover:text-white"
-                     title={isRtl ? 'إضافة حساب فرعي' : 'Add Sub-Account'}
-                   >
-                      <Plus className="h-4 w-4" />
-                   </button>
-                )}
-                <Badge variant="outline" className="text-[8px] font-black border-2 h-5 bg-white opacity-40 group-hover:opacity-100">
+                {/* زر الإضافة متاح للجميع - أي حساب معرض أن يكون أب */}
+                <button 
+                  onClick={(e) => handleAddSubAccount(account, e)}
+                  className="h-8 w-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all border border-emerald-100 hover:bg-emerald-600 hover:text-white"
+                  title={isRtl ? 'إضافة حساب فرعي' : 'Add Sub-Account'}
+                >
+                   <Plus className="h-4 w-4" />
+                </button>
+                <Badge variant="outline" className="text-[8px] font-black border-2 h-5 bg-white opacity-40 group-hover:opacity-100 uppercase">
                   {account.type}
                 </Badge>
               </div>
@@ -209,7 +207,7 @@ export default function ChartOfAccountsPage() {
           <h1 className="text-2xl font-black font-headline flex items-center gap-3 text-slate-900">
              <GitBranch className="h-7 w-7 text-primary" /> {t('chartOfAccounts')}
           </h1>
-          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Sovereign Financial Registry V3.1</p>
+          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Sovereign Financial Registry V3.2</p>
         </div>
         <div className="flex gap-3">
           <Button onClick={() => setShowPurgeConfirm(true)} variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50 border-2 border-transparent hover:border-rose-100 transition-all">
@@ -223,7 +221,7 @@ export default function ChartOfAccountsPage() {
                className="h-10 px-6 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-700 font-black gap-2 shadow-sm hover:bg-emerald-100 transition-all"
              >
                 {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                {isRtl ? 'تنشيط الشجرة والمراكز المالية' : 'Activate Financial Centers'}
+                {isRtl ? 'تنشيط الشجرة الهرمية' : 'Activate Hierarchy'}
              </Button>
           )}
           <Button onClick={() => { setForm({ nameAr: '', nameEn: '', code: '', type: 'asset', isGroup: false, parentId: null }); setIsAdding(true); }} size="sm" className="h-10 px-8 font-black rounded-xl shadow-lg gap-2">
@@ -331,8 +329,8 @@ export default function ChartOfAccountsPage() {
                </AlertDialogTitle>
                <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
                   {isRtl 
-                    ? 'هل تريد تنزيل شجرة الحسابات القياسية للمقاولات؟ سيقوم النظام أيضاً بتأسيس مراكز التكلفة والربحية الإدارية اللازمة آلياً لضمان جاهزية التقارير فوراً.' 
-                    : 'Download standard construction COA? Administrative centers will also be auto-provisioned to ensure instant report readiness.'}
+                    ? 'هل تريد تنزيل شجرة الحسابات القياسية؟ سيتم بناء الهيكل الهرمي آلياً وتأسيس مراكز التكلفة والربحية الإدارية اللازمة لضمان جاهزية النظام فوراً.' 
+                    : 'Download standard COA? Hierarchy and administrative centers will be auto-provisioned.'}
                </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
@@ -357,8 +355,8 @@ export default function ChartOfAccountsPage() {
                <AlertDialogTitle className="text-start font-black text-3xl font-headline text-slate-900 leading-tight">{tSafe('inline.confirm.purge.coa', 'تطهير دليل الحسابات', 'Purge Chart of Accounts')}</AlertDialogTitle>
                <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
                   {isRtl 
-                    ? 'تحذير: هذا الإجراء سيقوم بمسح كافة الحسابات الحالية من النظام. لن يتأثر تاريخ القيود، ولكنها ستفقد ربطها بالدليل الحالي. هل أنت متأكد؟' 
-                    : 'Warning: This will delete all current accounts. Transactions will remain but lose their master link. Proceed?'}
+                    ? 'تحذير: هذا الإجراء سيقوم بمسح كافة الحسابات الحالية لإعادة بنائها بشكل هرمي سليم. لن يتأثر تاريخ القيود السابقة، ولكنها ستفقد ربطها بالدليل. هل أنت متأكد؟' 
+                    : 'Warning: This will delete all current accounts to rebuild them hierarchically. Proceed?'}
                </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
