@@ -94,7 +94,7 @@ export default function ChartOfAccountsPage() {
     try {
       const seedService = new SeedService(db, companyId);
       await seedService.seedConstructionCOA(user.uid);
-      toast({ title: tSafe('inline.coa.activated', 'تم تفعيل الشجرة المحاسبية بنجاح', 'Standard COA Activated') });
+      toast({ title: tSafe('inline.coa.activated', 'تم تفعيل الشجرة والمراكز المالية بنجاح', 'COA & Centers Activated') });
       setShowSeedConfirm(false);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
@@ -143,7 +143,7 @@ export default function ChartOfAccountsPage() {
               <div className="flex items-center gap-2">
                 {account.isGroup ? (
                   <div onClick={(e) => toggleExpand(account.id, e)} className="p-1 hover:bg-primary/10 rounded-md transition-colors">
-                     {isExpanded ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className={cn("h-4 w-4 text-slate-400", isRtl && "rotate-180")} />}
+                     {isExpanded ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className={cn("h-4 w-4", isRtl && "rotate-180")} />}
                   </div>
                 ) : <div className="w-6" />}
                 
@@ -190,7 +190,7 @@ export default function ChartOfAccountsPage() {
                className="h-10 px-6 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-700 font-black gap-2 shadow-sm hover:bg-emerald-100 transition-all"
              >
                 {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                {isRtl ? 'تنشيط الشجرة والمراكز الإدارية' : 'Activate Financial Centers'}
+                {isRtl ? 'تنشيط الشجرة والمراكز المالية' : 'Activate Financial Centers'}
              </Button>
           )}
           <Button onClick={() => { setForm({ nameAr: '', nameEn: '', code: '', type: 'asset', isGroup: false }); setIsAdding(true); }} size="sm" className="h-10 px-8 font-black rounded-xl shadow-lg gap-2">

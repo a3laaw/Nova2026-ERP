@@ -21,7 +21,7 @@ export class SeedService {
 
   /**
    * تنشيط شجرة الحسابات مع ربط هرمي حقيقي (Hierarchy Fix)
-   * يضمن أن parentId يشير إلى الـ Document ID الفعلي وليس الكود
+   * يضمن أن parentId يشير إلى الـ Document ID الفعلي وليس الكود لتعمل الشجرة
    */
   async seedConstructionCOA(userId: string) {
     const batch = writeBatch(this.db);
@@ -50,16 +50,16 @@ export class SeedService {
       { code: '5201', nameAr: 'رواتب ومصاريف إدارية', nameEn: 'G&A Expenses', type: 'expense', isGroup: false, level: 2, parentCode: '5' }
     ];
 
-    // خريطة لتخزين المعرفات المولدة (Code -> DocumentID)
+    // خريطة لتخزين المعرفات المولدة (Code -> DocumentID) لضمان الربط الهيكلي
     const codeToIdMap: Record<string, string> = {};
 
-    // 1. توليد المعرفات وحفظها في الخريطة
+    // 1. توليد المعرفات وحفظها في الخريطة أولاً
     rawHierarchy.forEach(item => {
-      const newRef = doc(accountsRef);
-      codeToIdMap[item.code] = newRef.id;
+      const newId = doc(accountsRef).id;
+      codeToIdMap[item.code] = newId;
     });
 
-    // 2. بناء القيود مع الربط الصحيح بالآباء
+    // 2. بناء القيود مع الربط الصحيح بالآباء عبر المعرفات وليس الأكواد
     rawHierarchy.forEach(item => {
       const myId = codeToIdMap[item.code];
       const parentId = item.parentCode ? codeToIdMap[item.parentCode] : null;
@@ -72,7 +72,7 @@ export class SeedService {
         type: item.type,
         isGroup: item.isGroup,
         level: item.level,
-        parentId: parentId,
+        parentId: parentId || "", // ضمان قيمة نصية لتوافق عامل التصفية
         companyId: this.companyId,
         isActive: true,
         createdAt: serverTimestamp(),
@@ -81,7 +81,7 @@ export class SeedService {
       });
     });
 
-    // 3. إنشاء مراكز التكلفة والربحية الإدارية
+    // 3. إنشاء مراكز التكلفة والربحية الإدارية آلياً
     const ccRef = doc(this.db, paths.costCenters(this.companyId), 'cc_admin_general');
     batch.set(ccRef, {
       id: 'cc_admin_general',
@@ -107,7 +107,8 @@ export class SeedService {
   }
 
   /**
-   * مزامنة وإصلاح أرصدة الإجازات التاريخية (Fix for Asma and others)
+   * مزامنة وإصلاح أرصدة الإجازات التاريخية (Retroactive Accrual Fix)
+   * يعيد حساب الرصيد من تاريخ التعيين (2.5 يوم/شهر) مطروحاً منها الإجازات الفعلية.
    */
   async syncAllEmployeeBalances() {
     const whService = new WorkHoursService(this.db, this.companyId);
@@ -128,6 +129,7 @@ export class SeedService {
       const emp = empDoc.data();
       if (!emp.hireDate) continue;
 
+      // حساب الاستحقاق التراكمي منذ التعيين
       const totalAccrued = wdService.calculateAccruedLeave(emp.hireDate);
       const empUsed = leavesSnap.docs
         .filter(d => d.data().employeeId === empDoc.id && d.data().type === 'annual')
@@ -159,6 +161,21 @@ export class SeedService {
       }
     }
     await batch.commit();
+  }
+
+  async runIdentityMigration() {
+    const usersSnap = await getDocs(collection(this.db, 'global_users'));
+    const batch = writeBatch(this.db);
+    let count = 0;
+    usersSnap.docs.forEach(d => {
+      const data = d.data();
+      if (data.roleCode && data.roleCode !== data.roleCode.toUpperCase()) {
+        batch.update(d.ref, { roleCode: data.roleCode.toUpperCase() });
+        count++;
+      }
+    });
+    if (count > 0) await batch.commit();
+    return count;
   }
 
   async purgeSystemData() {
