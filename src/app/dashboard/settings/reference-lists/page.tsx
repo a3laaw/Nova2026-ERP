@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -38,7 +37,6 @@ import {
   AlertDialogTitle 
 } from "@/components/ui/alert-dialog";
 import { toast } from '@/hooks/use-toast';
-import { Textarea } from '@/components/ui/textarea';
 
 export default function ReferenceListsPage() {
   const { globalUser, user } = useAuthContext();
@@ -324,7 +322,7 @@ export default function ReferenceListsPage() {
             </div>
 
             <DialogFooter className="p-10 bg-slate-50 border-t">
-               <Button onClick={handleSave} disabled={loadingAction === 'save'} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-3 border-b-4 border-orange-700">
+               <Button onClick={handleSave} disabled={loadingAction === 'save'} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-xl shadow-xl shadow-primary/20 hover:scale-105 transition-all gap-3 border-b-8 border-orange-700">
                   {loadingAction === 'save' ? <Loader2 className="animate-spin h-6 w-6" /> : <Save className="h-6 w-6 me-2" />}
                   {t('common.save')}
                </Button>

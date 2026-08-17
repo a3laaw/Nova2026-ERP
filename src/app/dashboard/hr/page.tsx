@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -52,7 +51,7 @@ export default function HRDashboard() {
          </div>
          <div className="flex justify-between items-start">
             <CardTitle className="text-xl font-black font-headline text-slate-900 leading-tight">{title}</CardTitle>
-            {badge && <Badge className="bg-primary/10 text-primary border-0 font-black text-[8px] h-5 px-2">{badge}</Badge>}
+            {badge !== undefined && <Badge className="bg-primary/10 text-primary border-0 font-black text-[8px] h-5 px-2">{badge}</Badge>}
          </div>
          <CardDescription className="text-xs font-bold leading-relaxed mt-3 h-10 overflow-hidden">
             {desc}
@@ -78,7 +77,7 @@ export default function HRDashboard() {
           </div>
           <div className="text-start">
             <h1 className="text-4xl font-black font-headline text-slate-900 tracking-tight">{t('hr')}</h1>
-            <p className="text-sm font-bold text-muted-foreground italic mt-0.5 text-start">{t('hr.description')}</p>
+            <p className="text-sm font-bold text-muted-foreground italic mt-0.5 text-start">{tSafe('hr.description', 'إدارة القوى العاملة والامتثال والرواتب الميدانية.', 'Workforce management, compliance and field payroll.')}</p>
           </div>
         </div>
         <div className="flex gap-3">
@@ -127,7 +126,7 @@ export default function HRDashboard() {
                />
                <ModuleCard 
                   title={tSafe('hr.gratuity.calculatorTitle', 'مستحقات نهاية الخدمة', 'End of Service')}
-                  desc={isRtl ? "حاسبة التسوية النهائية والامتثال لقانون العمل الكويتي." : "Final settlement calculator and Kuwait Labor Law compliance."}
+                  desc={isRtl ? "حاسبة التسوية النهائية والامتثال لقانون العمل الكويتي وقاعدة الـ 26." : "Final settlement calculator and Kuwait Labor Law 26-day rule compliance."}
                   icon={Scale}
                   color="text-rose-600"
                   path="/dashboard/hr/gratuity"

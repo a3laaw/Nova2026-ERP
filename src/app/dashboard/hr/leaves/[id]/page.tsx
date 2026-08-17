@@ -294,10 +294,10 @@ export default function LeaveDetailsPage() {
                {showExecutionDialog === 'depart' && (
                   <div className="space-y-6">
                      <div className="p-8 bg-orange-50/50 rounded-[2.5rem] border-2 border-orange-100 space-y-4 shadow-inner">
-                        <Label className="text-[11px] font-black uppercase text-orange-600 tracking-widest text-center block">تاريخ خروج الموظف الفعلي</Label>
+                        <Label className="text-[11px] font-black uppercase text-orange-600 tracking-widest text-center block">تاريخ خروج الموظف الفعلي من المنشأة</Label>
                         <SmartDateInput value={editForm.actualDate} onChange={v => setEditForm({...editForm, actualDate: v})} />
                      </div>
-                     <Button onClick={() => handleAction('on-leave')} disabled={processing} className="w-full h-16 rounded-2xl bg-[#FFB000] text-white font-black text-xl shadow-xl border-b-8 border-[#FF5722] gap-4">
+                     <Button onClick={() => handleAction('on-leave')} disabled={processing} className="w-full h-16 rounded-2xl bg-[#FFB000] text-white font-black text-xl shadow-xl border-b-4 border-[#FF5722] gap-4">
                         <CheckCircle2 className="h-6 w-6" /> تأكيد المغادرة
                      </Button>
                   </div>
@@ -306,11 +306,11 @@ export default function LeaveDetailsPage() {
                {showExecutionDialog === 'return' && (
                   <div className="space-y-6">
                      <div className="p-8 bg-blue-50/50 rounded-[2.5rem] border-2 border-blue-100 space-y-4 shadow-inner">
-                        <Label className="text-[11px] font-black uppercase text-blue-600 tracking-widest text-center block">تاريخ عودة الموظف الفعلي</Label>
+                        <Label className="text-[11px] font-black uppercase text-blue-600 tracking-widest text-center block">تاريخ عودة الموظف الفعلي ومباشرة الحضور</Label>
                         <SmartDateInput value={editForm.actualDate} onChange={v => setEditForm({...editForm, actualDate: v})} />
                      </div>
-                     <Button onClick={() => handleAction('returned')} disabled={processing} className="w-full h-16 rounded-2xl bg-blue-600 text-white font-black text-xl shadow-xl border-b-8 border-blue-800 gap-4">
-                        <CheckCircle2 className="h-6 w-6" /> تسجيل العودة
+                     <Button onClick={() => handleAction('returned')} disabled={processing} className="w-full h-16 rounded-2xl bg-blue-600 text-white font-black text-xl shadow-xl border-b-4 border-blue-800 gap-4">
+                        <CheckCircle2 className="h-6 w-6" /> تسجيل العودة والوصول
                      </Button>
                   </div>
                )}

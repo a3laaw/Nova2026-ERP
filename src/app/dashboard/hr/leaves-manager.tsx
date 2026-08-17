@@ -84,7 +84,6 @@ export function LeavesManager() {
         actualDate: new Date().toISOString().split('T')[0]
       });
 
-      // تشغيل فحص الكثافة فوراً عند فتح نافذة القرار
       if (leaveService && processingLeave.departmentId && processingLeave.status === 'pending') {
         setLoadingDensity(true);
         leaveService.getDepartmentLeaveDensity(
@@ -229,7 +228,6 @@ export function LeavesManager() {
               
               {processingLeave?.status === 'pending' && (
                 <div className="space-y-6">
-                   {/* محرك كشف التعارض والتعارض */}
                    {loadingDensity ? (
                      <div className="p-4 flex items-center gap-3 bg-slate-50 rounded-xl">
                         <Loader2 className="h-4 w-4 animate-spin text-primary" />

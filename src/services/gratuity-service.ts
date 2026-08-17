@@ -35,7 +35,7 @@ export interface GratuityResult {
 
 /**
  * محرك احتساب مكافأة نهاية الخدمة المطور - قانون العمل الكويتي.
- * يطبق قاعدة الـ 26 يوماً لتصفية الإجازات والإنذار.
+ * يطبق قاعدة الـ 26 يوماً لتصفية الإجازات والإنذار بشكل سيادي.
  */
 export class GratuityService {
   static calculate(input: GratuityCalculationInput): GratuityResult {
@@ -47,6 +47,8 @@ export class GratuityService {
     const duration = intervalToDuration({ start, end });
     
     const serviceYears = totalDaysCount / 365.25;
+    
+    // القاعدة السيادية (مادة 70): الأجر اليومي = الراتب الشامل ÷ 26
     const dailyWage = totalSalary / 26;
     const legalNotes: string[] = [];
 
@@ -68,7 +70,7 @@ export class GratuityService {
       legalNotes.push("تم تطبيق سقف الـ 18 شهراً للمكافأة وفق القانون.");
     }
 
-    // 3. تطبيق تدرج الاستقالة (المادة 53)
+    // 3. تطبيق تدرج الاستحقاق حسب سبب الانتهاء (المادة 53)
     let resignationFactor = 1;
     if (reason === 'resignation') {
       if (serviceYears < 3) {
@@ -91,10 +93,11 @@ export class GratuityService {
 
     const finalGratuity = baseGratuity * resignationFactor;
 
-    // 4. بدل الإجازات النقدية = الأيام المتبقية فعلياً × قيمة اليوم (قاعدة الـ26)
+    // 4. مقابل رصيد الإجازات (الاحتساب النقدي)
+    // القانون: الرصيد المتبقي × (الراتب ÷ 26)
     const validRemainingLeaves = Math.max(0, remainingLeaveDays ?? 0);
     const leaveBalancePay = Math.round(validRemainingLeaves * dailyWage * 1000) / 1000;
-    legalNotes.push(`تم احتساب بدل إجازات عن ${validRemainingLeaves} يوم متبقٍ في الرصيد.`);
+    legalNotes.push(`تم احتساب مقابل رصيد الإجازات عن ${validRemainingLeaves} يوم (الأجر اليومي = الراتب ÷ 26).`);
 
     // 5. بدل الإنذار (المادة 44)
     let noticeIndemnity = 0;
@@ -106,7 +109,6 @@ export class GratuityService {
       legalNotes.push("خصم بدل إنذار يعادل راتب 3 أشهر.");
     }
 
-    // المجموع النهائي: السماح بالقيمة السالبة (خصم الإنذار)
     const totalEntitlement = Math.round((finalGratuity + leaveBalancePay + noticeIndemnity) * 1000) / 1000;
 
     return {
