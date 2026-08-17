@@ -8,15 +8,12 @@ import {
   writeBatch, 
   serverTimestamp, 
   getDocs,
-  getDoc,
   query,
   limit,
-  deleteDoc,
   where
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { SEED_DATA } from '@/lib/seed-data';
-import { BOQReferenceNode } from '@/types/reference';
 import { WorkingDaysService } from './working-days-service';
 import { WorkHoursService } from './work-hours-service';
 
@@ -25,7 +22,7 @@ export class SeedService {
 
   /**
    * مزامنة وإصلاح أرصدة الإجازات لكافة الموظفين بناءً على تاريخ التعيين (Historical Sync)
-   * يحل مشكلة الرصيد السالب للموظفين القدامى مثل "أسماء".
+   * يحل مشكلة الرصيد السالب للموظفين القدامى عبر إعادة حساب الاستحقاق منذ أول يوم عمل.
    */
   async syncAllEmployeeBalances() {
     const whService = new WorkHoursService(this.db, this.companyId);
@@ -46,16 +43,17 @@ export class SeedService {
       const emp = empDoc.data();
       if (!emp.hireDate) continue;
 
-      // 1. حساب الاستحقاق التاريخي
+      // 1. حساب الاستحقاق التراكمي القانوني من تاريخ التعيين
       const totalAccrued = wdService.calculateAccruedLeave(emp.hireDate);
       
-      // 2. حساب المستهلك الفعلي من سجلات الإجازات
+      // 2. حساب المستهلك الفعلي من الإجازات السنوية المسجلة
       const empUsed = leavesSnap.docs
         .filter(d => d.data().employeeId === empDoc.id && d.data().type === 'annual')
         .reduce((sum, d) => sum + (d.data().workingDays || 0), 0);
 
       const trueBalance = Math.max(0, Math.round((totalAccrued - empUsed) * 10) / 10);
 
+      // تحديث الرصيد فقط إذا كان مختلفاً عن المسجل
       if (emp.annualLeaveBalance !== trueBalance) {
         batch.update(empDoc.ref, { 
           annualLeaveBalance: trueBalance, 
@@ -70,10 +68,9 @@ export class SeedService {
   }
 
   /**
-   * تطهير شامل لكافة البيانات التشغيلية والمالية (Nuclear Reset)
+   * التطهير الشامل للنظام (Reset)
    */
   async purgeSystemData() {
-    const batchSize = 500;
     const collectionsToPurge = [
       paths.clients(this.companyId),
       paths.transactions(this.companyId),
@@ -95,106 +92,53 @@ export class SeedService {
       paths.leads(this.companyId),
       paths.executions(this.companyId),
       paths.leaveRequests(this.companyId),
-      paths.appointments(this.companyId),
-      `companies/${this.companyId}/counters` 
+      paths.appointments(this.companyId)
     ];
 
     for (const path of collectionsToPurge) {
-      let hasMore = true;
-      while (hasMore) {
-        try {
-          const q = query(collection(this.db, path), limit(batchSize));
-          const snap = await getDocs(q);
-          if (snap.empty) {
-            hasMore = false;
-            continue;
-          }
-
-          const batch = writeBatch(this.db);
-          snap.docs.forEach(d => batch.delete(d.ref));
-          await batch.commit();
-
-          if (snap.size < batchSize) hasMore = false;
-        } catch (e) {
-          console.warn(`Purge skipped for path: ${path} - probably empty.`);
-          hasMore = false;
-        }
+      try {
+        const q = query(collection(this.db, path), limit(500));
+        const snap = await getDocs(q);
+        const batch = writeBatch(this.db);
+        snap.docs.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+      } catch (e) {
+        console.warn(`Purge skipped: ${path}`);
       }
     }
   }
 
   async runIdentityMigration() {
-    const globalUsersRef = collection(this.db, 'global_users');
-    const snap = await getDocs(globalUsersRef);
+    const snap = await getDocs(collection(this.db, 'global_users'));
     const batch = writeBatch(this.db);
     let count = 0;
-
-    for (const userDoc of snap.docs) {
-      const data = userDoc.data();
-      const rawCode = data.roleCode || data.role || 'USER';
-      const finalRoleCode = String(rawCode).toUpperCase();
-      const finalRole = finalRoleCode.toLowerCase();
-
-      if (data.roleCode !== finalRoleCode || data.role !== finalRole) {
-        batch.update(userDoc.ref, {
-          roleCode: finalRoleCode,
-          role: finalRole,
-          updatedAt: serverTimestamp()
-        });
-        count++;
-      }
-    }
-
-    if (count > 0) {
-      await batch.commit();
-    }
+    snap.docs.forEach(d => {
+      const data = d.data();
+      const roleCode = String(data.roleCode || data.role || 'USER').toUpperCase();
+      batch.update(d.ref, { roleCode, role: roleCode.toLowerCase(), updatedAt: serverTimestamp() });
+      count++;
+    });
+    await batch.commit();
     return count;
   }
 
   async runSeed() {
     const batch = writeBatch(this.db);
-    
-    // 1. الأقسام والوظائف
-    const deptRefs: Record<string, string> = {};
     for (const dept of SEED_DATA.departments) {
       const deptRef = doc(collection(this.db, paths.departments(this.companyId)));
-      deptRefs[dept.code] = deptRef.id;
-      batch.set(deptRef, {
-        name: dept.name,
-        nameEn: dept.nameEn,
-        color: dept.code === 'ARCH' ? '#F57C00' : dept.code === 'CIVIL' ? '#2563eb' : '#94a3b8',
-        isActive: true,
-        companyId: this.companyId,
-        createdAt: serverTimestamp()
-      });
-
+      batch.set(deptRef, { name: dept.name, nameEn: dept.nameEn, isActive: true, order: dept.order, companyId: this.companyId, createdAt: serverTimestamp() });
       for (const job of dept.jobs) {
         const jobRef = doc(collection(this.db, paths.jobs(this.companyId, deptRef.id)));
-        batch.set(jobRef, {
-          ...job,
-          departmentId: deptRef.id,
-          isActive: true,
-          companyId: this.companyId,
-          createdAt: serverTimestamp()
-        });
+        batch.set(jobRef, { ...job, departmentId: deptRef.id, isActive: true, companyId: this.companyId, createdAt: serverTimestamp() });
       }
     }
-
     await batch.commit();
   }
 
   async purgeAllAppointments() {
-    const q = query(collection(this.db, paths.appointments(this.companyId)));
-    const snap = await getDocs(q);
-    if (snap.empty) return;
+    const snap = await getDocs(collection(this.db, paths.appointments(this.companyId)));
     const batch = writeBatch(this.db);
     snap.docs.forEach(d => batch.delete(d.ref));
     return batch.commit();
-  }
-
-  async isSystemSeeded() {
-    const q = query(collection(this.db, paths.boqReferenceNodes(this.companyId)), limit(1));
-    const snap = await getDocs(q);
-    return !snap.empty;
   }
 }

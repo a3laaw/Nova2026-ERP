@@ -1,13 +1,13 @@
 
 'use client';
 
-import { format, eachDayOfInterval, parseISO, differenceInMonths, differenceInDays, isValid, startOfMonth } from 'date-fns';
+import { format, eachDayOfInterval, parseISO, differenceInDays, isValid } from 'date-fns';
 import { WorkHoursSettings, DayOfWeek } from '@/types/work-hours';
 
 /**
  * محرك حساب أيام العمل الفعلية والاستحقاقات القانونية.
  * يطبق قواعد قانون العمل الكويتي (مادة 69، 70، 72).
- * تم تحديثه ليدعم حساب الاستحقاق التراكمي منذ تاريخ التعيين.
+ * تم تحديثه ليدعم حساب الاستحقاق التراكمي منذ تاريخ التعيين (Retroactive Accrual).
  */
 export class WorkingDaysService {
   constructor(private settings: WorkHoursSettings) {}
@@ -49,7 +49,7 @@ export class WorkingDaysService {
 
   /**
    * حساب رصيد الإجازات السنوية المستحق تراكمياً منذ التعيين
-   * المادة 70: 30 يوماً / 12 شهراً = 2.5 يوم عن كل شهر عمل.
+   * المادة 70: 30 يوماً / 365.25 يوم = 0.082 يوم استحقاق يومي.
    */
   calculateAccruedLeave(hireDate: string, targetDate: string = format(new Date(), 'yyyy-MM-dd')): number {
     try {
@@ -58,13 +58,12 @@ export class WorkingDaysService {
       
       if (!isValid(start) || !isValid(end) || end < start) return 0;
 
-      // حساب إجمالي الشهور المكتملة + كسر الشهر
       const totalDays = differenceInDays(end, start);
       
-      // المعادلة السيادية: كل 365.25 يوم تمنح 30 يوم إجازة
+      // المعادلة السيادية: كل سنة (365.25 يوم) تمنح 30 يوم إجازة
       const accrued = (totalDays / 365.25) * 30;
       
-      return Math.round(accrued * 100) / 100;
+      return Math.round(accrued * 10) / 10;
     } catch (e) {
       return 0;
     }
