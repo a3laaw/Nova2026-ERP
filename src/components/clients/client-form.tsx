@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -36,20 +37,20 @@ import { Badge } from "@/components/ui/badge";
 
 const clientFormSchema = z.object({
   fileNumber: z.string().optional(), 
-  nameAr: z.string().min(3, "يجب أن يكون الاسم 3 حروف على الأقل"),
-  nameEn: z.string().default(''),
-  mobile: z.string().min(8, "رقم الهاتف غير صحيح"),
-  email: z.string().email("البريد الإلكتروني غير صحيح").optional().or(z.literal('')),
+  nameAr: z.string().min(3, "Arabic Name is required"),
+  nameEn: z.string().min(3, "English Name is required"),
+  mobile: z.string().min(8, "Invalid mobile"),
+  email: z.string().email("Invalid email").optional().or(z.literal('')),
   civilId: z.string().default(''),
-  governorateId: z.string().min(1, "يرجى اختيار المحافظة"),
+  governorateId: z.string().min(1, "Governorate required"),
   governorateName: z.string().default(''),
-  areaId: z.string().min(1, "يرجى اختيار المنطقة"),
+  areaId: z.string().min(1, "Area required"),
   areaName: z.string().default(''),
   block: z.string().default(''),
   street: z.string().default(''),
   houseNumber: z.string().default(''),
   locationUrl: z.string().default(''),
-  assignedEngineerId: z.string().min(1, "يجب تعيين مهندس مسؤول"),
+  assignedEngineerId: z.string().min(1, "Responsible engineer required"),
   assignedEngineerName: z.string().default('')
 });
 
@@ -80,7 +81,6 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
   const assignedEngineerId = watch('assignedEngineerId');
   const locationUrl = watch('locationUrl');
 
-  // جلب الرقم المتوقع دون حجزه (للمعاينة فقط)
   useEffect(() => {
     if (!initialData && db && companyId) {
       setFetchingNumber(true);
@@ -152,12 +152,6 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
                 />
                 {!initialData && (fetchingNumber ? <Loader2 className="absolute end-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-primary/30" /> : <Clock className="absolute end-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-emerald-500/50" />)}
               </div>
-              {!initialData && (
-                <div className="mt-1 px-1 flex items-center gap-1.5">
-                   <div className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
-                   <p className="text-[9px] text-emerald-600 font-bold uppercase tracking-tight">{isRtl ? "رقم محجوز مؤقتاً" : "Provisionally Reserved"}</p>
-                </div>
-              )}
             </div>
 
             <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -167,8 +161,9 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
                   {errors.nameAr && <p className="text-[10px] text-rose-500 font-bold mt-1">{errors.nameAr.message as string}</p>}
                </div>
                <div className="space-y-1.5 text-start">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.nameEn')}</Label>
-                  <Input {...register('nameEn')} className="h-10 rounded-xl border-2 font-bold text-start bg-slate-50/30" dir="ltr" />
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('common.nameEn')} <span className="text-rose-500">*</span></Label>
+                  <Input {...register('nameEn')} className={cn("h-10 rounded-xl border-2 font-bold text-start bg-slate-50/30", errors.nameEn && "border-rose-200 bg-rose-50/20")} dir="ltr" />
+                  {errors.nameEn && <p className="text-[10px] text-rose-500 font-bold mt-1">{errors.nameEn.message as string}</p>}
                </div>
             </div>
             
@@ -240,11 +235,6 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{isRtl ? 'تحديد إحداثيات الموقع بدقة Gps' : 'Set precise GPS coordinates'}</p>
               </div>
            </div>
-           {locationUrl && (
-              <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 border-2 font-black text-[10px] h-8 px-4 rounded-xl flex items-center gap-2">
-                 <CheckCircle2 className="h-3.5 w-3.5" /> {isRtl ? 'تم تحديد الموقع' : 'Location Set'}
-              </Badge>
-           )}
         </div>
         <CardContent className="p-8 space-y-10">
            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
@@ -299,9 +289,6 @@ export function ClientForm({ initialData, onSubmit, loading }: { initialData?: a
                     </div>
                     {isRtl ? 'تحديد الموقع من الخريطة' : 'Locate on Map Radar'}
                  </Button>
-                 {locationUrl && (
-                    <p className="text-[9px] font-mono text-slate-400 text-center truncate px-4">{locationUrl}</p>
-                 )}
               </div>
            </div>
         </CardContent>

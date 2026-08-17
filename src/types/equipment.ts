@@ -1,7 +1,8 @@
+
 'use client';
 /**
  * @fileOverview تعريف واجهات البيانات لسجل المعدات والآليات (Equipment Master).
- * تم التحديث لدعم البيانات الإدارية الديناميكية وحالة الأدوات اليدوية وسنة التصنيع.
+ * تم التحديث لدعم البيانات الإدارية الديناميكية ثنائية اللغة.
  */
 
 import { BaseReference } from './reference';
@@ -17,36 +18,33 @@ export type ToolCondition = 'new' | 'used_good' | 'under_maintenance';
 export interface Equipment extends BaseReference {
   id: string;
   code: string;                          
-  name: string;                          
+  nameAr: string;                          
+  nameEn: string;                          
   category: EquipmentCategory;           
   status: EquipmentStatus;
   ownershipType: EquipmentOwnershipType; 
   
-  // --- البيانات الإدارية والتراخيص (ديناميكية) ---
-  manufacturingYear?: string;            // سنة التصنيع / الموديل
+  manufacturingYear?: string;            
   isLicensed?: boolean;
-  isStreetLicensed?: boolean;            // للآليات الثقيلة
+  isStreetLicensed?: boolean;            
   chassisNumber?: string;                
   plateNumber?: string;                  
-  registrationNumber?: string;           // رقم الدفتر
+  registrationNumber?: string;           
   registrationExpiry?: string;           
   insuranceType?: InsuranceType;         
   insuranceCompany?: string;             
   insuranceExpiry?: string;              
-  thirdPartyInspectionExpiry?: string;    // لآليات الموقع
-  siteInsuranceExpiry?: string;          // لآليات الموقع
+  thirdPartyInspectionExpiry?: string;    
+  siteInsuranceExpiry?: string;          
 
-  // بيانات المعدات الثابتة
   serialNumber?: string;
-  capacity?: string;                     // KVA/HP
+  capacity?: string;                     
   nextServiceDate?: string;
   safetyCertExpiry?: string;
 
-  // بيانات الأدوات اليدوية
-  brandModel?: string;                   // الماركة/الموديل
+  brandModel?: string;                   
   toolCondition?: ToolCondition;
 
-  // --- بيانات الملكية (للنوع: مملوكة) ---
   purchaseDate?: string;
   purchaseCost?: number;
   salvageValue?: number;                 
@@ -58,7 +56,6 @@ export interface Equipment extends BaseReference {
   monthlyInstallment?: number;
   installmentDay?: number;
 
-  // --- بيانات التأجير (للنوع: مستأجرة) ---
   supplierId?: string;
   supplierName?: string;
   costMethod?: RentalCostMethod;         

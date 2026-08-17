@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -39,7 +40,7 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
   const companyId = globalUser?.companyId;
 
   const [form, setForm] = useState<any>({
-    code: '', name: '', category: 'heavy_machinery', ownershipType: 'owned', 
+    code: '', nameAr: '', nameEn: '', category: 'heavy_machinery', ownershipType: 'owned', 
     manufacturingYear: '', isActive: true, status: 'available', ...initialData
   });
 
@@ -61,14 +62,20 @@ export function EquipmentForm({ initialData, onSubmit, loading, isRtl }: Props) 
                   </CardTitle>
                </CardHeader>
                <CardContent className="p-6 space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                      <div className="space-y-1.5">
                         <Label className="text-[10px] font-bold uppercase text-slate-400">{t('equipment.form.code')}</Label>
                         <Input value={form.code ?? ''} onChange={e => setForm({...form, code: e.target.value.toUpperCase()})} className="h-9 rounded-md border-slate-200 font-mono font-bold" />
                      </div>
-                     <div className="md:col-span-2 space-y-1.5">
-                        <Label className="text-[10px] font-bold uppercase text-slate-400">{t('equipment.form.name')}</Label>
-                        <Input value={form.name ?? ''} onChange={e => setForm({...form, name: e.target.value})} className="h-9 rounded-md border-slate-200 font-bold" />
+                     <div className="md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                           <Label className="text-[10px] font-bold uppercase text-slate-400">{t('common.nameAr')}</Label>
+                           <Input value={form.nameAr ?? ''} onChange={e => setForm({...form, nameAr: e.target.value})} className="h-9 rounded-md border-slate-200 font-bold" />
+                        </div>
+                        <div className="space-y-1.5">
+                           <Label className="text-[10px] font-bold uppercase text-slate-400">{t('common.nameEn')}</Label>
+                           <Input value={form.nameEn ?? ''} onChange={e => setForm({...form, nameEn: e.target.value})} className="h-9 rounded-md border-slate-200 font-bold text-start" dir="ltr" />
+                        </div>
                      </div>
                   </div>
                   <div className="grid grid-cols-2 gap-6">

@@ -75,7 +75,7 @@ export default function ChartOfAccountsPage() {
   const { data: accounts, loading } = useCollection<Account>(accountsQuery);
 
   const handleSaveAccount = async () => {
-    if (!db || !companyId || !user || !form.nameAr || !form.code) return;
+    if (!db || !companyId || !user || !form.nameAr || !form.nameEn || !form.code) return;
     setSaving(true);
     try {
       const service = new AccountingService(db, companyId);
@@ -148,7 +148,11 @@ export default function ChartOfAccountsPage() {
       })
       .filter(a => {
         if (searchTerm === "") return true;
-        return a.nameAr.toLowerCase().includes(searchTerm.toLowerCase()) || a.code.includes(searchTerm);
+        return (
+          a.nameAr.toLowerCase().includes(searchTerm.toLowerCase()) || 
+          a.nameEn?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          a.code.includes(searchTerm)
+        );
       })
       .map(account => {
         const hasChildren = accounts?.some(child => child.parentId === account.id);
@@ -187,7 +191,10 @@ export default function ChartOfAccountsPage() {
                 {account.code}
               </span>
               
-              <span className="text-sm truncate">{isRtl ? account.nameAr : (account.nameEn || account.nameAr)}</span>
+              <div className="flex flex-col text-start">
+                 <span className="text-sm truncate">{account.nameAr}</span>
+                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">{account.nameEn}</span>
+              </div>
               
               <div className="ms-auto flex items-center gap-2">
                 <button 
@@ -311,9 +318,15 @@ export default function ChartOfAccountsPage() {
                  </div>
               </div>
               
-              <div className="space-y-2">
-                 <Label className="text-[10px] font-black text-slate-400 uppercase">الاسم الكامل (Ar)</Label>
-                 <Input value={form.nameAr} onChange={e => setForm({...form, nameAr: e.target.value})} className="h-10 border-2 font-black bg-slate-50/50" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black text-slate-400 uppercase">الاسم الكامل (Ar)</Label>
+                  <Input value={form.nameAr} onChange={e => setForm({...form, nameAr: e.target.value})} className="h-10 border-2 font-black bg-slate-50/50" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black text-slate-400 uppercase">Full Name (En)</Label>
+                  <Input value={form.nameEn} onChange={e => setForm({...form, nameEn: e.target.value})} className="h-10 border-2 font-bold text-start bg-slate-50/50" dir="ltr" />
+                </div>
               </div>
 
               <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border-2">
@@ -324,7 +337,7 @@ export default function ChartOfAccountsPage() {
                  <Switch checked={form.isGroup} onCheckedChange={v => setForm({...form, isGroup: v})} />
               </div>
 
-              <Button onClick={handleSaveAccount} disabled={saving || !form.nameAr || !form.code} className="w-full h-12 rounded-xl bg-primary text-white font-black shadow-xl border-b-4 border-orange-700 hover:scale-[1.02] transition-all gap-3">
+              <Button onClick={handleSaveAccount} disabled={saving || !form.nameAr || !form.nameEn || !form.code} className="w-full h-12 rounded-xl bg-primary text-white font-black shadow-xl border-b-4 border-orange-700 hover:scale-[1.02] transition-all gap-3">
                  {saving ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />} {t('common.save')}
               </Button>
            </div>
