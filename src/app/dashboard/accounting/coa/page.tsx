@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -64,7 +65,7 @@ export default function ChartOfAccountsPage() {
   const [showPurgeConfirm, setShowPurgeConfirm] = useState(false);
 
   const [form, setForm] = useState<Partial<Account>>({
-    nameAr: '', nameEn: '', code: '', type: 'asset', isGroup: false, parentId: null
+    nameAr: '', nameEn: '', code: '', type: 'asset', isGroup: false, parentId: ""
   });
 
   const accountsQuery = useMemo(() => 
@@ -86,7 +87,7 @@ export default function ChartOfAccountsPage() {
       }
       toast({ title: t('common.saved') });
       setIsAdding(false);
-      setForm({ nameAr: '', nameEn: '', code: '', type: 'asset', isGroup: false, parentId: null });
+      setForm({ nameAr: '', nameEn: '', code: '', type: 'asset', isGroup: false, parentId: "" });
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally { setSaving(false); }
@@ -124,7 +125,7 @@ export default function ChartOfAccountsPage() {
     e.stopPropagation();
     if (!db || !companyId) return;
     
-    // استدعاء محرك الترقيم التلقائي السيادي
+    // استدعاء محرك الترقيم التلقائي السيادي المطور
     const service = new AccountingService(db, companyId);
     const nextCode = await service.getNextAccountCode(parent.id);
 
@@ -234,7 +235,7 @@ export default function ChartOfAccountsPage() {
           <Button onClick={async () => { 
             const service = new AccountingService(db!, companyId!);
             const nextRoot = await service.getNextAccountCode(null);
-            setForm({ nameAr: '', nameEn: '', code: nextRoot, type: 'asset', isGroup: false, parentId: null }); 
+            setForm({ nameAr: '', nameEn: '', code: nextRoot, type: 'asset', isGroup: false, parentId: "" }); 
             setIsAdding(true); 
           }} size="sm" className="h-10 px-8 font-black rounded-xl shadow-lg gap-2">
             <Plus className="h-4 w-4" /> {isRtl ? 'إضافة حساب جذري' : 'Add Root Account'}

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -10,15 +11,14 @@ import {
   where, 
   serverTimestamp,
   writeBatch,
-  limit,
-  orderBy
+  getDoc,
+  updateDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { 
   Account, 
   JournalEntry, 
-  Voucher, 
-  JournalEntryLine
+  Voucher
 } from '@/types/accounting';
 import { nextSequential } from '@/lib/counters';
 import { AnalyticalValidationService } from './analytical-validation-service';
@@ -33,27 +33,19 @@ export class AccountingService {
   }
 
   /**
-   * محرك الترقيم التلقائي (Sovereign Auto-Coding Engine)
-   * يقوم بتوليد الكود المحاسبي التالي بناءً على الأب المختار لضمان عدم التكرار.
+   * محرك الترقيم التلقائي السيادي المطور.
+   * تم تعديله ليعمل بدون الحاجة لفهارس (Composite Indexes) عبر المعالجة في الذاكرة.
    */
   async getNextAccountCode(parentId: string | null): Promise<string> {
     const collRef = collection(this.db, paths.accounts(this.companyId));
-    let q;
     
-    if (!parentId) {
-      // البحث عن أكبر كود في الحسابات الجذرية (1, 2, 3...)
-      q = query(collRef, where('parentId', '==', ""), orderBy('code', 'desc'), limit(1));
-    } else {
-      // البحث عن أكبر كود بين الأبناء لهذا الأب
-      q = query(collRef, where('parentId', '==', parentId), orderBy('code', 'desc'), limit(1));
-    }
-
+    // جلب كافة الأشقاء (بنفس مستوى الأب)
+    const q = query(collRef, where('parentId', '==', parentId || ""));
     const snap = await getDocs(q);
     
     if (snap.empty) {
       if (!parentId) return "1"; // أول حساب جذري
       
-      // إذا لم يكن للأب أبناء، نأخذ كود الأب ونبدأ منه التفرع
       const parentSnap = await getDoc(doc(this.db, paths.accounts(this.companyId), parentId));
       if (!parentSnap.exists()) return "1001";
       const parentCode = parentSnap.data().code;
@@ -61,22 +53,31 @@ export class AccountingService {
       return `${parentCode}01`;
     }
 
-    const lastCode = snap.docs[0].data().code;
-    const lastNum = parseInt(lastCode);
-    return (lastNum + 1).toString();
+    // الفرز في الذاكرة لتجنب خطأ الفهرس السحابي
+    const codes = snap.docs
+      .map(d => d.data().code)
+      .filter(c => /^\d+$/.test(c));
+
+    if (codes.length === 0) return "1";
+
+    const lastCode = codes.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }))[0];
+    
+    // التعامل مع الأرقام الكبيرة (BigInt) لضمان عدم حدوث Overflow في الأكواد الطويلة
+    try {
+      const nextNum = BigInt(lastCode) + 1n;
+      return nextNum.toString();
+    } catch (e) {
+      return (parseInt(lastCode) + 1).toString();
+    }
   }
 
-  /**
-   * فحص وحدانية الكود قبل الحفظ
-   */
   async isCodeUnique(code: string): Promise<boolean> {
-    const q = query(collection(this.db, paths.accounts(this.companyId)), where('code', '==', code), limit(1));
+    const q = query(collection(this.db, paths.accounts(this.companyId)), where('code', '==', code));
     const snap = await getDocs(q);
     return snap.empty;
   }
 
   async createAccount(data: Partial<Account>, userId: string) {
-    // التأكد من وحدانية الكود
     if (data.code) {
       const unique = await this.isCodeUnique(data.code);
       if (!unique) throw new Error(`كود الحساب ${data.code} مستخدم بالفعل.`);
@@ -86,6 +87,7 @@ export class AccountingService {
     const accountData = {
       ...data,
       id: ref.id,
+      parentId: data.parentId || "",
       companyId: this.companyId,
       isActive: true,
       createdAt: serverTimestamp(),
@@ -94,42 +96,6 @@ export class AccountingService {
     };
     await setDoc(ref, accountData);
     return ref.id;
-  }
-
-  async createAutomaticCostCenter(referenceId: string, name: string, code: string, projectId?: string) {
-    const ccPath = paths.costCenters(this.companyId);
-    const ccRef = doc(this.db, ccPath, `cc_${referenceId}`);
-    
-    const docData = {
-      id: ccRef.id,
-      code: code,
-      name: name,
-      projectId: projectId || '',
-      isAdministrative: !projectId,
-      isActive: true,
-      companyId: this.companyId,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    };
-
-    await setDoc(ccRef, docData);
-    return ccRef.id;
-  }
-
-  async createAutomaticProfitCenter(projectId: string, name: string, code: string) {
-    const pcRef = doc(this.db, paths.profitCenters(this.companyId), `pc_${projectId}`);
-    const docData = {
-      id: pcRef.id,
-      code: code,
-      name: name,
-      projectId: projectId,
-      isActive: true,
-      companyId: this.companyId,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    };
-    await setDoc(pcRef, docData);
-    return pcRef.id;
   }
 
   async createJournalEntry(data: Partial<JournalEntry>, userId: string) {
@@ -193,7 +159,7 @@ export class AccountingService {
   }
 
   async ensureControlAccount(code: string, nameAr: string, nameEn: string, type: any) {
-    const q = query(collection(this.db, paths.accounts(this.companyId)), where('code', '==', code), limit(1));
+    const q = query(collection(this.db, paths.accounts(this.companyId)), where('code', '==', code));
     const snap = await getDocs(q);
     if (!snap.empty) return snap.docs[0].id;
 
@@ -202,13 +168,14 @@ export class AccountingService {
       id: ref.id, code, nameAr, nameEn, type,
       isActive: true, companyId: this.companyId, createdAt: serverTimestamp(),
       isGroup: true,
+      parentId: "",
       level: code.length
     });
     return ref.id;
   }
 
   async createAutomaticSubAccount(parentCode: string, referenceId: string, referenceName: string, type: any) {
-    const q = query(collection(this.db, paths.accounts(this.companyId)), where('referenceId', '==', referenceId), limit(1));
+    const q = query(collection(this.db, paths.accounts(this.companyId)), where('referenceId', '==', referenceId));
     const snap = await getDocs(q);
     if (!snap.empty) return snap.docs[0].id;
 
@@ -218,10 +185,32 @@ export class AccountingService {
     await setDoc(ref, {
       id: ref.id, code: subCode, nameAr: referenceName, nameEn: referenceName,
       type, isActive: true, referenceId, isGroup: false, 
+      parentId: "", // Will be assigned to root by default in this context
       companyId: this.companyId, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
     });
     return ref.id;
   }
-}
 
-import { getDoc } from 'firebase/firestore';
+  async createAutomaticCostCenter(referenceId: string, name: string, code: string, projectId?: string) {
+    const ccPath = paths.costCenters(this.companyId);
+    const ccRef = doc(this.db, ccPath, `cc_${referenceId}`);
+    const docData = {
+      id: ccRef.id, code, name, projectId: projectId || '',
+      isAdministrative: !projectId, isActive: true,
+      companyId: this.companyId, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+    };
+    await setDoc(ccRef, docData);
+    return ccRef.id;
+  }
+
+  async createAutomaticProfitCenter(projectId: string, name: string, code: string) {
+    const pcRef = doc(this.db, paths.profitCenters(this.companyId), `pc_${projectId}`);
+    const docData = {
+      id: pcRef.id, code, name, projectId,
+      isActive: true, companyId: this.companyId,
+      createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+    };
+    await setDoc(pcRef, docData);
+    return pcRef.id;
+  }
+}
