@@ -125,7 +125,7 @@ export default function ChartOfAccountsPage() {
     e.stopPropagation();
     if (!db || !companyId) return;
     
-    // استدعاء محرك الترقيم التلقائي السيادي المطور
+    // استدعاء محرك الترقيم التلقائي السيادي المطور (In-Memory Sort لتمكين العمل بدون فهارس يدوية)
     const service = new AccountingService(db, companyId);
     const nextCode = await service.getNextAccountCode(parent.id);
 
@@ -400,3 +400,4 @@ export default function ChartOfAccountsPage() {
     </div>
   );
 }
+

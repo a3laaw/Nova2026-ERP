@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -42,8 +43,16 @@ export class HRService {
 
     try {
       await setDoc(empRef, docData);
+      
+      // الأتمتة المالية السيادية: إنشاء مركز تكلفة للموظف فور تعيينه
       const accService = new AccountingService(this.db, this.companyId);
-      await accService.createAutomaticCostCenter(empRef.id, `تكلفة الموظف: ${data.fullName}`, `CC-EMP-${data.employeeNumber}`);
+      await accService.createAutomaticCostCenter(
+        empRef.id, 
+        `تكلفة الموظف: ${data.fullName}`, 
+        `Staff Cost: ${data.nameEn || data.fullName}`,
+        `CC-EMP-${data.employeeNumber}`
+      );
+
     } catch (err: any) {
       await handleWriteError(err, { path: empRef.path, operation: 'create', requestResourceData: docData });
     }
@@ -92,9 +101,7 @@ export class HRService {
     const newDailyWage = newSalary / 26;
     const wageDiff = newDailyWage - oldDailyWage;
 
-    // حساب الأيام المستحقة حتى اللحظة
     const accruedDays = wdService.calculateAccruedLeave(emp.hireDate);
-    // مكافأة نهاية الخدمة (تقديرياً للمخصص): 15 يوماً لكل سنة
     const gratuityDays = (accruedDays / 30) * 15; 
 
     const leaveGap = accruedDays * wageDiff;

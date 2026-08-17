@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -25,7 +26,6 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { ensureActionPermission } from '@/lib/permissions/engine';
 import { AccountingService } from './accounting-service';
-import { BillingService } from './billing-service';
 
 export class TransactionService {
   constructor(
@@ -37,6 +37,8 @@ export class TransactionService {
   async createTransaction(data: {
     clientId: string;
     clientName: string;
+    nameAr: string;
+    nameEn: string;
     activityTypeId: string;
     activityTypeName: string;
     serviceId: string;
@@ -68,6 +70,8 @@ export class TransactionService {
       transactionNumber,
       clientId: data.clientId,
       clientName: data.clientName,
+      nameAr: data.nameAr || data.subServiceName,
+      nameEn: data.nameEn || data.subServiceName,
       activityTypeId: data.activityTypeId,
       activityTypeName: data.activityTypeName,
       serviceId: data.serviceId,
@@ -83,7 +87,7 @@ export class TransactionService {
       updatedAt: serverTimestamp(),
       createdBy: userId,
       updatedBy: userId
-    };
+    } as any;
 
     batch.set(transRef, transactionData);
     batch.update(clientRef, {
@@ -93,24 +97,26 @@ export class TransactionService {
 
     // --- الأتمتة المالية السيادية المزدوجة (WIP & Dimensions) ---
     const accService = new AccountingService(this.db, this.companyId);
-    const shortProjectName = `${data.clientName} - ${data.subServiceName}`;
-    const wipName = `${shortProjectName} (WIP)`;
+    const shortProjectNameAr = `${data.clientName} - ${data.subServiceName}`;
+    const shortProjectNameEn = `${clientData.nameEn || 'Client'} - ${data.subServiceName}`;
     
+    // 1. تأسيس حساب WIP في الأصول
     await accService.ensureControlAccount('1205', 'أعمال تحت التنفيذ', 'Work In Progress', 'asset');
-    await accService.createAutomaticSubAccount('1205', transactionId, wipName, 'asset');
+    await accService.createAutomaticSubAccount('1205', transactionId, `${shortProjectNameAr} (WIP)`, 'asset');
 
-    // إنشاء الأبعاد التحليلية ثنائية اللغة آلياً
+    // 2. إنشاء مركز ربحية (للإيرادات)
     await accService.createAutomaticProfitCenter(
       transactionId, 
-      `مركز ربحية: ${shortProjectName}`, 
-      `Profit Center: ${shortProjectName}`,
+      `مركز ربحية: ${shortProjectNameAr}`, 
+      `Profit Center: ${shortProjectNameEn}`,
       `PC-${transactionNumber}`
     );
 
+    // 3. إنشاء مركز تكلفة (للمصروفات)
     await accService.createAutomaticCostCenter(
        transactionId,
-       `تكلفة مشروع: ${shortProjectName}`,
-       `Cost Center: ${shortProjectName}`,
+       `تكلفة مشروع: ${shortProjectNameAr}`,
+       `Cost Center: ${shortProjectNameEn}`,
        `CC-${transactionNumber}`,
        transactionId
     );
@@ -118,7 +124,7 @@ export class TransactionService {
     const timelineRef = doc(collection(this.db, paths.transactionTimeline(this.companyId, transactionId)));
     batch.set(timelineRef, {
       transactionId, type: 'system',
-      content: `[إجراء سيادي] تم تأسيس حساب WIP ومركز ربحية وتكلفة للمشروع: ${shortProjectName}`,
+      content: `[أتمتة سيادية] تم تأسيس الهوية المالية للمشروع: حساب WIP، مركز ربحية، ومركز تكلفة مستقل.`,
       userId, userName, companyId: this.companyId, createdAt: serverTimestamp()
     });
 
@@ -132,34 +138,20 @@ export class TransactionService {
     return deleteDoc(transRef);
   }
 
-  async startStage(transactionId: string, stageId: string, userId: string, userName: string, userDeptId?: string, appointmentId?: string) {
+  async startStage(transactionId: string, stageId: string, userId: string, userName: string) {
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
-    const stageSnap = await getDoc(stageRef);
-    if (!stageSnap.exists()) return;
-    const stageData = stageSnap.data() as StageInstance;
-
     await updateDoc(stageRef, {
       status: 'in-progress', startedAt: serverTimestamp(),
       updatedAt: serverTimestamp(), updatedBy: userId
     });
-
-    const billing = new BillingService(this.db, this.companyId);
-    await billing.triggerMilestoneBilling(transactionId, stageData.technicalStageId, 'at', userId, userName);
   }
 
-  async completeStage(transactionId: string, stageId: string, userId: string, userName: string, userDeptId?: string) {
+  async completeStage(transactionId: string, stageId: string, userId: string, userName: string) {
     const stageRef = doc(this.db, paths.transactionStages(this.companyId, transactionId), stageId);
-    const stageSnap = await getDoc(stageRef);
-    if (!stageSnap.exists()) return;
-    const stageData = stageSnap.data() as StageInstance;
-
     await updateDoc(stageRef, {
       status: 'completed', completedAt: serverTimestamp(),
       completedBy: userId, updatedAt: serverTimestamp()
     });
-
-    const billing = new BillingService(this.db, this.companyId);
-    await billing.triggerMilestoneBilling(transactionId, stageData.technicalStageId, 'after', userId, userName);
   }
 
   async initializeTechnicalPath(transactionId: string, activityId: string, serviceId: string, subServiceId: string, userId: string) {
@@ -176,7 +168,8 @@ export class TransactionService {
         code: stage.code || 'STAGE', name: stage.name || '', order: idx,
         status: 'pending', currentCount: 0, activityTypeId: activityId,
         serviceId: serviceId, subServiceId: subServiceId, companyId: this.companyId,
-        revisionCount: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+        revisionCount: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+        allowedDepartmentIds: stage.allowedDepartmentIds || []
       });
     });
 

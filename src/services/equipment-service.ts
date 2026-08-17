@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -14,10 +15,6 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { AccountingService } from './accounting-service';
 
-/**
- * خدمة إدارة المعدات والآليات (Equipment Service).
- * تم التحديث (IFRS 8): المعدة تمتلك مركز تكلفة فقط للتشغيل، ولا تولد مركز ربحية تلقائياً.
- */
 export class EquipmentService {
   constructor(private db: Firestore, private companyId: string) {}
 
@@ -52,13 +49,14 @@ export class EquipmentService {
     // 1. إنشاء حساب أصل ثابت (في حال كانت مملوكة)
     if (data.ownershipType === 'owned') {
        await accService.ensureControlAccount('1101', 'آليات ومعدات ثقيلة', 'Heavy Machinery & Equipment', 'asset');
-       await accService.createAutomaticSubAccount('1101', equipRef.id, data.name || 'معدة جديدة', 'asset');
+       await accService.createAutomaticSubAccount('1101', equipRef.id, data.nameAr || 'معدة جديدة', 'asset');
     }
 
-    // 2. إنشاء مركز تكلفة: لمطاردة مصاريف التشغيل (صيانة، وقود، إصلاح)
+    // 2. الأتمتة الميدانية: إنشاء مركز تكلفة ثنائي اللغة للمعدة لمطاردة مصاريف التشغيل
     await accService.createAutomaticCostCenter(
        equipRef.id, 
-       `تكلفة المعدة: ${data.name}`, 
+       `تكلفة المعدة: ${data.nameAr}`, 
+       `Machine Cost: ${data.nameEn || 'Machine'}`,
        `CC-EQP-${data.code}`
     );
 
