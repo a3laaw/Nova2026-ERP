@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -170,7 +169,7 @@ export default function GeneralListsPage() {
                      ) : (
                        filtered.map((item) => (
                          <TableRow key={item.id} className="hover:bg-primary/5 transition-colors border-b-slate-100 group">
-                            <TableCell className="py-6 ps-8 text-start font-black text-slate-800">{tSafe('data.item.name', item.name, item.nameEn || item.name)}</TableCell>
+                            <TableCell className="py-6 ps-8 text-start font-black text-slate-800">{isRtl ? item.name : (item.nameEn || item.name)}</TableCell>
                             <TableCell className="text-start"><code className="text-[10px] bg-slate-100 px-2 py-0.5 rounded font-mono text-primary font-black uppercase">{item.code}</code></TableCell>
                             {activeTab === 'paymentMethods' && (
                                <TableCell className="text-center">
@@ -199,7 +198,7 @@ export default function GeneralListsPage() {
 
       <Dialog open={!!editingItem} onOpenChange={open => !open && setEditingItem(null)}>
          <DialogContent className="rounded-xl p-0 overflow-hidden max-w-xl border-0 shadow-3xl bg-white" dir={dir}>
-            <div className="bg-[#FFA000] p-8 text-white text-start">
+            <div className="bg-primary p-8 text-white text-start">
                <DialogTitle className="text-2xl font-black font-headline flex items-center gap-3"><Edit3 className="h-8 w-8 text-white" /> {editingItem?.id ? t('common.edit') : t('common.add')}</DialogTitle>
             </div>
             <div className="p-10 space-y-6 text-start bg-white">
@@ -207,47 +206,10 @@ export default function GeneralListsPage() {
                   <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('common.code')}</Label><Input value={editingItem?.code || ''} onChange={e => setEditingItem({...editingItem, code: e.target.value.toUpperCase().replace(/\s+/g, '_')})} className="h-11 border-2 font-mono font-black" /></div>
                   <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{tSafe('order', 'الترتيب', 'Order')}</Label><Input type="number" value={editingItem?.order === 0 ? '' : (editingItem?.order || '')} onChange={e => setEditingItem({...editingItem, order: e.target.value === '' ? 0 : Number(e.target.value)})} className="h-11 border-2" /></div>
                </div>
-               <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('common.name')}</Label><Input value={editingItem?.name || ''} onChange={e => setEditingItem({...editingItem, name: e.target.value})} className="h-11 border-2" /></div>
-               
-               {activeTab === 'paymentMethods' && (
-                  <div className="p-6 rounded-2xl bg-blue-50 border-2 border-dashed border-blue-200 space-y-6">
-                     <div className="flex items-center gap-2 text-blue-600 font-black text-xs uppercase tracking-widest">
-                        <Percent className="h-4 w-4" /> {tSafe('inline.bank.comm.rules', 'إعدادات عمولات البنوك', 'Bank Commission Rules')}
-                     </div>
-                     <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                           <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.percentage', 'النسبة المئوية (%)', 'Percentage (%)')}</Label>
-                           <Input 
-                             type="number" 
-                             step="0.01" 
-                             value={(editingItem?.feePercentage || 0) === 0 ? "" : (editingItem!.feePercentage! * 100)} 
-                             onChange={e => {
-                                const rawVal = e.target.value === '' ? 0 : Number(e.target.value);
-                                setEditingItem({...editingItem!, feePercentage: rawVal / 100});
-                             }} 
-                             className="h-11 border-2 bg-white font-black" 
-                             placeholder="مثال: 2.5"
-                           />
-                        </div>
-                        <div className="space-y-2">
-                           <Label className="text-[10px] font-black uppercase text-slate-400">{tSafe('inline.fixed.amount', 'مبلغ ثابت (KWD)', 'Fixed Amount')}</Label>
-                           <Input 
-                             type="number" 
-                             step="0.001" 
-                             value={(editingItem?.feeFixedAmount || 0) === 0 ? "" : editingItem?.feeFixedAmount} 
-                             onChange={e => setEditingItem({...editingItem!, feeFixedAmount: e.target.value === '' ? 0 : Number(e.target.value)})} 
-                             className="h-11 border-2 bg-white font-black" 
-                           />
-                        </div>
-                     </div>
-                  </div>
-               )}
+               <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('common.nameAr')}</Label><Input value={editingItem?.name || ''} onChange={e => setEditingItem({...editingItem, name: e.target.value})} className="h-11 border-2 font-bold" /></div>
+               <div className="space-y-2"><Label className="text-xs font-black uppercase text-slate-400">{t('common.nameEn')}</Label><Input value={editingItem?.nameEn || ''} onChange={e => setEditingItem({...editingItem, nameEn: e.target.value})} className="h-11 border-2 font-bold text-start" dir="ltr" /></div>
 
                <div className="flex items-center justify-between p-6 bg-slate-50 rounded-xl border-2"><Label className="font-black text-slate-700">{t('common.isActive')}</Label><Switch checked={editingItem?.isActive !== false} onCheckedChange={v => setEditingItem({...editingItem!, isActive: v})} /></div>
-            </div>
-            <div className="p-8 rounded-b-xl bg-slate-50 border-t flex items-start gap-4">
-               <Info className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
-               <p className="text-[10px] text-slate-500 font-bold leading-relaxed">{tSafe('inline.available.lists', 'إتاحة العنصر للاستخدام في القوائم.', 'Make item available in select lists.')}</p>
             </div>
             <DialogFooter className="p-8 bg-slate-50 border-t"><Button onClick={handleSave} disabled={loadingAction === 'save'} className="w-full h-12 rounded-xl">{loadingAction === 'save' ? <Loader2 className="animate-spin" /> : <Save className="h-5 w-5 me-2" />}{t('common.save')}</Button></DialogFooter>
          </DialogContent>

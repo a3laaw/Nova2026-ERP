@@ -31,14 +31,14 @@ export class SeedService {
   }
 
   /**
-   * تنشيط شجرة الحسابات مع ربط هرمي حقيقي (Hierarchy Fix)
+   * تنشيط شجرة الحسابات مع ربط هرمي حقيقي (True Hierarchy Fix)
    * يضمن أن parentId يشير إلى الـ Document ID الفعلي وليس الكود لتعمل الشجرة
    */
   async seedConstructionCOA(userId: string) {
     const batch = writeBatch(this.db);
     const accountsRef = collection(this.db, paths.accounts(this.companyId));
     
-    // تعريف الهيكل المالي (Sovereign COA V2.9)
+    // تعريف الهيكل المالي (Sovereign COA V3.1)
     const rawHierarchy = [
       { code: '1', nameAr: 'الأصول', nameEn: 'Assets', type: 'asset', isGroup: true, level: 1, parentCode: null },
       { code: '11', nameAr: 'أصول متداولة', nameEn: 'Current Assets', type: 'asset', isGroup: true, level: 2, parentCode: '1' },
@@ -63,12 +63,12 @@ export class SeedService {
 
     const codeToIdMap: Record<string, string> = {};
 
-    // 1. حجز المعرفات مسبقاً
+    // 1. حجز المعرفات مسبقاً لكل كود
     rawHierarchy.forEach(item => {
       codeToIdMap[item.code] = doc(accountsRef).id;
     });
 
-    // 2. بناء الشجرة بربط المعرفات (ID-based Linking)
+    // 2. بناء الشجرة بربط المعرفات الحقيقية (ID-based Linking)
     rawHierarchy.forEach(item => {
       const myId = codeToIdMap[item.code];
       const parentId = item.parentCode ? codeToIdMap[item.parentCode] : "";
@@ -90,7 +90,7 @@ export class SeedService {
       });
     });
 
-    // 3. إنشاء مراكز التكلفة والربحية الإدارية
+    // 3. إنشاء مراكز التكلفة والربحية الإدارية آلياً
     const ccRef = doc(this.db, paths.costCenters(this.companyId), 'cc_admin_general');
     batch.set(ccRef, {
       id: 'cc_admin_general', code: 'CC-100', name: 'الإدارة العامة والمصاريف المشتركة',
@@ -150,21 +150,6 @@ export class SeedService {
       }
     }
     await batch.commit();
-  }
-
-  async runIdentityMigration() {
-    const usersSnap = await getDocs(collection(this.db, 'global_users'));
-    const batch = writeBatch(this.db);
-    let count = 0;
-    usersSnap.docs.forEach(d => {
-      const data = d.data();
-      if (data.roleCode && data.roleCode !== data.roleCode.toUpperCase()) {
-        batch.update(d.ref, { roleCode: data.roleCode.toUpperCase() });
-        count++;
-      }
-    });
-    if (count > 0) await batch.commit();
-    return count;
   }
 
   async purgeSystemData() {

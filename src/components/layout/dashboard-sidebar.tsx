@@ -228,7 +228,7 @@ export function DashboardSidebar() {
       <SidebarFooter className="p-4 mt-auto">
         {!isCollapsed && (
           <div className="p-4 rounded-3xl bg-white border border-orange-100 shadow-xl ring-1 ring-black/[0.02] flex justify-between items-center">
-             <Badge className="bg-[#e87c24] text-white text-[8px] font-black uppercase h-5 px-2 rounded-full">V2.9</Badge>
+             <Badge className="bg-[#e87c24] text-white text-[8px] font-black uppercase h-5 px-2 rounded-full">V3.1</Badge>
              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{t('common.status')}</span>
           </div>
         )}
@@ -361,7 +361,7 @@ function NavItemRenderer({ item, isCollapsed, isRtl, pathname, t }: any) {
         <Link href={item.url} className={cn(expandedStyle)}>
           <div className={cn("flex items-center gap-3 w-full", isRtl ? "flex-row-reverse" : "flex-row")}>
             <item.icon className="h-5 w-5 shrink-0" />
-            <span className="flex-1 text-start text-xs font-black tracking-tight">{item.title}</span>
+            <span className="flex-1 text-start font-black text-xs tracking-tight">{item.title}</span>
           </div>
         </Link>
       )}

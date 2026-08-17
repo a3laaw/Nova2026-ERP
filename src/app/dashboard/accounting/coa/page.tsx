@@ -11,7 +11,8 @@ import {
   FileText, Search, ChevronRight, ChevronDown,
   Save, Landmark, Sparkles, DatabaseZap,
   AlertTriangle, CheckCircle2,
-  FolderOpen, Trash2, RotateCcw
+  FolderOpen, Trash2, RotateCcw,
+  PlusCircle
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -118,15 +119,22 @@ export default function ChartOfAccountsPage() {
     }
   };
 
-  const toggleExpand = (id: string, e: React.MouseEvent) => {
+  const handleAddSubAccount = (parent: Account, e: React.MouseEvent) => {
     e.stopPropagation();
-    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+    setForm({
+      nameAr: '', 
+      nameEn: '', 
+      code: parent.code + '.', // تلميح للكود
+      type: parent.type, 
+      isGroup: false, 
+      parentId: parent.id 
+    });
+    setIsAdding(true);
   };
 
   const renderTree = (parentId: string | null = null, level = 0) => {
     return (accounts || [])
       .filter(a => {
-        // حوكمة الجذور: التعامل مع null أو string فارغة كجذور
         if (parentId === null) return !a.parentId || a.parentId === "";
         return a.parentId === parentId;
       })
@@ -173,9 +181,20 @@ export default function ChartOfAccountsPage() {
               
               <span className="text-sm truncate">{isRtl ? account.nameAr : (account.nameEn || account.nameAr)}</span>
               
-              <Badge variant="outline" className="ms-auto text-[8px] uppercase font-black border-2 h-5 bg-white opacity-40 group-hover:opacity-100 transition-opacity">
-                {account.type}
-              </Badge>
+              <div className="ms-auto flex items-center gap-2">
+                {account.isGroup && (
+                   <button 
+                     onClick={(e) => handleAddSubAccount(account, e)}
+                     className="h-8 w-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all border border-emerald-100 hover:bg-emerald-600 hover:text-white"
+                     title={isRtl ? 'إضافة حساب فرعي' : 'Add Sub-Account'}
+                   >
+                      <Plus className="h-4 w-4" />
+                   </button>
+                )}
+                <Badge variant="outline" className="text-[8px] font-black border-2 h-5 bg-white opacity-40 group-hover:opacity-100">
+                  {account.type}
+                </Badge>
+              </div>
             </div>
             {isExpanded && renderTree(account.id, level + 1)}
           </div>
@@ -190,7 +209,7 @@ export default function ChartOfAccountsPage() {
           <h1 className="text-2xl font-black font-headline flex items-center gap-3 text-slate-900">
              <GitBranch className="h-7 w-7 text-primary" /> {t('chartOfAccounts')}
           </h1>
-          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Sovereign Financial Registry V2.9</p>
+          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Sovereign Financial Registry V3.1</p>
         </div>
         <div className="flex gap-3">
           <Button onClick={() => setShowPurgeConfirm(true)} variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50 border-2 border-transparent hover:border-rose-100 transition-all">
@@ -207,8 +226,8 @@ export default function ChartOfAccountsPage() {
                 {isRtl ? 'تنشيط الشجرة والمراكز المالية' : 'Activate Financial Centers'}
              </Button>
           )}
-          <Button onClick={() => { setForm({ nameAr: '', nameEn: '', code: '', type: 'asset', isGroup: false }); setIsAdding(true); }} size="sm" className="h-10 px-8 font-black rounded-xl shadow-lg gap-2">
-            <Plus className="h-4 w-4" /> {isRtl ? 'إضافة حساب' : 'Add Account'}
+          <Button onClick={() => { setForm({ nameAr: '', nameEn: '', code: '', type: 'asset', isGroup: false, parentId: null }); setIsAdding(true); }} size="sm" className="h-10 px-8 font-black rounded-xl shadow-lg gap-2">
+            <Plus className="h-4 w-4" /> {isRtl ? 'إضافة حساب جذري' : 'Add Root Account'}
           </Button>
         </div>
       </header>
@@ -247,10 +266,20 @@ export default function ChartOfAccountsPage() {
         <DialogContent className="rounded-xl p-0 overflow-hidden max-w-xl bg-white border-0 shadow-3xl" dir={dir}>
            <div className="bg-primary/5 p-8 border-b text-start shrink-0">
               <DialogTitle className="text-xl font-black font-headline flex items-center gap-3">
-                 <Landmark className="h-6 w-6 text-primary" /> {form.id ? t('common.edit') : t('newDept')}
+                 <Landmark className="h-6 w-6 text-primary" /> 
+                 {form.parentId ? (isRtl ? 'إضافة حساب فرعي' : 'Add Sub-Account') : (form.id ? t('common.edit') : t('newDept'))}
               </DialogTitle>
            </div>
            <div className="p-8 space-y-6 text-start">
+              {form.parentId && (
+                <div className="p-4 bg-slate-50 border-2 border-dashed rounded-xl mb-2">
+                   <Label className="text-[9px] font-black text-slate-400 uppercase">الحساب الأب</Label>
+                   <p className="font-bold text-sm text-slate-700">
+                     {accounts?.find(a => a.id === form.parentId)?.nameAr}
+                   </p>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-6">
                  <div className="space-y-1.5">
                     <Label className="text-[10px] font-black uppercase text-slate-400">كود الحساب</Label>
@@ -258,7 +287,7 @@ export default function ChartOfAccountsPage() {
                  </div>
                  <div className="space-y-1.5">
                     <Label className="text-[10px] font-black uppercase text-slate-400">نوع الحساب</Label>
-                    <Select value={form.type} onValueChange={(v: any) => setForm({...form, type: v})}>
+                    <Select disabled={!!form.parentId} value={form.type} onValueChange={(v: any) => setForm({...form, type: v})}>
                        <SelectTrigger className="h-10 border-2 font-bold"><SelectValue /></SelectTrigger>
                        <SelectContent className="rounded-xl border-2 z-[200] max-h-[300px] overflow-y-auto">
                           <SelectItem value="asset" className="font-bold">أصول (Asset)</SelectItem>
