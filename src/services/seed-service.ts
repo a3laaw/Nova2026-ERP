@@ -20,41 +20,59 @@ export class SeedService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * تنشيط شجرة الحسابات مع إنشاء مراكز التكلفة والربحية آلياً (التكامل المالي السيادي)
+   * تنشيط شجرة الحسابات مع ربط هرمي حقيقي (Hierarchy Fix)
+   * يضمن أن parentId يشير إلى الـ Document ID الفعلي وليس الكود
    */
   async seedConstructionCOA(userId: string) {
     const batch = writeBatch(this.db);
     const accountsRef = collection(this.db, paths.accounts(this.companyId));
     
-    // 1. تعريف شجرة الحسابات القياسية للمقاولات (Sovereign COA V2)
-    const standardAccounts = [
-      { code: '1', nameAr: 'الأصول', nameEn: 'Assets', type: 'asset', isGroup: true, level: 1, parentId: null },
-      { code: '11', nameAr: 'أصول متداولة', nameEn: 'Current Assets', type: 'asset', isGroup: true, level: 2, parentId: '1' },
-      { code: '1101', nameAr: 'النقدية والبنك', nameEn: 'Cash & Bank', type: 'asset', isGroup: false, level: 3, parentId: '11' },
-      { code: '12', nameAr: 'ذمم وحسابات مدينة', nameEn: 'Accounts Receivable', type: 'asset', isGroup: true, level: 2, parentId: '1' },
-      { code: '1202', nameAr: 'ذمم العملاء (AR)', nameEn: 'Clients Receivable', type: 'asset', isGroup: true, level: 3, parentId: '12' },
-      { code: '1205', nameAr: 'أعمال تحت التنفيذ (WIP)', nameEn: 'Work In Progress', type: 'asset', isGroup: true, level: 3, parentId: '12' },
+    // تعريف الهيكل المالي (Sovereign COA V2.9)
+    const rawHierarchy = [
+      { code: '1', nameAr: 'الأصول', nameEn: 'Assets', type: 'asset', isGroup: true, level: 1, parentCode: null },
+      { code: '11', nameAr: 'أصول متداولة', nameEn: 'Current Assets', type: 'asset', isGroup: true, level: 2, parentCode: '1' },
+      { code: '1101', nameAr: 'النقدية والبنك', nameEn: 'Cash & Bank', type: 'asset', isGroup: false, level: 3, parentCode: '11' },
+      { code: '12', nameAr: 'ذمم وحسابات مدينة', nameEn: 'Accounts Receivable', type: 'asset', isGroup: true, level: 2, parentCode: '1' },
+      { code: '1202', nameAr: 'ذمم العملاء (AR)', nameEn: 'Clients Receivable', type: 'asset', isGroup: true, level: 3, parentCode: '12' },
+      { code: '1205', nameAr: 'أعمال تحت التنفيذ (WIP)', nameEn: 'Work In Progress', type: 'asset', isGroup: true, level: 3, parentCode: '12' },
       
-      { code: '2', nameAr: 'الخصوم', nameEn: 'Liabilities', type: 'liability', isGroup: true, level: 1, parentId: null },
-      { code: '22', nameAr: 'خصوم متداولة', nameEn: 'Current Liabilities', type: 'liability', isGroup: true, level: 2, parentId: '2' },
-      { code: '2204', nameAr: 'مستحقات رواتب وأجور', nameEn: 'Accrued Salaries', type: 'liability', isGroup: true, level: 3, parentId: '22' },
+      { code: '2', nameAr: 'الخصوم', nameEn: 'Liabilities', type: 'liability', isGroup: true, level: 1, parentCode: null },
+      { code: '22', nameAr: 'خصوم متداولة', nameEn: 'Current Liabilities', type: 'liability', isGroup: true, level: 2, parentCode: '2' },
+      { code: '2204', nameAr: 'مستحقات رواتب وأجور', nameEn: 'Accrued Salaries', type: 'liability', isGroup: true, level: 3, parentCode: '22' },
       
-      { code: '3', nameAr: 'حقوق الملكية', nameEn: 'Equity', type: 'equity', isGroup: true, level: 1, parentId: null },
+      { code: '3', nameAr: 'حقوق الملكية', nameEn: 'Equity', type: 'equity', isGroup: true, level: 1, parentCode: null },
       
-      { code: '4', nameAr: 'الإيرادات', nameEn: 'Revenue', type: 'revenue', isGroup: true, level: 1, parentId: null },
-      { code: '4101', nameAr: 'إيرادات عقود ومقاولات', nameEn: 'Project Revenue', type: 'revenue', isGroup: false, level: 2, parentId: '4' },
+      { code: '4', nameAr: 'الإيرادات', nameEn: 'Revenue', type: 'revenue', isGroup: true, level: 1, parentCode: null },
+      { code: '4101', nameAr: 'إيرادات عقود ومقاولات', nameEn: 'Project Revenue', type: 'revenue', isGroup: false, level: 2, parentCode: '4' },
       
-      { code: '5', nameAr: 'المصروفات', nameEn: 'Expenses', type: 'expense', isGroup: true, level: 1, parentId: null },
-      { code: '5101', nameAr: 'تكاليف تنفيذ مباشرة', nameEn: 'Direct Execution Costs', type: 'expense', isGroup: false, level: 2, parentId: '5' },
-      { code: '5201', nameAr: 'رواتب ومصاريف إدارية', nameEn: 'G&A Expenses', type: 'expense', isGroup: false, level: 2, parentId: '5' }
+      { code: '5', nameAr: 'المصروفات', nameEn: 'Expenses', type: 'expense', isGroup: true, level: 1, parentCode: null },
+      { code: '5101', nameAr: 'تكاليف تنفيذ مباشرة', nameEn: 'Direct Execution Costs', type: 'expense', isGroup: false, level: 2, parentCode: '5' },
+      { code: '5201', nameAr: 'رواتب ومصاريف إدارية', nameEn: 'G&A Expenses', type: 'expense', isGroup: false, level: 2, parentCode: '5' }
     ];
 
-    // حفظ الحسابات
-    standardAccounts.forEach(acc => {
+    // خريطة لتخزين المعرفات المولدة (Code -> DocumentID)
+    const codeToIdMap: Record<string, string> = {};
+
+    // 1. توليد المعرفات وحفظها في الخريطة
+    rawHierarchy.forEach(item => {
       const newRef = doc(accountsRef);
-      batch.set(newRef, {
-        ...acc,
-        id: newRef.id,
+      codeToIdMap[item.code] = newRef.id;
+    });
+
+    // 2. بناء القيود مع الربط الصحيح بالآباء
+    rawHierarchy.forEach(item => {
+      const myId = codeToIdMap[item.code];
+      const parentId = item.parentCode ? codeToIdMap[item.parentCode] : null;
+      
+      batch.set(doc(accountsRef, myId), {
+        id: myId,
+        code: item.code,
+        nameAr: item.nameAr,
+        nameEn: item.nameEn,
+        type: item.type,
+        isGroup: item.isGroup,
+        level: item.level,
+        parentId: parentId,
         companyId: this.companyId,
         isActive: true,
         createdAt: serverTimestamp(),
@@ -63,7 +81,7 @@ export class SeedService {
       });
     });
 
-    // 2. إنشاء مراكز التكلفة والربحية الإدارية (تلقائي مع التنشيط)
+    // 3. إنشاء مراكز التكلفة والربحية الإدارية
     const ccRef = doc(this.db, paths.costCenters(this.companyId), 'cc_admin_general');
     batch.set(ccRef, {
       id: 'cc_admin_general',
@@ -89,7 +107,7 @@ export class SeedService {
   }
 
   /**
-   * مزامنة وإصلاح أرصدة الإجازات لكافة الموظفين بناءً على تاريخ التعيين (Retroactive Sync)
+   * مزامنة وإصلاح أرصدة الإجازات التاريخية (Fix for Asma and others)
    */
   async syncAllEmployeeBalances() {
     const whService = new WorkHoursService(this.db, this.companyId);
@@ -110,10 +128,7 @@ export class SeedService {
       const emp = empDoc.data();
       if (!emp.hireDate) continue;
 
-      // حساب الاستحقاق التراكمي منذ التعيين
       const totalAccrued = wdService.calculateAccruedLeave(emp.hireDate);
-      
-      // حساب المستهلك فعلياً
       const empUsed = leavesSnap.docs
         .filter(d => d.data().employeeId === empDoc.id && d.data().type === 'annual')
         .reduce((sum, d) => sum + (d.data().workingDays || 0), 0);

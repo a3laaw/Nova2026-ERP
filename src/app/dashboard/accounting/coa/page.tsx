@@ -102,11 +102,10 @@ export default function ChartOfAccountsPage() {
     }
   };
 
-  // دالة عرض الشجرة المحسنة لضمان ظهور الحسابات الرئيسية (Root Nodes Fix)
   const renderTree = (parentId: string | null = null, level = 0) => {
     return (accounts || [])
       .filter(a => {
-        // حوكمة الجذور: اعتبار null أو empty string كجذور
+        // حوكمة الجذور: التعامل مع null أو string فارغة كجذور
         if (parentId === null) return !a.parentId || a.parentId === "";
         return a.parentId === parentId;
       })

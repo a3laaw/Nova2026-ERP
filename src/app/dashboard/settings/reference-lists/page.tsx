@@ -172,7 +172,7 @@ export default function ReferenceListsPage() {
                      </div>
                      <span className={cn(
                        "text-sm font-black transition-colors",
-                       isActive ? "text-white" : "text-slate-500"
+                       isActive ? "text-white" : "text-slate-50"
                      )}>{item.label}</span>
                   </div>
                 );
