@@ -24,6 +24,14 @@ export class SeedService {
     const snap = await getDocs(q);
     const batch = writeBatch(this.db);
     snap.docs.forEach(d => batch.delete(d.ref));
+    
+    // تطهير المراكز أيضاً للبدء من جديد
+    const ccSnap = await getDocs(collection(this.db, paths.costCenters(this.companyId)));
+    ccSnap.docs.forEach(d => batch.delete(d.ref));
+    
+    const pcSnap = await getDocs(collection(this.db, paths.profitCenters(this.companyId)));
+    pcSnap.docs.forEach(d => batch.delete(d.ref));
+
     await batch.commit();
   }
 
@@ -42,7 +50,6 @@ export class SeedService {
       { code: '2', nameAr: 'الخصوم', nameEn: 'Liabilities', type: 'liability', isGroup: true, level: 1, parentCode: null },
       { code: '22', nameAr: 'خصوم متداولة', nameEn: 'Current Liabilities', type: 'liability', isGroup: true, level: 2, parentCode: '2' },
       { code: '2204', nameAr: 'مستحقات رواتب وأجور', nameEn: 'Accrued Salaries', type: 'liability', isGroup: true, level: 3, parentCode: '22' },
-      // --- حسابات المخصصات (Sovereign Provision Accounts) ---
       { code: '2205', nameAr: 'مخصص مكافأة نهاية الخدمة', nameEn: 'Provision for EOSB', type: 'liability', isGroup: false, level: 3, parentCode: '22' },
       { code: '2206', nameAr: 'مخصص رصيد الإجازات', nameEn: 'Provision for Accrued Leave', type: 'liability', isGroup: false, level: 3, parentCode: '22' },
       
@@ -54,7 +61,6 @@ export class SeedService {
       { code: '5', nameAr: 'المصروفات', nameEn: 'Expenses', type: 'expense', isGroup: true, level: 1, parentCode: null },
       { code: '5101', nameAr: 'تكاليف تنفيذ مباشرة', nameEn: 'Direct Execution Costs', type: 'expense', isGroup: false, level: 2, parentCode: '5' },
       { code: '5201', nameAr: 'رواتب ومصاريف إدارية', nameEn: 'G&A Expenses', type: 'expense', isGroup: false, level: 2, parentCode: '5' },
-      // --- حسابات مصاريف المخصصات ---
       { code: '5202', nameAr: 'مصروف مخصص نهاية الخدمة', nameEn: 'Gratuity Provision Expense', type: 'expense', isGroup: false, level: 2, parentCode: '5' },
       { code: '5203', nameAr: 'مصروف مخصص الإجازات', nameEn: 'Leave Provision Expense', type: 'expense', isGroup: false, level: 2, parentCode: '5' }
     ];
@@ -71,10 +77,32 @@ export class SeedService {
       });
     });
 
+    // --- التنشيط الثنائي لمراكز التكلفة والربحية الإدارية ---
     const ccRef = doc(this.db, paths.costCenters(this.companyId), 'cc_admin_general');
-    batch.set(ccRef, { id: 'cc_admin_general', code: 'CC-100', name: 'الإدارة العامة والمصاريف المشتركة', isAdministrative: true, isActive: true, companyId: this.companyId, createdAt: serverTimestamp() });
+    batch.set(ccRef, { 
+      id: 'cc_admin_general', 
+      code: 'CC-100', 
+      name: 'الإدارة العامة',
+      nameAr: 'الإدارة العامة والمصاريف المشتركة', 
+      nameEn: 'General & Admin Shared Costs',
+      isAdministrative: true, 
+      isActive: true, 
+      companyId: this.companyId, 
+      createdAt: serverTimestamp() 
+    });
+
     const pcRef = doc(this.db, paths.profitCenters(this.companyId), 'pc_corp_general');
-    batch.set(pcRef, { id: 'pc_corp_general', code: 'PC-100', name: 'مركز أرباح العمليات المؤسسية', isActive: true, companyId: this.companyId, createdAt: serverTimestamp() });
+    batch.set(pcRef, { 
+      id: 'pc_corp_general', 
+      code: 'PC-100', 
+      name: 'العمليات المؤسسية',
+      nameAr: 'مركز أرباح العمليات المؤسسية', 
+      nameEn: 'Corporate Operations Profit Center',
+      isActive: true, 
+      companyId: this.companyId, 
+      createdAt: serverTimestamp() 
+    });
+
     await batch.commit();
   }
 
@@ -110,22 +138,6 @@ export class SeedService {
       }
     }
     await batch.commit();
-  }
-
-  async purgeSystemData() {
-    const collectionsToPurge = [
-      paths.clients(this.companyId), paths.transactions(this.companyId), paths.boqs(this.companyId),
-      paths.quotations(this.companyId), paths.contracts(this.companyId), paths.journalEntries(this.companyId),
-      paths.vouchers(this.companyId), paths.ipcs(this.companyId), paths.subIpcs(this.companyId),
-      paths.fieldVisits(this.companyId), paths.attendance(this.companyId), paths.payroll(this.companyId),
-      paths.executions(this.companyId), paths.leaveRequests(this.companyId), paths.appointments(this.companyId)
-    ];
-    for (const path of collectionsToPurge) {
-      const snap = await getDocs(query(collection(this.db, path), limit(500)));
-      const batch = writeBatch(this.db);
-      snap.docs.forEach(d => batch.delete(d.ref));
-      await batch.commit();
-    }
   }
 
   async runIdentityMigration() {

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -33,36 +32,26 @@ export class AccountingService {
   }
 
   /**
-   * محرك الترقيم التلقائي السيادي المطور.
-   * تم تعديله ليعمل بدون الحاجة لفهارس (Composite Indexes) عبر المعالجة في الذاكرة.
+   * محرك الترقيم التلقائي السيادي المطور (In-Memory Processing).
    */
   async getNextAccountCode(parentId: string | null): Promise<string> {
     const collRef = collection(this.db, paths.accounts(this.companyId));
-    
-    // جلب كافة الأشقاء (بنفس مستوى الأب)
     const q = query(collRef, where('parentId', '==', parentId || ""));
     const snap = await getDocs(q);
     
     if (snap.empty) {
-      if (!parentId) return "1"; // أول حساب جذري
-      
+      if (!parentId) return "1"; 
       const parentSnap = await getDoc(doc(this.db, paths.accounts(this.companyId), parentId));
       if (!parentSnap.exists()) return "1001";
       const parentCode = parentSnap.data().code;
-      // نمط الترقيم: الأب 11 -> الابن 1101
       return `${parentCode}01`;
     }
 
-    // الفرز في الذاكرة لتجنب خطأ الفهرس السحابي
-    const codes = snap.docs
-      .map(d => d.data().code)
-      .filter(c => /^\d+$/.test(c));
-
+    const codes = snap.docs.map(d => d.data().code).filter(c => /^\d+$/.test(c));
     if (codes.length === 0) return "1";
-
-    const lastCode = codes.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }))[0];
+    const sortedCodes = codes.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+    const lastCode = sortedCodes[0];
     
-    // التعامل مع الأرقام الكبيرة (BigInt) لضمان عدم حدوث Overflow في الأكواد الطويلة
     try {
       const nextNum = BigInt(lastCode) + 1n;
       return nextNum.toString();
@@ -151,7 +140,25 @@ export class AccountingService {
       status: 'posted',
       companyId: this.companyId,
       createdAt: serverTimestamp(),
-      createdBy: userId
+      createdBy: userId,
+      lines: [
+        { 
+          accountId: data.accountId, 
+          accountName: data.type === 'receipt' ? 'إيرادات' : 'مصروفات',
+          debit: data.type === 'payment' ? data.amount : 0,
+          credit: data.type === 'receipt' ? data.amount : 0,
+          projectId: data.projectId || '',
+          costCenterId: data.costCenterId || '',
+          profitCenterId: data.profitCenterId || ''
+        },
+        {
+          accountId: data.cashAccountId,
+          accountName: 'النقدية والبنك',
+          debit: data.type === 'receipt' ? (data.netAmount || data.amount) : 0,
+          credit: data.type === 'payment' ? data.amount : 0,
+          profitCenterId: data.profitCenterId || ''
+        }
+      ]
     });
 
     await batch.commit();
@@ -167,9 +174,7 @@ export class AccountingService {
     await setDoc(ref, {
       id: ref.id, code, nameAr, nameEn, type,
       isActive: true, companyId: this.companyId, createdAt: serverTimestamp(),
-      isGroup: true,
-      parentId: "",
-      level: code.length
+      isGroup: true, parentId: "", level: code.length
     });
     return ref.id;
   }
@@ -185,17 +190,18 @@ export class AccountingService {
     await setDoc(ref, {
       id: ref.id, code: subCode, nameAr: referenceName, nameEn: referenceName,
       type, isActive: true, referenceId, isGroup: false, 
-      parentId: "", // Will be assigned to root by default in this context
-      companyId: this.companyId, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+      parentId: "", companyId: this.companyId, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
     });
     return ref.id;
   }
 
-  async createAutomaticCostCenter(referenceId: string, name: string, code: string, projectId?: string) {
-    const ccPath = paths.costCenters(this.companyId);
-    const ccRef = doc(this.db, ccPath, `cc_${referenceId}`);
+  /**
+   * إنشاء مركز تكلفة آلي ثنائي اللغة
+   */
+  async createAutomaticCostCenter(referenceId: string, nameAr: string, nameEn: string, code: string, projectId?: string) {
+    const ccRef = doc(this.db, paths.costCenters(this.companyId), `cc_${referenceId}`);
     const docData = {
-      id: ccRef.id, code, name, projectId: projectId || '',
+      id: ccRef.id, code, name: nameAr, nameAr, nameEn, projectId: projectId || '',
       isAdministrative: !projectId, isActive: true,
       companyId: this.companyId, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
     };
@@ -203,10 +209,13 @@ export class AccountingService {
     return ccRef.id;
   }
 
-  async createAutomaticProfitCenter(projectId: string, name: string, code: string) {
+  /**
+   * إنشاء مركز ربحية آلي ثنائي اللغة
+   */
+  async createAutomaticProfitCenter(projectId: string, nameAr: string, nameEn: string, code: string) {
     const pcRef = doc(this.db, paths.profitCenters(this.companyId), `pc_${projectId}`);
     const docData = {
-      id: pcRef.id, code, name, projectId,
+      id: pcRef.id, code, name: nameAr, nameAr, nameEn, projectId,
       isActive: true, companyId: this.companyId,
       createdAt: serverTimestamp(), updatedAt: serverTimestamp()
     };
