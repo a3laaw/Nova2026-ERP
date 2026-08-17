@@ -13,6 +13,7 @@ export type PaymentMethod = 'cash' | 'check' | 'site_petty_cash' | 'lead_enginee
 export interface Employee extends BaseReference {
   employeeNumber: string;
   fullName: string;
+  nameAr: string;
   nameEn: string;
   civilId: string;
   mobile: string;
@@ -28,8 +29,8 @@ export interface Employee extends BaseReference {
   hireDate: string;
   contractType?: string;
   status: EmployeeStatus;
-  employeeType: EmployeeType; // 'internal' | 'external'
-  paymentBasis: PaymentBasis; // 'monthly' | 'daily'
+  employeeType: EmployeeType; 
+  paymentBasis: PaymentBasis; 
   paymentMethod: PaymentMethod;
   basicSalary: number;
   housingAllowance?: number;

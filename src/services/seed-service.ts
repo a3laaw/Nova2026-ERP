@@ -19,9 +19,6 @@ import { WorkHoursService } from './work-hours-service';
 export class SeedService {
   constructor(private db: Firestore, private companyId: string) {}
 
-  /**
-   * تنظيف شجرة الحسابات (Purge COA)
-   */
   async purgeCOA() {
     const q = query(collection(this.db, paths.accounts(this.companyId)), limit(500));
     const snap = await getDocs(q);
@@ -30,15 +27,10 @@ export class SeedService {
     await batch.commit();
   }
 
-  /**
-   * تنشيط شجرة الحسابات الهرمية (Sovereign COA Activation)
-   * تضمن ربط الأب بالابن عبر المعرفات الفرعية (UUID) لضمان توسعة الشجرة.
-   */
   async seedConstructionCOA(userId: string) {
     const batch = writeBatch(this.db);
     const accountsRef = collection(this.db, paths.accounts(this.companyId));
     
-    // تعريف الهيكل المالي الهرمي
     const rawHierarchy = [
       { code: '1', nameAr: 'الأصول', nameEn: 'Assets', type: 'asset', isGroup: true, level: 1, parentCode: null },
       { code: '11', nameAr: 'أصول متداولة', nameEn: 'Current Assets', type: 'asset', isGroup: true, level: 2, parentCode: '1' },
@@ -50,6 +42,9 @@ export class SeedService {
       { code: '2', nameAr: 'الخصوم', nameEn: 'Liabilities', type: 'liability', isGroup: true, level: 1, parentCode: null },
       { code: '22', nameAr: 'خصوم متداولة', nameEn: 'Current Liabilities', type: 'liability', isGroup: true, level: 2, parentCode: '2' },
       { code: '2204', nameAr: 'مستحقات رواتب وأجور', nameEn: 'Accrued Salaries', type: 'liability', isGroup: true, level: 3, parentCode: '22' },
+      // --- حسابات المخصصات (Sovereign Provision Accounts) ---
+      { code: '2205', nameAr: 'مخصص مكافأة نهاية الخدمة', nameEn: 'Provision for EOSB', type: 'liability', isGroup: false, level: 3, parentCode: '22' },
+      { code: '2206', nameAr: 'مخصص رصيد الإجازات', nameEn: 'Provision for Accrued Leave', type: 'liability', isGroup: false, level: 3, parentCode: '22' },
       
       { code: '3', nameAr: 'حقوق الملكية', nameEn: 'Equity', type: 'equity', isGroup: true, level: 1, parentCode: null },
       
@@ -58,52 +53,28 @@ export class SeedService {
       
       { code: '5', nameAr: 'المصروفات', nameEn: 'Expenses', type: 'expense', isGroup: true, level: 1, parentCode: null },
       { code: '5101', nameAr: 'تكاليف تنفيذ مباشرة', nameEn: 'Direct Execution Costs', type: 'expense', isGroup: false, level: 2, parentCode: '5' },
-      { code: '5201', nameAr: 'رواتب ومصاريف إدارية', nameEn: 'G&A Expenses', type: 'expense', isGroup: false, level: 2, parentCode: '5' }
+      { code: '5201', nameAr: 'رواتب ومصاريف إدارية', nameEn: 'G&A Expenses', type: 'expense', isGroup: false, level: 2, parentCode: '5' },
+      // --- حسابات مصاريف المخصصات ---
+      { code: '5202', nameAr: 'مصروف مخصص نهاية الخدمة', nameEn: 'Gratuity Provision Expense', type: 'expense', isGroup: false, level: 2, parentCode: '5' },
+      { code: '5203', nameAr: 'مصروف مخصص الإجازات', nameEn: 'Leave Provision Expense', type: 'expense', isGroup: false, level: 2, parentCode: '5' }
     ];
 
-    // خريطة لربط الكود بالمعرف الفريد (ID) المتولد
     const codeToIdMap: Record<string, string> = {};
+    rawHierarchy.forEach(item => { codeToIdMap[item.code] = doc(accountsRef).id; });
 
-    // 1. توليد معرفات Firestore مسبقاً لكل حساب
-    rawHierarchy.forEach(item => {
-      codeToIdMap[item.code] = doc(accountsRef).id;
-    });
-
-    // 2. بناء الشجرة بربط المعرفات الحقيقية
     rawHierarchy.forEach(item => {
       const myId = codeToIdMap[item.code];
       const parentId = item.parentCode ? codeToIdMap[item.parentCode] : "";
-      
       batch.set(doc(accountsRef, myId), {
-        id: myId,
-        code: item.code,
-        nameAr: item.nameAr,
-        nameEn: item.nameEn,
-        type: item.type,
-        isGroup: item.isGroup,
-        level: item.level,
-        parentId: parentId, // الربط بالمعرف الفريد للأب
-        companyId: this.companyId,
-        isActive: true,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        createdBy: userId
+        id: myId, code: item.code, nameAr: item.nameAr, nameEn: item.nameEn, type: item.type, isGroup: item.isGroup, level: item.level, parentId: parentId,
+        companyId: this.companyId, isActive: true, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), createdBy: userId
       });
     });
 
-    // 3. إنشاء مراكز التكلفة والربحية الإدارية آلياً
     const ccRef = doc(this.db, paths.costCenters(this.companyId), 'cc_admin_general');
-    batch.set(ccRef, {
-      id: 'cc_admin_general', code: 'CC-100', name: 'الإدارة العامة والمصاريف المشتركة',
-      isAdministrative: true, isActive: true, companyId: this.companyId, createdAt: serverTimestamp()
-    });
-
+    batch.set(ccRef, { id: 'cc_admin_general', code: 'CC-100', name: 'الإدارة العامة والمصاريف المشتركة', isAdministrative: true, isActive: true, companyId: this.companyId, createdAt: serverTimestamp() });
     const pcRef = doc(this.db, paths.profitCenters(this.companyId), 'pc_corp_general');
-    batch.set(pcRef, {
-      id: 'pc_corp_general', code: 'PC-100', name: 'مركز أرباح العمليات المؤسسية',
-      isActive: true, companyId: this.companyId, createdAt: serverTimestamp()
-    });
-
+    batch.set(pcRef, { id: 'pc_corp_general', code: 'PC-100', name: 'مركز أرباح العمليات المؤسسية', isActive: true, companyId: this.companyId, createdAt: serverTimestamp() });
     await batch.commit();
   }
 
@@ -112,29 +83,17 @@ export class SeedService {
     let settings = await whService.getSettings();
     if (!settings) settings = whService.getDefaultSettings() as any;
     const wdService = new WorkingDaysService(settings!);
-
     const empsSnap = await getDocs(collection(this.db, paths.employees(this.companyId)));
-    const leavesSnap = await getDocs(query(
-      collection(this.db, paths.leaveRequests(this.companyId)),
-      where('status', 'in', ['approved', 'on-leave', 'returned', 'commenced'])
-    ));
-
+    const leavesSnap = await getDocs(query(collection(this.db, paths.leaveRequests(this.companyId)), where('status', 'in', ['approved', 'on-leave', 'returned', 'commenced'])));
     const batch = writeBatch(this.db);
     let count = 0;
-
     for (const empDoc of empsSnap.docs) {
       const emp = empDoc.data();
       if (!emp.hireDate) continue;
       const totalAccrued = wdService.calculateAccruedLeave(emp.hireDate);
-      const empUsed = leavesSnap.docs
-        .filter(d => d.data().employeeId === empDoc.id && d.data().type === 'annual')
-        .reduce((sum, d) => sum + (d.data().workingDays || 0), 0);
-
+      const empUsed = leavesSnap.docs.filter(d => d.data().employeeId === empDoc.id && d.data().type === 'annual').reduce((sum, d) => sum + (d.data().workingDays || 0), 0);
       const trueBalance = Math.max(0, Math.round((totalAccrued - empUsed) * 10) / 10);
-      if (emp.annualLeaveBalance !== trueBalance) {
-        batch.update(empDoc.ref, { annualLeaveBalance: trueBalance, updatedAt: serverTimestamp() });
-        count++;
-      }
+      if (emp.annualLeaveBalance !== trueBalance) { batch.update(empDoc.ref, { annualLeaveBalance: trueBalance, updatedAt: serverTimestamp() }); count++; }
     }
     if (count > 0) await batch.commit();
     return count;
@@ -167,5 +126,22 @@ export class SeedService {
       snap.docs.forEach(d => batch.delete(d.ref));
       await batch.commit();
     }
+  }
+
+  async runIdentityMigration() {
+    const usersSnap = await getDocs(collection(this.db, 'global_users'));
+    const batch = writeBatch(this.db);
+    let count = 0;
+    usersSnap.docs.forEach(d => {
+      const data = d.data();
+      const currentCode = data.roleCode || data.role || 'USER';
+      const upperCode = currentCode.toUpperCase();
+      if (currentCode !== upperCode) {
+        batch.update(d.ref, { roleCode: upperCode, role: upperCode.toLowerCase(), updatedAt: serverTimestamp() });
+        count++;
+      }
+    });
+    if (count > 0) await batch.commit();
+    return count;
   }
 }

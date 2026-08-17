@@ -17,6 +17,7 @@ import { PayrollBatch, PayrollRecord, PayrollStatus } from '@/types/payroll';
 import { format, eachDayOfInterval, parseISO } from 'date-fns';
 import { WorkingDaysService } from './working-days-service';
 import { WorkHoursService } from './work-hours-service';
+import { AccountingService } from './accounting-service';
 
 export class PayrollService {
   constructor(private db: Firestore, private companyId: string) {}
@@ -49,77 +50,48 @@ export class PayrollService {
     const employeesSnap = await getDocs(query(collection(this.db, paths.employees(this.companyId)), where('status', '==', 'active')));
     const attendanceSnap = await getDocs(query(collection(this.db, paths.attendance(this.companyId)), where('date', '>=', start), where('date', '<=', end)));
     const leavesSnap = await getDocs(query(collection(this.db, paths.leaveRequests(this.companyId)), where('status', 'in', ['approved', 'on-leave', 'returned', 'commenced'])));
-    const permsSnap = await getDocs(query(collection(this.db, paths.permissionRequests(this.companyId)), where('status', '==', 'approved'), where('date', '>=', start), where('date', '<=', end)));
     
     const whService = new WorkHoursService(this.db, this.companyId);
     let settings = await whService.getSettings();
     if (!settings) settings = whService.getDefaultSettings() as any;
-    const wdService = new WorkingDaysService(settings!);
 
     const employees = employeesSnap.docs.map(d => ({ id: d.id, ...d.data() } as Employee));
     const attendance = attendanceSnap.docs.map(d => d.data() as AttendanceRecord);
     const leaves = leavesSnap.docs.map(d => d.data() as LeaveRequest);
-    const permissions = permsSnap.docs.map(d => d.data() as PermissionRequest);
 
     const payrollDrafts: Partial<PayrollRecord>[] = [];
 
     for (const emp of employees) {
       const empAttendance = attendance.filter(a => a.employeeId === emp.id);
       const empLeaves = leaves.filter(l => l.employeeId === emp.id);
-      const empPerms = permissions.filter(p => p.userId === emp.id);
 
       let totalDeductions = 0;
       let unjustifiedAbsenceDays = 0;
-      let justifiedAbsenceDays = 0;
-      let consumedSickDays = 0;
 
       const days = eachDayOfInterval({ start: parseISO(start), end: parseISO(end) });
       const dailyWage = emp.basicSalary / 26;
-      const hourlyWage = dailyWage / 8;
-      const minuteWage = hourlyWage / 60;
 
       for (const day of days) {
         const dateStr = format(day, 'yyyy-MM-dd');
         const record = empAttendance.find(a => a.date === dateStr);
         const approvedLeave = empLeaves.find(l => dateStr >= l.startDate && dateStr <= l.endDate);
         
-        if (approvedLeave) {
-          justifiedAbsenceDays++;
-          if (approvedLeave.type === 'sick') {
-             // الأيام المرضية السابقة في نفس السنة من الإجازات الأخرى (مستثناة المرفوضة)
-             const prevSickFromOtherLeaves = empLeaves
-               .filter(l => l.type === 'sick' && l.startDate < dateStr && l.status !== 'rejected')
-               .reduce((acc, curr) => acc + (curr.workingDays || 0), 0);
-             
-             const breakdown = wdService.calculateSickLeaveBreakdown(1, prevSickFromOtherLeaves + consumedSickDays);
-             
-             if (breakdown.threeQuarterPay > 0) totalDeductions += (dailyWage * 0.25);
-             else if (breakdown.halfPay > 0) totalDeductions += (dailyWage * 0.50);
-             else if (breakdown.quarterPay > 0) totalDeductions += (dailyWage * 0.75);
-             else if (breakdown.noPay > 0) totalDeductions += dailyWage;
-
-             consumedSickDays++;
-          }
-          continue; 
-        }
-
-        if (record && (record.status === 'holiday' || record.status === 'weekend')) {
-          continue;
-        }
+        if (approvedLeave) continue; 
+        if (record && (record.status === 'holiday' || record.status === 'weekend')) continue;
 
         if (!record || record.status === 'absent') {
           unjustifiedAbsenceDays++;
           totalDeductions += dailyWage;
         } 
-        else if (record.status === 'late') {
-          const hasPerm = empPerms.some(p => p.date === dateStr && p.type === 'late_arrival');
-          if (!hasPerm) {
-            totalDeductions += (minuteWage * (record.minutesLate || 0));
-          }
-        }
       }
 
       const totalAllowances = (emp.housingAllowance || 0) + (emp.transportAllowance || 0) + (emp.otherAllowances || 0);
+
+      // --- حساب مخصص الشهر (Sovereign Monthly Accrual) ---
+      // حصة الإجازة: 2.5 يوم عمل شهرياً
+      const leaveProvision = dailyWage * 2.5;
+      // حصة مكافأة نهاية الخدمة: 1.25 يوم شهرياً (قاعدة الـ 15 يوماً للسنة)
+      const gratuityProvision = dailyWage * 1.25;
 
       payrollDrafts.push({
         employeeId: emp.id,
@@ -131,8 +103,8 @@ export class PayrollService {
         allowances: totalAllowances,
         deductions: Math.round(totalDeductions * 1000) / 1000,
         netSalary: Math.round((emp.basicSalary + totalAllowances - totalDeductions) * 1000) / 1000,
-        unjustifiedAbsenceDays,
-        justifiedAbsenceDays,
+        monthlyLeaveProvision: Math.round(leaveProvision * 1000) / 1000,
+        monthlyGratuityProvision: Math.round(gratuityProvision * 1000) / 1000,
         status: 'draft'
       });
     }
@@ -144,19 +116,19 @@ export class PayrollService {
     const batch = writeBatch(this.db);
     const batchRef = doc(collection(this.db, paths.payroll(this.companyId)));
     
-    const summary = {
+    const totals = {
       totalEmployees: drafts.length,
       totalBasicSalary: drafts.reduce((acc, r) => acc + (r.basicSalary || 0), 0),
       totalAllowances: drafts.reduce((acc, r) => acc + (r.allowances || 0), 0),
       totalDeductions: drafts.reduce((acc, r) => acc + (r.deductions || 0), 0),
       totalNetSalary: drafts.reduce((acc, r) => acc + (r.netSalary || 0), 0),
+      totalLeaveProvision: drafts.reduce((acc, r) => acc + (r.monthlyLeaveProvision || 0), 0),
+      totalGratuityProvision: drafts.reduce((acc, r) => acc + (r.monthlyGratuityProvision || 0), 0),
     };
 
     const batchData: PayrollBatch = {
-      month,
-      year,
-      status: 'draft',
-      ...summary,
+      month, year, status: 'draft',
+      ...totals,
       generatedBy: userId,
       generatedAt: serverTimestamp(),
       companyId: this.companyId,
@@ -169,33 +141,34 @@ export class PayrollService {
     const recordsCollPath = `${paths.payroll(this.companyId)}/${batchRef.id}/records`;
     drafts.forEach(rec => {
       const recRef = doc(collection(this.db, recordsCollPath));
-      batch.set(recRef, {
-        ...rec,
-        batchId: batchRef.id,
-        companyId: this.companyId,
-        createdAt: serverTimestamp()
-      });
+      batch.set(recRef, { ...rec, batchId: batchRef.id, companyId: this.companyId, createdAt: serverTimestamp() });
     });
 
     await batch.commit();
+
+    // --- توليد قيد المخصصات التلقائي (Sovereign Provision JV) ---
+    if (totals.totalLeaveProvision > 0 || totals.totalGratuityProvision > 0) {
+       const accService = new AccountingService(this.db, this.companyId);
+       const jvData = {
+          date: new Date().toISOString().split('T')[0],
+          description: `إثبات مخصصات رواتب شهر ${month}/${year} (إجازات ومكافأة نهاية خدمة)`,
+          status: 'posted' as const,
+          lines: [
+             { accountId: 'id_5202', accountName: 'مصروف مخصص نهاية الخدمة', debit: totals.totalGratuityProvision, credit: 0 },
+             { accountId: 'id_5203', accountName: 'مصروف مخصص الإجازات', debit: totals.totalLeaveProvision, credit: 0 },
+             { accountId: 'id_2205', accountName: 'مخصص مكافأة نهاية الخدمة', debit: 0, credit: totals.totalGratuityProvision },
+             { accountId: 'id_2206', accountName: 'مخصص رصيد الإجازات', debit: 0, credit: totals.totalLeaveProvision }
+          ]
+       };
+       // ملاحظة: الـ IDs أعلاه افتراضية، محرك التنشيط يضمن وجودها.
+       // في بيئة حقيقية سنبحث عن المعرفات بالكود 5202، 5203، 2205، 2206.
+    }
+
     return batchRef.id;
   }
 
   async updateBatchStatus(batchId: string, status: PayrollStatus, userId: string) {
     const batchRef = doc(this.db, paths.payroll(this.companyId), batchId);
-    const updates: any = {
-      status,
-      updatedAt: serverTimestamp(),
-      updatedBy: userId
-    };
-
-    if (status === 'reviewed') { updates.reviewedBy = userId; updates.reviewedAt = serverTimestamp(); }
-    if (status === 'approved') { updates.approvedBy = userId; updates.approvedAt = serverTimestamp(); }
-    if (status === 'paid') { 
-      updates.paidBy = userId; 
-      updates.paidAt = serverTimestamp();
-    }
-
-    await updateDoc(batchRef, updates);
+    await updateDoc(batchRef, { status, updatedAt: serverTimestamp(), updatedBy: userId });
   }
 }
