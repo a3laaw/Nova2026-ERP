@@ -41,7 +41,7 @@ import { toast } from '@/hooks/use-toast';
 export default function ReferenceListsPage() {
   const { globalUser, user } = useAuthContext();
   const { t, lang, dir, isRtl, tSafe } = useLanguage();
-  const { check, isAdmin } = usePermissions();
+  const { check } = usePermissions();
   const db = useFirestore();
   const router = useRouter();
   const companyId = globalUser?.companyId;
@@ -51,7 +51,7 @@ export default function ReferenceListsPage() {
   const [editingItem, setEditingItem] = useState<Partial<BaseReferenceList> | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
-
+  
   const canEdit = check('ref', 'edit').can;
   const canCreate = check('ref', 'create').can;
   const canDelete = check('ref', 'delete').can;
@@ -71,9 +71,7 @@ export default function ReferenceListsPage() {
   const { data: rawItems, loading } = useCollection<BaseReferenceList>(listQuery);
   const items = rawItems || [];
 
-  const service = useMemo(() => 
-    db && companyId ? new ReferenceListService(db, companyId) : null, 
-  [db, companyId]);
+  const service = useMemo(() => db && companyId ? new ReferenceListService(db, companyId) : null, [db, companyId]);
 
   const filtered = items.filter(item => 
     item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -122,7 +120,7 @@ export default function ReferenceListsPage() {
   ];
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-20" dir={dir}>
+    <div className="space-y-8 animate-in fade-in duration-500 pb-20 text-start" dir={dir}>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b pb-8 border-slate-100 text-start">
         <div className="flex items-center gap-4 text-start">
            <Button variant="ghost" onClick={() => router.push('/dashboard/settings')} className="h-12 w-12 p-0 rounded-2xl bg-white shadow-sm border hover:bg-slate-50 transition-all">

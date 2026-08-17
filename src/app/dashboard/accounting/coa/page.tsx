@@ -9,7 +9,8 @@ import { Switch } from '@/components/ui/switch';
 import { 
   GitBranch, Plus, Loader2, Folder, 
   FileText, Search, ChevronRight, ChevronDown,
-  Save, Landmark, Sparkles, DatabaseZap
+  Save, Landmark, Sparkles, DatabaseZap,
+  AlertTriangle, CheckCircle2
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -35,6 +36,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function ChartOfAccountsPage() {
   const { globalUser, user } = useAuthContext();
@@ -47,6 +58,7 @@ export default function ChartOfAccountsPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const [showSeedConfirm, setShowSeedConfirm] = useState(false);
 
   const [form, setForm] = useState<Partial<Account>>({
     nameAr: '', nameEn: '', code: '', type: 'asset', isGroup: false, parentId: null
@@ -77,17 +89,12 @@ export default function ChartOfAccountsPage() {
 
   const handleSeedCOA = async () => {
     if (!db || !companyId || !user) return;
-    const msg = isRtl 
-      ? 'هل تريد تنزيل شجرة الحسابات القياسية للمقاولات؟ سيتم أيضاً تأسيس مراكز التكلفة والربحية الإدارية اللازمة آلياً.' 
-      : 'Download standard construction COA? Administrative centers will also be auto-provisioned.';
-    
-    if (!confirm(msg)) return;
-
     setSeeding(true);
     try {
       const seedService = new SeedService(db, companyId);
       await seedService.seedConstructionCOA(user.uid);
       toast({ title: tSafe('inline.coa.activated', 'تم تفعيل الشجرة المحاسبية بنجاح', 'Standard COA Activated') });
+      setShowSeedConfirm(false);
     } catch (e: any) {
       toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
@@ -146,7 +153,7 @@ export default function ChartOfAccountsPage() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in max-w-[1600px] mx-auto" dir={dir}>
+    <div className="space-y-6 animate-in fade-in max-w-[1600px] mx-auto text-start" dir={dir}>
       <header className="flex justify-between items-center text-start">
         <div className="text-start space-y-1">
           <h1 className="text-2xl font-black font-headline flex items-center gap-3 text-slate-900">
@@ -157,7 +164,7 @@ export default function ChartOfAccountsPage() {
         <div className="flex gap-3">
           {accounts?.length === 0 && !loading && (
              <Button 
-               onClick={handleSeedCOA} 
+               onClick={() => setShowSeedConfirm(true)} 
                disabled={seeding}
                variant="outline"
                className="h-10 px-6 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-700 font-black gap-2 shadow-sm hover:bg-emerald-100 transition-all"
@@ -249,6 +256,34 @@ export default function ChartOfAccountsPage() {
            </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={showSeedConfirm} onOpenChange={setShowSeedConfirm}>
+         <AlertDialogContent className="rounded-xl p-10 border-0 shadow-3xl bg-white" dir={dir}>
+            <AlertDialogHeader>
+               <div className="mx-auto w-24 h-24 bg-emerald-50 text-emerald-600 rounded-[2rem] flex items-center justify-center mb-8 shadow-inner ring-8 ring-emerald-50/50">
+                  <Sparkles className="h-12 w-12" />
+               </div>
+               <AlertDialogTitle className="text-start font-black text-2xl font-headline text-slate-900 leading-tight">
+                 {isRtl ? 'تنشيط البنية التحتية المالية' : 'Activate Financial Infrastructure'}
+               </AlertDialogTitle>
+               <AlertDialogDescription className="text-start font-bold text-slate-400 mt-4 text-lg leading-relaxed">
+                  {isRtl 
+                    ? 'هل تريد تنزيل شجرة الحسابات القياسية للمقاولات؟ سيقوم النظام أيضاً بتأسيس مراكز التكلفة والربحية الإدارية اللازمة آلياً لضمان جاهزية التقارير فوراً.' 
+                    : 'Download standard construction COA? Administrative centers will also be auto-provisioned to ensure instant report readiness.'}
+               </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
+               <AlertDialogCancel className="flex-1 h-14 rounded-2xl font-bold border-2 bg-white">{t('common.cancel')}</AlertDialogCancel>
+               <AlertDialogAction 
+                 onClick={handleSeedCOA} 
+                 disabled={seeding}
+                 className="flex-[2] h-14 rounded-2xl font-black bg-emerald-600 text-white shadow-xl shadow-emerald-200"
+               >
+                  {seeding ? <Loader2 className="animate-spin h-5 w-5" /> : <CheckCircle2 className="h-5 w-5 me-2" />} {isRtl ? 'تنشيط الآن' : 'Activate Now'}
+               </AlertDialogAction>
+            </AlertDialogFooter>
+         </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

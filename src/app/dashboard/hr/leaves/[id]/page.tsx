@@ -217,7 +217,7 @@ export default function LeaveDetailsPage() {
            </div>
 
            <div className="lg:col-span-4 space-y-6">
-              <Card className="border-0 shadow-xl rounded-[2rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
+              <Card className="border-0 shadow-xl rounded-[2.5rem] bg-white overflow-hidden ring-1 ring-black/5 text-start">
                  <CardHeader className="bg-slate-50 border-b p-6">
                     <CardTitle className="text-base font-black flex items-center gap-2">
                        <History className="h-5 w-5 text-primary" />
