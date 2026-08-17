@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -21,8 +20,76 @@ export class SeedService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
+   * تنشيط شجرة الحسابات مع إنشاء مراكز التكلفة والربحية آلياً (التكامل المالي)
+   */
+  async seedConstructionCOA(userId: string) {
+    const batch = writeBatch(this.db);
+    const accountsRef = collection(this.db, paths.accounts(this.companyId));
+    
+    // 1. تعريف شجرة الحسابات القياسية للمقاولات
+    const standardAccounts = [
+      { code: '1', nameAr: 'الأصول', nameEn: 'Assets', type: 'asset', isGroup: true, level: 1 },
+      { code: '11', nameAr: 'أصول متداولة', nameEn: 'Current Assets', type: 'asset', isGroup: true, level: 2, parentId: '1' },
+      { code: '1101', nameAr: 'النقدية والبنك', nameEn: 'Cash & Bank', type: 'asset', isGroup: false, level: 3, parentId: '11' },
+      { code: '12', nameAr: 'ذمم وحسابات مدينة', nameEn: 'Accounts Receivable', type: 'asset', isGroup: true, level: 2, parentId: '1' },
+      { code: '1202', nameAr: 'ذمم العملاء (AR)', nameEn: 'Clients Receivable', type: 'asset', isGroup: true, level: 3, parentId: '12' },
+      { code: '1205', nameAr: 'أعمال تحت التنفيذ (WIP)', nameEn: 'Work In Progress', type: 'asset', isGroup: true, level: 3, parentId: '12' },
+      
+      { code: '2', nameAr: 'الخصوم', nameEn: 'Liabilities', type: 'liability', isGroup: true, level: 1 },
+      { code: '22', nameAr: 'خصوم متداولة', nameEn: 'Current Liabilities', type: 'liability', isGroup: true, level: 2, parentId: '2' },
+      { code: '2204', nameAr: 'مستحقات رواتب وأجور', nameEn: 'Accrued Salaries', type: 'liability', isGroup: true, level: 3, parentId: '22' },
+      
+      { code: '3', nameAr: 'حقوق الملكية', nameEn: 'Equity', type: 'equity', isGroup: true, level: 1 },
+      
+      { code: '4', nameAr: 'الإيرادات', nameEn: 'Revenue', type: 'revenue', isGroup: true, level: 1 },
+      { code: '4101', nameAr: 'إيرادات عقود ومقاولات', nameEn: 'Project Revenue', type: 'revenue', isGroup: false, level: 2, parentId: '4' },
+      
+      { code: '5', nameAr: 'المصروفات', nameEn: 'Expenses', type: 'expense', isGroup: true, level: 1 },
+      { code: '5101', nameAr: 'تكاليف تنفيذ مباشرة', nameEn: 'Direct Execution Costs', type: 'expense', isGroup: false, level: 2, parentId: '5' },
+      { code: '5201', nameAr: 'رواتب ومصاريف إدارية', nameEn: 'G&A Expenses', type: 'expense', isGroup: false, level: 2, parentId: '5' }
+    ];
+
+    // حفظ الحسابات
+    standardAccounts.forEach(acc => {
+      const newRef = doc(accountsRef);
+      batch.set(newRef, {
+        ...acc,
+        id: newRef.id,
+        companyId: this.companyId,
+        isActive: true,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        createdBy: userId
+      });
+    });
+
+    // 2. إنشاء مراكز التكلفة والربحية الإدارية (تلقائي)
+    const ccRef = doc(this.db, paths.costCenters(this.companyId), 'cc_admin_general');
+    batch.set(ccRef, {
+      id: 'cc_admin_general',
+      code: 'CC-100',
+      name: 'الإدارة العامة والمصاريف المشتركة',
+      isAdministrative: true,
+      isActive: true,
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
+    });
+
+    const pcRef = doc(this.db, paths.profitCenters(this.companyId), 'pc_corp_general');
+    batch.set(pcRef, {
+      id: 'pc_corp_general',
+      code: 'PC-100',
+      name: 'مركز أرباح العمليات المؤسسية',
+      isActive: true,
+      companyId: this.companyId,
+      createdAt: serverTimestamp()
+    });
+
+    await batch.commit();
+  }
+
+  /**
    * مزامنة وإصلاح أرصدة الإجازات لكافة الموظفين بناءً على تاريخ التعيين (Historical Sync)
-   * يحل مشكلة الرصيد السالب للموظفين القدامى عبر إعادة حساب الاستحقاق منذ أول يوم عمل.
    */
   async syncAllEmployeeBalances() {
     const whService = new WorkHoursService(this.db, this.companyId);
@@ -43,17 +110,13 @@ export class SeedService {
       const emp = empDoc.data();
       if (!emp.hireDate) continue;
 
-      // 1. حساب الاستحقاق التراكمي القانوني من تاريخ التعيين
       const totalAccrued = wdService.calculateAccruedLeave(emp.hireDate);
-      
-      // 2. حساب المستهلك الفعلي من الإجازات السنوية المسجلة
       const empUsed = leavesSnap.docs
         .filter(d => d.data().employeeId === empDoc.id && d.data().type === 'annual')
         .reduce((sum, d) => sum + (d.data().workingDays || 0), 0);
 
       const trueBalance = Math.max(0, Math.round((totalAccrued - empUsed) * 10) / 10);
 
-      // تحديث الرصيد فقط إذا كان مختلفاً عن المسجل
       if (emp.annualLeaveBalance !== trueBalance) {
         batch.update(empDoc.ref, { 
           annualLeaveBalance: trueBalance, 
@@ -64,61 +127,6 @@ export class SeedService {
     }
 
     if (count > 0) await batch.commit();
-    return count;
-  }
-
-  /**
-   * التطهير الشامل للنظام (Reset)
-   */
-  async purgeSystemData() {
-    const collectionsToPurge = [
-      paths.clients(this.companyId),
-      paths.transactions(this.companyId),
-      paths.boqs(this.companyId),
-      paths.quotations(this.companyId), 
-      paths.contracts(this.companyId), 
-      paths.subconContracts(this.companyId), 
-      paths.journalEntries(this.companyId),
-      paths.vouchers(this.companyId),
-      paths.accounts(this.companyId),
-      paths.costCenters(this.companyId),
-      paths.profitCenters(this.companyId),
-      paths.purchaseOrders(this.companyId),
-      paths.ipcs(this.companyId),
-      paths.subIpcs(this.companyId),
-      paths.fieldVisits(this.companyId),
-      paths.attendance(this.companyId),
-      paths.payroll(this.companyId),
-      paths.leads(this.companyId),
-      paths.executions(this.companyId),
-      paths.leaveRequests(this.companyId),
-      paths.appointments(this.companyId)
-    ];
-
-    for (const path of collectionsToPurge) {
-      try {
-        const q = query(collection(this.db, path), limit(500));
-        const snap = await getDocs(q);
-        const batch = writeBatch(this.db);
-        snap.docs.forEach(d => batch.delete(d.ref));
-        await batch.commit();
-      } catch (e) {
-        console.warn(`Purge skipped: ${path}`);
-      }
-    }
-  }
-
-  async runIdentityMigration() {
-    const snap = await getDocs(collection(this.db, 'global_users'));
-    const batch = writeBatch(this.db);
-    let count = 0;
-    snap.docs.forEach(d => {
-      const data = d.data();
-      const roleCode = String(data.roleCode || data.role || 'USER').toUpperCase();
-      batch.update(d.ref, { roleCode, role: roleCode.toLowerCase(), updatedAt: serverTimestamp() });
-      count++;
-    });
-    await batch.commit();
     return count;
   }
 
@@ -135,10 +143,19 @@ export class SeedService {
     await batch.commit();
   }
 
-  async purgeAllAppointments() {
-    const snap = await getDocs(collection(this.db, paths.appointments(this.companyId)));
-    const batch = writeBatch(this.db);
-    snap.docs.forEach(d => batch.delete(d.ref));
-    return batch.commit();
+  async purgeSystemData() {
+    const collectionsToPurge = [
+      paths.clients(this.companyId), paths.transactions(this.companyId), paths.boqs(this.companyId),
+      paths.quotations(this.companyId), paths.contracts(this.companyId), paths.journalEntries(this.companyId),
+      paths.vouchers(this.companyId), paths.ipcs(this.companyId), paths.subIpcs(this.companyId),
+      paths.fieldVisits(this.companyId), paths.attendance(this.companyId), paths.payroll(this.companyId),
+      paths.executions(this.companyId), paths.leaveRequests(this.companyId), paths.appointments(this.companyId)
+    ];
+    for (const path of collectionsToPurge) {
+      const snap = await getDocs(query(collection(this.db, path), limit(500)));
+      const batch = writeBatch(this.db);
+      snap.docs.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+    }
   }
 }
