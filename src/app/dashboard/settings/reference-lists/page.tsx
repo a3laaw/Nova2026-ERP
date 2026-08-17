@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -170,7 +169,7 @@ export default function ReferenceListsPage() {
                      </div>
                      <span className={cn(
                        "text-sm font-black transition-colors",
-                       isActive ? "text-white" : "text-slate-50"
+                       isActive ? "text-white" : "text-slate-700"
                      )}>{item.label}</span>
                   </div>
                 );
@@ -193,7 +192,7 @@ export default function ReferenceListsPage() {
               </CardHeader>
               <CardContent className="p-0 overflow-x-auto text-start">
                  <Table>
-                    <TableHeader className="bg-muted/30">
+                    <TableHeader className="bg-muted/10 border-b">
                        <TableRow>
                           <TableHead className="py-6 ps-8 text-start">{t('common.name')}</TableHead>
                           <TableHead className="text-start">{t('common.code')}</TableHead>

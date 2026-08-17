@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -100,11 +99,11 @@ export class TransactionService {
     const shortProjectNameAr = `${data.clientName} - ${data.subServiceName}`;
     const shortProjectNameEn = `${clientData.nameEn || 'Client'} - ${data.subServiceName}`;
     
-    // 1. تأسيس حساب WIP في الأصول
+    // 1. تأسيس حساب WIP في الأصول لترحيل التكاليف المباشرة
     await accService.ensureControlAccount('1205', 'أعمال تحت التنفيذ', 'Work In Progress', 'asset');
     await accService.createAutomaticSubAccount('1205', transactionId, `${shortProjectNameAr} (WIP)`, 'asset');
 
-    // 2. إنشاء مركز ربحية (للإيرادات)
+    // 2. إنشاء مركز ربحية (Profit Center) لمطاردة الإيرادات
     await accService.createAutomaticProfitCenter(
       transactionId, 
       `مركز ربحية: ${shortProjectNameAr}`, 
@@ -112,7 +111,7 @@ export class TransactionService {
       `PC-${transactionNumber}`
     );
 
-    // 3. إنشاء مركز تكلفة (للمصروفات)
+    // 3. إنشاء مركز تكلفة (Cost Center) لمطاردة مصروفات الميدان
     await accService.createAutomaticCostCenter(
        transactionId,
        `تكلفة مشروع: ${shortProjectNameAr}`,

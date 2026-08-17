@@ -33,22 +33,27 @@ export class AccountingService {
 
   /**
    * محرك الترقيم التلقائي السيادي المطور (In-Memory Processing).
+   * يحل مشكلة الفهارس ويمنع تكرار الأكواد.
    */
   async getNextAccountCode(parentId: string | null): Promise<string> {
     const collRef = collection(this.db, paths.accounts(this.companyId));
     const q = query(collRef, where('parentId', '==', parentId || ""));
     const snap = await getDocs(q);
     
+    // إذا كان الحساب الأول تحت هذا الأب
     if (snap.empty) {
       if (!parentId) return "1"; 
       const parentSnap = await getDoc(doc(this.db, paths.accounts(this.companyId), parentId));
       if (!parentSnap.exists()) return "1001";
       const parentCode = parentSnap.data().code;
+      // توليد كود هرمي (مثلاً الأب 1101 يصبح الابن 110101)
       return `${parentCode}01`;
     }
 
     const codes = snap.docs.map(d => d.data().code).filter(c => /^\d+$/.test(c));
     if (codes.length === 0) return "1";
+    
+    // الترتيب في الذاكرة لتجنب الحاجة لفهارس سحابية
     const sortedCodes = codes.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
     const lastCode = sortedCodes[0];
     
@@ -165,6 +170,9 @@ export class AccountingService {
     return voucherRef.id;
   }
 
+  /**
+   * ضمان وجود حساب تحكم رئيسي (Control Account) في الشجرة
+   */
   async ensureControlAccount(code: string, nameAr: string, nameEn: string, type: any) {
     const q = query(collection(this.db, paths.accounts(this.companyId)), where('code', '==', code));
     const snap = await getDocs(q);
@@ -179,6 +187,9 @@ export class AccountingService {
     return ref.id;
   }
 
+  /**
+   * إنشاء حساب فرعي آلي (Automatic Sub-Account) لعميل أو مشروع
+   */
   async createAutomaticSubAccount(parentCode: string, referenceId: string, referenceName: string, type: any) {
     const q = query(collection(this.db, paths.accounts(this.companyId)), where('referenceId', '==', referenceId));
     const snap = await getDocs(q);
@@ -196,7 +207,7 @@ export class AccountingService {
   }
 
   /**
-   * إنشاء مركز تكلفة آلي ثنائي اللغة
+   * إنشاء مركز تكلفة آلي ثنائي اللغة (Bilingual Cost Center)
    */
   async createAutomaticCostCenter(referenceId: string, nameAr: string, nameEn: string, code: string, projectId?: string) {
     const ccRef = doc(this.db, paths.costCenters(this.companyId), `cc_${referenceId}`);
@@ -210,7 +221,7 @@ export class AccountingService {
   }
 
   /**
-   * إنشاء مركز ربحية آلي ثنائي اللغة
+   * إنشاء مركز ربحية آلي ثنائي اللغة (Bilingual Profit Center)
    */
   async createAutomaticProfitCenter(projectId: string, nameAr: string, nameEn: string, code: string) {
     const pcRef = doc(this.db, paths.profitCenters(this.companyId), `pc_${projectId}`);

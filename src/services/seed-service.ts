@@ -35,6 +35,10 @@ export class SeedService {
     await batch.commit();
   }
 
+  /**
+   * تنشيط الشجرة المحاسبية الهرمية القياسية (IFRS Based)
+   * تم تحسينها لربط الأبناء بآبائهم عبر Document IDs لضمان عمل زر التوسعة.
+   */
   async seedConstructionCOA(userId: string) {
     const batch = writeBatch(this.db);
     const accountsRef = collection(this.db, paths.accounts(this.companyId));
@@ -65,15 +69,30 @@ export class SeedService {
       { code: '5203', nameAr: 'مصروف مخصص الإجازات', nameEn: 'Leave Provision Expense', type: 'expense', isGroup: false, level: 2, parentCode: '5' }
     ];
 
+    // حجز الـ IDs مسبقاً لربط الأبناء بالآباء بـ True IDs (UUIDs)
     const codeToIdMap: Record<string, string> = {};
-    rawHierarchy.forEach(item => { codeToIdMap[item.code] = doc(accountsRef).id; });
+    rawHierarchy.forEach(item => {
+      codeToIdMap[item.code] = doc(accountsRef).id;
+    });
 
     rawHierarchy.forEach(item => {
       const myId = codeToIdMap[item.code];
       const parentId = item.parentCode ? codeToIdMap[item.parentCode] : "";
+      
       batch.set(doc(accountsRef, myId), {
-        id: myId, code: item.code, nameAr: item.nameAr, nameEn: item.nameEn, type: item.type, isGroup: item.isGroup, level: item.level, parentId: parentId,
-        companyId: this.companyId, isActive: true, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), createdBy: userId
+        id: myId,
+        code: item.code,
+        nameAr: item.nameAr,
+        nameEn: item.nameEn,
+        type: item.type,
+        isGroup: item.isGroup,
+        level: item.level,
+        parentId: parentId,
+        companyId: this.companyId,
+        isActive: true,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        createdBy: userId
       });
     });
 
@@ -110,19 +129,35 @@ export class SeedService {
     const whService = new WorkHoursService(this.db, this.companyId);
     let settings = await whService.getSettings();
     if (!settings) settings = whService.getDefaultSettings() as any;
+
     const wdService = new WorkingDaysService(settings!);
+
     const empsSnap = await getDocs(collection(this.db, paths.employees(this.companyId)));
-    const leavesSnap = await getDocs(query(collection(this.db, paths.leaveRequests(this.companyId)), where('status', 'in', ['approved', 'on-leave', 'returned', 'commenced'])));
+    const leavesSnap = await getDocs(query(
+      collection(this.db, paths.leaveRequests(this.companyId)), 
+      where('status', 'in', ['approved', 'on-leave', 'returned', 'commenced'])
+    ));
+
     const batch = writeBatch(this.db);
     let count = 0;
+
     for (const empDoc of empsSnap.docs) {
       const emp = empDoc.data();
       if (!emp.hireDate) continue;
+
       const totalAccrued = wdService.calculateAccruedLeave(emp.hireDate);
-      const empUsed = leavesSnap.docs.filter(d => d.data().employeeId === empDoc.id && d.data().type === 'annual').reduce((sum, d) => sum + (d.data().workingDays || 0), 0);
+      const empUsed = leavesSnap.docs
+        .filter(d => d.data().employeeId === empDoc.id && d.data().type === 'annual')
+        .reduce((sum, d) => sum + (d.data().workingDays || 0), 0);
+
       const trueBalance = Math.max(0, Math.round((totalAccrued - empUsed) * 10) / 10);
-      if (emp.annualLeaveBalance !== trueBalance) { batch.update(empDoc.ref, { annualLeaveBalance: trueBalance, updatedAt: serverTimestamp() }); count++; }
+      
+      if (emp.annualLeaveBalance !== trueBalance) {
+        batch.update(empDoc.ref, { annualLeaveBalance: trueBalance, updatedAt: serverTimestamp() });
+        count++;
+      }
     }
+
     if (count > 0) await batch.commit();
     return count;
   }
