@@ -10,7 +10,8 @@ import {
   GitBranch, Plus, Loader2, Folder, 
   FileText, Search, ChevronRight, ChevronDown,
   Save, Landmark, Sparkles, DatabaseZap,
-  AlertTriangle, CheckCircle2
+  AlertTriangle, CheckCircle2,
+  FolderOpen
 } from "lucide-react";
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, query, orderBy, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -102,6 +103,11 @@ export default function ChartOfAccountsPage() {
     }
   };
 
+  const toggleExpand = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
   const renderTree = (parentId: string | null = null, level = 0) => {
     return (accounts || [])
       .filter(a => {
@@ -121,7 +127,7 @@ export default function ChartOfAccountsPage() {
           <div key={account.id} className="select-none">
             <div 
               className={cn(
-                "flex items-center gap-3 p-2.5 hover:bg-slate-50 rounded-xl cursor-pointer transition-all border-b border-slate-50 group", 
+                "flex items-center gap-3 p-2.5 hover:bg-primary/5 rounded-xl cursor-pointer transition-all border-b border-slate-50 group", 
                 account.isGroup ? "font-black text-slate-900" : "font-medium text-slate-600"
               )} 
               style={{ paddingInlineStart: `${level * 24 + 12}px` }} 
@@ -136,19 +142,29 @@ export default function ChartOfAccountsPage() {
             >
               <div className="flex items-center gap-2">
                 {account.isGroup ? (
-                  isExpanded ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className={cn("h-4 w-4", isRtl && "rotate-180")} />
-                ) : <div className="w-4" />}
-                {account.isGroup ? <Folder className="h-4 w-4 text-amber-500 fill-current" /> : <FileText className="h-4 w-4 text-blue-400" />}
+                  <div onClick={(e) => toggleExpand(account.id, e)} className="p-1 hover:bg-primary/10 rounded-md transition-colors">
+                     {isExpanded ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className={cn("h-4 w-4 text-slate-400", isRtl && "rotate-180")} />}
+                  </div>
+                ) : <div className="w-6" />}
+                
+                {account.isGroup ? (
+                   isExpanded ? <FolderOpen className="h-4 w-4 text-primary fill-current opacity-20" /> : <Folder className="h-4 w-4 text-amber-500 fill-current opacity-40" />
+                ) : <FileText className="h-4 w-4 text-blue-400 opacity-60" />}
               </div>
               
-              <span className="text-[10px] font-black font-mono text-primary bg-primary/5 px-2 py-0.5 rounded border border-primary/10 uppercase">{account.code}</span>
-              <span className="text-sm truncate">{account.nameAr}</span>
+              <span className="text-[10px] font-black font-mono text-primary bg-primary/5 px-2 py-0.5 rounded border border-primary/10 uppercase tracking-tighter">
+                {account.code}
+              </span>
+              
+              <span className="text-sm truncate">{isRtl ? account.nameAr : (account.nameEn || account.nameAr)}</span>
               
               {account.referenceId && (
                 <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-0 text-[8px] font-black uppercase">Auto-Linked</Badge>
               )}
               
-              <Badge variant="outline" className="ms-auto text-[8px] uppercase font-black border-2 h-5 bg-white opacity-40 group-hover:opacity-100 transition-opacity">{account.type}</Badge>
+              <Badge variant="outline" className="ms-auto text-[8px] uppercase font-black border-2 h-5 bg-white opacity-40 group-hover:opacity-100 transition-opacity">
+                {account.type}
+              </Badge>
             </div>
             {isExpanded && renderTree(account.id, level + 1)}
           </div>
