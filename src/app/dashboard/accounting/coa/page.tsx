@@ -232,7 +232,7 @@ export default function ChartOfAccountsPage() {
             variant="outline"
             className="h-10 px-6 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-700 font-black gap-2 shadow-sm hover:bg-emerald-100 transition-all"
           >
-             {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+             {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
              {isRtl ? 'تنشيط الشجرة الهرمية' : 'Activate Hierarchy'}
           </Button>
           <Button onClick={async () => { 

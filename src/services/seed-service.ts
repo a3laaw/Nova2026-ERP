@@ -37,7 +37,6 @@ export class SeedService {
   async purgeSystemData() {
     const batch = writeBatch(this.db);
     
-    // تطهير الحسابات والمراكز
     const accSnap = await getDocs(collection(this.db, paths.accounts(this.companyId)));
     accSnap.docs.forEach(d => batch.delete(d.ref));
     
@@ -47,7 +46,6 @@ export class SeedService {
     const pcSnap = await getDocs(collection(this.db, paths.profitCenters(this.companyId)));
     pcSnap.docs.forEach(d => batch.delete(d.ref));
 
-    // تطهير المعاملات والعملاء والمقايسات
     const transSnap = await getDocs(collection(this.db, paths.transactions(this.companyId)));
     transSnap.docs.forEach(d => batch.delete(d.ref));
 
@@ -57,6 +55,16 @@ export class SeedService {
     const boqSnap = await getDocs(collection(this.db, paths.boqs(this.companyId)));
     boqSnap.docs.forEach(d => batch.delete(d.ref));
 
+    await batch.commit();
+  }
+
+  /**
+   * تنظيف دليل الحسابات فقط
+   */
+  async purgeCOA() {
+    const batch = writeBatch(this.db);
+    const accSnap = await getDocs(collection(this.db, paths.accounts(this.companyId)));
+    accSnap.docs.forEach(d => batch.delete(d.ref));
     await batch.commit();
   }
 
@@ -73,7 +81,7 @@ export class SeedService {
 
   /**
    * تأسيس شجرة الحسابات الهرمية (True UUID Linking)
-   * يضمن أن الأبناء مربوطون بآبائهم عبر المعرف الفريد وليس الكود
+   * يضمن أن الأبناء مربوطون بآبائهم عبر المعرف الفريد وليس الكود لتعمل التوسعة في الواجهة
    */
   async seedConstructionCOA(userId: string) {
     const batch = writeBatch(this.db);
@@ -82,7 +90,7 @@ export class SeedService {
     const rawHierarchy = [
       { code: '1', nameAr: 'الأصول', nameEn: 'Assets', type: 'asset', isGroup: true, level: 1, parentCode: null },
       { code: '11', nameAr: 'أصول متداولة', nameEn: 'Current Assets', type: 'asset', isGroup: true, level: 2, parentCode: '1' },
-      { code: '1101', nameAr: 'النقدية والبنك', nameEn: 'Cash & Bank', type: 'asset', isGroup: false, level: 3, parentCode: '11' },
+      { code: '1101', nameAr: 'النقدية والبنك', nameEn: 'Cash & Bank', type: 'asset', isGroup: true, level: 3, parentCode: '11' },
       { code: '12', nameAr: 'ذمم مدينة', nameEn: 'Accounts Receivable', type: 'asset', isGroup: true, level: 2, parentCode: '1' },
       { code: '1202', nameAr: 'ذمم العملاء (AR)', nameEn: 'Clients Receivable', type: 'asset', isGroup: true, level: 3, parentCode: '12' },
       { code: '1205', nameAr: 'أعمال تحت التنفيذ (WIP)', nameEn: 'Work In Progress', type: 'asset', isGroup: true, level: 3, parentCode: '12' },
@@ -131,7 +139,6 @@ export class SeedService {
       });
     });
 
-    // إنشاء مراكز التكلفة والربحية الإدارية
     const ccRef = doc(this.db, paths.costCenters(this.companyId), 'cc_admin_general');
     batch.set(ccRef, { 
       id: 'cc_admin_general', 
