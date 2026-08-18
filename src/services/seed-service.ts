@@ -1,3 +1,4 @@
+
 'use client';
 
 import { 
@@ -25,7 +26,6 @@ export class SeedService {
     const batch = writeBatch(this.db);
     snap.docs.forEach(d => batch.delete(d.ref));
     
-    // تطهير المراكز أيضاً للبدء من جديد
     const ccSnap = await getDocs(collection(this.db, paths.costCenters(this.companyId)));
     ccSnap.docs.forEach(d => batch.delete(d.ref));
     
@@ -35,10 +35,6 @@ export class SeedService {
     await batch.commit();
   }
 
-  /**
-   * تنشيط الشجرة المحاسبية الهرمية القياسية (IFRS Based)
-   * تم تحسينها لربط الأبناء بآبائهم عبر Document IDs لضمان عمل زر التوسعة.
-   */
   async seedConstructionCOA(userId: string) {
     const batch = writeBatch(this.db);
     const accountsRef = collection(this.db, paths.accounts(this.companyId));
@@ -69,7 +65,6 @@ export class SeedService {
       { code: '5203', nameAr: 'مصروف مخصص الإجازات', nameEn: 'Leave Provision Expense', type: 'expense', isGroup: false, level: 2, parentCode: '5' }
     ];
 
-    // حجز الـ IDs مسبقاً لربط الأبناء بالآباء بـ True IDs (UUIDs)
     const codeToIdMap: Record<string, string> = {};
     rawHierarchy.forEach(item => {
       codeToIdMap[item.code] = doc(accountsRef).id;
@@ -96,7 +91,6 @@ export class SeedService {
       });
     });
 
-    // --- التنشيط الثنائي لمراكز التكلفة والربحية الإدارية ---
     const ccRef = doc(this.db, paths.costCenters(this.companyId), 'cc_admin_general');
     batch.set(ccRef, { 
       id: 'cc_admin_general', 
@@ -129,7 +123,6 @@ export class SeedService {
     const whService = new WorkHoursService(this.db, this.companyId);
     let settings = await whService.getSettings();
     if (!settings) settings = whService.getDefaultSettings() as any;
-
     const wdService = new WorkingDaysService(settings!);
 
     const empsSnap = await getDocs(collection(this.db, paths.employees(this.companyId)));
@@ -140,24 +133,19 @@ export class SeedService {
 
     const batch = writeBatch(this.db);
     let count = 0;
-
     for (const empDoc of empsSnap.docs) {
       const emp = empDoc.data();
       if (!emp.hireDate) continue;
-
       const totalAccrued = wdService.calculateAccruedLeave(emp.hireDate);
       const empUsed = leavesSnap.docs
         .filter(d => d.data().employeeId === empDoc.id && d.data().type === 'annual')
         .reduce((sum, d) => sum + (d.data().workingDays || 0), 0);
-
       const trueBalance = Math.max(0, Math.round((totalAccrued - empUsed) * 10) / 10);
-      
       if (emp.annualLeaveBalance !== trueBalance) {
         batch.update(empDoc.ref, { annualLeaveBalance: trueBalance, updatedAt: serverTimestamp() });
         count++;
       }
     }
-
     if (count > 0) await batch.commit();
     return count;
   }

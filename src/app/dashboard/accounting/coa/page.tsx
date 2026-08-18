@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -124,7 +125,6 @@ export default function ChartOfAccountsPage() {
     e.stopPropagation();
     if (!db || !companyId) return;
     
-    // استدعاء محرك الترقيم التلقائي السيادي المطور (In-Memory Sort لتمكين العمل بدون فهارس يدوية)
     const service = new AccountingService(db, companyId);
     const nextCode = await service.getNextAccountCode(parent.id);
 
@@ -141,10 +141,7 @@ export default function ChartOfAccountsPage() {
 
   const renderTree = (parentId: string | "" = "", level = 0) => {
     return (accounts || [])
-      .filter(a => {
-        const pId = a.parentId || "";
-        return pId === parentId;
-      })
+      .filter(a => (a.parentId || "") === parentId)
       .filter(a => {
         if (searchTerm === "") return true;
         return (
@@ -227,17 +224,15 @@ export default function ChartOfAccountsPage() {
           <Button onClick={() => setShowPurgeConfirm(true)} variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50 border-2 border-transparent hover:border-rose-100 transition-all">
              <Trash2 className="h-5 w-5" />
           </Button>
-          {(!accounts || accounts.length === 0) && !loading && (
-             <Button 
-               onClick={() => setShowSeedConfirm(true)} 
-               disabled={seeding}
-               variant="outline"
-               className="h-10 px-6 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-700 font-black gap-2 shadow-sm hover:bg-emerald-100 transition-all"
-             >
-                {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                {isRtl ? 'تنشيط الشجرة الهرمية' : 'Activate Hierarchy'}
-             </Button>
-          )}
+          <Button 
+            onClick={() => setShowSeedConfirm(true)} 
+            disabled={seeding}
+            variant="outline"
+            className="h-10 px-6 rounded-xl border-2 border-emerald-200 bg-emerald-50 text-emerald-700 font-black gap-2 shadow-sm hover:bg-emerald-100 transition-all"
+          >
+             {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+             {isRtl ? 'تنشيط الشجرة الهرمية' : 'Activate Hierarchy'}
+          </Button>
           <Button onClick={async () => { 
             const service = new AccountingService(db!, companyId!);
             const nextRoot = await service.getNextAccountCode(null);
@@ -359,7 +354,7 @@ export default function ChartOfAccountsPage() {
                </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
-               <AlertDialogCancel className="flex-1 h-14 rounded-2xl font-bold border-2 bg-white">{t('common.cancel')}</AlertDialogCancel>
+               <AlertDialogCancel className="flex-1 h-14 rounded-2xl font-bold border-2 bg-white" onClick={() => setShowSeedConfirm(false)}>{t('common.cancel')}</AlertDialogCancel>
                <AlertDialogAction 
                  onClick={handleSeedCOA} 
                  disabled={seeding}
@@ -385,7 +380,7 @@ export default function ChartOfAccountsPage() {
                </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="mt-12 gap-4 flex flex-row">
-               <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white">{t('common.cancel')}</AlertDialogCancel>
+               <AlertDialogCancel className="flex-1 h-16 rounded-2xl font-bold border-2 bg-white" onClick={() => setShowPurgeConfirm(false)}>{t('common.cancel')}</AlertDialogCancel>
                <AlertDialogAction 
                  onClick={handlePurgeCOA} 
                  disabled={purging}

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -52,6 +53,7 @@ export default function ReceiptVouchersPage() {
     clientId: '',
     transactionId: '',
     transactionName: '',
+    transactionNumber: '', 
     contractId: '',
     notes: '',
     costCenterId: '',
@@ -102,7 +104,6 @@ export default function ReceiptVouchersPage() {
   
   const incomeAccounts = useMemo(() => accounts?.filter(a => !a.isGroup && (a.type === 'revenue' || a.type === 'liability' || a.code.startsWith('1202'))), [accounts]);
 
-  // محرك الربط التلقائي في السند (Auto-Routing in Receipt)
   useEffect(() => {
     if (form.transactionId) {
        const matchedCC = costCenters?.find(cc => cc.projectId === form.transactionId || cc.id === `cc_${form.transactionId}`);
@@ -171,7 +172,7 @@ export default function ReceiptVouchersPage() {
            </CardHeader>
            <CardContent className="p-10 space-y-8 text-start bg-white">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                 <div className="space-y-2 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المقبوض من (العميل)' : 'Received From'}</Label><SearchableDropdown options={(clients || []).map(c => ({ id: c.id, name: c.nameAr, subText: c.fileNumber }))} value={form.clientId} onChange={(val) => { const c = clients?.find(x => x.id === val); setForm({ ...form, clientId: val as string, personName: c?.nameAr || '', transactionId: '', transactionName: '', contractId: '', notes: '' }); }} placeholder={t('common.search')} /></div>
+                 <div className="space-y-2 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المقبوض من (العميل)' : 'Received From'}</Label><SearchableDropdown options={(clients || []).map(c => ({ id: c.id, name: c.nameAr, subText: c.fileNumber }))} value={form.clientId} onChange={(val) => { const c = clients?.find(x => x.id === val); setForm({ ...form, clientId: val as string, personName: c?.nameAr || '', transactionId: '', transactionName: '', transactionNumber: '', contractId: '', notes: '' }); }} placeholder={t('common.search')} /></div>
                  <div className="space-y-2 text-start"><Label className="text-[10px] font-black uppercase text-slate-400">{isRtl ? 'المشروع المرتبط (الأتمتة)' : 'Project Link (Auto)'}</Label><SearchableDropdown disabled={!form.clientId} options={(allTransactions || []).filter(t => t.clientId === form.clientId).map(t => ({ id: t.id, name: t.subServiceName, subText: `#${t.transactionNumber}` }))} value={form.transactionId} onChange={(val) => { const t_row = allTransactions?.find(x => x.id === val); setForm({ ...form, transactionId: val as string, transactionName: t_row?.subServiceName || '', transactionNumber: t_row?.transactionNumber || '', contractId: '', notes: '' }); }} placeholder={t('common.search')} /></div>
               </div>
 
