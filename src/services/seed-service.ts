@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -32,20 +31,31 @@ export class SeedService {
   }
 
   /**
-   * تطهير شامل للبيانات المحاسبية والتشغيلية (Nuclear Reset)
+   * تطهير دليل الحسابات ومراكز التكلفة والربحية (Nuclear Reset)
    */
-  async purgeSystemData() {
+  async purgeCOA() {
+    // جلب الحسابات (بحد أقصى 500 للمرة الواحدة لضمان أداء Firestore)
+    const q = query(collection(this.db, paths.accounts(this.companyId)), limit(500));
+    const snap = await getDocs(q);
     const batch = writeBatch(this.db);
+    snap.docs.forEach(d => batch.delete(d.ref));
     
-    const accSnap = await getDocs(collection(this.db, paths.accounts(this.companyId)));
-    accSnap.docs.forEach(d => batch.delete(d.ref));
-    
+    // تطهير المراكز أيضاً للبدء من جديد
     const ccSnap = await getDocs(collection(this.db, paths.costCenters(this.companyId)));
     ccSnap.docs.forEach(d => batch.delete(d.ref));
     
     const pcSnap = await getDocs(collection(this.db, paths.profitCenters(this.companyId)));
     pcSnap.docs.forEach(d => batch.delete(d.ref));
+    
+    await batch.commit();
+  }
 
+  /**
+   * تطهير شامل للبيانات التشغيلية
+   */
+  async purgeSystemData() {
+    const batch = writeBatch(this.db);
+    
     const transSnap = await getDocs(collection(this.db, paths.transactions(this.companyId)));
     transSnap.docs.forEach(d => batch.delete(d.ref));
 
@@ -55,16 +65,6 @@ export class SeedService {
     const boqSnap = await getDocs(collection(this.db, paths.boqs(this.companyId)));
     boqSnap.docs.forEach(d => batch.delete(d.ref));
 
-    await batch.commit();
-  }
-
-  /**
-   * تنظيف دليل الحسابات فقط
-   */
-  async purgeCOA() {
-    const batch = writeBatch(this.db);
-    const accSnap = await getDocs(collection(this.db, paths.accounts(this.companyId)));
-    accSnap.docs.forEach(d => batch.delete(d.ref));
     await batch.commit();
   }
 

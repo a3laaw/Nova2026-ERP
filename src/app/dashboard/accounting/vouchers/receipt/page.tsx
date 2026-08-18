@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -41,7 +40,6 @@ export default function ReceiptVouchersPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // تحديث الحالة لتشمل كافة الحقول المستخدمة لمنع أخطاء النوع في الـ Build
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
     amount: 0,
@@ -153,7 +151,7 @@ export default function ReceiptVouchersPage() {
     <div className="space-y-6 animate-in fade-in max-w-[1600px] mx-auto" dir={dir}>
       <header className="flex justify-between items-center text-start">
         <div className="text-start space-y-1">
-          <h1 className="text-2xl font-black font-headline flex items-center gap-3 text-slate-900">
+          <h1 className="text-2xl font-black font-headline text-slate-900">
             <Receipt className="h-7 w-7 text-emerald-600" /> {tSafe('accounting.vouchers.receiptTitle', 'سندات القبض الذكية', 'Smart Receipt Vouchers')}
           </h1>
           <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">{isRtl ? 'تحصيل الإيرادات المربوطة آلياً بالأبعاد المالية' : 'Auto-linked revenue collection and financial routing'}</p>

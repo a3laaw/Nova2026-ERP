@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -116,6 +115,8 @@ export default function ChartOfAccountsPage() {
       await seedService.purgeCOA();
       toast({ title: isRtl ? 'تم تنظيف الدليل' : 'COA Purged' });
       setShowPurgeConfirm(false);
+    } catch (e: any) {
+       toast({ variant: "destructive", title: t('common.error'), description: e.message });
     } finally {
       setPurging(false);
     }
