@@ -40,6 +40,7 @@ export default function ReceiptVouchersPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // تحديث حالة النموذج لتشمل الحقول المفقودة لمنع أخطاء النوع
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
     amount: 0,

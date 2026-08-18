@@ -18,6 +18,10 @@ import { SEED_DATA } from '@/lib/seed-data';
 import { WorkingDaysService } from './working-days-service';
 import { WorkHoursService } from './work-hours-service';
 
+/**
+ * خدمة التأسيس والتهيئة السيادية (Sovereign Seed Service).
+ * تم تحديثها لربط الهياكل عبر UUID لضمان عمل زر التوسعة.
+ */
 export class SeedService {
   constructor(private db: Firestore, private companyId: string) {}
 
@@ -34,10 +38,11 @@ export class SeedService {
    * تطهير دليل الحسابات ومراكز التكلفة والربحية (Nuclear Reset)
    */
   async purgeCOA() {
-    // جلب الحسابات (بحد أقصى 500 للمرة الواحدة لضمان أداء Firestore)
+    const batch = writeBatch(this.db);
+    
+    // جلب الحسابات
     const q = query(collection(this.db, paths.accounts(this.companyId)), limit(500));
     const snap = await getDocs(q);
-    const batch = writeBatch(this.db);
     snap.docs.forEach(d => batch.delete(d.ref));
     
     // تطهير المراكز أيضاً للبدء من جديد
@@ -81,7 +86,6 @@ export class SeedService {
 
   /**
    * تأسيس شجرة الحسابات الهرمية (True UUID Linking)
-   * يضمن أن الأبناء مربوطون بآبائهم عبر المعرف الفريد وليس الكود لتعمل التوسعة في الواجهة
    */
   async seedConstructionCOA(userId: string) {
     const batch = writeBatch(this.db);
@@ -139,6 +143,7 @@ export class SeedService {
       });
     });
 
+    // تأسيس المراكز الإدارية الافتراضية
     const ccRef = doc(this.db, paths.costCenters(this.companyId), 'cc_admin_general');
     batch.set(ccRef, { 
       id: 'cc_admin_general', 

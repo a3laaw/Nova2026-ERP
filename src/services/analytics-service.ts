@@ -1,4 +1,3 @@
-
 'use client';
 
 import { 
@@ -183,6 +182,10 @@ export class AnalyticsService {
 
     return (summaries.filter(s => s !== null) as ProjectAnalyticsSummary[])
       .sort((a, b) => b.totalRevenue - a.totalRevenue);
+  }
+
+  async getProjectsPerformance(): Promise<ProjectAnalyticsSummary[]> {
+    return this.getFilteredPerformance({ projectId: 'all', costCenterId: 'all', profitCenterId: 'all', searchTerm: '' });
   }
 
   async getFilteredResourcesProfitability(filters: GlobalFilters): Promise<ResourceProfitability[]> {

@@ -62,6 +62,18 @@ export interface ActivityType extends BaseReference {
   isActive: boolean;
 }
 
+// إضافة النوع المفقود الذي تسبب في فشل الـ Build
+export interface ServiceType extends BaseReference {
+  code: string;
+  name: string;
+  nameEn: string;
+  description?: string;
+  moduleScope: string;
+  color?: string;
+  order: number;
+  isActive: boolean;
+}
+
 export interface Service extends BaseReference {
   activityTypeId: string;
   code: string;
@@ -152,8 +164,8 @@ export interface BOQReferenceNode extends BaseReference {
   unitTypeId?: string;
   unitName?: string;
   unitSymbol?: string;
-  technicalStageId?: string; // المرحلة المالية الافتراضية
-  technicalStageIds?: string[]; // قائمة بكافة المراحل الفنية المرتبطة بالبند (الربط المظلي)
+  technicalStageId?: string; 
+  technicalStageIds?: string[]; 
   estimatedRate?: number;
   billingTriggerGroup?: string;
   allowedItemCategoryIds?: string[];
