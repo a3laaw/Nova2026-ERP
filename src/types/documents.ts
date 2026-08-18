@@ -1,4 +1,3 @@
-
 'use client';
 /**
  * @fileOverview تعريف واجهات البيانات للمستندات الحية (Instantiated Documents).
@@ -7,7 +6,7 @@
 import { BaseReference } from './reference';
 import { PricingMode, MeasurementMode, QuotationItem, ContractMilestone } from './templates';
 
-export type DocumentStatus = 'draft' | 'sent' | 'approved' | 'rejected' | 'active' | 'completed' | 'cancelled' | 'paid' | 'clientCertified';
+export type DocumentStatus = 'draft' | 'sent' | 'approved' | 'rejected' | 'active' | 'completed' | 'cancelled' | 'paid' | 'clientCertified' | 'signed';
 
 export interface BaseDocument extends BaseReference {
   id: string;

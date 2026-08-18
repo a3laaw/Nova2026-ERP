@@ -164,6 +164,7 @@ export default function ChartOfAccountsPage() {
               )} 
               style={{ paddingInlineStart: `${level * 24 + 12}px` }} 
               onClick={() => {
+                // الشجرة ذكية: أي حساب لديه أبناء أو معرف كمجموعة يمكن توسعته
                 if (hasChildren || account.isGroup) {
                   setExpanded(prev => ({...prev, [account.id]: !prev[account.id]}));
                 } else {
@@ -224,9 +225,9 @@ export default function ChartOfAccountsPage() {
           <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Sovereign Financial Registry V3.2</p>
         </div>
         <div className="flex gap-3">
-          <Button onClick={() => setShowPurgeConfirm(true)} variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50 border-2 border-transparent hover:border-rose-100 transition-all">
+          <button onClick={() => setShowPurgeConfirm(true)} className="h-10 w-10 rounded-xl text-rose-300 hover:text-rose-600 hover:bg-rose-50 border-2 border-transparent hover:border-rose-100 transition-all flex items-center justify-center group">
              <Trash2 className="h-5 w-5" />
-          </Button>
+          </button>
           <Button 
             onClick={() => setShowSeedConfirm(true)} 
             disabled={seeding}
@@ -270,7 +271,7 @@ export default function ChartOfAccountsPage() {
                 <DatabaseZap className="h-20 w-20 mx-auto text-slate-200" />
                 <div className="space-y-2">
                    <h3 className="text-xl font-black text-slate-400">{isRtl ? 'لا توجد حسابات مسجلة' : 'No Accounts Found'}</h3>
-                   <p className="text-xs font-bold text-slate-300">{isRtl ? 'يرجى تنزيل الشجرة القياسية أو إضافة حساب يدوي للبدء.' : 'Please seed standard COA or add manually.'}</p>
+                   <p className="text-xs font-bold text-slate-300">{isRtl ? 'يرجى تنظيف الدليل ثم تنزيل الشجرة القياسية للبدء.' : 'Please purge then seed standard COA.'}</p>
                 </div>
              </div>
           ) : renderTree("")}

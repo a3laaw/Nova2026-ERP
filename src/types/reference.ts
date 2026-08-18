@@ -62,7 +62,9 @@ export interface ActivityType extends BaseReference {
   isActive: boolean;
 }
 
-// إضافة النوع المفقود الذي تسبب في فشل الـ Build
+/**
+ * نوع النشاط أو الخدمة في موديول الإعدادات
+ */
 export interface ServiceType extends BaseReference {
   code: string;
   name: string;

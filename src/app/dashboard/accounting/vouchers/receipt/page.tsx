@@ -40,7 +40,7 @@ export default function ReceiptVouchersPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // تحديث حالة النموذج لتشمل الحقول المفقودة لمنع أخطاء النوع
+  // تحديث حالة النموذج لتشمل الحقول المفقودة لمنع أخطاء النوع والـ Build
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
     amount: 0,
@@ -121,7 +121,7 @@ export default function ReceiptVouchersPage() {
 
   useEffect(() => {
     if (db && companyId && form.transactionId) {
-      const q = query(collection(db, paths.contracts(companyId)), where('transactionId', '==', form.transactionId), where('status', 'in', ['approved', 'active', 'paid', 'signed']));
+      const q = query(collection(db, paths.contracts(companyId)), where('transactionId', '==', form.transactionId), where('status', 'in', ['approved', 'active', 'paid', 'signed', 'clientCertified']));
       getDocs(q).then(snap => {
         const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Contract));
         setContracts(list);
