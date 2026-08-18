@@ -10,7 +10,9 @@ import {
   getDocs,
   query,
   limit,
-  where
+  where,
+  setDoc,
+  getDoc
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { SEED_DATA } from '@/lib/seed-data';
@@ -20,11 +22,24 @@ import { WorkHoursService } from './work-hours-service';
 export class SeedService {
   constructor(private db: Firestore, private companyId: string) {}
 
-  async purgeCOA() {
-    const q = query(collection(this.db, paths.accounts(this.companyId)), limit(500));
+  /**
+   * التحقق مما إذا كان النظام قد تمت تهيئته مسبقاً
+   */
+  async isSystemSeeded(): Promise<boolean> {
+    const q = query(collection(this.db, paths.accounts(this.companyId)), limit(1));
     const snap = await getDocs(q);
+    return !snap.empty;
+  }
+
+  /**
+   * تطهير شامل للبيانات المحاسبية والتشغيلية (Nuclear Reset)
+   */
+  async purgeSystemData() {
     const batch = writeBatch(this.db);
-    snap.docs.forEach(d => batch.delete(d.ref));
+    
+    // تطهير الحسابات والمراكز
+    const accSnap = await getDocs(collection(this.db, paths.accounts(this.companyId)));
+    accSnap.docs.forEach(d => batch.delete(d.ref));
     
     const ccSnap = await getDocs(collection(this.db, paths.costCenters(this.companyId)));
     ccSnap.docs.forEach(d => batch.delete(d.ref));
@@ -32,9 +47,34 @@ export class SeedService {
     const pcSnap = await getDocs(collection(this.db, paths.profitCenters(this.companyId)));
     pcSnap.docs.forEach(d => batch.delete(d.ref));
 
+    // تطهير المعاملات والعملاء والمقايسات
+    const transSnap = await getDocs(collection(this.db, paths.transactions(this.companyId)));
+    transSnap.docs.forEach(d => batch.delete(d.ref));
+
+    const clientsSnap = await getDocs(collection(this.db, paths.clients(this.companyId)));
+    clientsSnap.docs.forEach(d => batch.delete(d.ref));
+
+    const boqSnap = await getDocs(collection(this.db, paths.boqs(this.companyId)));
+    boqSnap.docs.forEach(d => batch.delete(d.ref));
+
     await batch.commit();
   }
 
+  /**
+   * حذف كافة المواعيد المجدولة
+   */
+  async purgeAllAppointments() {
+    const q = query(collection(this.db, paths.appointments(this.companyId)));
+    const snap = await getDocs(q);
+    const batch = writeBatch(this.db);
+    snap.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  }
+
+  /**
+   * تأسيس شجرة الحسابات الهرمية (True UUID Linking)
+   * يضمن أن الأبناء مربوطون بآبائهم عبر المعرف الفريد وليس الكود
+   */
   async seedConstructionCOA(userId: string) {
     const batch = writeBatch(this.db);
     const accountsRef = collection(this.db, paths.accounts(this.companyId));
@@ -50,8 +90,8 @@ export class SeedService {
       { code: '2', nameAr: 'الخصوم', nameEn: 'Liabilities', type: 'liability', isGroup: true, level: 1, parentCode: null },
       { code: '22', nameAr: 'خصوم متداولة', nameEn: 'Current Liabilities', type: 'liability', isGroup: true, level: 2, parentCode: '2' },
       { code: '2204', nameAr: 'مستحقات رواتب وأجور', nameEn: 'Accrued Salaries', type: 'liability', isGroup: true, level: 3, parentCode: '22' },
-      { code: '2205', nameAr: 'مخصص مكافأة نهاية الخدمة', nameEn: 'Provision for EOSB', type: 'liability', isGroup: false, level: 3, parentCode: '22' },
-      { code: '2206', nameAr: 'مخصص رصيد الإجازات', nameEn: 'Provision for Accrued Leave', type: 'liability', isGroup: false, level: 3, parentCode: '22' },
+      { code: '2205', nameAr: 'مخصص مكافأة نهاية الخدمة', nameEn: 'Provision for Gratuity', type: 'liability', isGroup: false, level: 3, parentCode: '22' },
+      { code: '2206', nameAr: 'مخصص رصيد الإجازات', nameEn: 'Provision for Leave', type: 'liability', isGroup: false, level: 3, parentCode: '22' },
       
       { code: '3', nameAr: 'حقوق الملكية', nameEn: 'Equity', type: 'equity', isGroup: true, level: 1, parentCode: null },
       
@@ -61,8 +101,8 @@ export class SeedService {
       { code: '5', nameAr: 'المصروفات', nameEn: 'Expenses', type: 'expense', isGroup: true, level: 1, parentCode: null },
       { code: '5101', nameAr: 'تكاليف تنفيذ مباشرة', nameEn: 'Direct Execution Costs', type: 'expense', isGroup: false, level: 2, parentCode: '5' },
       { code: '5201', nameAr: 'رواتب ومصاريف إدارية', nameEn: 'G&A Expenses', type: 'expense', isGroup: false, level: 2, parentCode: '5' },
-      { code: '5202', nameAr: 'مصروف مخصص نهاية الخدمة', nameEn: 'Gratuity Provision Expense', type: 'expense', isGroup: false, level: 2, parentCode: '5' },
-      { code: '5203', nameAr: 'مصروف مخصص الإجازات', nameEn: 'Leave Provision Expense', type: 'expense', isGroup: false, level: 2, parentCode: '5' }
+      { code: '5202', nameAr: 'مصروف مخصص نهاية الخدمة', nameEn: 'Gratuity Provision Exp', type: 'expense', isGroup: false, level: 2, parentCode: '5' },
+      { code: '5203', nameAr: 'مصروف مخصص الإجازات', nameEn: 'Leave Provision Exp', type: 'expense', isGroup: false, level: 2, parentCode: '5' }
     ];
 
     const codeToIdMap: Record<string, string> = {};
@@ -91,6 +131,7 @@ export class SeedService {
       });
     });
 
+    // إنشاء مراكز التكلفة والربحية الإدارية
     const ccRef = doc(this.db, paths.costCenters(this.companyId), 'cc_admin_general');
     batch.set(ccRef, { 
       id: 'cc_admin_general', 

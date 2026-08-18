@@ -236,7 +236,7 @@ export default function ReceiptVouchersPage() {
                     {vouchersLoading ? (
                       <TableRow><TableCell colSpan={5} className="text-center py-24"><Loader2 className="animate-spin h-10 w-10 mx-auto text-primary/20" /></TableCell></TableRow>
                     ) : (vouchers || []).map((v:any) => (
-                      <TableRow key={v.id} className="hover:bg-primary/[0.01] transition-colors border-b-slate-50 group cursor-pointer" onClick={() => router.push(`/dashboard/accounting/vouchers/receipt/${v.id}`)}>
+                      <TableRow key={v.id} className="hover:bg-primary/[0.01] transition-colors border-b-slate-100 group cursor-pointer" onClick={() => router.push(`/dashboard/accounting/vouchers/receipt/${v.id}`)}>
                          <TableCell className="py-5 ps-8 text-start">
                             <p className="font-black text-slate-800 text-sm">{v.voucherNumber}</p>
                             <p className="text-[9px] text-slate-400 font-mono">{v.date}</p>

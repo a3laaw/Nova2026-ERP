@@ -158,7 +158,7 @@ export default function ChartOfAccountsPage() {
           <div key={account.id} className="select-none">
             <div 
               className={cn(
-                "flex items-center gap-3 p-2.5 hover:bg-primary/5 rounded-xl cursor-pointer transition-all border-b border-slate-50 group", 
+                "flex items-center justify-between p-2.5 hover:bg-primary/5 rounded-xl cursor-pointer transition-all border-b border-slate-50 group", 
                 (account.isGroup || hasChildren) ? "font-black text-slate-900" : "font-medium text-slate-600"
               )} 
               style={{ paddingInlineStart: `${level * 24 + 12}px` }} 
@@ -171,25 +171,27 @@ export default function ChartOfAccountsPage() {
                 }
               }}
             >
-              <div className="flex items-center gap-2">
-                {(account.isGroup || hasChildren) ? (
-                  <div className="p-1 hover:bg-primary/10 rounded-md transition-colors">
-                     {isExpanded ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className={cn("h-4 w-4", isRtl && "rotate-180")} />}
-                  </div>
-                ) : <div className="w-6" />}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  {(account.isGroup || hasChildren) ? (
+                    <div className="p-1 hover:bg-primary/10 rounded-md transition-colors">
+                       {isExpanded ? <ChevronDown className="h-4 w-4 text-primary" /> : <ChevronRight className={cn("h-4 w-4", isRtl && "rotate-180")} />}
+                    </div>
+                  ) : <div className="w-6" />}
+                  
+                  {(account.isGroup || hasChildren) ? (
+                     isExpanded ? <FolderOpen className="h-4 w-4 text-primary fill-current opacity-20" /> : <Folder className="h-4 w-4 text-amber-500 fill-current opacity-40" />
+                  ) : <FileText className="h-4 w-4 text-blue-400 opacity-60" />}
+                </div>
                 
-                {(account.isGroup || hasChildren) ? (
-                   isExpanded ? <FolderOpen className="h-4 w-4 text-primary fill-current opacity-20" /> : <Folder className="h-4 w-4 text-amber-500 fill-current opacity-40" />
-                ) : <FileText className="h-4 w-4 text-blue-400 opacity-60" />}
-              </div>
-              
-              <span className="text-[10px] font-black font-mono text-primary bg-primary/5 px-2 py-0.5 rounded border border-primary/10 uppercase tracking-tighter">
-                {account.code}
-              </span>
-              
-              <div className="flex flex-col text-start">
-                 <span className="text-sm truncate">{account.nameAr}</span>
-                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">{account.nameEn}</span>
+                <span className="text-[10px] font-black font-mono text-primary bg-primary/5 px-2 py-0.5 rounded border border-primary/10 uppercase tracking-tighter">
+                  {account.code}
+                </span>
+                
+                <div className="flex flex-col text-start">
+                   <span className="text-sm truncate">{account.nameAr}</span>
+                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">{account.nameEn}</span>
+                </div>
               </div>
               
               <div className="ms-auto flex items-center gap-2">
