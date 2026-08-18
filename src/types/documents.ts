@@ -6,7 +6,7 @@
 import { BaseReference } from './reference';
 import { PricingMode, MeasurementMode, QuotationItem, ContractMilestone } from './templates';
 
-export type DocumentStatus = 'draft' | 'sent' | 'approved' | 'rejected' | 'active' | 'completed' | 'cancelled' | 'paid' | 'clientCertified' | 'signed';
+export type DocumentStatus = 'cancelled' | 'draft' | 'sent' | 'rejected' | 'active' | 'completed' | 'paid' | 'clientCertified' | 'signed' | 'approved';
 
 export interface BaseDocument extends BaseReference {
   id: string;
@@ -60,7 +60,7 @@ export interface BOQItem extends BaseReference {
   transactionId?: string;
   clientId?: string;
   contractQty: number;
-  plannedQuantity: number; // الكمية المخططة في الدراسة
+  plannedQuantity: number; 
   approvedVariationQty: number;
   executedQuantity: number;
   verifiedQuantity: number;
@@ -76,8 +76,6 @@ export interface BOQItem extends BaseReference {
   technicalStageIds?: string[];
   ancestorIds?: string[];
   ancestorTitles?: string[];
-  
-  // الربط السيادي بالمقاول (The SubCon Link)
   subcontractorId?: string;
   subcontractorName?: string;
 }
@@ -88,7 +86,7 @@ export interface LaborDetail {
   hours: number;
   hourlyCostRef: number;    
   totalCost: number;        
-  subcontractorId?: string; // ربط العمالة بمقاول محدد
+  subcontractorId?: string;
   subcontractorName?: string;
 }
 
@@ -118,8 +116,6 @@ export interface BOQItemExecutionEntry extends BaseReference {
   recordedBy: string;
   recordedByName: string;
   createdAt: any;
-  
-  // توثيق الجهة المنفذة للبند في هذه الزيارة
   subcontractorId?: string;
   subcontractorName?: string;
 }

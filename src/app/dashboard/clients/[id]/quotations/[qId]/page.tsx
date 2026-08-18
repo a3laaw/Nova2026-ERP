@@ -23,7 +23,7 @@ import {
   LayoutGrid
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
-import { doc, collection, query, orderBy, where } from 'firebase/firestore';
+import { collection, query, orderBy, where, doc } from 'firebase/firestore';
 import { useAuthContext } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { usePermissions } from '@/hooks/use-permissions';
@@ -102,7 +102,7 @@ export default function QuotationViewPage() {
 
     if (!companyId || !db || !actId || !srvId || !subId) return null;
     return query(collection(db, paths.technicalStages(companyId, actId, srvId, subId)), orderBy('order'));
-  }, [db, companyId, editData.activityTypeId, editData.serviceId, editData.subServiceId, contract]);
+  }, [db, companyId, editData.activityTypeId, editData.serviceId, editData.subServiceId, quote]);
   
   const { data: stages } = useCollection<TechnicalStage>(stagesQuery);
 
