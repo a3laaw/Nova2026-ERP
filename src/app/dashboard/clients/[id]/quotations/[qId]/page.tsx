@@ -19,7 +19,8 @@ import {
   Gavel,
   Clock,
   Landmark,
-  Layers
+  Layers,
+  LayoutGrid
 } from "lucide-react";
 import { useFirestore, useDoc, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where } from 'firebase/firestore';
@@ -101,7 +102,7 @@ export default function QuotationViewPage() {
 
     if (!companyId || !db || !actId || !srvId || !subId) return null;
     return query(collection(db, paths.technicalStages(companyId, actId, srvId, subId)), orderBy('order'));
-  }, [db, companyId, editData.activityTypeId, editData.serviceId, editData.subServiceId, quote]);
+  }, [db, companyId, editData.activityTypeId, editData.serviceId, editData.subServiceId, contract]);
   
   const { data: stages } = useCollection<TechnicalStage>(stagesQuery);
 
@@ -233,7 +234,7 @@ export default function QuotationViewPage() {
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-700 bg-white" dir={dir}>
       <div className="max-w-[1600px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4 print:hidden px-8 pt-6 text-start">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 text-start">
            <Button 
              variant="ghost" 
              onClick={() => router.push(`/dashboard/clients/${clientId}/transactions/${quote.transactionId}`)} 
@@ -378,8 +379,8 @@ export default function QuotationViewPage() {
                                   {isEditing && (
                                      <td className="p-4">
                                         <Select value={item.timing || 'at'} onValueChange={v => updateItem(originalIdx, 'timing', v)}>
-                                           <SelectTrigger className="h-8 rounded-xl border-2 font-black text-xs bg-white"><SelectValue /></SelectTrigger>
-                                           <SelectContent className="max-h-[300px] overflow-y-auto rounded-xl border-2 shadow-2xl z-[160]">
+                                           <SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs bg-white"><SelectValue /></SelectTrigger>
+                                           <SelectContent className="rounded-xl border-2 shadow-2xl z-[160]">
                                               <SelectItem value="at" className="font-bold text-xs">{t('at')}</SelectItem>
                                               <SelectItem value="before" className="font-bold text-xs">{t('before')}</SelectItem>
                                               <SelectItem value="during" className="font-bold text-xs">{t('during')}</SelectItem>
