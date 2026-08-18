@@ -7,7 +7,8 @@ import {
   query, 
   where,
   getDoc,
-  doc
+  doc,
+  limit
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';
 import { Transaction } from '@/types/transaction';
@@ -79,44 +80,53 @@ export class AnalyticsService {
   constructor(private db: Firestore, private companyId: string) {}
 
   /**
-   * تقرير المساهمة للبونص (Contribution Analytics)
-   * (ساعات الموظف في المشروع ÷ إجمالي ساعات المشروع) × صافي ربحية المشروع
+   * تقرير ربحية البنود المجهري (Molecular Item Profitability)
+   * يربط إيرادات المستخلصات (IPCs) بتكاليف التنفيذ الميداني (Executions) لكل بند
    */
-  async getEmployeeContribution(employeeId: string, projectId: string) {
-     const execsSnap = await getDocs(query(
-        collection(this.db, paths.executions(this.companyId)), 
-        where('transactionId', '==', projectId),
-        where('isArchived', '==', false)
-     ));
+  async getProjectDetailedProfitability(projectId: string): Promise<ItemProfitability[]> {
+    const boqSnap = await getDocs(query(collection(this.db, paths.boqs(this.companyId)), where('transactionId', '==', projectId), limit(1)));
+    if (boqSnap.empty) return [];
+    const boqId = boqSnap.docs[0].id;
 
-     let employeeHours = 0;
-     let totalProjectHours = 0;
+    const [itemsSnap, ipcsSnap, execsSnap] = await Promise.all([
+      getDocs(collection(this.db, paths.boqItems(this.companyId, boqId))),
+      getDocs(query(collection(this.db, paths.ipcs(this.companyId)), where('transactionId', '==', projectId), where('status', '==', 'approved'))),
+      getDocs(query(collection(this.db, paths.executions(this.companyId)), where('transactionId', '==', projectId), where('isArchived', '==', false)))
+    ]);
 
-     execsSnap.docs.forEach(d => {
-        const data = d.data();
-        (data.laborDetails || []).forEach((l: any) => {
-           totalProjectHours += (l.hours || 0);
-           if (l.resourceId === employeeId) {
-              employeeHours += (l.hours || 0);
-           }
-        });
-     });
+    const items = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as BOQItem));
+    const ipcs = ipcsSnap.docs.map(d => d.data());
+    const execs = execsSnap.docs.map(d => d.data());
 
-     const performance = await this.getFilteredPerformance({
-        projectId, costCenterId: 'all', profitCenterId: 'all', searchTerm: ''
-     });
-     
-     const projectProfit = performance[0]?.margin || 0;
-     const contributionRatio = totalProjectHours > 0 ? (employeeHours / totalProjectHours) : 0;
-     const contributionValue = contributionRatio * projectProfit;
+    return items.map(item => {
+      let revenue = 0;
+      ipcs.forEach(ipc => {
+        const line = (ipc.lineItems || []).find((li: any) => li.boqItemId === item.id);
+        if (line) revenue += (line.amount || 0);
+      });
 
-     return {
-        employeeHours,
-        totalProjectHours,
-        contributionRatio: Math.round(contributionRatio * 100),
-        contributionValue: Math.round(contributionValue * 1000) / 1000,
-        projectProfit
-     };
+      let cost = 0;
+      execs.filter(ex => ex.boqItemId === item.id).forEach(ex => {
+        const laborCost = (ex.laborDetails || []).reduce((acc: number, l: any) => acc + (l.totalCost || 0), 0);
+        const equipCost = (ex.equipmentUsed || []).reduce((acc: number, e: any) => acc + (e.totalCost || 0), 0);
+        cost += (laborCost + equipCost);
+      });
+
+      const profit = revenue - cost;
+      const marginPercent = revenue > 0 ? Math.round((profit / revenue) * 100) : 0;
+
+      return {
+        itemId: item.id!,
+        itemTitle: item.referenceTitle,
+        unit: item.unitSymbol || '',
+        plannedQty: item.plannedQuantity || 0,
+        executedQty: item.executedQuantity || 0,
+        revenue,
+        cost,
+        profit,
+        marginPercent
+      };
+    });
   }
 
   async getFilteredPerformance(filters: GlobalFilters): Promise<ProjectAnalyticsSummary[]> {
