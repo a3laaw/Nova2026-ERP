@@ -6,8 +6,6 @@ import {
   getDocs, 
   query, 
   where,
-  getDoc,
-  doc,
   limit
 } from 'firebase/firestore';
 import { paths } from '@/firebase/multi-tenant';

@@ -311,7 +311,7 @@ export default function QuotationViewPage() {
                  </div>
                  <div className="text-center md:text-end relative z-10 shrink-0">
                     <div className="bg-primary/5 p-10 rounded-[2.5rem] border-2 border-white shadow-xl ring-4 ring-white">
-                       <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-2">{tSafe('inline.total.amount', 'إجمالي قيمة العرض', 'Total Proposal Value')}</p>
+                       <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-2">{tSafe('inline.total.amount', 'إجمالي قيمة عرض السعر', 'Total Proposal Value')}</p>
                        <h3 className="text-5xl font-black font-headline text-slate-900">
                           {(currentDisplayAmount || 0).toLocaleString()} <span className="text-sm font-bold opacity-40">KWD</span>
                        </h3>
@@ -423,8 +423,9 @@ export default function QuotationViewPage() {
                                         <div className="flex items-center gap-2 justify-end">
                                            <Input type="number" step="1" value={item.quantity || 0} onChange={e => updateItem(originalIdx, 'quantity', Number(e.target.value))} className="h-8 w-14 text-center font-black border-2 rounded-xl" />
                                            <Input type="number" step="0.001" value={item.unitPrice || 0} onChange={e => {
-                                              updateItem(originalIdx, 'unitPrice', Number(e.target.value));
-                                              updateItem(originalIdx, 'amount', (item.quantity || 0) * Number(e.target.value));
+                                              updateItem(originalIdx, 'unitPrice', e.target.value);
+                                              const q = Number(item.quantity) || 0;
+                                              updateItem(originalIdx, 'amount', q * (Number(e.target.value) || 0));
                                            }} className="h-8 w-24 text-end font-black text-emerald-600 text-sm bg-slate-50 border-2 rounded-xl" />
                                         </div>
                                      ) : (

@@ -18,10 +18,6 @@ import { SEED_DATA } from '@/lib/seed-data';
 import { WorkingDaysService } from './working-days-service';
 import { WorkHoursService } from './work-hours-service';
 
-/**
- * خدمة التأسيس والتهيئة السيادية (Sovereign Seed Service).
- * تم تحديثها لربط الهياكل عبر UUID لضمان عمل زر التوسعة وتطهير الدليل.
- */
 export class SeedService {
   constructor(private db: Firestore, private companyId: string) {}
 
