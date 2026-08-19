@@ -92,7 +92,7 @@ export default function TransactionBOQProgressPage() {
      return allTemplates.filter(temp => (temp.subServiceId?.trim() === transaction.subServiceId.trim()) && temp.isActive !== false);
   }, [allTemplates, transaction?.subServiceId]);
 
-  const boqTree = useMemo(() => transformToBOQTree((items || []) as BOQTemplateItem[]), [items]);
+  const boqTree = useMemo(() => transformToBOQTree((items || []) as unknown as BOQTemplateItem[]), [items]);
 
   const handleLinkSub = async (itemId: string, subId: string) => {
     if (!db || !companyId || !activeBoq) return;
