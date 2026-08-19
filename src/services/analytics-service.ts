@@ -256,15 +256,21 @@ export class AnalyticsService {
   }
 
   async getGlobalExecutiveSummary(): Promise<ExecutiveSummary> {
-     const [transSnap, boqsSnap, empsSnap] = await Promise.all([
+     const [transSnap, boqsSnap, empsSnap, journalSnap] = await Promise.all([
        getDocs(collection(this.db, paths.transactions(this.companyId))),
        getDocs(collection(this.db, paths.boqs(this.companyId))),
-       getDocs(collection(this.db, paths.employees(this.companyId)))
+       getDocs(collection(this.db, paths.employees(this.companyId))),
+       getDocs(query(collection(this.db, paths.journalEntries(this.companyId)), where('status', '==', 'posted')))
      ]);
 
      const boqs = boqsSnap.docs.map(d => d.data());
      const totalBudget = boqs.reduce((acc, b) => acc + (b.totalAmount || 0), 0);
-     const totalSpent = totalBudget * 0.45; 
+     
+     // إصلاح: حساب المصروفات الحقيقية من قيود اليومية بدلاً من نسبة 45% الوهمية
+     const journalLines = journalSnap.docs.flatMap(d => (d.data() as JournalEntry).lines || []);
+     const totalSpent = journalLines
+        .filter(l => (l.debit || 0) > 0)
+        .reduce((acc, l) => acc + (l.debit || 0), 0);
 
      return {
        projects: {
