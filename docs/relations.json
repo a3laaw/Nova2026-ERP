@@ -1,0 +1,1324 @@
+{
+  "registry": "NovaFlow ERP — سجل العلاقات المرجعي (Relationship Registry)",
+  "version": "1.0.0",
+  "updatedAt": "2026-11-07",
+  "registryNote": "المسارات الفعلية تُشتق من src/firebase/multi-tenant.ts — لا تُكرَّر هنا. المفاتيح ذات rawPath غير معلنة في paths وتُكتب بمسارات نصية (انظر gaps/G4).",
+  "sources": {
+    "paths": "src/firebase/multi-tenant.ts",
+    "types": "src/types/*.ts",
+    "rules": "firestore.rules",
+    "services": "src/services/*.ts",
+    "ui": "src/app/**/page.tsx"
+  },
+  "tenancy": {
+    "model": "single-root-tenant",
+    "root": "companies/{companyId}",
+    "globalCollections": [
+      "global_users",
+      "company_requests"
+    ],
+    "isolationKey": "companyId",
+    "enforcedBy": [
+      "firestore.rules: belongsToCompany(companyId)",
+      "paths.*()",
+      "getTenantPath()"
+    ]
+  },
+  "identityChain": [
+    {
+      "step": 1,
+      "from": "Firebase Auth (uid)",
+      "to": "global_users/{uid}",
+      "link": "docId == auth.uid"
+    },
+    {
+      "step": 2,
+      "from": "global_users/{uid}.companyId",
+      "to": "companies/{companyId}",
+      "link": "companyId"
+    },
+    {
+      "step": 3,
+      "from": "global_users/{uid}.roleId",
+      "to": "companies/{companyId}/roles/{roleId}",
+      "link": "roleId"
+    },
+    {
+      "step": 4,
+      "from": "global_users/{uid}.employeeId",
+      "to": "companies/{companyId}/employees/{employeeId}",
+      "link": "employeeId"
+    },
+    {
+      "step": 5,
+      "from": "global_users/{uid}.departmentId",
+      "to": "companies/{companyId}/departments/{departmentId}",
+      "link": "departmentId"
+    },
+    {
+      "step": 6,
+      "from": "companies/{companyId}/users/{uid}",
+      "to": "global_users/{uid}",
+      "link": "mirror (tenant-local copy)"
+    }
+  ],
+  "conventions": [
+    {
+      "id": "tenant-field",
+      "rule": "كل مستند يحمل حقل companyId مطابقة لمفتاح المنشأة (وإلا ترفضه القواعد أو تفشل فلاتر القسم).",
+      "appliesTo": "all"
+    },
+    {
+      "id": "denorm-name",
+      "rule": "لكل مفتاح أجنبي xxxId حقل مرآة xxxName مخزّن داخل المستند لعرضه بدون JOIN.",
+      "appliesTo": "clientId/clientName, transactionId/transactionNumber, subcontractorId/subcontractorName, ..."
+    },
+    {
+      "id": "code-ref",
+      "rule": "بعض المراجع تتم بالكود لا بالمعرّف (paymentMethod, allowedPaymentMethods, roleCode) — لا يمكن حلها بـ doc() مباشر.",
+      "appliesTo": "vouchers, accounts, global_users"
+    },
+    {
+      "id": "deterministic-id",
+      "rule": "مصادر الأرقام عبر counters + مفاتيح مستندات حتمية (cc_{transactionId} / pc_{transactionId}) لتكرار آمن (Idempotency) للأتمتة.",
+      "appliesTo": "costCenters, profitCenters, journalEntries, vouchers, ipcs"
+    },
+    {
+      "id": "tree-parent",
+      "rule": "الأشجار تتم عبر parentId + ancestorIds[] + order + depth (لا توجد مجموعات فرعية Firestore).",
+      "appliesTo": "accounts, boqReferenceNodes, boqTemplateItems"
+    },
+    {
+      "id": "audit-stream",
+      "rule": "أي حدث عابر للموديولات يُكتب في transactions/{t}/timeline كسجل تدقيق للمعاملة.",
+      "appliesTo": "billing, boq-execution, variation, transaction, document"
+    }
+  ],
+  "aliases": {
+    "accountId": "accounts",
+    "cashAccountId": "accounts",
+    "journalEntryId": "journalEntries",
+    "accountingJournalId": "journalEntries",
+    "clientId": "clients",
+    "clientHistoryId": "clientHistory",
+    "contractId": "contracts",
+    "transactionId": "transactions",
+    "projectId": "transactions",
+    "stageId": "transactionStages",
+    "stageInstanceId": "transactionStages",
+    "templateStageId": "technicalStages",
+    "technicalStageId": "technicalStages",
+    "technicalStageIds": "technicalStages",
+    "nextStageIds": "SELF",
+    "parentId": "SELF",
+    "ancestorIds": "SELF",
+    "parentCommentId": "transactionComments",
+    "activityTypeId": "activityTypes",
+    "activityTypeIds": "activityTypes",
+    "allowedActivityTypeIds": "activityTypes",
+    "serviceId": "services",
+    "serviceIds": "services",
+    "allowedServiceIds": "services",
+    "subServiceId": "subServices",
+    "boqId": "boqs",
+    "boqItemId": "boqItems",
+    "boqTemplateId": "boqTemplates",
+    "boqReferenceNodeId": "boqReferenceNodes",
+    "itemId": "inventoryItems",
+    "allowedItemCategoryIds": "itemCategories",
+    "poId": "purchaseOrders",
+    "supplierId": "suppliers",
+    "subcontractorId": "subcontractors",
+    "employeeId": "employees",
+    "engineerId": "employees",
+    "assignedEngineerId": "employees",
+    "additionalEngineerIds": "employees",
+    "supervisorId": "employees",
+    "memberIds": "employees",
+    "departmentId": "departments",
+    "allowedDepartmentIds": "departments",
+    "jobId": "jobs",
+    "roleId": "roles",
+    "userId": "globalUser",
+    "batchId": "payroll",
+    "visitId": "fieldVisits",
+    "appointmentId": "appointments",
+    "completedByApptId": "appointments",
+    "startedByApptId": "appointments",
+    "activeStageId": "transactionStages",
+    "equipmentId": "equipment",
+    "hallId": "meetingRooms",
+    "governorateId": "governorates",
+    "areaId": "areas",
+    "unitTypeId": "unitTypes",
+    "costCenterId": "costCenters",
+    "profitCenterId": "profitCenters",
+    "templateId": "POLYMORPHIC",
+    "sourceId": "POLYMORPHIC"
+  },
+  "nonRelationalIdFields": [
+    {
+      "field": "companyId",
+      "why": "مفتاح المستأجر وليس مرجعاً لمجموعة"
+    },
+    {
+      "field": "civilId",
+      "why": "رقم مدني حكومي خارجي"
+    },
+    {
+      "field": "fileNumber",
+      "why": "رقم عمل تجاري (business key)"
+    },
+    {
+      "field": "referenceId",
+      "why": "مرجع بوليمورفي داخل حساب آلي (transactionId أو clientId)"
+    },
+    {
+      "field": "milestoneKey",
+      "why": "مفتاح نصي لربط المرحلة بمرحلة العقد (soft key)"
+    }
+  ],
+  "actorFields": {
+    "suffix": "By",
+    "target": "globalUser"
+  },
+  "collections": {
+    "company": {
+      "module": "01-الهوية والتأجير",
+      "entity": "—",
+      "typeFile": "—",
+      "owner": "src/app/developer/page.tsx",
+      "parent": "global",
+      "status": "active",
+      "note": "جذر المستأجر: كل مجموعة داخل companies/{companyId} مملوكة له. حقول الترخيص: status/subscriptionType/expiryDate/maxUsers. غير مشار إليها عبر paths.company() في الكود (تُقرأ بمسار نصي).",
+      "typesNeeded": true,
+      "rawRoot": "companies",
+      "rawMatch": "'companies'"
+    },
+    "globalUser": {
+      "module": "01-الهوية والتأجير",
+      "entity": "—",
+      "typeFile": "—",
+      "owner": "src/services/user-service.ts",
+      "parent": "global",
+      "status": "active",
+      "note": "الهوية العالمية الوحيدة لكل مستخدم: uid → companyId + roleId + employeeId + departmentId + roleCode.",
+      "typesNeeded": true,
+      "rawRoot": "global_users",
+      "rawMatch": "'global_users'"
+    },
+    "invitations": {
+      "module": "01-الهوية والتأجير",
+      "entity": "Invitation",
+      "typeFile": "src/services/user-service.ts",
+      "owner": "src/services/user-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "دعوة للانضمام داخل المنشأة؛ تُقبل عبر /join/{companyId}/{inviteId} وتكتب global_users + companies/{c}/users."
+    },
+    "roles": {
+      "module": "02-القوائم المرجعية",
+      "entity": "Role",
+      "typeFile": "—",
+      "owner": "src/services/role-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "مصفوفة الصلاحيات matrix[{resourceId,action,scope}] — تحكم الوصول داخل المنشأة؛ roleCode يُطابق القواعد الأمنية."
+    },
+    "departments": {
+      "module": "02-القوائم المرجعية",
+      "entity": "Department",
+      "typeFile": "src/types/reference.ts",
+      "owner": "src/services/department-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "أقسام المنشأة؛ مصدر scope='dept' في محرك الصلاحيات."
+    },
+    "jobs": {
+      "module": "02-القوائم المرجعية",
+      "entity": "Job",
+      "typeFile": "src/types/reference.ts",
+      "owner": "src/services/department-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "المسميات الوظيفية داخل القسم، تحمل roleId + hourlyCost (مرجع التكلفة)."
+    },
+    "governorates": {
+      "module": "02-القوائم المرجعية",
+      "entity": "Governorate",
+      "typeFile": "src/types/reference.ts",
+      "owner": "src/services/location-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "محافظات الكويت المرجعية (جذر شجرة الموقع)."
+    },
+    "areas": {
+      "module": "02-القوائم المرجعية",
+      "entity": "Area",
+      "typeFile": "src/types/reference.ts",
+      "owner": "src/services/location-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "مناطق داخل المحافظة: governorateId + مسار Firestore فرعي."
+    },
+    "meetingRooms": {
+      "module": "02-القوائم المرجعية",
+      "entity": "MeetingRoom",
+      "typeFile": "src/types/reference.ts",
+      "owner": null,
+      "parent": "company",
+      "status": "active",
+      "note": "قاعات/صالة المكتب — تُستخدم كـ hallId في المواعيد وكمصدر جدول مواعيد العمل meetingRooms."
+    },
+    "serviceTypes": {
+      "module": "02-القوائم المرجعية",
+      "entity": "ServiceType",
+      "typeFile": "src/types/reference.ts",
+      "owner": "src/services/service-type-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "تصنيف الخدمات العام (moduleScope) — مستقل عن شجرة activityTypes."
+    },
+    "unitTypes": {
+      "module": "02-القوائم المرجعية",
+      "entity": "UnitType",
+      "typeFile": "src/types/reference.ts",
+      "owner": "src/services/reference-list-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "وحدات القياس (m²، يوم، عدد) referenced by BOQ nodes."
+    },
+    "paymentMethods": {
+      "module": "02-القوائم المرجعية",
+      "entity": "—",
+      "typeFile": "—",
+      "owner": "src/services/reference-list-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "قائمة طرق الدفع المرجعية؛ يُشار إليها بالكود لا بالمعرّف.",
+      "typesNeeded": true
+    },
+    "paymentConditionTypes": {
+      "module": "02-القوائم المرجعية",
+      "entity": "—",
+      "typeFile": "—",
+      "owner": "src/services/reference-list-service.ts",
+      "parent": "company",
+      "status": "declared-unused",
+      "note": "معرّفة في paths فقط — لا يوجد لها استخدام بعد (انظر gaps).",
+      "typesNeeded": true
+    },
+    "milestoneTimingTypes": {
+      "module": "02-القوائم المرجعية",
+      "entity": "—",
+      "typeFile": "—",
+      "owner": "src/services/reference-list-service.ts",
+      "parent": "company",
+      "status": "declared-unused",
+      "note": "معرّفة في paths فقط — التوقيت فعلياً enum MilestoneTiming في types/templates.ts.",
+      "typesNeeded": true
+    },
+    "itemCategories": {
+      "module": "02-القوائم المرجعية",
+      "entity": "—",
+      "typeFile": "—",
+      "owner": "src/services/reference-list-service.ts",
+      "parent": "company",
+      "status": "declared-unused",
+      "note": "معرّفة في paths فقط — تُستخدم كمرجع allowedItemCategoryIds في بنود BOQ.",
+      "typesNeeded": true
+    },
+    "costTypeCategories": {
+      "module": "02-القوائم المرجعية",
+      "entity": "—",
+      "typeFile": "—",
+      "owner": "src/services/reference-list-service.ts",
+      "parent": "company",
+      "status": "declared-unused",
+      "note": "معرّفة في paths فقط — لا استخدام لها حالياً.",
+      "typesNeeded": true
+    },
+    "activityTypes": {
+      "module": "03-كتالوج الخدمات",
+      "entity": "ActivityType",
+      "typeFile": "src/types/reference.ts",
+      "owner": "src/services/technical-path-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "جذر الشجرة الوظيفية: نوع النشاط (عزل، مقاولات، تصميم...). كل شيء فني يتفرع منه."
+    },
+    "services": {
+      "module": "03-كتالوج الخدمات",
+      "entity": "Service",
+      "typeFile": "src/types/reference.ts",
+      "owner": "src/services/technical-path-service.ts",
+      "parent": "activityTypes",
+      "status": "active",
+      "note": "خدمة داخل نوع النشاط — مجموعة فرعية Firestore تحت activityTypes/{actId}/services."
+    },
+    "subServices": {
+      "module": "03-كتالوج الخدمات",
+      "entity": "SubService",
+      "typeFile": "src/types/reference.ts",
+      "owner": "src/services/technical-path-service.ts",
+      "parent": "services",
+      "status": "active",
+      "note": "خدمة فرعية: المستوى الذي تُربط به القوالب والمراحل."
+    },
+    "technicalStages": {
+      "module": "03-كتالوج الخدمات",
+      "entity": "TechnicalStage",
+      "typeFile": "src/types/reference.ts",
+      "owner": "src/services/technical-path-service.ts",
+      "parent": "subServices",
+      "status": "active",
+      "note": "قالب المرحلة الفنية: isNumeric/numericTarget، isTimed/timeTargetDays، nextStageIds (DAG)، billableTrigger + milestoneKey للفوترة."
+    },
+    "leads": {
+      "module": "04-CRM",
+      "entity": "—",
+      "typeFile": "—",
+      "owner": "src/services/recruitment-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "فرص المبيعات قبل التحويل إلى عميل (لا يوجد كيان TypeScript بعد).",
+      "typesNeeded": true
+    },
+    "clients": {
+      "module": "04-CRM",
+      "entity": "Client",
+      "typeFile": "src/types/client.ts",
+      "owner": "src/services/client-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "ملف العميل الموحد برقم سيادي C-0001/YYYY عبر counters؛ يحمل المهندس المسؤول + الموقع + القسم."
+    },
+    "clientHistory": {
+      "module": "04-CRM",
+      "entity": "ClientHistory",
+      "typeFile": "src/types/client.ts",
+      "owner": "src/services/client-service.ts",
+      "parent": "clients",
+      "status": "active",
+      "note": "سجل تدقيق لكل عميل (تغيير حالة/ملاحظة/إسناد مهندس/إنشاء معاملة) كمجموعة فرعية تحت العميل."
+    },
+    "transactions": {
+      "module": "05-المعاملات والمشاريع",
+      "entity": "Transaction",
+      "typeFile": "src/types/transaction.ts",
+      "owner": "src/services/transaction-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "النواة التشغيلية: معاملة العميل (عملياً هي 'المشروع'). كل وثيقة ومقايسة ومرحلة وتكلفة ترجع إليها."
+    },
+    "transactionStages": {
+      "module": "05-المعاملات والمشاريع",
+      "entity": "StageInstance",
+      "typeFile": "src/types/transaction.ts",
+      "owner": "src/services/transaction-service.ts",
+      "parent": "transactions",
+      "status": "active",
+      "note": "نسخة مراحل المعاملة من القالب الفني؛ تتقدم بالمواعيد والزيارات وتُغلق المراحل لإطلاق الفوترة."
+    },
+    "transactionTimeline": {
+      "module": "05-المعاملات والمشاريع",
+      "entity": "TransactionTimelineEvent",
+      "typeFile": "src/types/transaction.ts",
+      "owner": "src/services/boq-execution-service.ts",
+      "parent": "transactions",
+      "status": "active",
+      "note": "شريط الأحداث الموحد لكل معاملة — تكتبه 6 خدمات مختلفة (أتمتة مالية، إنجاز، VO، مراجعات تصميم)."
+    },
+    "transactionComments": {
+      "module": "05-المعاملات والمشاريع",
+      "entity": "TransactionComment",
+      "typeFile": "src/types/transaction.ts",
+      "owner": "src/services/comment-service.ts",
+      "parent": "transactions",
+      "status": "active",
+      "note": "نقاش المعاملة (تعليقات وردود parentCommentId، تثبيت، أرشفة) مرتبط أحياناً بموعد أو مرحلة."
+    },
+    "executions": {
+      "module": "05-المعاملات والمشاريع",
+      "entity": "BOQItemExecutionEntry",
+      "typeFile": "src/types/documents.ts",
+      "owner": "src/services/boq-execution-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "سطر تنفيذ مسطّح (وليس subgroup): الكميات + العمالة + المعدات + التكلفة المجمّدة، ويُرجّح به بند المقايسة."
+    },
+    "quotations": {
+      "module": "06-الوثائق التجارية",
+      "entity": "Quotation",
+      "typeFile": "src/types/documents.ts",
+      "owner": "src/services/document-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "عرض سعر مُنشأ من قالب؛ يتحول إلى عقد بنفس البنية (items → milestones)."
+    },
+    "contracts": {
+      "module": "06-الوثائق التجارية",
+      "entity": "Contract",
+      "typeFile": "src/types/documents.ts",
+      "owner": "src/services/document-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "العقد الرسمي: milestones مرتبطة بالمراحل الفنية + retentionRate + دفعة مقدمة؛ بوّابة الفوترة والذمم."
+    },
+    "subconContracts": {
+      "module": "06-الوثائق التجارية",
+      "entity": "—",
+      "typeFile": "—",
+      "owner": "src/services/document-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "عقد مقاول باطن: نفس منطق الـ milestones لكن بحسابات مستحقات ومحتجزات خاصة بالباطن.",
+      "typesNeeded": true
+    },
+    "quotationTemplates": {
+      "module": "07-مكتبة القوالب",
+      "entity": "QuotationTemplate",
+      "typeFile": "src/types/templates.ts",
+      "owner": "src/services/template-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "قالب عرض سعر مربوط بنشاط/خدمة/خدمة فرعية + boqTemplateId اختياري."
+    },
+    "contractTemplates": {
+      "module": "07-مكتبة القوالب",
+      "entity": "ContractTemplate",
+      "typeFile": "src/types/templates.ts",
+      "owner": "src/services/template-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "قالب عقد: بنود قانونية + defaultMilestones + retentionRate + boqTemplateId."
+    },
+    "subconContractTemplates": {
+      "module": "07-مكتبة القوالب",
+      "entity": "SubConContractTemplate",
+      "typeFile": "src/types/templates.ts",
+      "owner": "src/services/template-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "قالب عقد باطن محدد بالتخصص (trade)."
+    },
+    "boqTemplates": {
+      "module": "07-مكتبة القوالب",
+      "entity": "BOQTemplate",
+      "typeFile": "src/types/templates.ts",
+      "owner": "src/services/template-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "قالب جدول كميات قابل لإعادة الاستخدام؛ يُستنسخ إلى boqs/{id}/items عند التفعيل."
+    },
+    "boqTemplateItems": {
+      "module": "07-مكتبة القوالب",
+      "entity": "BOQTemplateItem",
+      "typeFile": "src/types/templates.ts",
+      "owner": "src/services/template-service.ts",
+      "parent": "boqTemplates",
+      "status": "active",
+      "note": "بنود القالب مع shجرة ancestorIds وروابط boqReferenceNodeId/technicalStageId/unitTypeId."
+    },
+    "boqReferenceNodes": {
+      "module": "07-مكتبة القوالب",
+      "entity": "BOQReferenceNode",
+      "typeFile": "src/types/reference.ts",
+      "owner": "src/services/boq-reference-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "القاموس الهندسي الموحد (شجرة بنود العمل): المصدر الوحيد لأكواد وأوصاف وأسرار البنود في كل النظام."
+    },
+    "boqs": {
+      "module": "08-المقايسات الحية",
+      "entity": "BOQ",
+      "typeFile": "src/types/documents.ts",
+      "owner": "src/services/document-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "مقايسة المعاملة الفعلية (boqNumber آلي BOQ-YYYY-0001) — حلقة الوصل بين العقد والتنفيذ والفوترة."
+    },
+    "boqItems": {
+      "module": "08-المقايسات الحية",
+      "entity": "BOQItem",
+      "typeFile": "src/types/documents.ts",
+      "owner": "src/services/document-service.ts",
+      "parent": "boqs",
+      "status": "active",
+      "note": "بند مقايسة: 6 عدادات كمية (contract/planned/approvedVariation/executed/verified/billed) + رابط مرحلة + رابط باطن."
+    },
+    "boqVariations": {
+      "module": "08-المقايسات الحية",
+      "entity": "—",
+      "typeFile": "—",
+      "owner": "src/services/variation-service.ts",
+      "parent": "boqs",
+      "status": "active",
+      "note": "الأمر التغييروي (VO) على المقايسة: draft → approved/rejected، لا يعدّل الأصل بل يضيف.",
+      "typesNeeded": true
+    },
+    "boqVariationItems": {
+      "module": "08-المقايسات الحية",
+      "entity": "—",
+      "typeFile": "—",
+      "owner": "src/services/variation-service.ts",
+      "parent": "boqVariations",
+      "status": "active",
+      "note": "بنود الأمر التغييروي؛ عند الاعتماد تُضاف إلى approvedVariationQty للبند الأصلي.",
+      "typesNeeded": true
+    },
+    "appointments": {
+      "module": "09-الميدان والمواعيد",
+      "entity": "Appointment",
+      "typeFile": "src/types/appointment.ts",
+      "owner": "src/services/appointment-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "موعد (عميل/موقع/قاعة/حظر) مربوط بعميل + معاملة + مرحلة + قاعة + مهندس(ين) — يحرّك إتمام المراحل."
+    },
+    "fieldVisits": {
+      "module": "09-الميدان والمواعيد",
+      "entity": "FieldVisit",
+      "typeFile": "src/types/field-visit.ts",
+      "owner": "src/services/field-visit-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "زيارة ميدانية بشبكة رباعية (موظفون/عمالة/معدات/مواد) + صور + GPS؛ اعتمادها يولّد قيد WIP."
+    },
+    "workGroups": {
+      "module": "09-الميدان والمواعيد",
+      "entity": "WorkGroup",
+      "typeFile": "src/types/hr.ts",
+      "owner": "src/services/hr-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "طاقم عمل ميداني: مشرف + أعضاء (employees) + قسم — وحدة الإسناد في الزيارات."
+    },
+    "employees": {
+      "module": "10-Mوارد البشرية",
+      "entity": "Employee",
+      "typeFile": "src/types/hr.ts",
+      "owner": "src/services/hr-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "السجل الموحد للقوى العاملة (داخلي/خارجي): قسم + وظيفة + دور + راتب + رصيد إجازات."
+    },
+    "leaveRequests": {
+      "module": "10-Mوارد البشرية",
+      "entity": "LeaveRequest",
+      "typeFile": "src/types/hr.ts",
+      "owner": "src/services/leave-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "طلب إجازة بمراحل (pending→approved→commenced→returned) + سلّم sickness tiers القانوني."
+    },
+    "permissionRequests": {
+      "module": "10-Mوارد البشرية",
+      "entity": "PermissionRequest",
+      "typeFile": "src/types/hr.ts",
+      "owner": "src/services/permission-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "طلب إذن تأخير/انصراف مبكر — يُحتسب في تسوية الرواتب."
+    },
+    "attendance": {
+      "module": "10-Mوارد البشرية",
+      "entity": "AttendanceRecord",
+      "typeFile": "src/types/hr.ts",
+      "owner": "src/services/attendance-import-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "سجل بصمة يومي (checkIn/out ×2) محسوب مقابل إعدادات ساعات العمل والراحة والإجازات."
+    },
+    "payroll": {
+      "module": "10-Mوارد البشرية",
+      "entity": "PayrollBatch",
+      "typeFile": "src/types/payroll.ts",
+      "owner": "src/services/payroll-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "مسير راتب شهري؛ سجلات الموظفين في مجموعة فرعية records تحت نفس المستند."
+    },
+    "applications": {
+      "module": "10-Mوارد البشرية",
+      "entity": "—",
+      "typeFile": "—",
+      "owner": "src/services/recruitment-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "طلبات التوظيف (recruitment pipeline) — لا يوجد لها TypeScript type بعد.",
+      "typesNeeded": true
+    },
+    "equipment": {
+      "module": "11-الأصول",
+      "entity": "Equipment",
+      "typeFile": "src/types/equipment.ts",
+      "owner": "src/services/equipment-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "سجل الآليات: ملكية/تمويل/تأمين/فحص + أساس الاستهلاك hourlyDepreciationRate المُغذّي لتكلفة الاستخدام."
+    },
+    "assetAssignments": {
+      "module": "11-الأصول",
+      "entity": "—",
+      "typeFile": "—",
+      "owner": "src/services/inventory-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "العهدة الفعلية (صرف/استرجاع) للموظف — تعدّل رصيد الصنف في المخزون.",
+      "typesNeeded": true
+    },
+    "warehouses": {
+      "module": "11-الأصول",
+      "entity": "—",
+      "typeFile": "—",
+      "owner": "src/services/inventory-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "المستودعات — حاويات منطقية للأصناف.",
+      "typesNeeded": true
+    },
+    "inventoryItems": {
+      "module": "11-الأصول",
+      "entity": "—",
+      "typeFile": "—",
+      "owner": "src/services/inventory-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "أصناف المخزون برصيد quantity يُزاد/يُنقص آلياً من PO والعهدة.",
+      "typesNeeded": true
+    },
+    "inventoryTransactions": {
+      "module": "11-الأصول",
+      "entity": "—",
+      "typeFile": "—",
+      "owner": null,
+      "parent": "company",
+      "status": "declared-unused",
+      "note": "مجموعة حركة مخزون معرّفة في paths ولا تُكتب منها أي موضع — الحركات حالياً ضمن assetAssignments فقط (انظر gaps).",
+      "typesNeeded": true
+    },
+    "equipmentAssignments": {
+      "module": "11-الأصول",
+      "entity": "—",
+      "typeFile": "—",
+      "owner": null,
+      "parent": "company",
+      "status": "declared-unused",
+      "note": "مجموعة معرّفة في paths وغير مستخدمة؛ التوزيع الفعلي يسجَّل في assetAssignments (انظر gaps).",
+      "typesNeeded": true
+    },
+    "suppliers": {
+      "module": "12-المشتريات",
+      "entity": "—",
+      "typeFile": "—",
+      "owner": "src/services/procurement-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "سجل الموردين المعتمدين (يظهر أيضاً كموردي معدات في equipment.supplierId).",
+      "typesNeeded": true
+    },
+    "subcontractors": {
+      "module": "12-المشتريات",
+      "entity": "Subcontractor",
+      "typeFile": "src/types/procurement.ts",
+      "owner": "src/services/procurement-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "مقاولو الباطن بالتخصص والتقييم — يظهرون في البنود والمراحل والتنفيذ والـ SIPs."
+    },
+    "purchaseOrders": {
+      "module": "12-المشتريات",
+      "entity": "PurchaseOrder",
+      "typeFile": "src/types/procurement.ts",
+      "owner": "src/services/procurement-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "أمر شراء PO-YYYY-0001 بحالة تدفق (draft→approved→ordered→received) — أساس الاستلام في المخزن."
+    },
+    "poItems": {
+      "module": "12-المشتريات",
+      "entity": "POItem",
+      "typeFile": "src/types/procurement.ts",
+      "owner": "src/services/procurement-service.ts",
+      "parent": "purchaseOrders",
+      "status": "active",
+      "note": "بنود أمر الشراء: تربط الصنف ببند مقايسة ومرحلة فنية (جوهر مقارنة المشتري بالمنفذ)."
+    },
+    "ipcs": {
+      "module": "13-الفوترة والمحاسبة",
+      "entity": "InterimPaymentCertificate",
+      "typeFile": "src/types/documents.ts",
+      "owner": "src/services/billing-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "مستخلص المالك: gross − retention(5%) = netPayable؛ مولّد آلياً من إتمام المراحل."
+    },
+    "subIpcs": {
+      "module": "13-الفوترة والمحاسبة",
+      "entity": "SubIPC",
+      "typeFile": "src/types/procurement.ts",
+      "owner": "src/services/billing-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "مستخلص الباطن بنفس المنطق مع نسبة محتجزات عقد الباطن."
+    },
+    "accounts": {
+      "module": "13-الفوترة والمحاسبة",
+      "entity": "Account",
+      "typeFile": "src/types/accounting.ts",
+      "owner": "src/services/accounting-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "دليل الحسابات الشجري لكل منشأة؛ حسابات العملاء/WIP تُنشأ آلياً تحت 1202 و1205."
+    },
+    "journalEntries": {
+      "module": "13-الفوترة والمحاسبة",
+      "entity": "JournalEntry",
+      "typeFile": "src/types/accounting.ts",
+      "owner": "src/services/accounting-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "قيد مزدوج متوازن وجوباً؛ مصدر sourceType+sourceId يوثّق أي عملية تشغيلية ولدته."
+    },
+    "vouchers": {
+      "module": "13-الفوترة والمحاسبة",
+      "entity": "Voucher",
+      "typeFile": "src/types/accounting.ts",
+      "owner": "src/services/accounting-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "سند قبض/صرف مرتبط تلقائياً بقيد محاسبي في نفس الـ batch."
+    },
+    "costCenters": {
+      "module": "13-الفوترة والمحاسبة",
+      "entity": "CostCenter",
+      "typeFile": "src/types/cost-profit-centers.ts",
+      "owner": "src/services/accounting-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "بُعد تحليلي للتكلفة؛ للمعاملات مراكز حتمية cc_{transactionId}."
+    },
+    "profitCenters": {
+      "module": "13-الفوترة والمحاسبة",
+      "entity": "ProfitCenter",
+      "typeFile": "src/types/cost-profit-centers.ts",
+      "owner": "src/services/accounting-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "بُعد تحليلي للربحية؛ pc_{transactionId} لكل معاملة/مشروع."
+    },
+    "costRateCards": {
+      "module": "13-الفوترة والمحاسبة",
+      "entity": "CostRateCard",
+      "typeFile": "src/types/cost-rate.ts",
+      "owner": "src/services/cost-rate-service.ts",
+      "parent": "company",
+      "status": "active",
+      "note": "جدول تعرفة العمالة الساري؛ يغذّي تكلفة الساعة في التنفيذ والزيارات."
+    },
+    "users": {
+      "module": "01-الهوية والتأجير",
+      "entity": "—",
+      "typeFile": "src/services/user-service.ts",
+      "owner": "src/services/user-service.ts",
+      "parent": "company",
+      "status": "raw-path",
+      "note": "مرآة العضوية المحلية داخل المنشأة؛ تُكتب مع global_users في batch واحد — غير معلنة في multi-tenant.ts.",
+      "rawPath": "companies/{companyId}/users/{uid}",
+      "typesNeeded": true,
+      "rawMatch": "'users'"
+    },
+    "counters": {
+      "module": "01-الهوية والتأجير",
+      "entity": "—",
+      "typeFile": "src/lib/counters.ts",
+      "owner": "src/lib/counters.ts",
+      "parent": "company",
+      "status": "raw-path",
+      "note": "مولّد الأرقام التسلسلية الآمن (JV-/RV-/PV-/PO-/BOQ-/IPC-/C-...). غير معلن في multi-tenant.ts.",
+      "rawPath": "companies/{companyId}/counters/{counterKey}",
+      "typesNeeded": true,
+      "rawMatch": "'counters'"
+    },
+    "settings": {
+      "module": "02-القوائم المرجعية",
+      "entity": "WorkHoursSettings",
+      "typeFile": "src/types/work-hours.ts",
+      "owner": "src/services/work-hours-service.ts",
+      "parent": "company",
+      "status": "raw-path",
+      "note": "مستند إعدادات ساعات العمل/رمضان/العطل. اسم المجموعة (settings) عام لكنه يضم وثيقة واحدة حالياً.",
+      "rawPath": "companies/{companyId}/settings/work_hours",
+      "rawMatch": "'settings'"
+    },
+    "customReferenceLists": {
+      "module": "02-القوائم المرجعية",
+      "entity": "—",
+      "typeFile": "src/services/reference-list-service.ts",
+      "owner": "src/services/reference-list-service.ts",
+      "parent": "company",
+      "status": "raw-path",
+      "note": "تعريفات القوائم المرجعية المخصصة (نظام مفتوح للتوسّع).",
+      "rawPath": "companies/{companyId}/customReferenceLists/{code}",
+      "typesNeeded": true,
+      "rawMatch": "customReferenceLists"
+    },
+    "customReferenceItems": {
+      "module": "02-القوائم المرجعية",
+      "entity": "BaseReferenceList",
+      "typeFile": "src/types/reference.ts",
+      "owner": "src/services/reference-list-service.ts",
+      "parent": "customReferenceLists",
+      "status": "raw-path",
+      "note": "عناصر القوائم المخصصة؛ تُحلّ نفس نوع القوائم القياسية في ReferenceListService.",
+      "rawPath": "companies/{companyId}/customReferenceLists/{code}/items/{itemId}",
+      "rawMatch": "/items`"
+    },
+    "employeeAuditLogs": {
+      "module": "10-Mوارد البشرية",
+      "entity": "EmployeeAuditLog",
+      "typeFile": "src/types/hr.ts",
+      "owner": "src/services/hr-service.ts",
+      "parent": "employees",
+      "status": "raw-path",
+      "note": "تتبع حقل-بحقل لتغييرات ملف الموظف.",
+      "rawPath": "companies/{companyId}/employees/{employeeId}/auditLogs",
+      "rawMatch": "/auditLogs"
+    },
+    "payrollRecords": {
+      "module": "10-Mوارد البشرية",
+      "entity": "PayrollRecord",
+      "typeFile": "src/types/payroll.ts",
+      "owner": "src/services/payroll-service.ts",
+      "parent": "payroll",
+      "status": "raw-path",
+      "note": "سجلات راتب الموظف داخل المسير — يولّدها payroll-service بنسخة مجمّدة من بيانات الموظف.",
+      "rawPath": "companies/{companyId}/payroll/{batchId}/records/{recordId}",
+      "rawMatch": "/records"
+    },
+    "company_requests": {
+      "module": "01-الهوية والتأجير",
+      "entity": "—",
+      "typeFile": "—",
+      "owner": "src/app/developer/page.tsx",
+      "parent": "global",
+      "status": "global-raw",
+      "note": "طابور طلبات التأسيس خارج نطاق المستأجر؛ يفعّله المطور فينشئ companies + roles + departments + jobs + employees + global_users.",
+      "rawPath": "company_requests/{requestId}",
+      "typesNeeded": true,
+      "rawRoot": "company_requests",
+      "rawMatch": "'company_requests'"
+    }
+  },
+  "edges": [
+    {
+      "from": "clients",
+      "field": "status",
+      "to": "contracts",
+      "kind": "trigger",
+      "cardinality": "1:n",
+      "note": "اعتماد/دفع عقد يقلب حالة العميل إلى contracted تلقائياً (DocumentService.updateContract)."
+    },
+    {
+      "from": "clients",
+      "field": "clientId",
+      "to": "accounts",
+      "kind": "auto",
+      "cardinality": "1:1",
+      "note": "كل عقد معتمد ينشئ حساب ذمم فرعي للعميل تحت Control Account 1202 عبر referenceId=clientId."
+    },
+    {
+      "from": "transactions",
+      "field": "transactionId",
+      "to": "costCenters",
+      "kind": "auto",
+      "cardinality": "1:1",
+      "note": "مركز تكلفة حتمي المعرف: cc_{transactionId}."
+    },
+    {
+      "from": "transactions",
+      "field": "transactionId",
+      "to": "profitCenters",
+      "kind": "auto",
+      "cardinality": "1:1",
+      "note": "مركز ربحية حتمي المعرف: pc_{transactionId}."
+    },
+    {
+      "from": "transactions",
+      "field": "transactionId",
+      "to": "accounts",
+      "kind": "auto",
+      "cardinality": "1:1",
+      "note": "حساب WIP فرعي تحت 1205 بمعرّف referenceId=transactionId."
+    },
+    {
+      "from": "technicalStages",
+      "field": "nextStageIds",
+      "to": "technicalStages",
+      "kind": "ref",
+      "cardinality": "n:n",
+      "note": "قالب المسار: رسم تدفق المراحل داخل القالب (DAG)."
+    },
+    {
+      "from": "transactionStages",
+      "field": "nextStageIds",
+      "to": "transactionStages",
+      "kind": "ref",
+      "cardinality": "n:n",
+      "note": "نسخة المطبّقة من الـ DAG داخل المعاملة، قابلة للتعديل بالأوامر التغييرية."
+    },
+    {
+      "from": "transactionStages",
+      "field": "id",
+      "to": "contracts",
+      "kind": "trigger",
+      "cardinality": "1:n",
+      "note": "إغلاق المرحلة يقلب حالة milestone إلى due عبر milestoneKey/linkedStageInstanceId ثم يطلق IPC."
+    },
+    {
+      "from": "contracts",
+      "field": "milestones[].technicalStageId",
+      "to": "technicalStages",
+      "kind": "ref",
+      "cardinality": "n:1",
+      "note": "ربط الدفعة المالية بمرحلة فنية: الفوترة مشروطة بالإنجاز."
+    },
+    {
+      "from": "boqItems",
+      "field": "executedQuantity",
+      "to": "executions",
+      "kind": "counter",
+      "cardinality": "1:n",
+      "note": "كل execution تزيد executedQuantity في البند بـ increment (تجميع تصاعدي)."
+    },
+    {
+      "from": "boqVariationItems",
+      "field": "sourceBoqItemId",
+      "to": "boqItems",
+      "kind": "counter",
+      "cardinality": "n:1",
+      "note": "اعتماد الـ VO يضيف approvedVariationQty إلى البند الأصلي (لا يعدّل الكمية الأصلية)."
+    },
+    {
+      "from": "executions",
+      "field": "laborDetails[].hourlyCostRef",
+      "to": "costRateCards",
+      "kind": "denorm",
+      "cardinality": "n:1",
+      "note": "تجميد سعر الساعة لحظة التنفيذ (Cost Snapping) بدل القراءة اللاحقة من الجدول."
+    },
+    {
+      "from": "executions",
+      "field": "equipmentUsed[].hourlyRateRef",
+      "to": "equipment",
+      "kind": "denorm",
+      "cardinality": "n:1",
+      "note": "تجميد إيجار/إهلاك المعدة لحظة الاستخدام."
+    },
+    {
+      "from": "fieldVisits",
+      "field": "items[].boqItemId",
+      "to": "boqItems",
+      "kind": "ref",
+      "cardinality": "n:1",
+      "note": "الزيارة الميدانية تسجّل إنجاز على بنود المقايسة (مع صور GPS)."
+    },
+    {
+      "from": "fieldVisits",
+      "field": "id",
+      "to": "journalEntries",
+      "kind": "trigger",
+      "cardinality": "1:1",
+      "note": "اعتماد الزيارة مالياً يولّد قيد WIP: مدين حساب 1205 الفرعي، دائن 2204."
+    },
+    {
+      "from": "ipcs",
+      "field": "milestonesTriggered",
+      "to": "contracts",
+      "kind": "denorm",
+      "cardinality": "n:1",
+      "note": "منع الفوترة المكررة: الـ IPC يحتفظ بأسماء الـ milestones المستهلكة."
+    },
+    {
+      "from": "vouchers",
+      "field": "journalEntryId",
+      "to": "journalEntries",
+      "kind": "ref",
+      "cardinality": "1:1",
+      "note": "السند والقيد يُنشآن في batch واحد ويشاركان نفس رقم JV الآلي."
+    },
+    {
+      "from": "vouchers",
+      "field": "transactionId/contractId",
+      "to": "transactions",
+      "kind": "ref",
+      "cardinality": "n:1",
+      "note": "سند القبض يُنسب للمعاملة والعقد لتغذية تقرير التدفق النقدي لكل مشروع."
+    },
+    {
+      "from": "payroll",
+      "field": "accountingJournalId",
+      "to": "journalEntries",
+      "kind": "trigger",
+      "cardinality": "1:1",
+      "note": "اعتماد مسير الرواتب يولّد قيد 2204/5201."
+    },
+    {
+      "from": "attendance",
+      "field": "employeeId",
+      "to": "payroll",
+      "kind": "counter",
+      "cardinality": "n:1",
+      "note": "الغياب والتأخير يتحولان إلى خصومات في PayrollRecord."
+    },
+    {
+      "from": "leaveRequests",
+      "field": "employeeId",
+      "to": "employees",
+      "kind": "counter",
+      "cardinality": "n:1",
+      "note": "الإجازة المعتمدة تخصم من annualLeaveBalance (ويعيد SeedService.syncAllEmployeeBalances احتسابها من الصفر)."
+    },
+    {
+      "from": "purchaseOrders",
+      "field": "items[].boqItemId",
+      "to": "boqItems",
+      "kind": "ref",
+      "cardinality": "n:1",
+      "note": "ربط تكلفة المشتريات ببند المقايسة = أساس تحليل انحراف المواد."
+    },
+    {
+      "from": "assetAssignments",
+      "field": "itemId",
+      "to": "inventoryItems",
+      "kind": "counter",
+      "cardinality": "n:1",
+      "note": "صرف العهدة يخصم quantity من الصنف؛ الاسترجاع يعيده."
+    },
+    {
+      "from": "equipment",
+      "field": "id",
+      "to": "assetAssignments",
+      "kind": "ref",
+      "cardinality": "1:n",
+      "note": "المسار الفعلي لعهد المعدات يمر بـ assetAssignments بينما equipmentAssignments معرّفة وغير مستخدمة."
+    },
+    {
+      "from": "roles",
+      "field": "matrix[].resourceId",
+      "to": "permissions-catalog",
+      "kind": "code",
+      "cardinality": "n:1",
+      "note": "الصلاحيات مرتبطة بمعرّف مورد نصي من SYSTEM_RESOURCES لا بمجموعة بيانات."
+    },
+    {
+      "from": "jobs",
+      "field": "roleId",
+      "to": "roles",
+      "kind": "ref",
+      "cardinality": "n:1",
+      "note": "المسمى الوظيفي يحمل الدور الافتراضي؛ وEmployee.roleId يكرر نفس الربط."
+    },
+    {
+      "from": "global_users",
+      "field": "uid",
+      "to": "companies/{c}/users",
+      "kind": "denorm",
+      "cardinality": "1:1",
+      "note": "نسخة محلية للصلاحيات داخل كل منشأة لتفادي استعلامات عبر الجذر."
+    }
+  ],
+  "pipelines": [
+    {
+      "id": "provisioning",
+      "nameAr": "تأسيس المنشأة (Provisioning)",
+      "chain": [
+        "company_requests/{id} (public create)",
+        "developer/page.tsx → companies/{newId}",
+        "companies/{c}/roles + departments + departments/{d}/jobs",
+        "companies/{c}/employees/{ownerId} + global_users/{uid}",
+        "company_requests/{id}.status = activated (+ ownerUid, companyId)",
+        "SeedService.seedConstructionCOA → accounts + costCenters + profitCenters",
+        "SeedService.runSeed → departments/jobs"
+      ],
+      "note": "لا يوجد أي Cloud Function: التأسيس كامل من عميل المتصفح بصلاحيات المطور (isSovereignDev)."
+    },
+    {
+      "id": "sales-to-delivery",
+      "nameAr": "من فرصة إلى معاملة",
+      "chain": [
+        "leads/{id} (CRM)",
+        "clients/{id} (fileNumber من counters)",
+        "clients/{id}/history (تسجيل الحدث)",
+        "transactions/{id} (clientId + activityType/service/subService + مهندس مسؤول)",
+        "transactions/{id}/stageInstances (نسخ من technicalStages)"
+      ]
+    },
+    {
+      "id": "quote-to-contract",
+      "nameAr": "عرض السعر ← عقد ← مقايسة",
+      "chain": [
+        "quotationTemplates (boqReferenceNodeId + technicalStageId في البنود)",
+        "quotations (items منسوخة، pricingMode)",
+        "DocumentService.convertQuotationToContract → contracts (items → milestones) + quotations.status=approved",
+        "contractTemplates/boqTemplates → DocumentService.instantiateBoqFromTemplate → boqs + boqs/{b}/items",
+        "contracts.status ∈ [approved|active|signed|paid] → clients.status=contracted + حساب ذمم آلي 1202/referenceId=clientId",
+        "paid → BillingService.triggerMilestoneBilling(SIGNING,at)"
+      ]
+    },
+    {
+      "id": "field-execution",
+      "nameAr": "التنفيذ الميداني وتجميع الكميات",
+      "chain": [
+        "appointments (clientId/transactionId/stageId) أو fieldVisits (items[boqItemId])",
+        "BOQExecutionService.recordBOQItemExecution → executions/{id}",
+        "boqs/{b}/items/{i}.executedQuantity = increment(qty)",
+        "transactions/{t}/stageInstances/{s}.currentCount = increment(qty)",
+        "transactions/{t}/timeline (type=numeric_update)"
+      ],
+      "note": "التكلفة تُجمَّد لحظة التنفيذ (hourlyCostRef → actualCost) من costRateCards/equipment — لا تعاد قراءتها لاحقاً."
+    },
+    {
+      "id": "auto-billing",
+      "nameAr": "الأتمتة المالية: مرحلة → مطالبة",
+      "chain": [
+        "إتمام المرحلة (من المعاملة أو من موعد حسب nextStageIds/isRequired)",
+        "contracts.milestones[].status = due (مطابقة بـ milestoneKey أو linkedStageInstanceId)",
+        "BillingService.triggerMilestoneBilling → ipcs/{id} (gross − retention 5% = netPayable)",
+        "counters: ipc_owner_{transactionId} → IPC-0001",
+        "transactions/{t}/timeline (type=billing_triggered)",
+        "قيد القبض يدوياً لاحقاً: vouchers + journalEntries في batch واحد"
+      ]
+    },
+    {
+      "id": "cost-recovery",
+      "nameAr": "ترحيل التكاليف (WIP)",
+      "chain": [
+        "fieldVisits معتمدة → FieldVisitService.approveFieldVisitForBilling",
+        "accounts: createAutomaticSubAccount('1205', transactionId) = حساب WIP للمشروع",
+        "accounts: ensureControlAccount('2204' مستحقات الرواتب)",
+        "costCenters cc_{transactionId} + profitCenters pc_{transactionId}",
+        "journalEntries (قيد متوازن مدين WIP/دائن مستحقات) via AccountingService.createJournalEntry"
+      ]
+    },
+    {
+      "id": "procurement-loop",
+      "nameAr": "دورة المشتريات والمخزون",
+      "chain": [
+        "suppliers + inventoryItems + warehouses",
+        "purchaseOrders (PO-YYYY-0001 من counters) + purchaseOrders/{po}/items (boqItemId + technicalStageId)",
+        "receivedQuantity في البند مقابل quantity",
+        "inventoryItems.quantity يُحدَّث آلياً عند الاستلام/الصرف",
+        "assetAssignments (عهدة الموظف) + boqs/{b}/items (تحليل الانحراف)"
+      ]
+    },
+    {
+      "id": "hr-to-finance",
+      "nameAr": "المسار البشري ← المالي",
+      "chain": [
+        "attendance (بصمة/Excel import) + leaveRequests + permissionRequests",
+        "PayrollService.generatePayroll (خصومات الغياب/التأخير حسب نظام ساعات العمل)",
+        "payroll/{batchId} + payroll/{batchId}/records",
+        "الاعتماد → journalEntries (2204/5201) + payroll.accountingJournalId",
+        "gratuity/end-of-service: employees + leaveBalances → تسوية (حسابية فقط، لا مستند دائم)"
+      ]
+    },
+    {
+      "id": "subcontractor-loop",
+      "nameAr": "دورة مقاول الباطن",
+      "chain": [
+        "subcontractors + subconContractTemplates → subconContracts (retentionRate)",
+        "boqs/{b}/items[].subcontractorId + transactions/{t}/stageInstances[].subcontractorId/Price",
+        "executions[].subcontractorId (من بند المقايسة)",
+        "BillingService.generateSubcontractorIPC → subIpcs (counters ipc_sub_{subcontractorId})",
+        "سند صرف (vouchers type=payment) → قيد مستحقات الباطن"
+      ]
+    },
+    {
+      "id": "variations",
+      "nameAr": "الأوامر التغييرية (VO)",
+      "chain": [
+        "boqs/{b}/variations/{vo} (draft) + variations/{vo}/items",
+        "حقن مرحلة جديدة: transactions/{t}/stageInstances (originType=temporary_vo) + إعادة ترتيب order",
+        "اعتماد VO → boqItems.approvedVariationQty += qty + timeline + تحديث كميات البنود المتأثرة",
+        "رفض VO → variations.status=cancelled (لا يمس الأصل)"
+      ]
+    }
+  ],
+  "gaps": [
+    {
+      "id": "G1",
+      "severity": "high",
+      "title": "مجموعة مسطّحة وهمية: purchase_orders_items",
+      "detail": "src/services/boq-inventory-link-service.ts يستعلم collection(db,'purchase_orders_items') الجذرية، بينما البيانات الفعلية في companies/{c}/purchaseOrders/{poId}/items. الاستعلام يرجع فارغاً دائماً، كما أنه يكسر عزل المستأجر (لا يمكن قراءته بقواعد الأمان الحالية).",
+      "fix": "استبدال الاستعلام بـ getDocs على كل أوامر شراء المعاملة ثم تجميع البنود، أو إضافة مجموعة مسطّحة مفهرسة فعلاً."
+    },
+    {
+      "id": "G2",
+      "severity": "medium",
+      "title": "لا توجد مجموعة projects: المشروع = المعاملة",
+      "detail": "ProjectService يقرأ transactions ويصفّي نصياً بـ activityTypeName.includes('مقاولات'). كل الحقول المسماة projectId (في accounts/journalEntries/vouchers/costCenters/profitCenters/documents) تحمل في الواقع transactionId (مثال: field-visit-service.ts:117 projectId: visit.transactionId).",
+      "fix": "إمّا توحيد الاسم إلى transactionId في الأنواع، أو إضافة projectId حقيقي + مجموعة projects. الوثائق والـ aliases تعالج projectId → transactions حالياً."
+    },
+    {
+      "id": "G3",
+      "severity": "medium",
+      "title": "مجموعات معلَّنة بلا أي استخدام",
+      "detail": "paymentConditionTypes, milestoneTimingTypes, itemCategories, costTypeCategories, inventoryTransactions, equipmentAssignments معرّفة في multi-tenant.ts ولا يُشار إليها في أي ملف.",
+      "fix": "إمّا ربطها بالواجهات (القوائم المرجعية المخصصة تغطيها جزئياً عبر customReferenceLists) أو حذف التعريف."
+    },
+    {
+      "id": "G4",
+      "severity": "medium",
+      "title": "مجموعات تُكتب بمسارات نصية خارج paths",
+      "detail": "users, counters, settings/work_hours, customReferenceLists (+ /items), employees/{id}/auditLogs, payroll/{id}/records, company_requests, global_users — كلها خارج multi-tenant.ts، فأي إعادة تسمية لمسار لا يكتشفها المترجم.",
+      "fix": "نقلها إلى paths في multi-tenant.ts كمصدر وحيد للمسارات."
+    },
+    {
+      "id": "G5",
+      "severity": "medium",
+      "title": "تكرار منطق وخدمات ميتة (0 مستورد)",
+      "detail": "accounting-integration-service (يكرّر توليد قيد WIP الموجود في field-visit-service ويستخدم حقولاً غير موجودة في الأنواع مثل actualCost قبل تهيئتها)، billing-trigger-service (منطق milestone due الموجود في billing-service)، boq-master-service، boq-inventory-link-service، cost-rate-service، end-of-service-calculator، payment-milestone-service، project-service، reference-service.",
+      "fix": "إمّا ربطها بالواجهات أو نقلها إلى src/services/experimental/ حتى لا تُقرأ كمسار بيانات بديل."
+    },
+    {
+      "id": "G6",
+      "severity": "low",
+      "title": "تعارض اسم StageInstance",
+      "detail": "src/types/transaction.ts و src/types/project.ts يعرّفان واجهتين باسم StageInstance بحقول مختلفة (projectId/templateStageId مقابل transactionId/technicalStageId). الأولى غير مستخدمة.",
+      "fix": "حذف نسخة project.ts أو إعادة تسميتها ProjectStageInstance."
+    },
+    {
+      "id": "G7",
+      "severity": "low",
+      "title": "مرجعيات بالكود لا بالمعرّف",
+      "detail": "vouchers.paymentMethod و accounts.allowedPaymentMethods و global_users.roleCode تشير إلى عناصر القوائم عبر code/label بدل doc id، فلا يمكن التحقق من سلامتها آلياً ولا تنعكس إعادة التسمية.",
+      "fix": "توحيد المراجع على form: {code, id} أو إضافة فهرس code → id عند الكتابة."
+    },
+    {
+      "id": "G8",
+      "severity": "low",
+      "title": "عقد العميل مرتبط بالمعاملة لا بالعكس",
+      "detail": "contracts.transactionId اختياري رغم أن الفوترة (BillingService) تفترض وجوده: where('transactionId','==',transactionId). عقد بلا transactionId لا يُفوتر أبداً بدون خطأ ظاهر.",
+      "fix": "فرض transactionId في العقود المنبثقة من عرض سعر + تحقق في SeedService/Developer checks."
+    },
+    {
+      "id": "G9",
+      "severity": "info",
+      "title": "عدّادات التجميع بدون source of truth مضبوطة",
+      "detail": "boqItems (executedQuantity/verifiedQuantity/billedQuantity) و stageInstances.currentCount تتقدّم بـ increment من مسارات متعددة، دون إعادة احتساب (recount) دورية؛ أي حذف يدوي لـ executions لا ينقص العدادات.",
+      "fix": "إضافة أداة recount (مثل SeedService.syncAllEmployeeBalances) تعيد بناء العدادات من التفاصيل."
+    },
+    {
+      "id": "G10",
+      "severity": "low",
+      "title": "docs/backend.json لا يصف سوى 3 مجموعات من 68",
+      "detail": "ملف المخطط الآلي (backend.json) يعرّف Account/JournalEntry/Voucher فقط، بينما الكود يدير 68 مجموعة — أي أداة تقرأ backend.json كمرجع مخطط ستظن أن بقية النظام غير موجود.",
+      "fix": "إما توليد backend.json من docs/relations.generated.json، أو حذفه والإشارة إلى docs/relationships.md كمصدر وحيد."
+    }
+  ],
+  "legacyRootCollections": {
+    "purchase_orders_items": "G1 — مجموعة مسطّحة وهمية لا تُكتب في أي مكان"
+  }
+}

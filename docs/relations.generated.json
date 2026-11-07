@@ -1,0 +1,1688 @@
+{
+  "note": "ملف مُولّد آلياً من scripts/check-relations.js — لا تحرره يدوياً. المصدر: src/firebase/multi-tenant.ts + src/types/*.ts",
+  "generatedAt": "2026-11-07T08:50:45.857Z",
+  "paths": {
+    "globalUser": "global_users/{uid}",
+    "company": "companies/{companyId}",
+    "invitations": "companies/{companyId}/invitations",
+    "departments": "companies/{companyId}/departments",
+    "jobs": "companies/{companyId}/departments/{deptId}/jobs",
+    "roles": "companies/{companyId}/roles",
+    "governorates": "companies/{companyId}/governorates",
+    "areas": "companies/{companyId}/governorates/{govId}/areas",
+    "unitTypes": "companies/{companyId}/unitTypes",
+    "paymentMethods": "companies/{companyId}/paymentMethods",
+    "paymentConditionTypes": "companies/{companyId}/paymentConditionTypes",
+    "milestoneTimingTypes": "companies/{companyId}/milestoneTimingTypes",
+    "itemCategories": "companies/{companyId}/itemCategories",
+    "costTypeCategories": "companies/{companyId}/costTypeCategories",
+    "meetingRooms": "companies/{companyId}/meetingRooms",
+    "serviceTypes": "companies/{companyId}/serviceTypes",
+    "leads": "companies/{companyId}/leads",
+    "clients": "companies/{companyId}/clients",
+    "clientHistory": "companies/{companyId}/clients/{clientId}/history",
+    "employees": "companies/{companyId}/employees",
+    "workGroups": "companies/{companyId}/workGroups",
+    "applications": "companies/{companyId}/applications",
+    "leaveRequests": "companies/{companyId}/leaveRequests",
+    "permissionRequests": "companies/{companyId}/permissionRequests",
+    "attendance": "companies/{companyId}/attendance",
+    "payroll": "companies/{companyId}/payroll",
+    "warehouses": "companies/{companyId}/warehouses",
+    "inventoryItems": "companies/{companyId}/inventoryItems",
+    "inventoryTransactions": "companies/{companyId}/inventoryTransactions",
+    "assetAssignments": "companies/{companyId}/assetAssignments",
+    "suppliers": "companies/{companyId}/suppliers",
+    "subcontractors": "companies/{companyId}/subcontractors",
+    "purchaseOrders": "companies/{companyId}/purchaseOrders",
+    "poItems": "companies/{companyId}/purchaseOrders/{poId}/items",
+    "activityTypes": "companies/{companyId}/activityTypes",
+    "services": "companies/{companyId}/activityTypes/{actId}/services",
+    "subServices": "companies/{companyId}/activityTypes/{actId}/services/{srvId}/subServices",
+    "technicalStages": "companies/{companyId}/activityTypes/{actId}/services/{srvId}/subServices/{subId}/stages",
+    "transactions": "companies/{companyId}/transactions",
+    "transactionStages": "companies/{companyId}/transactions/{tId}/stageInstances",
+    "transactionTimeline": "companies/{companyId}/transactions/{tId}/timeline",
+    "transactionComments": "companies/{companyId}/transactions/{tId}/comments",
+    "boqReferenceNodes": "companies/{companyId}/boqReferenceNodes",
+    "quotationTemplates": "companies/{companyId}/quotationTemplates",
+    "contractTemplates": "companies/{companyId}/contractTemplates",
+    "subconContractTemplates": "companies/{companyId}/subconContractTemplates",
+    "subconContracts": "companies/{companyId}/subconContracts",
+    "boqTemplates": "companies/{companyId}/boqTemplates",
+    "boqTemplateItems": "companies/{companyId}/boqTemplates/{templateId}/items",
+    "quotations": "companies/{companyId}/quotations",
+    "contracts": "companies/{companyId}/contracts",
+    "boqs": "companies/{companyId}/boqs",
+    "boqItems": "companies/{companyId}/boqs/{boqId}/items",
+    "boqVariations": "companies/{companyId}/boqs/{boqId}/variations",
+    "boqVariationItems": "companies/{companyId}/boqs/{boqId}/variations/{voId}/items",
+    "executions": "companies/{companyId}/executions",
+    "appointments": "companies/{companyId}/appointments",
+    "fieldVisits": "companies/{companyId}/fieldVisits",
+    "equipment": "companies/{companyId}/equipment",
+    "equipmentAssignments": "companies/{companyId}/equipmentAssignments",
+    "costRateCards": "companies/{companyId}/costRateCards",
+    "ipcs": "companies/{companyId}/ipcs",
+    "subIpcs": "companies/{companyId}/subIpcs",
+    "accounts": "companies/{companyId}/accounts",
+    "journalEntries": "companies/{companyId}/journalEntries",
+    "vouchers": "companies/{companyId}/vouchers",
+    "costCenters": "companies/{companyId}/costCenters",
+    "profitCenters": "companies/{companyId}/profitCenters"
+  },
+  "edges": [
+    {
+      "from": "accounts",
+      "field": "parentId",
+      "to": "accounts",
+      "via": "Account"
+    },
+    {
+      "from": "appointments",
+      "field": "additionalEngineerIds",
+      "to": "employees",
+      "via": "Appointment"
+    },
+    {
+      "from": "appointments",
+      "field": "clientId",
+      "to": "clients",
+      "via": "Appointment"
+    },
+    {
+      "from": "appointments",
+      "field": "departmentId",
+      "to": "departments",
+      "via": "Appointment"
+    },
+    {
+      "from": "appointments",
+      "field": "engineerId",
+      "to": "employees",
+      "via": "Appointment"
+    },
+    {
+      "from": "appointments",
+      "field": "hallId",
+      "to": "meetingRooms",
+      "via": "Appointment"
+    },
+    {
+      "from": "appointments",
+      "field": "stageId",
+      "to": "transactionStages",
+      "via": "Appointment"
+    },
+    {
+      "from": "appointments",
+      "field": "transactionId",
+      "to": "transactions",
+      "via": "Appointment"
+    },
+    {
+      "from": "areas",
+      "field": "governorateId",
+      "to": "governorates",
+      "via": "Area"
+    },
+    {
+      "from": "attendance",
+      "field": "employeeId",
+      "to": "employees",
+      "via": "AttendanceRecord"
+    },
+    {
+      "from": "boqItems",
+      "field": "ancestorIds",
+      "to": "boqItems",
+      "via": "BOQItem"
+    },
+    {
+      "from": "boqItems",
+      "field": "boqId",
+      "to": "boqs",
+      "via": "BOQItem"
+    },
+    {
+      "from": "boqItems",
+      "field": "clientId",
+      "to": "clients",
+      "via": "BOQItem"
+    },
+    {
+      "from": "boqItems",
+      "field": "subcontractorId",
+      "to": "subcontractors",
+      "via": "BOQItem"
+    },
+    {
+      "from": "boqItems",
+      "field": "technicalStageId",
+      "to": "technicalStages",
+      "via": "BOQItem"
+    },
+    {
+      "from": "boqItems",
+      "field": "technicalStageIds",
+      "to": "technicalStages",
+      "via": "BOQItem"
+    },
+    {
+      "from": "boqItems",
+      "field": "transactionId",
+      "to": "transactions",
+      "via": "BOQItem"
+    },
+    {
+      "from": "boqReferenceNodes",
+      "field": "activityTypeId",
+      "to": "activityTypes",
+      "via": "BOQReferenceNode"
+    },
+    {
+      "from": "boqReferenceNodes",
+      "field": "allowedActivityTypeIds",
+      "to": "activityTypes",
+      "via": "BOQReferenceNode"
+    },
+    {
+      "from": "boqReferenceNodes",
+      "field": "allowedItemCategoryIds",
+      "to": "itemCategories",
+      "via": "BOQReferenceNode"
+    },
+    {
+      "from": "boqReferenceNodes",
+      "field": "allowedServiceIds",
+      "to": "services",
+      "via": "BOQReferenceNode"
+    },
+    {
+      "from": "boqReferenceNodes",
+      "field": "ancestorIds",
+      "to": "boqReferenceNodes",
+      "via": "BOQReferenceNode"
+    },
+    {
+      "from": "boqReferenceNodes",
+      "field": "parentId",
+      "to": "boqReferenceNodes",
+      "via": "BOQReferenceNode"
+    },
+    {
+      "from": "boqReferenceNodes",
+      "field": "serviceId",
+      "to": "services",
+      "via": "BOQReferenceNode"
+    },
+    {
+      "from": "boqReferenceNodes",
+      "field": "subServiceId",
+      "to": "subServices",
+      "via": "BOQReferenceNode"
+    },
+    {
+      "from": "boqReferenceNodes",
+      "field": "technicalStageId",
+      "to": "technicalStages",
+      "via": "BOQReferenceNode"
+    },
+    {
+      "from": "boqReferenceNodes",
+      "field": "technicalStageIds",
+      "to": "technicalStages",
+      "via": "BOQReferenceNode"
+    },
+    {
+      "from": "boqReferenceNodes",
+      "field": "unitTypeId",
+      "to": "unitTypes",
+      "via": "BOQReferenceNode"
+    },
+    {
+      "from": "boqTemplateItems",
+      "field": "allowedItemCategoryIds",
+      "to": "itemCategories",
+      "via": "BOQTemplateItem"
+    },
+    {
+      "from": "boqTemplateItems",
+      "field": "ancestorIds",
+      "to": "boqTemplateItems",
+      "via": "BOQTemplateItem"
+    },
+    {
+      "from": "boqTemplateItems",
+      "field": "boqReferenceNodeId",
+      "to": "boqReferenceNodes",
+      "via": "BOQTemplateItem"
+    },
+    {
+      "from": "boqTemplateItems",
+      "field": "parentId",
+      "to": "boqTemplateItems",
+      "via": "BOQTemplateItem"
+    },
+    {
+      "from": "boqTemplateItems",
+      "field": "technicalStageId",
+      "to": "technicalStages",
+      "via": "BOQTemplateItem"
+    },
+    {
+      "from": "boqTemplateItems",
+      "field": "technicalStageIds",
+      "to": "technicalStages",
+      "via": "BOQTemplateItem"
+    },
+    {
+      "from": "boqTemplateItems",
+      "field": "unitTypeId",
+      "to": "unitTypes",
+      "via": "BOQTemplateItem"
+    },
+    {
+      "from": "boqTemplates",
+      "field": "activityTypeIds",
+      "to": "activityTypes",
+      "via": "BOQTemplate"
+    },
+    {
+      "from": "boqTemplates",
+      "field": "serviceIds",
+      "to": "services",
+      "via": "BOQTemplate"
+    },
+    {
+      "from": "clientHistory",
+      "field": "clientId",
+      "to": "clients",
+      "via": "ClientHistory"
+    },
+    {
+      "from": "clientHistory",
+      "field": "userId",
+      "to": "globalUser",
+      "via": "ClientHistory"
+    },
+    {
+      "from": "clients",
+      "field": "areaId",
+      "to": "areas",
+      "via": "Client"
+    },
+    {
+      "from": "clients",
+      "field": "assignedEngineerId",
+      "to": "employees",
+      "via": "Client"
+    },
+    {
+      "from": "clients",
+      "field": "departmentId",
+      "to": "departments",
+      "via": "Client"
+    },
+    {
+      "from": "clients",
+      "field": "governorateId",
+      "to": "governorates",
+      "via": "Client"
+    },
+    {
+      "from": "contracts",
+      "field": "boqTemplateId",
+      "to": "boqTemplates",
+      "via": "Contract"
+    },
+    {
+      "from": "contractTemplates",
+      "field": "boqTemplateId",
+      "to": "boqTemplates",
+      "via": "ContractTemplate"
+    },
+    {
+      "from": "costCenters",
+      "field": "projectId",
+      "to": "transactions",
+      "via": "CostCenter"
+    },
+    {
+      "from": "employeeAuditLogs",
+      "field": "employeeId",
+      "to": "employees",
+      "via": "EmployeeAuditLog"
+    },
+    {
+      "from": "employees",
+      "field": "departmentId",
+      "to": "departments",
+      "via": "Employee"
+    },
+    {
+      "from": "employees",
+      "field": "jobId",
+      "to": "jobs",
+      "via": "Employee"
+    },
+    {
+      "from": "employees",
+      "field": "roleId",
+      "to": "roles",
+      "via": "Employee"
+    },
+    {
+      "from": "equipment",
+      "field": "supplierId",
+      "to": "suppliers",
+      "via": "Equipment"
+    },
+    {
+      "from": "executions",
+      "field": "appointmentId",
+      "to": "appointments",
+      "via": "BOQItemExecutionEntry"
+    },
+    {
+      "from": "executions",
+      "field": "boqId",
+      "to": "boqs",
+      "via": "BOQItemExecutionEntry"
+    },
+    {
+      "from": "executions",
+      "field": "boqItemId",
+      "to": "boqItems",
+      "via": "BOQItemExecutionEntry"
+    },
+    {
+      "from": "executions",
+      "field": "subcontractorId",
+      "to": "subcontractors",
+      "via": "BOQItemExecutionEntry"
+    },
+    {
+      "from": "executions",
+      "field": "transactionId",
+      "to": "transactions",
+      "via": "BOQItemExecutionEntry"
+    },
+    {
+      "from": "executions",
+      "field": "visitId",
+      "to": "fieldVisits",
+      "via": "BOQItemExecutionEntry"
+    },
+    {
+      "from": "fieldVisits",
+      "field": "activeStageId",
+      "to": "transactionStages",
+      "via": "FieldVisit"
+    },
+    {
+      "from": "fieldVisits",
+      "field": "clientId",
+      "to": "clients",
+      "via": "FieldVisit"
+    },
+    {
+      "from": "fieldVisits",
+      "field": "engineerId",
+      "to": "employees",
+      "via": "FieldVisit"
+    },
+    {
+      "from": "fieldVisits",
+      "field": "transactionId",
+      "to": "transactions",
+      "via": "FieldVisit"
+    },
+    {
+      "from": "ipcs",
+      "field": "boqItemId",
+      "to": "boqItems",
+      "via": "InterimPaymentCertificate"
+    },
+    {
+      "from": "ipcs",
+      "field": "contractId",
+      "to": "contracts",
+      "via": "InterimPaymentCertificate"
+    },
+    {
+      "from": "jobs",
+      "field": "departmentId",
+      "to": "departments",
+      "via": "Job"
+    },
+    {
+      "from": "jobs",
+      "field": "roleId",
+      "to": "roles",
+      "via": "Job"
+    },
+    {
+      "from": "leaveRequests",
+      "field": "employeeId",
+      "to": "employees",
+      "via": "LeaveRequest"
+    },
+    {
+      "from": "leaveRequests",
+      "field": "userId",
+      "to": "globalUser",
+      "via": "LeaveRequest"
+    },
+    {
+      "from": "payroll",
+      "field": "accountingJournalId",
+      "to": "journalEntries",
+      "via": "PayrollBatch"
+    },
+    {
+      "from": "payrollRecords",
+      "field": "batchId",
+      "to": "payroll",
+      "via": "PayrollRecord"
+    },
+    {
+      "from": "payrollRecords",
+      "field": "employeeId",
+      "to": "employees",
+      "via": "PayrollRecord"
+    },
+    {
+      "from": "permissionRequests",
+      "field": "employeeId",
+      "to": "employees",
+      "via": "PermissionRequest"
+    },
+    {
+      "from": "permissionRequests",
+      "field": "userId",
+      "to": "globalUser",
+      "via": "PermissionRequest"
+    },
+    {
+      "from": "poItems",
+      "field": "boqId",
+      "to": "boqs",
+      "via": "POItem"
+    },
+    {
+      "from": "poItems",
+      "field": "boqItemId",
+      "to": "boqItems",
+      "via": "POItem"
+    },
+    {
+      "from": "poItems",
+      "field": "itemId",
+      "to": "inventoryItems",
+      "via": "POItem"
+    },
+    {
+      "from": "poItems",
+      "field": "poId",
+      "to": "purchaseOrders",
+      "via": "POItem"
+    },
+    {
+      "from": "poItems",
+      "field": "technicalStageId",
+      "to": "technicalStages",
+      "via": "POItem"
+    },
+    {
+      "from": "profitCenters",
+      "field": "projectId",
+      "to": "transactions",
+      "via": "ProfitCenter"
+    },
+    {
+      "from": "purchaseOrders",
+      "field": "projectId",
+      "to": "transactions",
+      "via": "PurchaseOrder"
+    },
+    {
+      "from": "purchaseOrders",
+      "field": "supplierId",
+      "to": "suppliers",
+      "via": "PurchaseOrder"
+    },
+    {
+      "from": "purchaseOrders",
+      "field": "transactionId",
+      "to": "transactions",
+      "via": "PurchaseOrder"
+    },
+    {
+      "from": "quotations",
+      "field": "boqTemplateId",
+      "to": "boqTemplates",
+      "via": "Quotation"
+    },
+    {
+      "from": "quotationTemplates",
+      "field": "boqTemplateId",
+      "to": "boqTemplates",
+      "via": "QuotationTemplate"
+    },
+    {
+      "from": "services",
+      "field": "activityTypeId",
+      "to": "activityTypes",
+      "via": "Service"
+    },
+    {
+      "from": "subIpcs",
+      "field": "boqItemId",
+      "to": "boqItems",
+      "via": "SubIPC"
+    },
+    {
+      "from": "subIpcs",
+      "field": "subcontractorId",
+      "to": "subcontractors",
+      "via": "SubIPC"
+    },
+    {
+      "from": "subIpcs",
+      "field": "transactionId",
+      "to": "transactions",
+      "via": "SubIPC"
+    },
+    {
+      "from": "subServices",
+      "field": "activityTypeId",
+      "to": "activityTypes",
+      "via": "SubService"
+    },
+    {
+      "from": "subServices",
+      "field": "serviceId",
+      "to": "services",
+      "via": "SubService"
+    },
+    {
+      "from": "technicalStages",
+      "field": "activityTypeId",
+      "to": "activityTypes",
+      "via": "TechnicalStage"
+    },
+    {
+      "from": "technicalStages",
+      "field": "allowedDepartmentIds",
+      "to": "departments",
+      "via": "TechnicalStage"
+    },
+    {
+      "from": "technicalStages",
+      "field": "nextStageIds",
+      "to": "technicalStages",
+      "via": "TechnicalStage"
+    },
+    {
+      "from": "technicalStages",
+      "field": "serviceId",
+      "to": "services",
+      "via": "TechnicalStage"
+    },
+    {
+      "from": "technicalStages",
+      "field": "subServiceId",
+      "to": "subServices",
+      "via": "TechnicalStage"
+    },
+    {
+      "from": "transactionComments",
+      "field": "appointmentId",
+      "to": "appointments",
+      "via": "TransactionComment"
+    },
+    {
+      "from": "transactionComments",
+      "field": "parentCommentId",
+      "to": "transactionComments",
+      "via": "TransactionComment"
+    },
+    {
+      "from": "transactionComments",
+      "field": "stageInstanceId",
+      "to": "transactionStages",
+      "via": "TransactionComment"
+    },
+    {
+      "from": "transactionComments",
+      "field": "transactionId",
+      "to": "transactions",
+      "via": "TransactionComment"
+    },
+    {
+      "from": "transactions",
+      "field": "activityTypeId",
+      "to": "activityTypes",
+      "via": "Transaction"
+    },
+    {
+      "from": "transactions",
+      "field": "assignedEngineerId",
+      "to": "employees",
+      "via": "Transaction"
+    },
+    {
+      "from": "transactions",
+      "field": "clientId",
+      "to": "clients",
+      "via": "Transaction"
+    },
+    {
+      "from": "transactions",
+      "field": "serviceId",
+      "to": "services",
+      "via": "Transaction"
+    },
+    {
+      "from": "transactions",
+      "field": "subServiceId",
+      "to": "subServices",
+      "via": "Transaction"
+    },
+    {
+      "from": "transactionStages",
+      "field": "activityTypeId",
+      "to": "activityTypes",
+      "via": "StageInstance"
+    },
+    {
+      "from": "transactionStages",
+      "field": "allowedDepartmentIds",
+      "to": "departments",
+      "via": "StageInstance"
+    },
+    {
+      "from": "transactionStages",
+      "field": "completedByApptId",
+      "to": "appointments",
+      "via": "StageInstance"
+    },
+    {
+      "from": "transactionStages",
+      "field": "nextStageIds",
+      "to": "transactionStages",
+      "via": "StageInstance"
+    },
+    {
+      "from": "transactionStages",
+      "field": "nextStageIds",
+      "to": "transactionStages",
+      "via": "StageInstance"
+    },
+    {
+      "from": "transactionStages",
+      "field": "projectId",
+      "to": "transactions",
+      "via": "StageInstance"
+    },
+    {
+      "from": "transactionStages",
+      "field": "serviceId",
+      "to": "services",
+      "via": "StageInstance"
+    },
+    {
+      "from": "transactionStages",
+      "field": "startedByApptId",
+      "to": "appointments",
+      "via": "StageInstance"
+    },
+    {
+      "from": "transactionStages",
+      "field": "subcontractorId",
+      "to": "subcontractors",
+      "via": "StageInstance"
+    },
+    {
+      "from": "transactionStages",
+      "field": "subServiceId",
+      "to": "subServices",
+      "via": "StageInstance"
+    },
+    {
+      "from": "transactionStages",
+      "field": "technicalStageId",
+      "to": "technicalStages",
+      "via": "StageInstance"
+    },
+    {
+      "from": "transactionStages",
+      "field": "templateStageId",
+      "to": "technicalStages",
+      "via": "StageInstance"
+    },
+    {
+      "from": "transactionStages",
+      "field": "transactionId",
+      "to": "transactions",
+      "via": "StageInstance"
+    },
+    {
+      "from": "transactionTimeline",
+      "field": "appointmentId",
+      "to": "appointments",
+      "via": "TransactionTimelineEvent"
+    },
+    {
+      "from": "transactionTimeline",
+      "field": "stageId",
+      "to": "transactionStages",
+      "via": "TransactionTimelineEvent"
+    },
+    {
+      "from": "transactionTimeline",
+      "field": "technicalStageId",
+      "to": "technicalStages",
+      "via": "TransactionTimelineEvent"
+    },
+    {
+      "from": "transactionTimeline",
+      "field": "transactionId",
+      "to": "transactions",
+      "via": "TransactionTimelineEvent"
+    },
+    {
+      "from": "transactionTimeline",
+      "field": "userId",
+      "to": "globalUser",
+      "via": "TransactionTimelineEvent"
+    },
+    {
+      "from": "vouchers",
+      "field": "accountId",
+      "to": "accounts",
+      "via": "Voucher"
+    },
+    {
+      "from": "vouchers",
+      "field": "cashAccountId",
+      "to": "accounts",
+      "via": "Voucher"
+    },
+    {
+      "from": "vouchers",
+      "field": "contractId",
+      "to": "contracts",
+      "via": "Voucher"
+    },
+    {
+      "from": "vouchers",
+      "field": "costCenterId",
+      "to": "costCenters",
+      "via": "Voucher"
+    },
+    {
+      "from": "vouchers",
+      "field": "journalEntryId",
+      "to": "journalEntries",
+      "via": "Voucher"
+    },
+    {
+      "from": "vouchers",
+      "field": "profitCenterId",
+      "to": "profitCenters",
+      "via": "Voucher"
+    },
+    {
+      "from": "vouchers",
+      "field": "projectId",
+      "to": "transactions",
+      "via": "Voucher"
+    },
+    {
+      "from": "vouchers",
+      "field": "transactionId",
+      "to": "transactions",
+      "via": "Voucher"
+    },
+    {
+      "from": "workGroups",
+      "field": "departmentId",
+      "to": "departments",
+      "via": "WorkGroup"
+    },
+    {
+      "from": "workGroups",
+      "field": "memberIds",
+      "to": "employees",
+      "via": "WorkGroup"
+    },
+    {
+      "from": "workGroups",
+      "field": "supervisorId",
+      "to": "employees",
+      "via": "WorkGroup"
+    }
+  ],
+  "usage": {
+    "globalUser": [],
+    "company": [],
+    "invitations": [
+      "src/services/user-service.ts"
+    ],
+    "departments": [
+      "src/app/dashboard/checklists/departments/page.tsx",
+      "src/app/dashboard/clients/[id]/transactions/new/page.tsx",
+      "src/app/dashboard/settings/checklists/departments/page.tsx",
+      "src/app/dashboard/settings/checklists/technical-paths/technical-stages-manager.tsx",
+      "src/components/appointments/architectural-appointments-view.tsx",
+      "src/components/hr/employee-form.tsx",
+      "src/components/meetings/meeting-rooms-view.tsx",
+      "src/services/department-service.ts",
+      "src/services/seed-service.ts"
+    ],
+    "jobs": [
+      "src/app/dashboard/checklists/departments/page.tsx",
+      "src/app/dashboard/settings/checklists/departments/page.tsx",
+      "src/components/hr/employee-form.tsx",
+      "src/services/department-service.ts",
+      "src/services/seed-service.ts"
+    ],
+    "roles": [
+      "src/app/dashboard/settings/checklists/departments/page.tsx",
+      "src/app/dashboard/settings/roles/page.tsx",
+      "src/app/dashboard/settings/users/page.tsx",
+      "src/components/hr/employee-form.tsx",
+      "src/services/role-service.ts"
+    ],
+    "governorates": [
+      "src/app/dashboard/checklists/geo/page.tsx",
+      "src/app/dashboard/settings/checklists/geo/page.tsx",
+      "src/components/appointments/architectural-appointments-view.tsx",
+      "src/components/clients/client-form.tsx",
+      "src/services/location-service.ts"
+    ],
+    "areas": [
+      "src/app/dashboard/checklists/geo/page.tsx",
+      "src/app/dashboard/settings/checklists/geo/page.tsx",
+      "src/components/clients/client-form.tsx",
+      "src/services/location-service.ts"
+    ],
+    "unitTypes": [
+      "src/app/dashboard/settings/checklists/boq-nodes/page.tsx"
+    ],
+    "paymentMethods": [
+      "src/app/dashboard/accounting/vouchers/payment/page.tsx",
+      "src/app/dashboard/accounting/vouchers/receipt/page.tsx"
+    ],
+    "paymentConditionTypes": [],
+    "milestoneTimingTypes": [],
+    "itemCategories": [],
+    "costTypeCategories": [],
+    "meetingRooms": [
+      "src/app/dashboard/settings/checklists/halls/page.tsx",
+      "src/components/meetings/meeting-rooms-view.tsx"
+    ],
+    "serviceTypes": [
+      "src/app/dashboard/checklists/service-types/page.tsx",
+      "src/services/service-type-service.ts"
+    ],
+    "leads": [
+      "src/app/dashboard/crm/page.tsx"
+    ],
+    "clients": [
+      "src/app/dashboard/accounting/vouchers/receipt/page.tsx",
+      "src/app/dashboard/clients/[id]/edit/page.tsx",
+      "src/app/dashboard/clients/[id]/page.tsx",
+      "src/app/dashboard/clients/[id]/transactions/new/page.tsx",
+      "src/app/dashboard/clients/page.tsx",
+      "src/app/dashboard/construction/field-visits/new/page.tsx",
+      "src/app/dashboard/procurement/subcontractors/contracts/new/page.tsx",
+      "src/app/dashboard/projects/reports/client-visits/page.tsx",
+      "src/components/appointments/architectural-appointments-view.tsx",
+      "src/components/construction/construction-bookings-view.tsx",
+      "src/components/meetings/meeting-rooms-view.tsx",
+      "src/services/appointment-service.ts",
+      "src/services/client-service.ts",
+      "src/services/document-service.ts",
+      "src/services/seed-service.ts",
+      "src/services/transaction-service.ts"
+    ],
+    "clientHistory": [
+      "src/app/dashboard/clients/[id]/page.tsx",
+      "src/services/client-service.ts"
+    ],
+    "employees": [
+      "src/app/dashboard/appointments/[id]/page.tsx",
+      "src/app/dashboard/clients/[id]/transactions/new/page.tsx",
+      "src/app/dashboard/construction/field-visits/new/page.tsx",
+      "src/app/dashboard/hr/attendance/import/page.tsx",
+      "src/app/dashboard/hr/employees/[id]/page.tsx",
+      "src/app/dashboard/hr/employees/page.tsx",
+      "src/app/dashboard/hr/gratuity/page.tsx",
+      "src/app/dashboard/hr/gratuity-calculator/page.tsx",
+      "src/app/dashboard/hr/leaves/new/page.tsx",
+      "src/app/dashboard/hr/page.tsx",
+      "src/app/dashboard/hr/reports/attendance/individual/[id]/page.tsx",
+      "src/app/dashboard/hr/reports/dossier/[id]/page.tsx",
+      "src/app/dashboard/hr/reports/dossier/page.tsx",
+      "src/app/dashboard/hr/reports/leaves/page.tsx",
+      "src/app/dashboard/hr/reports/leaves/statement/[id]/page.tsx",
+      "src/app/dashboard/hr/reports/page.tsx",
+      "src/app/dashboard/hr/reports/payroll/individual/[id]/page.tsx",
+      "src/app/dashboard/inventory/page.tsx",
+      "src/app/dashboard/settings/users/page.tsx",
+      "src/components/appointments/architectural-appointments-view.tsx",
+      "src/components/clients/client-form.tsx",
+      "src/components/construction/construction-bookings-view.tsx",
+      "src/components/meetings/meeting-rooms-view.tsx",
+      "src/services/analytics-service.ts",
+      "src/services/hr-service.ts",
+      "src/services/leave-service.ts",
+      "src/services/payroll-service.ts",
+      "src/services/seed-service.ts"
+    ],
+    "workGroups": [
+      "src/app/dashboard/appointments/[id]/page.tsx",
+      "src/app/dashboard/construction/field-visits/new/page.tsx",
+      "src/app/dashboard/construction/groups/page.tsx"
+    ],
+    "applications": [
+      "src/app/dashboard/hr/recruitment/page.tsx",
+      "src/services/recruitment-service.ts"
+    ],
+    "leaveRequests": [
+      "src/app/dashboard/hr/leaves/[id]/page.tsx",
+      "src/app/dashboard/hr/leaves/page.tsx",
+      "src/app/dashboard/hr/leaves-manager.tsx",
+      "src/app/dashboard/hr/reports/leaves/statement/[id]/page.tsx",
+      "src/components/appointments/architectural-appointments-view.tsx",
+      "src/components/construction/construction-bookings-view.tsx",
+      "src/services/leave-service.ts",
+      "src/services/payroll-service.ts",
+      "src/services/permission-service.ts",
+      "src/services/seed-service.ts"
+    ],
+    "permissionRequests": [
+      "src/app/dashboard/hr/permissions/[id]/page.tsx",
+      "src/app/dashboard/hr/permissions/page.tsx",
+      "src/components/appointments/architectural-appointments-view.tsx",
+      "src/components/construction/construction-bookings-view.tsx",
+      "src/services/permission-service.ts"
+    ],
+    "attendance": [
+      "src/app/dashboard/hr/reports/attendance/individual/[id]/page.tsx",
+      "src/app/dashboard/hr/reports/attendance/page.tsx",
+      "src/app/dashboard/hr/reports/dossier/[id]/page.tsx",
+      "src/components/appointments/architectural-appointments-view.tsx",
+      "src/components/construction/construction-bookings-view.tsx",
+      "src/services/attendance-import-service.ts",
+      "src/services/payroll-service.ts"
+    ],
+    "payroll": [
+      "src/app/dashboard/hr/payroll/[id]/page.tsx",
+      "src/app/dashboard/hr/payroll/page.tsx",
+      "src/app/dashboard/hr/reports/payroll/individual/[id]/page.tsx",
+      "src/app/dashboard/hr/reports/payroll/page.tsx",
+      "src/services/payroll-service.ts"
+    ],
+    "warehouses": [
+      "src/services/inventory-service.ts"
+    ],
+    "inventoryItems": [
+      "src/app/dashboard/inventory/page.tsx",
+      "src/app/dashboard/procurement/orders/new/page.tsx",
+      "src/services/inventory-service.ts"
+    ],
+    "inventoryTransactions": [],
+    "assetAssignments": [
+      "src/app/dashboard/hr/reports/dossier/[id]/page.tsx",
+      "src/services/inventory-service.ts"
+    ],
+    "suppliers": [
+      "src/app/dashboard/procurement/orders/new/page.tsx",
+      "src/app/dashboard/procurement/page.tsx",
+      "src/app/dashboard/procurement/suppliers/page.tsx",
+      "src/components/equipment/equipment-form.tsx"
+    ],
+    "subcontractors": [
+      "src/app/dashboard/clients/[id]/transactions/[tId]/boq/page.tsx",
+      "src/app/dashboard/procurement/subcontractors/[id]/page.tsx",
+      "src/app/dashboard/procurement/subcontractors/contracts/new/page.tsx",
+      "src/app/dashboard/procurement/subcontractors/page.tsx"
+    ],
+    "purchaseOrders": [
+      "src/app/dashboard/procurement/orders/page.tsx",
+      "src/app/dashboard/procurement/page.tsx",
+      "src/services/procurement-service.ts"
+    ],
+    "poItems": [
+      "src/services/procurement-service.ts"
+    ],
+    "activityTypes": [
+      "src/app/dashboard/checklists/technical-paths/page.tsx",
+      "src/app/dashboard/clients/[id]/transactions/new/page.tsx",
+      "src/app/dashboard/settings/checklists/boq-nodes/page.tsx",
+      "src/app/dashboard/settings/checklists/technical-paths/page.tsx",
+      "src/app/dashboard/settings/templates/boq/boq-template-form.tsx",
+      "src/app/dashboard/settings/templates/contracts/contract-template-form.tsx",
+      "src/app/dashboard/settings/templates/contracts/page.tsx",
+      "src/app/dashboard/settings/templates/quotations/quotation-template-form.tsx",
+      "src/app/dashboard/settings/templates/subcon-contracts/subcon-contract-form.tsx",
+      "src/components/meetings/meeting-rooms-view.tsx",
+      "src/services/reference-service.ts",
+      "src/services/technical-path-service.ts"
+    ],
+    "services": [
+      "src/app/dashboard/checklists/technical-paths/page.tsx",
+      "src/app/dashboard/clients/[id]/transactions/new/page.tsx",
+      "src/app/dashboard/settings/checklists/boq-nodes/page.tsx",
+      "src/app/dashboard/settings/checklists/technical-paths/page.tsx",
+      "src/app/dashboard/settings/templates/boq/boq-template-form.tsx",
+      "src/app/dashboard/settings/templates/contracts/contract-template-form.tsx",
+      "src/app/dashboard/settings/templates/contracts/page.tsx",
+      "src/app/dashboard/settings/templates/quotations/quotation-template-form.tsx",
+      "src/app/dashboard/settings/templates/subcon-contracts/subcon-contract-form.tsx",
+      "src/services/reference-service.ts",
+      "src/services/technical-path-service.ts"
+    ],
+    "subServices": [
+      "src/app/dashboard/checklists/technical-paths/page.tsx",
+      "src/app/dashboard/clients/[id]/transactions/new/page.tsx",
+      "src/app/dashboard/settings/checklists/boq-nodes/page.tsx",
+      "src/app/dashboard/settings/checklists/technical-paths/page.tsx",
+      "src/app/dashboard/settings/templates/boq/boq-template-form.tsx",
+      "src/app/dashboard/settings/templates/contracts/contract-template-form.tsx",
+      "src/app/dashboard/settings/templates/quotations/quotation-template-form.tsx",
+      "src/app/dashboard/settings/templates/subcon-contracts/subcon-contract-form.tsx",
+      "src/services/reference-service.ts",
+      "src/services/technical-path-service.ts"
+    ],
+    "technicalStages": [
+      "src/app/dashboard/checklists/technical-paths/technical-stages-manager.tsx",
+      "src/app/dashboard/clients/[id]/contracts/[cId]/page.tsx",
+      "src/app/dashboard/clients/[id]/quotations/[qId]/page.tsx",
+      "src/app/dashboard/settings/checklists/boq-nodes/page.tsx",
+      "src/app/dashboard/settings/checklists/technical-paths/technical-stages-manager.tsx",
+      "src/app/dashboard/settings/templates/contracts/contract-template-form.tsx",
+      "src/app/dashboard/settings/templates/quotations/quotation-template-form.tsx",
+      "src/app/dashboard/settings/templates/subcon-contracts/subcon-contract-form.tsx",
+      "src/services/reference-service.ts",
+      "src/services/technical-path-service.ts",
+      "src/services/transaction-service.ts"
+    ],
+    "transactions": [
+      "src/app/dashboard/accounting/journals/page.tsx",
+      "src/app/dashboard/accounting/reports/page.tsx",
+      "src/app/dashboard/accounting/vouchers/payment/page.tsx",
+      "src/app/dashboard/accounting/vouchers/receipt/page.tsx",
+      "src/app/dashboard/appointments/[id]/page.tsx",
+      "src/app/dashboard/clients/[id]/page.tsx",
+      "src/app/dashboard/clients/[id]/transactions/[tId]/boq/page.tsx",
+      "src/app/dashboard/clients/[id]/transactions/[tId]/page.tsx",
+      "src/app/dashboard/construction/field-visits/new/page.tsx",
+      "src/app/dashboard/procurement/subcontractors/contracts/new/page.tsx",
+      "src/app/dashboard/projects/[projectId]/page.tsx",
+      "src/app/dashboard/projects/page.tsx",
+      "src/app/dashboard/settings/cost-centers/page.tsx",
+      "src/app/dashboard/settings/profit-centers/page.tsx",
+      "src/components/appointments/architectural-appointments-view.tsx",
+      "src/components/meetings/meeting-rooms-view.tsx",
+      "src/services/analytics-service.ts",
+      "src/services/billing-service.ts",
+      "src/services/comment-service.ts",
+      "src/services/project-service.ts",
+      "src/services/seed-service.ts",
+      "src/services/transaction-service.ts",
+      "src/services/variation-service.ts"
+    ],
+    "transactionStages": [
+      "src/app/dashboard/appointments/[id]/page.tsx",
+      "src/app/dashboard/clients/[id]/transactions/[tId]/page.tsx",
+      "src/app/dashboard/construction/field-visits/new/page.tsx",
+      "src/app/dashboard/procurement/subcontractors/contracts/[id]/page.tsx",
+      "src/app/dashboard/procurement/subcontractors/contracts/new/page.tsx",
+      "src/components/appointments/architectural-appointments-view.tsx",
+      "src/components/meetings/meeting-rooms-view.tsx",
+      "src/components/transactions/vo-manager-dialog.tsx",
+      "src/services/billing-trigger-service.ts",
+      "src/services/boq-execution-service.ts",
+      "src/services/transaction-service.ts",
+      "src/services/variation-service.ts"
+    ],
+    "transactionTimeline": [
+      "src/app/dashboard/clients/[id]/transactions/[tId]/page.tsx",
+      "src/app/dashboard/projects/reports/client-visits/page.tsx",
+      "src/components/transactions/comment-section.tsx",
+      "src/services/billing-service.ts",
+      "src/services/boq-execution-service.ts",
+      "src/services/document-service.ts",
+      "src/services/transaction-service.ts",
+      "src/services/variation-service.ts"
+    ],
+    "transactionComments": [
+      "src/app/dashboard/appointments/[id]/page.tsx",
+      "src/app/dashboard/clients/[id]/transactions/[tId]/page.tsx",
+      "src/app/dashboard/projects/reports/client-visits/page.tsx",
+      "src/services/comment-service.ts"
+    ],
+    "boqReferenceNodes": [
+      "src/app/dashboard/settings/checklists/boq-nodes/page.tsx",
+      "src/app/dashboard/settings/templates/boq/boq-template-form.tsx",
+      "src/components/settings/checklists/boq-reference/boq-reference-selector.tsx",
+      "src/services/boq-reference-service.ts",
+      "src/services/template-service.ts"
+    ],
+    "quotationTemplates": [
+      "src/app/dashboard/settings/templates/quotations/page.tsx",
+      "src/components/transactions/document-manager-dialog.tsx",
+      "src/components/transactions/transaction-documents-view.tsx",
+      "src/services/document-service.ts",
+      "src/services/template-service.ts"
+    ],
+    "contractTemplates": [
+      "src/app/dashboard/settings/templates/contracts/page.tsx",
+      "src/components/transactions/document-manager-dialog.tsx",
+      "src/components/transactions/transaction-documents-view.tsx",
+      "src/services/document-service.ts",
+      "src/services/template-service.ts"
+    ],
+    "subconContractTemplates": [
+      "src/app/dashboard/procurement/subcontractors/contracts/new/page.tsx",
+      "src/app/dashboard/settings/templates/subcon-contracts/page.tsx",
+      "src/components/transactions/transaction-documents-view.tsx",
+      "src/services/document-service.ts",
+      "src/services/template-service.ts"
+    ],
+    "subconContracts": [
+      "src/app/dashboard/appointments/[id]/page.tsx",
+      "src/app/dashboard/construction/field-visits/new/page.tsx",
+      "src/app/dashboard/procurement/subcontractors/[id]/page.tsx",
+      "src/app/dashboard/procurement/subcontractors/contracts/[id]/page.tsx",
+      "src/app/dashboard/procurement/subcontractors/contracts/new/page.tsx",
+      "src/app/dashboard/procurement/subcontractors/contracts/page.tsx",
+      "src/components/transactions/transaction-documents-view.tsx",
+      "src/services/billing-service.ts",
+      "src/services/document-service.ts"
+    ],
+    "boqTemplates": [
+      "src/app/dashboard/clients/[id]/transactions/[tId]/boq/page.tsx",
+      "src/app/dashboard/clients/[id]/transactions/[tId]/page.tsx",
+      "src/app/dashboard/settings/templates/boq/page.tsx",
+      "src/app/dashboard/settings/templates/contracts/contract-template-form.tsx",
+      "src/app/dashboard/settings/templates/quotations/quotation-template-form.tsx",
+      "src/services/document-service.ts",
+      "src/services/template-service.ts"
+    ],
+    "boqTemplateItems": [
+      "src/services/document-service.ts",
+      "src/services/template-service.ts"
+    ],
+    "quotations": [
+      "src/app/dashboard/clients/[id]/quotations/[qId]/page.tsx",
+      "src/components/transactions/document-manager-dialog.tsx",
+      "src/components/transactions/transaction-documents-view.tsx",
+      "src/services/document-service.ts"
+    ],
+    "contracts": [
+      "src/app/dashboard/accounting/vouchers/receipt/page.tsx",
+      "src/app/dashboard/clients/[id]/contracts/[cId]/page.tsx",
+      "src/app/dashboard/clients/[id]/transactions/[tId]/page.tsx",
+      "src/app/dashboard/procurement/contracts/page.tsx",
+      "src/app/dashboard/procurement/subcontractors/contracts/new/page.tsx",
+      "src/components/transactions/document-manager-dialog.tsx",
+      "src/components/transactions/transaction-documents-view.tsx",
+      "src/services/billing-service.ts",
+      "src/services/billing-trigger-service.ts",
+      "src/services/document-service.ts",
+      "src/services/payment-milestone-service.ts"
+    ],
+    "boqs": [
+      "src/app/dashboard/appointments/[id]/page.tsx",
+      "src/app/dashboard/clients/[id]/transactions/[tId]/boq/page.tsx",
+      "src/app/dashboard/clients/[id]/transactions/[tId]/page.tsx",
+      "src/app/dashboard/construction/field-visits/new/page.tsx",
+      "src/app/dashboard/procurement/orders/new/page.tsx",
+      "src/app/dashboard/projects/boqs/page.tsx",
+      "src/services/analytics-service.ts",
+      "src/services/boq-execution-service.ts",
+      "src/services/document-service.ts",
+      "src/services/seed-service.ts",
+      "src/services/variation-service.ts"
+    ],
+    "boqItems": [
+      "src/app/dashboard/appointments/[id]/page.tsx",
+      "src/app/dashboard/clients/[id]/transactions/[tId]/boq/page.tsx",
+      "src/app/dashboard/clients/[id]/transactions/[tId]/page.tsx",
+      "src/app/dashboard/construction/field-visits/new/page.tsx",
+      "src/app/dashboard/procurement/orders/new/page.tsx",
+      "src/services/analytics-service.ts",
+      "src/services/boq-execution-service.ts",
+      "src/services/boq-inventory-link-service.ts",
+      "src/services/document-service.ts",
+      "src/services/field-visit-service.ts",
+      "src/services/variation-service.ts"
+    ],
+    "boqVariations": [
+      "src/services/variation-service.ts"
+    ],
+    "boqVariationItems": [
+      "src/services/variation-service.ts"
+    ],
+    "executions": [
+      "src/app/dashboard/clients/[id]/transactions/[tId]/page.tsx",
+      "src/services/analytics-service.ts",
+      "src/services/boq-execution-service.ts"
+    ],
+    "appointments": [
+      "src/app/dashboard/appointments/[id]/page.tsx",
+      "src/app/dashboard/projects/reports/client-visits/page.tsx",
+      "src/components/appointments/architectural-appointments-view.tsx",
+      "src/components/construction/construction-bookings-view.tsx",
+      "src/components/meetings/meeting-rooms-view.tsx",
+      "src/services/appointment-service.ts",
+      "src/services/seed-service.ts"
+    ],
+    "fieldVisits": [
+      "src/app/dashboard/construction/field-visits/[id]/page.tsx",
+      "src/app/dashboard/construction/field-visits/page.tsx",
+      "src/services/field-visit-service.ts"
+    ],
+    "equipment": [
+      "src/app/dashboard/appointments/[id]/page.tsx",
+      "src/app/dashboard/construction/field-visits/new/page.tsx",
+      "src/app/dashboard/equipment/[id]/edit/page.tsx",
+      "src/app/dashboard/equipment/page.tsx",
+      "src/services/analytics-service.ts",
+      "src/services/equipment-service.ts"
+    ],
+    "equipmentAssignments": [],
+    "costRateCards": [
+      "src/services/cost-rate-service.ts"
+    ],
+    "ipcs": [
+      "src/app/dashboard/accounting/claims/page.tsx",
+      "src/app/dashboard/clients/[id]/transactions/[tId]/boq/page.tsx",
+      "src/components/transactions/transaction-documents-view.tsx",
+      "src/services/analytics-service.ts",
+      "src/services/billing-service.ts"
+    ],
+    "subIpcs": [
+      "src/app/dashboard/procurement/sub-claims/page.tsx",
+      "src/app/dashboard/procurement/subcontractors/[id]/page.tsx",
+      "src/components/transactions/transaction-documents-view.tsx",
+      "src/services/billing-service.ts"
+    ],
+    "accounts": [
+      "src/app/dashboard/accounting/coa/page.tsx",
+      "src/app/dashboard/accounting/journals/page.tsx",
+      "src/app/dashboard/accounting/vouchers/payment/page.tsx",
+      "src/app/dashboard/accounting/vouchers/receipt/page.tsx",
+      "src/services/accounting-service.ts",
+      "src/services/seed-service.ts"
+    ],
+    "journalEntries": [
+      "src/app/dashboard/accounting/journals/page.tsx",
+      "src/services/accounting-service.ts",
+      "src/services/analytics-service.ts"
+    ],
+    "vouchers": [
+      "src/app/dashboard/accounting/vouchers/payment/page.tsx",
+      "src/app/dashboard/accounting/vouchers/receipt/[id]/page.tsx",
+      "src/app/dashboard/accounting/vouchers/receipt/page.tsx",
+      "src/services/accounting-service.ts",
+      "src/services/payment-milestone-service.ts"
+    ],
+    "costCenters": [
+      "src/app/dashboard/accounting/journals/page.tsx",
+      "src/app/dashboard/accounting/reports/page.tsx",
+      "src/app/dashboard/accounting/vouchers/payment/page.tsx",
+      "src/app/dashboard/accounting/vouchers/receipt/page.tsx",
+      "src/app/dashboard/settings/cost-centers/page.tsx",
+      "src/services/accounting-service.ts",
+      "src/services/seed-service.ts"
+    ],
+    "profitCenters": [
+      "src/app/dashboard/accounting/journals/page.tsx",
+      "src/app/dashboard/accounting/reports/page.tsx",
+      "src/app/dashboard/accounting/vouchers/payment/page.tsx",
+      "src/app/dashboard/accounting/vouchers/receipt/page.tsx",
+      "src/app/dashboard/settings/profit-centers/page.tsx",
+      "src/services/accounting-service.ts",
+      "src/services/seed-service.ts"
+    ]
+  },
+  "rawTenantPaths": [
+    {
+      "coll": "customReferenceLists",
+      "file": "src/app/dashboard/settings/checklists/general-lists/page.tsx",
+      "line": 63,
+      "kind": "template"
+    },
+    {
+      "coll": "users",
+      "file": "src/app/dashboard/settings/profile/page.tsx",
+      "line": 58,
+      "kind": "args"
+    },
+    {
+      "coll": "customReferenceLists",
+      "file": "src/app/dashboard/settings/reference-lists/page.tsx",
+      "line": 66,
+      "kind": "template"
+    },
+    {
+      "coll": "users",
+      "file": "src/app/dashboard/settings/users/page.tsx",
+      "line": 65,
+      "kind": "args"
+    },
+    {
+      "coll": "transactions",
+      "file": "src/app/developer/page.tsx",
+      "line": 68,
+      "kind": "args"
+    },
+    {
+      "coll": "boqTemplates",
+      "file": "src/app/developer/page.tsx",
+      "line": 76,
+      "kind": "args"
+    },
+    {
+      "coll": "roles",
+      "file": "src/app/developer/page.tsx",
+      "line": 113,
+      "kind": "args"
+    },
+    {
+      "coll": "departments",
+      "file": "src/app/developer/page.tsx",
+      "line": 119,
+      "kind": "args"
+    },
+    {
+      "coll": "departments",
+      "file": "src/app/developer/page.tsx",
+      "line": 121,
+      "kind": "args"
+    },
+    {
+      "coll": "employees",
+      "file": "src/app/developer/page.tsx",
+      "line": 126,
+      "kind": "args"
+    },
+    {
+      "coll": "users",
+      "file": "src/app/join/[companyId]/[inviteId]/page.tsx",
+      "line": 80,
+      "kind": "args"
+    },
+    {
+      "coll": "invitations",
+      "file": "src/app/join/[companyId]/[inviteId]/page.tsx",
+      "line": 93,
+      "kind": "args"
+    },
+    {
+      "coll": "roles",
+      "file": "src/context/auth-context.tsx",
+      "line": 108,
+      "kind": "args"
+    },
+    {
+      "coll": "counters",
+      "file": "src/lib/counters.ts",
+      "line": 17,
+      "kind": "args"
+    },
+    {
+      "coll": "purchase_orders_items",
+      "file": "src/services/boq-inventory-link-service.ts",
+      "line": 42,
+      "kind": "root"
+    },
+    {
+      "coll": "counters",
+      "file": "src/services/client-service.ts",
+      "line": 36,
+      "kind": "args"
+    },
+    {
+      "coll": "counters",
+      "file": "src/services/client-service.ts",
+      "line": 90,
+      "kind": "args"
+    },
+    {
+      "coll": "roles",
+      "file": "src/services/hr-service.ts",
+      "line": 135,
+      "kind": "args"
+    },
+    {
+      "coll": "customReferenceLists",
+      "file": "src/services/reference-list-service.ts",
+      "line": 45,
+      "kind": "template"
+    },
+    {
+      "coll": "customReferenceLists",
+      "file": "src/services/reference-list-service.ts",
+      "line": 52,
+      "kind": "template"
+    },
+    {
+      "coll": "customReferenceLists",
+      "file": "src/services/reference-list-service.ts",
+      "line": 61,
+      "kind": "template"
+    },
+    {
+      "coll": "users",
+      "file": "src/services/user-service.ts",
+      "line": 81,
+      "kind": "args"
+    },
+    {
+      "coll": "users",
+      "file": "src/services/user-service.ts",
+      "line": 119,
+      "kind": "args"
+    },
+    {
+      "coll": "users",
+      "file": "src/services/user-service.ts",
+      "line": 169,
+      "kind": "args"
+    },
+    {
+      "coll": "settings",
+      "file": "src/services/work-hours-service.ts",
+      "line": 23,
+      "kind": "args"
+    }
+  ],
+  "rawRootCollections": {
+    "companies": [
+      {
+        "file": "src/app/apply/[companyId]/page.tsx",
+        "count": 1
+      },
+      {
+        "file": "src/app/dashboard/settings/company/page.tsx",
+        "count": 1
+      },
+      {
+        "file": "src/app/dashboard/settings/profile/page.tsx",
+        "count": 1
+      },
+      {
+        "file": "src/app/dashboard/settings/users/page.tsx",
+        "count": 1
+      },
+      {
+        "file": "src/app/developer/page.tsx",
+        "count": 10
+      },
+      {
+        "file": "src/app/join/[companyId]/[inviteId]/page.tsx",
+        "count": 2
+      },
+      {
+        "file": "src/context/auth-context.tsx",
+        "count": 1
+      },
+      {
+        "file": "src/context/company-context.tsx",
+        "count": 1
+      },
+      {
+        "file": "src/lib/counters.ts",
+        "count": 1
+      },
+      {
+        "file": "src/lib/utils.ts",
+        "count": 1
+      },
+      {
+        "file": "src/services/client-service.ts",
+        "count": 2
+      },
+      {
+        "file": "src/services/hr-service.ts",
+        "count": 1
+      },
+      {
+        "file": "src/services/user-service.ts",
+        "count": 3
+      },
+      {
+        "file": "src/services/work-hours-service.ts",
+        "count": 1
+      }
+    ],
+    "global_users": [
+      {
+        "file": "src/app/dashboard/settings/profile/page.tsx",
+        "count": 1
+      },
+      {
+        "file": "src/app/join/[companyId]/[inviteId]/page.tsx",
+        "count": 1
+      },
+      {
+        "file": "src/context/auth-context.tsx",
+        "count": 1
+      },
+      {
+        "file": "src/services/hr-service.ts",
+        "count": 2
+      },
+      {
+        "file": "src/services/seed-service.ts",
+        "count": 1
+      },
+      {
+        "file": "src/services/user-service.ts",
+        "count": 3
+      },
+      {
+        "file": "src/services/variation-service.ts",
+        "count": 1
+      }
+    ],
+    "company_requests": [
+      {
+        "file": "src/app/developer/page.tsx",
+        "count": 2
+      },
+      {
+        "file": "src/app/register/page.tsx",
+        "count": 1
+      }
+    ]
+  },
+  "stats": {
+    "collectionsInCode": 68,
+    "collectionsInRegistry": 76,
+    "fkEdges": 132,
+    "usageIndex": {
+      "globalUser": 0,
+      "company": 0,
+      "invitations": 1,
+      "departments": 9,
+      "jobs": 5,
+      "roles": 5,
+      "governorates": 5,
+      "areas": 4,
+      "unitTypes": 1,
+      "paymentMethods": 2,
+      "paymentConditionTypes": 0,
+      "milestoneTimingTypes": 0,
+      "itemCategories": 0,
+      "costTypeCategories": 0,
+      "meetingRooms": 2,
+      "serviceTypes": 2,
+      "leads": 1,
+      "clients": 16,
+      "clientHistory": 2,
+      "employees": 28,
+      "workGroups": 3,
+      "applications": 2,
+      "leaveRequests": 10,
+      "permissionRequests": 5,
+      "attendance": 7,
+      "payroll": 5,
+      "warehouses": 1,
+      "inventoryItems": 3,
+      "inventoryTransactions": 0,
+      "assetAssignments": 2,
+      "suppliers": 4,
+      "subcontractors": 4,
+      "purchaseOrders": 3,
+      "poItems": 1,
+      "activityTypes": 12,
+      "services": 11,
+      "subServices": 10,
+      "technicalStages": 11,
+      "transactions": 23,
+      "transactionStages": 12,
+      "transactionTimeline": 8,
+      "transactionComments": 4,
+      "boqReferenceNodes": 5,
+      "quotationTemplates": 5,
+      "contractTemplates": 5,
+      "subconContractTemplates": 5,
+      "subconContracts": 9,
+      "boqTemplates": 7,
+      "boqTemplateItems": 2,
+      "quotations": 4,
+      "contracts": 11,
+      "boqs": 11,
+      "boqItems": 11,
+      "boqVariations": 1,
+      "boqVariationItems": 1,
+      "executions": 3,
+      "appointments": 7,
+      "fieldVisits": 3,
+      "equipment": 6,
+      "equipmentAssignments": 0,
+      "costRateCards": 1,
+      "ipcs": 5,
+      "subIpcs": 4,
+      "accounts": 6,
+      "journalEntries": 3,
+      "vouchers": 5,
+      "costCenters": 7,
+      "profitCenters": 7
+    },
+    "rawRootUses": {
+      "company": 27,
+      "globalUser": 10,
+      "company_requests": 3
+    }
+  }
+}

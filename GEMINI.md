@@ -34,3 +34,13 @@ Print Wrapper: The PrintWrapper component must expand to fullWidth when used in 
 Dropdowns & Selects: SelectContent and PopoverContent MUST have a max-height constraint. Always use max-h-[300px] and overflow-y-auto for any list containing more than 3 items.
 Buttons: Standard buttons MUST be h-10. Primary CTAs (Save) can be h-12. NEVER use h-14, h-16, or larger. Font size must be text-sm or text-xs. NEVER text-xl.
 Inputs: Standard inputs MUST be h-10. NEVER use h-14 for standard inputs.
+
+6. Data Model & Relationships (CRITICAL)
+Every Firestore collection path lives in `src/firebase/multi-tenant.ts` (`paths.*`). Do NOT hardcode `companies/${companyId}/...` paths in pages or services.
+The full relationship map is documented in `docs/relationships.md` and machine-readable in `docs/relations.json`.
+Whenever you add a collection, rename a path, or add an `xxxId` field in `src/types/*.ts`, you MUST:
+   a. add/update the entry in `docs/relations.json` (`collections`, and `aliases` for the new FK field),
+   b. add the corresponding row in `docs/relationships.md` (§1.1 for collections, §4 tables for edges),
+   c. run `npm run check:relations -- --write` and make it pass (exit code 0).
+This guard is what keeps the ERP's referential map honest — skipping it fails the repo check.
+Never write directly to `journalEntries` from a new service; go through `AccountingService.createJournalEntry` / `createVoucher` (the double-entry balance guard lives there).

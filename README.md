@@ -40,5 +40,16 @@ git push origin main
 git pull origin main
 ```
 
+## 🕸️ خريطة العلاقات (Data Model)
+
+- **المرجع البصري والنصي الكامل**: [`docs/relationships.md`](docs/relationships.md) — كل مجموعة، كل مفتاح أجنبي، كل خط أنابيب تشغيلي←مالي، وكل فجوة معروفة.
+- **السجل الآلي**: [`docs/relations.json`](docs/relations.json) (يدوي) + [`docs/relations.generated.json`](docs/relations.generated.json) (مُولَّد).
+- **الحارس**: `npm run check:relations` يقارن الكود بالتوثيق ويفشل البناء عند أي انحراف.
+
+```bash
+npm run check:relations            # فحص: هل الخريطة مطابقة للكود؟
+npm run check:relations -- --write # تحديث اللقطة المولّدة بعد أي تعديل على paths أو الأنواع
+```
+
 ---
 **NovaFlow ERP** - نظام إدارة هندسي متكامل ممتثل لقانون العمل الكويتي.
