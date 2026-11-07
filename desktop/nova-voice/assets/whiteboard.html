@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>@@NOVA_TITLE@@</title>
+<style>@@NOVA_CSS@@</style>
+</head>
+<body>
+<main class="lesson-shell">
+  <header class="lesson-heading">
+    <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="m7 23 2-8L22 2l8 8-13 13-8 2Z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/><path d="m18 6 8 8M9 15l8 8M4 30h23" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></div>
+    <div><p class="eyebrow">NOVA · تعلّم خطوة بخطوة</p><h1 id="lesson-title" dir="auto">@@NOVA_TITLE@@</h1><p class="subtitle">سبورة تفاعلية · كتابة بالقلم · نص الدرس محفوظ داخل هذا الملف</p></div>
+    <span class="local-badge">محلي · دون خدمات خارجية</span>
+  </header>
+  <div class="lesson-layout">
+    <aside class="outline-panel" aria-label="خطوات الدرس">
+      <div class="outline-heading"><h2>رحلة الدرس</h2><span id="step-count"></span></div>
+      <ol id="lesson-outline"></ol>
+      <p class="outline-note">اختر خطوة، أو استخدم التالي والسابق. لا يبدأ الصوت تلقائيًا عند فتح الملف.</p>
+    </aside>
+    <div class="lesson-main">
+      <section class="board-panel" aria-labelledby="scene-title">
+        <div class="board-heading"><div><p id="scene-number" class="eyebrow"></p><h2 id="scene-title" dir="auto"></h2></div><span class="pen-badge" aria-hidden="true">✎</span></div>
+        <div class="board-paper" id="board-paper">
+          <svg id="whiteboard" viewBox="0 0 1200 540" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="محتوى الخطوة مكتوب على السبورة؛ توجد نسخة نصية أسفلها">
+            <defs id="wb-defs"></defs><g id="wb-rows"></g>
+            <g id="wb-pen" opacity="0" pointer-events="none" aria-hidden="true">
+              <path d="M0 0 7-22 20-9Z" fill="#F5D0A9" stroke="#475569" stroke-width="2"/>
+              <path d="M0 0 3-9 8-4Z" fill="#334155"/>
+              <path d="m7-22 13 13 51-51-13-13Z" fill="#FFB000" stroke="#C2410C" stroke-width="2"/>
+              <path d="m58-73 13 13 10-10-13-13Z" fill="#FF5722" stroke="#C2410C" stroke-width="2"/>
+            </g>
+          </svg>
+          <div id="board-placeholder">اضغط «تشغيل الخطوة» لبدء الكتابة</div>
+        </div>
+        <div class="board-footer"><span id="writing-status" role="status">السبورة جاهزة</span><span id="position-label">0%</span></div>
+      </section>
+      <section class="controls-panel" aria-label="التشغيل والسرعة">
+        <div class="transport">
+          <button id="wb-play" class="primary" type="button">تشغيل الخطوة</button>
+          <button id="wb-restart" type="button">إعادة الخطوة</button>
+          <div class="step-buttons"><button id="wb-previous" type="button">السابقة</button><button id="wb-next" type="button">التالية ←</button></div>
+        </div>
+        <div class="speed-row"><label for="wb-rate">سرعة الصوت والكتابة</label><input id="wb-rate" type="range" min="0.5" max="2" step="0.05" value="1"><output id="wb-rate-label" for="wb-rate">1.00×</output><button id="wb-reset-rate" class="quiet" type="button">السرعة العادية</button></div>
+        <audio id="wb-audio" controls preload="metadata" aria-label="صوت الخطوة الحالية" hidden></audio>
+        <div class="playback-options"><label><input id="wb-auto-next" type="checkbox"> الانتقال إلى الخطوة التالية تلقائيًا</label><span id="audio-badge" class="audio-badge">نسخة بلا صوت</span></div>
+        <p id="wb-status" class="hint" role="status">هذه نسخة السبورة قبل توليد الصوت. أضف الصوت من الخطوة 2 داخل Nova Voice؛ الكتابة تعمل الآن دون نموذج صوتي.</p>
+      </section>
+      <details class="transcript-panel"><summary>نص الخطوة · نسخة مقروءة</summary><div id="step-transcript"></div></details>
+    </div>
+  </div>
+  <footer class="page-footer">العناوين للتنظيم ولا تُقرأ صوتيًا. ربط الكتابة بالصوت داخل الخطوة تقريبي، وليس محاذاة كلمة بكلمة.</footer>
+  <noscript><p>السبورة والصوت يحتاجان JavaScript. يمكنك قراءة الدرس هنا:</p>@@NOVA_FALLBACK@@</noscript>
+</main>
+<script id="nova-whiteboard-data" type="application/json">@@NOVA_DATA@@</script>
+@@NOVA_AUDIO@@
+<script>@@NOVA_SCRIPT@@</script>
+</body>
+</html>

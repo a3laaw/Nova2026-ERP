@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nova Voice — التحميل وشرح التشغيل</title>
+<style>
+:root{font-family:'Segoe UI',Tahoma,Arial,sans-serif;color:#1E293B;background:#F8FAFC;line-height:1.9;color-scheme:light}*{box-sizing:border-box}body{margin:0;padding:clamp(16px,4vw,48px);background:radial-gradient(ellipse at top right,#FFF1C2,transparent 55%),#F8FAFC;min-height:100vh}main{width:100%;max-width:1600px;margin:auto}.badge{display:inline-block;padding:6px 14px;border:1px solid #BFDBFE;border-radius:100px;color:#2563EB;background:#EFF6FF;font-size:12px}h1{font-size:clamp(28px,4vw,44px);line-height:1.5;margin:14px 0 6px}p{color:#475569;margin:10px 0}.lead{font-size:18px}.card{background:#FFF;border:2px solid #F1F5F9;border-radius:32px;padding:clamp(20px,3vw,36px);margin-top:22px}.actions{display:flex;flex-wrap:wrap;gap:12px;margin:22px 0}a{color:#2563EB;text-underline-offset:4px}.button{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 20px;border:2px solid #E2E8F0;border-radius:12px;font-size:14px;font-weight:650;text-decoration:none;color:#1E293B;background:#FFF}.button.primary{min-height:48px;background:#FFB000;border-color:#FFB000;border-bottom:4px solid #FF5722}.button:hover{background:#FFF1C2}.button:focus-visible{outline:3px solid #2563EB;outline-offset:4px}.note{padding:16px 20px;background:#FCE4EC;border-radius:18px;color:#475569;font-size:14px}code{font-family:Consolas,monospace;direction:ltr;unicode-bidi:isolate;overflow-wrap:anywhere}.file{display:block;padding:14px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:14px;text-align:left;direction:ltr;font-size:13px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.grid h2{font-size:17px;margin-top:0}.muted{font-size:13px;color:#64748B}.step{font-weight:700;color:#C2410C}.footer{font-size:13px;color:#64748B;margin:24px 0}@media(max-width:760px){.grid{grid-template-columns:1fr}.actions{flex-direction:column}.card{border-radius:24px}.lead{font-size:16px}}
+</style>
+</head>
+<body>
+<main>
+<header><span class="badge">التسليم الحالي · Windows 64-bit</span><h1>Nova Voice <span style="color:#C2410C">0.4</span></h1><p class="lead">مكان واحد للتحميل وشرح التشغيل وتجربة السبورة.</p></header>
+<section class="card">
+<h2>حزمة البرنامج بصيغة RAR</h2>
+<p>الملف موجود في مجلد تسليم واضح داخل مساحة العمل، منفصل عن الكود والنسخ القديمة.</p>
+<code class="file">deliverables/nova-voice/NovaVoice-Source-v0.4.0.rar</code>
+<div class="actions"><a class="button primary" href="NovaVoice-Source-v0.4.0.rar" download="NovaVoice-Source-v0.4.0.rar">تحميل ملف RAR</a><a class="button" href="RUN-FIRST-AR.html">شرح التثبيت والتشغيل</a><a class="button" href="../../desktop/nova-voice/examples/greetings-whiteboard.html">تجربة السبورة بدون صوت</a></div>
+<p class="note"><strong>مصدر وملفات تشغيل، وليست EXE جاهزًا.</strong> الحزمة لا تتضمن Python أو نماذج بشرية. بعد تثبيت المتطلبات والنماذج تعمل على جهازك دون إنترنت. إنشاء السبورة وحده لا يحتاج نموذجًا صوتيًا.</p>
+<p class="muted">إذا لم يبدأ التنزيل، افتح رابط RAR في تبويب مستقل، أو حمّل الملف المرفق من مساحة العمل. رابط المعاينة مؤقت؛ ملف الحزمة نفسه محفوظ داخل المشروع. <a href="SHA256SUMS.txt">بصمة التحقق من الملف</a>.</p>
+</section>
+<div class="grid">
+<section class="card"><p class="step">01 · جهّز مرة واحدة</p><h2>فك الحزمة كاملة</h2><p>ثبّت Python 3.12 x64 مع Launcher، ثم شغّل <code>Setup-Windows.bat</code>. لا تشغّل الملفات من داخل نافذة RAR.</p></section>
+<section class="card"><p class="step">02 · ابدأ العمل</p><h2>افتح البرنامج</h2><p>شغّل <code>Run-Windows.bat</code>. لإنشاء السبورة استخدم السكريبت ثم زر «1. توليد السبورة HTML».</p></section>
+<section class="card"><p class="step">03 · أضف الصوت</p><h2>من السبورة نفسها</h2><p>جهّز الأصوات واخترها، ثم اضغط «2. توليد صوت السبورة». سيُستخدم النص المحفوظ في HTML دون إعادة إدخاله.</p></section>
+</div>
+<p class="footer">المصدر في <code>desktop/nova-voice/</code>، والحزم السابقة في <code>deliverables/archive/</code>. اختبارات الكود لا تعني تحققًا من واجهة Windows أو استماع فعلي هنا. مزامنة الكتابة داخل الخطوة تقريبية.</p>
+</main>
+</body>
+</html>

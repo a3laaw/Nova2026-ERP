@@ -43,3 +43,17 @@ next-env.d.ts
 # firebase
 firebase-debug.log
 firestore-debug.log
+# Local Python environment for the standalone desktop app
+/.venv/
+
+# Historical desktop packages are retained locally, not mixed with current delivery.
+/deliverables/archive/nova-voice/*.zip
+/deliverables/archive/nova-voice/*.rar
+/deliverables/archive/temporary-download-site/
+
+# The user-requested current RAR is intentional and must stay visible/persisted.
+!/deliverables/
+!/deliverables/nova-voice/
+!/deliverables/nova-voice/NovaVoice-Source-v0.4.0.rar
+
+/deliverables/archive/development-helpers/

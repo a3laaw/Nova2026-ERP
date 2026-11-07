@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>مثال HTML لإضافة صوت وحركة قابلة لتقليل السرعة</title>
+  <style>
+    body { margin: 0; padding: 32px 24px 150px; font: 18px/1.8 Tahoma, sans-serif;
+      background: #f8fafc; color: #1e293b; }
+    main { padding: 32px; border: 2px solid #f1f5f9; background: #fff; border-radius: 32px; }
+    h1 { margin-top: 0; }
+    .track { margin-top: 30px; padding: 18px; background: #fce4ec; border-radius: 20px; overflow: hidden; }
+    .ball { width: 48px; height: 48px; border-radius: 50%; background: #ffb000;
+      border-bottom: 5px solid #ff5722; animation: travel 5s ease-in-out infinite alternate; }
+    @keyframes travel { from { transform: translateX(0); } to { transform: translateX(-240px); } }
+    .note { color: #475569; }
+    @media (prefers-reduced-motion: reduce) { .ball { animation: none; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>نص وصوت في صفحة واحدة</h1>
+    <p>اختر هذا الملف من Nova Voice، ثم أدخل السكريبت واختر صوتًا أو حوارًا بين صوتين.</p>
+    <p>اضغط «توليد صفحة HTML بالصوت» واحفظ نسخة جديدة بجانب الملف الأصلي.</p>
+    <div class="track" aria-label="حركة CSS تجريبية"><div class="ball"></div></div>
+    <p class="note">في النسخة المصدّرة، شغّل الصوت ثم جرّب 0.75× أو 0.5×.
+      عند تفعيل ربط السرعة ستتباطأ حركة الكرة أيضًا. يمكن ربط الإيقاف/التشغيل اختياريًا.</p>
+    <p class="note">هذا مثال لحركة CSS فقط، ولا يدّعي مطابقة جمل الحوار مع مشاهد الصفحة تلقائيًا.</p>
+  </main>
+</body>
+</html>
