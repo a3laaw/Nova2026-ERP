@@ -44,7 +44,8 @@ git pull origin main
 
 - **المرجع البصري والنصي الكامل**: [`docs/relationships.md`](docs/relationships.md) — كل مجموعة، كل مفتاح أجنبي، كل خط أنابيب تشغيلي←مالي، وكل فجوة معروفة.
 - **السجل الآلي**: [`docs/relations.json`](docs/relations.json) (يدوي) + [`docs/relations.generated.json`](docs/relations.generated.json) (مُولَّد).
-- **الحارس**: `npm run check:relations` يقارن الكود بالتوثيق ويفشل البناء عند أي انحراف.
+- **التقسيم إلى موديولات**: [`docs/verticals.md`](docs/verticals.md) — الاستشارات الهندسية / المقاولات والإنشاءات / التصميم والتنفيذ / الموارد البشرية / اللب المشترك، مع خطة فصل نظيفة.
+- **الحارس**: `npm run check:relations` (٧ فحوصات) يقارن الكود بالتوثيق ويفشل عند أي انحراف — بما فيها وسوم الموديولات.
 
 ```bash
 npm run check:relations            # فحص: هل الخريطة مطابقة للكود؟

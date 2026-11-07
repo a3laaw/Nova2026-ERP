@@ -39,8 +39,9 @@ Inputs: Standard inputs MUST be h-10. NEVER use h-14 for standard inputs.
 Every Firestore collection path lives in `src/firebase/multi-tenant.ts` (`paths.*`). Do NOT hardcode `companies/${companyId}/...` paths in pages or services.
 The full relationship map is documented in `docs/relationships.md` and machine-readable in `docs/relations.json`.
 Whenever you add a collection, rename a path, or add an `xxxId` field in `src/types/*.ts`, you MUST:
-   a. add/update the entry in `docs/relations.json` (`collections`, and `aliases` for the new FK field),
+   a. add/update the entry in `docs/relations.json` (`collections`, `aliases` for the new FK field, and `verticals` tags: consulting / construction / hybrid / hr / core),
    b. add the corresponding row in `docs/relationships.md` (§1.1 for collections, §4 tables for edges),
    c. run `npm run check:relations -- --write` and make it pass (exit code 0).
+Module boundaries (consulting vs construction vs HR) are data-derived, not code-split — read `docs/verticals.md` before adding any "new module": it is usually just a new `activityType` + `pricingMode`/`measurementMode` combination. Do not add new string matching on `activityTypeName`/`departmentName` (tracked as G11); extend `docs/relations.json` tags instead.
 This guard is what keeps the ERP's referential map honest — skipping it fails the repo check.
 Never write directly to `journalEntries` from a new service; go through `AccountingService.createJournalEntry` / `createVoucher` (the double-entry balance guard lives there).

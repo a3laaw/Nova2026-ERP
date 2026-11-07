@@ -10,14 +10,15 @@
  *   node scripts/check-relations.js --write    # الفحص + إعادة توليد docs/relations.generated.json
  *   node scripts/check-relations.js --json     # طباعة التقرير كـ JSON (للأدلة الآلية)
  *
- * يفحص ستة أمور:
+ * يفحص سبعة أمور:
  *  1) تطابق مفاتيح src/firebase/multi-tenant.ts مع سجل docs/relations.json (في الاتجاهين).
  *  2) سلامة كل مفتاح أجنبي (xxxId / xxxIds) في src/types/*.ts: لا بد أن له هدف محلول
  *     في سجل aliases، أو أن يكون مسجلاً كحقل غير مرجعي (nonRelationalIdFields).
  *  3) تطابق حالة الاستخدام (active / declared-unused) مع الواقع في الكود.
  *  4) كل مسار نصي companies/{c}/<collection> يجب أن يكون مسجلاً — يكتشف المجموعات الشبح.
  *  5) سلامة التسلسل الهرمي (parent) لكل مجموعة مقابل مسارها المشتق.
- *  6) كل مجموعة وكل خط أنابيب وكل فجوة في السجل يجب أن مذكورة نصياً في docs/relationships.md.
+ *  6) كل مجموعة وكل خط أنابيب وكل فجوة في السجل يجب أن تكون مذكورة نصياً في docs/relationships.md.
+ *  7) كل مجموعة موسومة بموديول رأسي (consulting/construction/hybrid/hr/core)، وكل موديول موثّق في docs/verticals.md.
  */
 
 const fs = require('fs');
@@ -28,6 +29,7 @@ const REGISTRY_FILE = path.join(ROOT, 'docs/relations.json');
 const GENERATED_FILE = path.join(ROOT, 'docs/relations.generated.json');
 const PATHS_FILE = path.join(ROOT, 'src/firebase/multi-tenant.ts');
 const DOC_FILE = path.join(ROOT, 'docs/relationships.md');
+const VERTICALS_DOC = path.join(ROOT, 'docs/verticals.md');
 const TYPES_DIR = path.join(ROOT, 'src/types');
 const SRC_DIR = path.join(ROOT, 'src');
 
@@ -265,7 +267,7 @@ function main() {
   /* --- 5) سلامة الأب في السجل مقابل المسار المشتق --- */
   for (const [k, meta] of Object.entries(reg.collections)) {
     const p = derived[k];
-    if (!p || !meta.parent || meta.parent === 'company') continue;
+    if (!p || !meta.parent || meta.parent === 'company' || meta.parent === 'global') continue;
     const parentPath = derived[meta.parent];
     if (!parentPath) {
       warn(`'${k}': الأب '${meta.parent}' غير موجود في الكود للتحقق من التداخل`);
@@ -273,6 +275,29 @@ function main() {
     }
     if (!p.startsWith(parentPath))
       err(`تسلسل هرمي خاطئ: مسار '${k}' (${p}) لا يبدأ بمسار أبيه '${meta.parent}' (${parentPath})`);
+  }
+
+  /* --- 6b) التقسيم الرأسي: كل مجموعة تحمل وسم موديول واحد على الأقل --- */
+  const verticalIds = (reg.verticals && reg.verticals.items ? reg.verticals.items : []).map((v) => v.id);
+  const verticalCounts = {};
+  for (const k of registryKeys) {
+    const tags = reg.collections[k].verticals;
+    if (!Array.isArray(tags) || tags.length === 0) {
+      err(`'${k}' بلا وسم موديول رأسي (verticals) في docs/relations.json — كل مجموعة يجب أن تنتمي لموديول واحد على الأقل`);
+      continue;
+    }
+    for (const t of tags) {
+      if (!verticalIds.includes(t)) err(`'${k}': وسم موديول غير معروف '${t}' — الموديولات المعتمدة: ${verticalIds.join(', ')}`);
+      verticalCounts[t] = (verticalCounts[t] || 0) + 1;
+    }
+  }
+  const vdoc = fs.existsSync(VERTICALS_DOC) ? read(VERTICALS_DOC) : '';
+  if (!vdoc) {
+    err('الملف docs/verticals.md مفقود — تقسيم الموديولات غير موثّق.');
+  } else {
+    for (const v of verticalIds) {
+      if (!vdoc.includes('\`' + v + '\`')) err(`الموديول '${v}' غير مذكور في docs/verticals.md`);
+    }
   }
 
   /* --- 6) تغطية التوثيق في docs/relationships.md --- */
@@ -316,6 +341,7 @@ function main() {
     fkEdges: edges.length,
     usageIndex: Object.fromEntries(codeKeys.map((k) => [k, usage[k].length])),
     rawRootUses,
+    verticalCounts,
   };
 
   if (WRITE) {
@@ -327,6 +353,7 @@ function main() {
       usage,
       rawTenantPaths: rawHits,
       rawRootCollections: rawRoots,
+      verticals: reg.verticals,
       stats,
     };
     fs.writeFileSync(GENERATED_FILE, JSON.stringify(generated, null, 2));
@@ -343,6 +370,8 @@ function main() {
     console.log(`- مجموعات في السجل المرجعي: ${stats.collectionsInRegistry}`);
     console.log(`- العلاقات المستخرجة من src/types: ${stats.fkEdges}`);
     console.log(`- مسارات نصية لمجموعات (خارج paths): ${rawHits.length}`);
+    if (Object.keys(verticalCounts).length)
+      console.log('- توزيع المجموعات على الموديولات: ' + Object.entries(verticalCounts).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${k}=${v}`).join(' · '));
     console.log('');
     for (const e of errors) console.log('❌ ' + e);
     for (const w of warnings) console.log('⚠️  ' + w);

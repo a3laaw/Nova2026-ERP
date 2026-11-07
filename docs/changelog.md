@@ -1,6 +1,11 @@
 
 # سجل تطوير مشروع NovaFlow ERP 🚀
 
+## [2.3.1] - تقسيم الموديولات الرأسية (Vertical Module Map)
+- **`docs/verticals.md`**: شرح كامل للنظام مقسوماً إلى `consulting` (استشارات هندسية) و`construction` (مقاولات وإنشاءات) و`hybrid` (تصميم وإنشاء) و`hr` و`core` — رحلات العمل، الكيانات، 10 تقاطعات بين الموديولات، وخطة فصل على 3 مراحل.
+- **وسوم `verticals`** لكل مجموعة في `docs/relations.json` + فحص سابع في `scripts/check-relations.js` يمنع وجود مجموعة بلا موديول أو موديول بلا توثيق.
+- **G11 (عالية)**: توثيق أن الفصل الحالي مطابقات نصية في 5 مواضع (project-service، analytics-service، projects/page، رادار المعماري، رادار الميدان) وأن `serviceTypes.moduleScope` غير مستخدم.
+
 ## [2.3.0] - خريطة العلاقات السيادية (Relationship Atlas)
 - **`docs/relationships.md`**: توثيق شامل لـ 76 مجموعة، 132 مفتاحاً أجنبياً، 27 علاقة دلالية، و10 خطوط أنابيب تشغيلية←مالية مع مخططات Mermaid.
 - **`docs/relations.json`**: سجل مرجعي آلي (كيانات، aliases، فجوات G1–G9) أصبح مصدر المعنى الوحيد القابل للتحقق.

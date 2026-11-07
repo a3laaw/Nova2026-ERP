@@ -193,7 +193,10 @@
       "note": "جذر المستأجر: كل مجموعة داخل companies/{companyId} مملوكة له. حقول الترخيص: status/subscriptionType/expiryDate/maxUsers. غير مشار إليها عبر paths.company() في الكود (تُقرأ بمسار نصي).",
       "typesNeeded": true,
       "rawRoot": "companies",
-      "rawMatch": "'companies'"
+      "rawMatch": "'companies'",
+      "verticals": [
+        "core"
+      ]
     },
     "globalUser": {
       "module": "01-الهوية والتأجير",
@@ -205,7 +208,10 @@
       "note": "الهوية العالمية الوحيدة لكل مستخدم: uid → companyId + roleId + employeeId + departmentId + roleCode.",
       "typesNeeded": true,
       "rawRoot": "global_users",
-      "rawMatch": "'global_users'"
+      "rawMatch": "'global_users'",
+      "verticals": [
+        "core"
+      ]
     },
     "invitations": {
       "module": "01-الهوية والتأجير",
@@ -214,7 +220,10 @@
       "owner": "src/services/user-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "دعوة للانضمام داخل المنشأة؛ تُقبل عبر /join/{companyId}/{inviteId} وتكتب global_users + companies/{c}/users."
+      "note": "دعوة للانضمام داخل المنشأة؛ تُقبل عبر /join/{companyId}/{inviteId} وتكتب global_users + companies/{c}/users.",
+      "verticals": [
+        "core"
+      ]
     },
     "roles": {
       "module": "02-القوائم المرجعية",
@@ -223,7 +232,10 @@
       "owner": "src/services/role-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "مصفوفة الصلاحيات matrix[{resourceId,action,scope}] — تحكم الوصول داخل المنشأة؛ roleCode يُطابق القواعد الأمنية."
+      "note": "مصفوفة الصلاحيات matrix[{resourceId,action,scope}] — تحكم الوصول داخل المنشأة؛ roleCode يُطابق القواعد الأمنية.",
+      "verticals": [
+        "core"
+      ]
     },
     "departments": {
       "module": "02-القوائم المرجعية",
@@ -232,7 +244,11 @@
       "owner": "src/services/department-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "أقسام المنشأة؛ مصدر scope='dept' في محرك الصلاحيات."
+      "note": "أقسام المنشأة؛ مصدر scope='dept' في محرك الصلاحيات.",
+      "verticals": [
+        "core",
+        "hr"
+      ]
     },
     "jobs": {
       "module": "02-القوائم المرجعية",
@@ -241,7 +257,11 @@
       "owner": "src/services/department-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "المسميات الوظيفية داخل القسم، تحمل roleId + hourlyCost (مرجع التكلفة)."
+      "note": "المسميات الوظيفية داخل القسم، تحمل roleId + hourlyCost (مرجع التكلفة).",
+      "verticals": [
+        "core",
+        "hr"
+      ]
     },
     "governorates": {
       "module": "02-القوائم المرجعية",
@@ -250,7 +270,10 @@
       "owner": "src/services/location-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "محافظات الكويت المرجعية (جذر شجرة الموقع)."
+      "note": "محافظات الكويت المرجعية (جذر شجرة الموقع).",
+      "verticals": [
+        "core"
+      ]
     },
     "areas": {
       "module": "02-القوائم المرجعية",
@@ -259,7 +282,10 @@
       "owner": "src/services/location-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "مناطق داخل المحافظة: governorateId + مسار Firestore فرعي."
+      "note": "مناطق داخل المحافظة: governorateId + مسار Firestore فرعي.",
+      "verticals": [
+        "core"
+      ]
     },
     "meetingRooms": {
       "module": "02-القوائم المرجعية",
@@ -268,7 +294,11 @@
       "owner": null,
       "parent": "company",
       "status": "active",
-      "note": "قاعات/صالة المكتب — تُستخدم كـ hallId في المواعيد وكمصدر جدول مواعيد العمل meetingRooms."
+      "note": "قاعات/صالة المكتب — تُستخدم كـ hallId في المواعيد وكمصدر جدول مواعيد العمل meetingRooms.",
+      "verticals": [
+        "consulting",
+        "core"
+      ]
     },
     "serviceTypes": {
       "module": "02-القوائم المرجعية",
@@ -277,7 +307,10 @@
       "owner": "src/services/service-type-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "تصنيف الخدمات العام (moduleScope) — مستقل عن شجرة activityTypes."
+      "note": "تصنيف الخدمات العام (moduleScope) — مستقل عن شجرة activityTypes.",
+      "verticals": [
+        "core"
+      ]
     },
     "unitTypes": {
       "module": "02-القوائم المرجعية",
@@ -286,7 +319,11 @@
       "owner": "src/services/reference-list-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "وحدات القياس (m²، يوم، عدد) referenced by BOQ nodes."
+      "note": "وحدات القياس (m²، يوم، عدد) referenced by BOQ nodes.",
+      "verticals": [
+        "core",
+        "construction"
+      ]
     },
     "paymentMethods": {
       "module": "02-القوائم المرجعية",
@@ -296,7 +333,10 @@
       "parent": "company",
       "status": "active",
       "note": "قائمة طرق الدفع المرجعية؛ يُشار إليها بالكود لا بالمعرّف.",
-      "typesNeeded": true
+      "typesNeeded": true,
+      "verticals": [
+        "core"
+      ]
     },
     "paymentConditionTypes": {
       "module": "02-القوائم المرجعية",
@@ -306,7 +346,11 @@
       "parent": "company",
       "status": "declared-unused",
       "note": "معرّفة في paths فقط — لا يوجد لها استخدام بعد (انظر gaps).",
-      "typesNeeded": true
+      "typesNeeded": true,
+      "verticals": [
+        "core",
+        "consulting"
+      ]
     },
     "milestoneTimingTypes": {
       "module": "02-القوائم المرجعية",
@@ -316,7 +360,10 @@
       "parent": "company",
       "status": "declared-unused",
       "note": "معرّفة في paths فقط — التوقيت فعلياً enum MilestoneTiming في types/templates.ts.",
-      "typesNeeded": true
+      "typesNeeded": true,
+      "verticals": [
+        "core"
+      ]
     },
     "itemCategories": {
       "module": "02-القوائم المرجعية",
@@ -326,7 +373,11 @@
       "parent": "company",
       "status": "declared-unused",
       "note": "معرّفة في paths فقط — تُستخدم كمرجع allowedItemCategoryIds في بنود BOQ.",
-      "typesNeeded": true
+      "typesNeeded": true,
+      "verticals": [
+        "core",
+        "construction"
+      ]
     },
     "costTypeCategories": {
       "module": "02-القوائم المرجعية",
@@ -336,7 +387,10 @@
       "parent": "company",
       "status": "declared-unused",
       "note": "معرّفة في paths فقط — لا استخدام لها حالياً.",
-      "typesNeeded": true
+      "typesNeeded": true,
+      "verticals": [
+        "core"
+      ]
     },
     "activityTypes": {
       "module": "03-كتالوج الخدمات",
@@ -345,7 +399,13 @@
       "owner": "src/services/technical-path-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "جذر الشجرة الوظيفية: نوع النشاط (عزل، مقاولات، تصميم...). كل شيء فني يتفرع منه."
+      "note": "جذر الشجرة الوظيفية: نوع النشاط (عزل، مقاولات، تصميم...). كل شيء فني يتفرع منه.",
+      "verticals": [
+        "core",
+        "consulting",
+        "construction",
+        "hybrid"
+      ]
     },
     "services": {
       "module": "03-كتالوج الخدمات",
@@ -354,7 +414,13 @@
       "owner": "src/services/technical-path-service.ts",
       "parent": "activityTypes",
       "status": "active",
-      "note": "خدمة داخل نوع النشاط — مجموعة فرعية Firestore تحت activityTypes/{actId}/services."
+      "note": "خدمة داخل نوع النشاط — مجموعة فرعية Firestore تحت activityTypes/{actId}/services.",
+      "verticals": [
+        "core",
+        "consulting",
+        "construction",
+        "hybrid"
+      ]
     },
     "subServices": {
       "module": "03-كتالوج الخدمات",
@@ -363,7 +429,13 @@
       "owner": "src/services/technical-path-service.ts",
       "parent": "services",
       "status": "active",
-      "note": "خدمة فرعية: المستوى الذي تُربط به القوالب والمراحل."
+      "note": "خدمة فرعية: المستوى الذي تُربط به القوالب والمراحل.",
+      "verticals": [
+        "core",
+        "consulting",
+        "construction",
+        "hybrid"
+      ]
     },
     "technicalStages": {
       "module": "03-كتالوج الخدمات",
@@ -372,7 +444,13 @@
       "owner": "src/services/technical-path-service.ts",
       "parent": "subServices",
       "status": "active",
-      "note": "قالب المرحلة الفنية: isNumeric/numericTarget، isTimed/timeTargetDays، nextStageIds (DAG)، billableTrigger + milestoneKey للفوترة."
+      "note": "قالب المرحلة الفنية: isNumeric/numericTarget، isTimed/timeTargetDays، nextStageIds (DAG)، billableTrigger + milestoneKey للفوترة.",
+      "verticals": [
+        "core",
+        "consulting",
+        "construction",
+        "hybrid"
+      ]
     },
     "leads": {
       "module": "04-CRM",
@@ -382,7 +460,10 @@
       "parent": "company",
       "status": "active",
       "note": "فرص المبيعات قبل التحويل إلى عميل (لا يوجد كيان TypeScript بعد).",
-      "typesNeeded": true
+      "typesNeeded": true,
+      "verticals": [
+        "core"
+      ]
     },
     "clients": {
       "module": "04-CRM",
@@ -391,7 +472,13 @@
       "owner": "src/services/client-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "ملف العميل الموحد برقم سيادي C-0001/YYYY عبر counters؛ يحمل المهندس المسؤول + الموقع + القسم."
+      "note": "ملف العميل الموحد برقم سيادي C-0001/YYYY عبر counters؛ يحمل المهندس المسؤول + الموقع + القسم.",
+      "verticals": [
+        "core",
+        "consulting",
+        "construction",
+        "hybrid"
+      ]
     },
     "clientHistory": {
       "module": "04-CRM",
@@ -400,7 +487,12 @@
       "owner": "src/services/client-service.ts",
       "parent": "clients",
       "status": "active",
-      "note": "سجل تدقيق لكل عميل (تغيير حالة/ملاحظة/إسناد مهندس/إنشاء معاملة) كمجموعة فرعية تحت العميل."
+      "note": "سجل تدقيق لكل عميل (تغيير حالة/ملاحظة/إسناد مهندس/إنشاء معاملة) كمجموعة فرعية تحت العميل.",
+      "verticals": [
+        "core",
+        "consulting",
+        "construction"
+      ]
     },
     "transactions": {
       "module": "05-المعاملات والمشاريع",
@@ -409,7 +501,13 @@
       "owner": "src/services/transaction-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "النواة التشغيلية: معاملة العميل (عملياً هي 'المشروع'). كل وثيقة ومقايسة ومرحلة وتكلفة ترجع إليها."
+      "note": "النواة التشغيلية: معاملة العميل (عملياً هي 'المشروع'). كل وثيقة ومقايسة ومرحلة وتكلفة ترجع إليها.",
+      "verticals": [
+        "core",
+        "consulting",
+        "construction",
+        "hybrid"
+      ]
     },
     "transactionStages": {
       "module": "05-المعاملات والمشاريع",
@@ -418,7 +516,13 @@
       "owner": "src/services/transaction-service.ts",
       "parent": "transactions",
       "status": "active",
-      "note": "نسخة مراحل المعاملة من القالب الفني؛ تتقدم بالمواعيد والزيارات وتُغلق المراحل لإطلاق الفوترة."
+      "note": "نسخة مراحل المعاملة من القالب الفني؛ تتقدم بالمواعيد والزيارات وتُغلق المراحل لإطلاق الفوترة.",
+      "verticals": [
+        "core",
+        "consulting",
+        "construction",
+        "hybrid"
+      ]
     },
     "transactionTimeline": {
       "module": "05-المعاملات والمشاريع",
@@ -427,7 +531,13 @@
       "owner": "src/services/boq-execution-service.ts",
       "parent": "transactions",
       "status": "active",
-      "note": "شريط الأحداث الموحد لكل معاملة — تكتبه 6 خدمات مختلفة (أتمتة مالية، إنجاز، VO، مراجعات تصميم)."
+      "note": "شريط الأحداث الموحد لكل معاملة — تكتبه 6 خدمات مختلفة (أتمتة مالية، إنجاز، VO، مراجعات تصميم).",
+      "verticals": [
+        "core",
+        "consulting",
+        "construction",
+        "hybrid"
+      ]
     },
     "transactionComments": {
       "module": "05-المعاملات والمشاريع",
@@ -436,7 +546,12 @@
       "owner": "src/services/comment-service.ts",
       "parent": "transactions",
       "status": "active",
-      "note": "نقاش المعاملة (تعليقات وردود parentCommentId، تثبيت، أرشفة) مرتبط أحياناً بموعد أو مرحلة."
+      "note": "نقاش المعاملة (تعليقات وردود parentCommentId، تثبيت، أرشفة) مرتبط أحياناً بموعد أو مرحلة.",
+      "verticals": [
+        "core",
+        "consulting",
+        "construction"
+      ]
     },
     "executions": {
       "module": "05-المعاملات والمشاريع",
@@ -445,7 +560,11 @@
       "owner": "src/services/boq-execution-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "سطر تنفيذ مسطّح (وليس subgroup): الكميات + العمالة + المعدات + التكلفة المجمّدة، ويُرجّح به بند المقايسة."
+      "note": "سطر تنفيذ مسطّح (وليس subgroup): الكميات + العمالة + المعدات + التكلفة المجمّدة، ويُرجّح به بند المقايسة.",
+      "verticals": [
+        "construction",
+        "hybrid"
+      ]
     },
     "quotations": {
       "module": "06-الوثائق التجارية",
@@ -454,7 +573,13 @@
       "owner": "src/services/document-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "عرض سعر مُنشأ من قالب؛ يتحول إلى عقد بنفس البنية (items → milestones)."
+      "note": "عرض سعر مُنشأ من قالب؛ يتحول إلى عقد بنفس البنية (items → milestones).",
+      "verticals": [
+        "core",
+        "consulting",
+        "construction",
+        "hybrid"
+      ]
     },
     "contracts": {
       "module": "06-الوثائق التجارية",
@@ -463,7 +588,13 @@
       "owner": "src/services/document-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "العقد الرسمي: milestones مرتبطة بالمراحل الفنية + retentionRate + دفعة مقدمة؛ بوّابة الفوترة والذمم."
+      "note": "العقد الرسمي: milestones مرتبطة بالمراحل الفنية + retentionRate + دفعة مقدمة؛ بوّابة الفوترة والذمم.",
+      "verticals": [
+        "core",
+        "consulting",
+        "construction",
+        "hybrid"
+      ]
     },
     "subconContracts": {
       "module": "06-الوثائق التجارية",
@@ -473,7 +604,10 @@
       "parent": "company",
       "status": "active",
       "note": "عقد مقاول باطن: نفس منطق الـ milestones لكن بحسابات مستحقات ومحتجزات خاصة بالباطن.",
-      "typesNeeded": true
+      "typesNeeded": true,
+      "verticals": [
+        "construction"
+      ]
     },
     "quotationTemplates": {
       "module": "07-مكتبة القوالب",
@@ -482,7 +616,12 @@
       "owner": "src/services/template-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "قالب عرض سعر مربوط بنشاط/خدمة/خدمة فرعية + boqTemplateId اختياري."
+      "note": "قالب عرض سعر مربوط بنشاط/خدمة/خدمة فرعية + boqTemplateId اختياري.",
+      "verticals": [
+        "core",
+        "consulting",
+        "construction"
+      ]
     },
     "contractTemplates": {
       "module": "07-مكتبة القوالب",
@@ -491,7 +630,12 @@
       "owner": "src/services/template-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "قالب عقد: بنود قانونية + defaultMilestones + retentionRate + boqTemplateId."
+      "note": "قالب عقد: بنود قانونية + defaultMilestones + retentionRate + boqTemplateId.",
+      "verticals": [
+        "core",
+        "consulting",
+        "construction"
+      ]
     },
     "subconContractTemplates": {
       "module": "07-مكتبة القوالب",
@@ -500,7 +644,10 @@
       "owner": "src/services/template-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "قالب عقد باطن محدد بالتخصص (trade)."
+      "note": "قالب عقد باطن محدد بالتخصص (trade).",
+      "verticals": [
+        "construction"
+      ]
     },
     "boqTemplates": {
       "module": "07-مكتبة القوالب",
@@ -509,7 +656,12 @@
       "owner": "src/services/template-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "قالب جدول كميات قابل لإعادة الاستخدام؛ يُستنسخ إلى boqs/{id}/items عند التفعيل."
+      "note": "قالب جدول كميات قابل لإعادة الاستخدام؛ يُستنسخ إلى boqs/{id}/items عند التفعيل.",
+      "verticals": [
+        "construction",
+        "hybrid",
+        "consulting"
+      ]
     },
     "boqTemplateItems": {
       "module": "07-مكتبة القوالب",
@@ -518,7 +670,11 @@
       "owner": "src/services/template-service.ts",
       "parent": "boqTemplates",
       "status": "active",
-      "note": "بنود القالب مع shجرة ancestorIds وروابط boqReferenceNodeId/technicalStageId/unitTypeId."
+      "note": "بنود القالب مع shجرة ancestorIds وروابط boqReferenceNodeId/technicalStageId/unitTypeId.",
+      "verticals": [
+        "construction",
+        "hybrid"
+      ]
     },
     "boqReferenceNodes": {
       "module": "07-مكتبة القوالب",
@@ -527,7 +683,12 @@
       "owner": "src/services/boq-reference-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "القاموس الهندسي الموحد (شجرة بنود العمل): المصدر الوحيد لأكواد وأوصاف وأسرار البنود في كل النظام."
+      "note": "القاموس الهندسي الموحد (شجرة بنود العمل): المصدر الوحيد لأكواد وأوصاف وأسرار البنود في كل النظام.",
+      "verticals": [
+        "construction",
+        "hybrid",
+        "consulting"
+      ]
     },
     "boqs": {
       "module": "08-المقايسات الحية",
@@ -536,7 +697,11 @@
       "owner": "src/services/document-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "مقايسة المعاملة الفعلية (boqNumber آلي BOQ-YYYY-0001) — حلقة الوصل بين العقد والتنفيذ والفوترة."
+      "note": "مقايسة المعاملة الفعلية (boqNumber آلي BOQ-YYYY-0001) — حلقة الوصل بين العقد والتنفيذ والفوترة.",
+      "verticals": [
+        "construction",
+        "hybrid"
+      ]
     },
     "boqItems": {
       "module": "08-المقايسات الحية",
@@ -545,7 +710,11 @@
       "owner": "src/services/document-service.ts",
       "parent": "boqs",
       "status": "active",
-      "note": "بند مقايسة: 6 عدادات كمية (contract/planned/approvedVariation/executed/verified/billed) + رابط مرحلة + رابط باطن."
+      "note": "بند مقايسة: 6 عدادات كمية (contract/planned/approvedVariation/executed/verified/billed) + رابط مرحلة + رابط باطن.",
+      "verticals": [
+        "construction",
+        "hybrid"
+      ]
     },
     "boqVariations": {
       "module": "08-المقايسات الحية",
@@ -555,7 +724,11 @@
       "parent": "boqs",
       "status": "active",
       "note": "الأمر التغييروي (VO) على المقايسة: draft → approved/rejected، لا يعدّل الأصل بل يضيف.",
-      "typesNeeded": true
+      "typesNeeded": true,
+      "verticals": [
+        "construction",
+        "hybrid"
+      ]
     },
     "boqVariationItems": {
       "module": "08-المقايسات الحية",
@@ -565,7 +738,11 @@
       "parent": "boqVariations",
       "status": "active",
       "note": "بنود الأمر التغييروي؛ عند الاعتماد تُضاف إلى approvedVariationQty للبند الأصلي.",
-      "typesNeeded": true
+      "typesNeeded": true,
+      "verticals": [
+        "construction",
+        "hybrid"
+      ]
     },
     "appointments": {
       "module": "09-الميدان والمواعيد",
@@ -574,7 +751,12 @@
       "owner": "src/services/appointment-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "موعد (عميل/موقع/قاعة/حظر) مربوط بعميل + معاملة + مرحلة + قاعة + مهندس(ين) — يحرّك إتمام المراحل."
+      "note": "موعد (عميل/موقع/قاعة/حظر) مربوط بعميل + معاملة + مرحلة + قاعة + مهندس(ين) — يحرّك إتمام المراحل.",
+      "verticals": [
+        "consulting",
+        "construction",
+        "hybrid"
+      ]
     },
     "fieldVisits": {
       "module": "09-الميدان والمواعيد",
@@ -583,7 +765,11 @@
       "owner": "src/services/field-visit-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "زيارة ميدانية بشبكة رباعية (موظفون/عمالة/معدات/مواد) + صور + GPS؛ اعتمادها يولّد قيد WIP."
+      "note": "زيارة ميدانية بشبكة رباعية (موظفون/عمالة/معدات/مواد) + صور + GPS؛ اعتمادها يولّد قيد WIP.",
+      "verticals": [
+        "construction",
+        "hybrid"
+      ]
     },
     "workGroups": {
       "module": "09-الميدان والمواعيد",
@@ -592,7 +778,12 @@
       "owner": "src/services/hr-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "طاقم عمل ميداني: مشرف + أعضاء (employees) + قسم — وحدة الإسناد في الزيارات."
+      "note": "طاقم عمل ميداني: مشرف + أعضاء (employees) + قسم — وحدة الإسناد في الزيارات.",
+      "verticals": [
+        "construction",
+        "hybrid",
+        "hr"
+      ]
     },
     "employees": {
       "module": "10-Mوارد البشرية",
@@ -601,7 +792,11 @@
       "owner": "src/services/hr-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "السجل الموحد للقوى العاملة (داخلي/خارجي): قسم + وظيفة + دور + راتب + رصيد إجازات."
+      "note": "السجل الموحد للقوى العاملة (داخلي/خارجي): قسم + وظيفة + دور + راتب + رصيد إجازات.",
+      "verticals": [
+        "hr",
+        "core"
+      ]
     },
     "leaveRequests": {
       "module": "10-Mوارد البشرية",
@@ -610,7 +805,10 @@
       "owner": "src/services/leave-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "طلب إجازة بمراحل (pending→approved→commenced→returned) + سلّم sickness tiers القانوني."
+      "note": "طلب إجازة بمراحل (pending→approved→commenced→returned) + سلّم sickness tiers القانوني.",
+      "verticals": [
+        "hr"
+      ]
     },
     "permissionRequests": {
       "module": "10-Mوارد البشرية",
@@ -619,7 +817,10 @@
       "owner": "src/services/permission-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "طلب إذن تأخير/انصراف مبكر — يُحتسب في تسوية الرواتب."
+      "note": "طلب إذن تأخير/انصراف مبكر — يُحتسب في تسوية الرواتب.",
+      "verticals": [
+        "hr"
+      ]
     },
     "attendance": {
       "module": "10-Mوارد البشرية",
@@ -628,7 +829,10 @@
       "owner": "src/services/attendance-import-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "سجل بصمة يومي (checkIn/out ×2) محسوب مقابل إعدادات ساعات العمل والراحة والإجازات."
+      "note": "سجل بصمة يومي (checkIn/out ×2) محسوب مقابل إعدادات ساعات العمل والراحة والإجازات.",
+      "verticals": [
+        "hr"
+      ]
     },
     "payroll": {
       "module": "10-Mوارد البشرية",
@@ -637,7 +841,10 @@
       "owner": "src/services/payroll-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "مسير راتب شهري؛ سجلات الموظفين في مجموعة فرعية records تحت نفس المستند."
+      "note": "مسير راتب شهري؛ سجلات الموظفين في مجموعة فرعية records تحت نفس المستند.",
+      "verticals": [
+        "hr"
+      ]
     },
     "applications": {
       "module": "10-Mوارد البشرية",
@@ -647,7 +854,10 @@
       "parent": "company",
       "status": "active",
       "note": "طلبات التوظيف (recruitment pipeline) — لا يوجد لها TypeScript type بعد.",
-      "typesNeeded": true
+      "typesNeeded": true,
+      "verticals": [
+        "hr"
+      ]
     },
     "equipment": {
       "module": "11-الأصول",
@@ -656,7 +866,11 @@
       "owner": "src/services/equipment-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "سجل الآليات: ملكية/تمويل/تأمين/فحص + أساس الاستهلاك hourlyDepreciationRate المُغذّي لتكلفة الاستخدام."
+      "note": "سجل الآليات: ملكية/تمويل/تأمين/فحص + أساس الاستهلاك hourlyDepreciationRate المُغذّي لتكلفة الاستخدام.",
+      "verticals": [
+        "construction",
+        "hybrid"
+      ]
     },
     "assetAssignments": {
       "module": "11-الأصول",
@@ -666,7 +880,11 @@
       "parent": "company",
       "status": "active",
       "note": "العهدة الفعلية (صرف/استرجاع) للموظف — تعدّل رصيد الصنف في المخزون.",
-      "typesNeeded": true
+      "typesNeeded": true,
+      "verticals": [
+        "construction",
+        "hr"
+      ]
     },
     "warehouses": {
       "module": "11-الأصول",
@@ -676,7 +894,10 @@
       "parent": "company",
       "status": "active",
       "note": "المستودعات — حاويات منطقية للأصناف.",
-      "typesNeeded": true
+      "typesNeeded": true,
+      "verticals": [
+        "construction"
+      ]
     },
     "inventoryItems": {
       "module": "11-الأصول",
@@ -686,7 +907,10 @@
       "parent": "company",
       "status": "active",
       "note": "أصناف المخزون برصيد quantity يُزاد/يُنقص آلياً من PO والعهدة.",
-      "typesNeeded": true
+      "typesNeeded": true,
+      "verticals": [
+        "construction"
+      ]
     },
     "inventoryTransactions": {
       "module": "11-الأصول",
@@ -696,7 +920,10 @@
       "parent": "company",
       "status": "declared-unused",
       "note": "مجموعة حركة مخزون معرّفة في paths ولا تُكتب منها أي موضع — الحركات حالياً ضمن assetAssignments فقط (انظر gaps).",
-      "typesNeeded": true
+      "typesNeeded": true,
+      "verticals": [
+        "construction"
+      ]
     },
     "equipmentAssignments": {
       "module": "11-الأصول",
@@ -706,7 +933,10 @@
       "parent": "company",
       "status": "declared-unused",
       "note": "مجموعة معرّفة في paths وغير مستخدمة؛ التوزيع الفعلي يسجَّل في assetAssignments (انظر gaps).",
-      "typesNeeded": true
+      "typesNeeded": true,
+      "verticals": [
+        "construction"
+      ]
     },
     "suppliers": {
       "module": "12-المشتريات",
@@ -716,7 +946,10 @@
       "parent": "company",
       "status": "active",
       "note": "سجل الموردين المعتمدين (يظهر أيضاً كموردي معدات في equipment.supplierId).",
-      "typesNeeded": true
+      "typesNeeded": true,
+      "verticals": [
+        "construction"
+      ]
     },
     "subcontractors": {
       "module": "12-المشتريات",
@@ -725,7 +958,11 @@
       "owner": "src/services/procurement-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "مقاولو الباطن بالتخصص والتقييم — يظهرون في البنود والمراحل والتنفيذ والـ SIPs."
+      "note": "مقاولو الباطن بالتخصص والتقييم — يظهرون في البنود والمراحل والتنفيذ والـ SIPs.",
+      "verticals": [
+        "construction",
+        "hybrid"
+      ]
     },
     "purchaseOrders": {
       "module": "12-المشتريات",
@@ -734,7 +971,11 @@
       "owner": "src/services/procurement-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "أمر شراء PO-YYYY-0001 بحالة تدفق (draft→approved→ordered→received) — أساس الاستلام في المخزن."
+      "note": "أمر شراء PO-YYYY-0001 بحالة تدفق (draft→approved→ordered→received) — أساس الاستلام في المخزن.",
+      "verticals": [
+        "construction",
+        "hybrid"
+      ]
     },
     "poItems": {
       "module": "12-المشتريات",
@@ -743,7 +984,11 @@
       "owner": "src/services/procurement-service.ts",
       "parent": "purchaseOrders",
       "status": "active",
-      "note": "بنود أمر الشراء: تربط الصنف ببند مقايسة ومرحلة فنية (جوهر مقارنة المشتري بالمنفذ)."
+      "note": "بنود أمر الشراء: تربط الصنف ببند مقايسة ومرحلة فنية (جوهر مقارنة المشتري بالمنفذ).",
+      "verticals": [
+        "construction",
+        "hybrid"
+      ]
     },
     "ipcs": {
       "module": "13-الفوترة والمحاسبة",
@@ -752,7 +997,12 @@
       "owner": "src/services/billing-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "مستخلص المالك: gross − retention(5%) = netPayable؛ مولّد آلياً من إتمام المراحل."
+      "note": "مستخلص المالك: gross − retention(5%) = netPayable؛ مولّد آلياً من إتمام المراحل.",
+      "verticals": [
+        "construction",
+        "hybrid",
+        "consulting"
+      ]
     },
     "subIpcs": {
       "module": "13-الفوترة والمحاسبة",
@@ -761,7 +1011,10 @@
       "owner": "src/services/billing-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "مستخلص الباطن بنفس المنطق مع نسبة محتجزات عقد الباطن."
+      "note": "مستخلص الباطن بنفس المنطق مع نسبة محتجزات عقد الباطن.",
+      "verticals": [
+        "construction"
+      ]
     },
     "accounts": {
       "module": "13-الفوترة والمحاسبة",
@@ -770,7 +1023,12 @@
       "owner": "src/services/accounting-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "دليل الحسابات الشجري لكل منشأة؛ حسابات العملاء/WIP تُنشأ آلياً تحت 1202 و1205."
+      "note": "دليل الحسابات الشجري لكل منشأة؛ حسابات العملاء/WIP تُنشأ آلياً تحت 1202 و1205.",
+      "verticals": [
+        "core",
+        "consulting",
+        "construction"
+      ]
     },
     "journalEntries": {
       "module": "13-الفوترة والمحاسبة",
@@ -779,7 +1037,12 @@
       "owner": "src/services/accounting-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "قيد مزدوج متوازن وجوباً؛ مصدر sourceType+sourceId يوثّق أي عملية تشغيلية ولدته."
+      "note": "قيد مزدوج متوازن وجوباً؛ مصدر sourceType+sourceId يوثّق أي عملية تشغيلية ولدته.",
+      "verticals": [
+        "core",
+        "consulting",
+        "construction"
+      ]
     },
     "vouchers": {
       "module": "13-الفوترة والمحاسبة",
@@ -788,7 +1051,12 @@
       "owner": "src/services/accounting-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "سند قبض/صرف مرتبط تلقائياً بقيد محاسبي في نفس الـ batch."
+      "note": "سند قبض/صرف مرتبط تلقائياً بقيد محاسبي في نفس الـ batch.",
+      "verticals": [
+        "core",
+        "consulting",
+        "construction"
+      ]
     },
     "costCenters": {
       "module": "13-الفوترة والمحاسبة",
@@ -797,7 +1065,12 @@
       "owner": "src/services/accounting-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "بُعد تحليلي للتكلفة؛ للمعاملات مراكز حتمية cc_{transactionId}."
+      "note": "بُعد تحليلي للتكلفة؛ للمعاملات مراكز حتمية cc_{transactionId}.",
+      "verticals": [
+        "core",
+        "consulting",
+        "construction"
+      ]
     },
     "profitCenters": {
       "module": "13-الفوترة والمحاسبة",
@@ -806,7 +1079,12 @@
       "owner": "src/services/accounting-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "بُعد تحليلي للربحية؛ pc_{transactionId} لكل معاملة/مشروع."
+      "note": "بُعد تحليلي للربحية؛ pc_{transactionId} لكل معاملة/مشروع.",
+      "verticals": [
+        "core",
+        "consulting",
+        "construction"
+      ]
     },
     "costRateCards": {
       "module": "13-الفوترة والمحاسبة",
@@ -815,7 +1093,12 @@
       "owner": "src/services/cost-rate-service.ts",
       "parent": "company",
       "status": "active",
-      "note": "جدول تعرفة العمالة الساري؛ يغذّي تكلفة الساعة في التنفيذ والزيارات."
+      "note": "جدول تعرفة العمالة الساري؛ يغذّي تكلفة الساعة في التنفيذ والزيارات.",
+      "verticals": [
+        "construction",
+        "hybrid",
+        "hr"
+      ]
     },
     "users": {
       "module": "01-الهوية والتأجير",
@@ -827,7 +1110,10 @@
       "note": "مرآة العضوية المحلية داخل المنشأة؛ تُكتب مع global_users في batch واحد — غير معلنة في multi-tenant.ts.",
       "rawPath": "companies/{companyId}/users/{uid}",
       "typesNeeded": true,
-      "rawMatch": "'users'"
+      "rawMatch": "'users'",
+      "verticals": [
+        "core"
+      ]
     },
     "counters": {
       "module": "01-الهوية والتأجير",
@@ -839,7 +1125,10 @@
       "note": "مولّد الأرقام التسلسلية الآمن (JV-/RV-/PV-/PO-/BOQ-/IPC-/C-...). غير معلن في multi-tenant.ts.",
       "rawPath": "companies/{companyId}/counters/{counterKey}",
       "typesNeeded": true,
-      "rawMatch": "'counters'"
+      "rawMatch": "'counters'",
+      "verticals": [
+        "core"
+      ]
     },
     "settings": {
       "module": "02-القوائم المرجعية",
@@ -850,7 +1139,13 @@
       "status": "raw-path",
       "note": "مستند إعدادات ساعات العمل/رمضان/العطل. اسم المجموعة (settings) عام لكنه يضم وثيقة واحدة حالياً.",
       "rawPath": "companies/{companyId}/settings/work_hours",
-      "rawMatch": "'settings'"
+      "rawMatch": "'settings'",
+      "verticals": [
+        "core",
+        "consulting",
+        "construction",
+        "hr"
+      ]
     },
     "customReferenceLists": {
       "module": "02-القوائم المرجعية",
@@ -862,7 +1157,10 @@
       "note": "تعريفات القوائم المرجعية المخصصة (نظام مفتوح للتوسّع).",
       "rawPath": "companies/{companyId}/customReferenceLists/{code}",
       "typesNeeded": true,
-      "rawMatch": "customReferenceLists"
+      "rawMatch": "customReferenceLists",
+      "verticals": [
+        "core"
+      ]
     },
     "customReferenceItems": {
       "module": "02-القوائم المرجعية",
@@ -873,7 +1171,10 @@
       "status": "raw-path",
       "note": "عناصر القوائم المخصصة؛ تُحلّ نفس نوع القوائم القياسية في ReferenceListService.",
       "rawPath": "companies/{companyId}/customReferenceLists/{code}/items/{itemId}",
-      "rawMatch": "/items`"
+      "rawMatch": "/items`",
+      "verticals": [
+        "core"
+      ]
     },
     "employeeAuditLogs": {
       "module": "10-Mوارد البشرية",
@@ -884,7 +1185,10 @@
       "status": "raw-path",
       "note": "تتبع حقل-بحقل لتغييرات ملف الموظف.",
       "rawPath": "companies/{companyId}/employees/{employeeId}/auditLogs",
-      "rawMatch": "/auditLogs"
+      "rawMatch": "/auditLogs",
+      "verticals": [
+        "hr"
+      ]
     },
     "payrollRecords": {
       "module": "10-Mوارد البشرية",
@@ -895,7 +1199,10 @@
       "status": "raw-path",
       "note": "سجلات راتب الموظف داخل المسير — يولّدها payroll-service بنسخة مجمّدة من بيانات الموظف.",
       "rawPath": "companies/{companyId}/payroll/{batchId}/records/{recordId}",
-      "rawMatch": "/records"
+      "rawMatch": "/records",
+      "verticals": [
+        "hr"
+      ]
     },
     "company_requests": {
       "module": "01-الهوية والتأجير",
@@ -908,7 +1215,10 @@
       "rawPath": "company_requests/{requestId}",
       "typesNeeded": true,
       "rawRoot": "company_requests",
-      "rawMatch": "'company_requests'"
+      "rawMatch": "'company_requests'",
+      "verticals": [
+        "core"
+      ]
     }
   },
   "edges": [
@@ -1316,9 +1626,61 @@
       "title": "docs/backend.json لا يصف سوى 3 مجموعات من 68",
       "detail": "ملف المخطط الآلي (backend.json) يعرّف Account/JournalEntry/Voucher فقط، بينما الكود يدير 68 مجموعة — أي أداة تقرأ backend.json كمرجع مخطط ستظن أن بقية النظام غير موجود.",
       "fix": "إما توليد backend.json من docs/relations.generated.json، أو حذفه والإشارة إلى docs/relationships.md كمصدر وحيد."
+    },
+    {
+      "id": "G11",
+      "severity": "high",
+      "title": "تقسيم الموديولات (استشارات / مقاولات / HR) غير مطبَّق في الكود — مطابقات نصية مبعثرة",
+      "detail": "الفصل الحالي يعتمد على مطابقة نصية في 5 مواضع مستقلة: project-service (activityTypeName.includes('مقاولات'))، analytics-service (نفس المطابقة)، projects/page.tsx (مطابقة ثنائية عربي/إنجليزي)، architectural-appointments-view (departmentName/jobTitle includes 'معماري'/'Arch')، construction-bookings-view ('موقع'/'تنفيذ'/'مقاولات'/'Construction'). أي إعادة تسمية لقسم أو نشاط تُسقط المعاملة من Radar المشاريع ومن التحليلات بصمت، وموديول الاستشارات لا يُرى في شاشة المشاريع إطلاقاً. الحقل الوحيد المصمم للفصل (serviceTypes.moduleScope) يملؤه الواجهة بقيمة ثابتة 'technical' ولا يُقرأ في أي منطق.",
+      "fix": "مرجع واحد للفصل: (1) حقل vertical على activityTypes取值 + (2) حقل vertical على departments + (3) دالة resolveVertical(transaction|employee) في src/lib، ثم تُستبدل المطابقات الخمس بها. حتى ذلك الحين وثّقت الخريطة في docs/verticals.md كمرجع."
     }
   ],
   "legacyRootCollections": {
     "purchase_orders_items": "G1 — مجموعة مسطّحة وهمية لا تُكتب في أي مكان"
+  },
+  "verticals": {
+    "howItWorks": "النظام لا ينفصل بالكود بل بالبيانات: نوع النشاط (activityType) على المعاملة + pricingMode/measurementMode على الوثيقة + خصائص المرحلة (isTimed/isNumeric) + profile في settings/work_hours + قسم الموظف. لا يوجد أي حقل vertical صريح في المستندات.",
+    "items": [
+      {
+        "id": "consulting",
+        "nameAr": "الاستشارات الهندسية والتصميم",
+        "code": "CONSULTING",
+        "signature": "مراحل isTimed بزمن مستهدف، مستندات pricingMode='percentage'، measurementMode='lumpsum'، لا كميات ولا تنفيذ ميداني",
+        "costDriver": "زمن الموظف (رواتب + workHours.architectural)",
+        "revenueDriver": "دفعات مرتبطة باعتماد المخططات/الختم لا بالكميات"
+      },
+      {
+        "id": "construction",
+        "nameAr": "المقاولات والإنشاءات",
+        "code": "CONSTRUCTION",
+        "signature": "مراحل isNumeric بمستهدف كمّي، مستندات pricingMode='itemized'، measurementMode='quantity'، مقايسة + تنفيذ + مشتريات",
+        "costDriver": "عمالة ومعدات بالساعة (costRateCards/equipment) + مواد (PO → inventory)",
+        "revenueDriver": "مستخلصات IPC على كميات معتمدة − محتجزات 5%"
+      },
+      {
+        "id": "hybrid",
+        "nameAr": "تصميم وإنشاء (Design & Build)",
+        "code": "DESIGN_BUILD",
+        "signature": "معاملة واحدة تمرّ بمراحل تصميم ثم مراحل تنفيذ: نفس الـ transactionStages لكن نصفها isTimed ونصفها isNumeric، وقالب موحّد DB-VILLA-01",
+        "costDriver": "مختلط: زمن مكتب + تكلفة ميدانية",
+        "revenueDriver": "milestones متتالية (تصميم → ترخيص → هيكل → تشطيبات)"
+      },
+      {
+        "id": "hr",
+        "nameAr": "الموارد البشرية والامتثال",
+        "code": "HR",
+        "signature": "عمودي خدمي يغلّف كل الموديولات: موظف → بصمة → إجازة → مسير → نهاية خدمة، ومصدَّق على قانون العمل الكويتي (41/44/51/53)",
+        "costDriver": "الراتب الأساسي والبدلات + سلّم الإجازة المرضية",
+        "revenueDriver": "غير مباشر: تكلفة الساعة تُجمَّد في التنفيذ فتُقاس ربحية المشروع"
+      },
+      {
+        "id": "core",
+        "nameAr": "اللب المشترك (Shared Core)",
+        "code": "CORE",
+        "signature": "هوية/تأجير، مرجعيات، كتالوج هندسي، عملاء، معاملات، وثائق، محاسبة — تعمل لنفس الموديولات الثلاثة",
+        "costDriver": "—",
+        "revenueDriver": "—"
+      }
+    ]
   }
 }

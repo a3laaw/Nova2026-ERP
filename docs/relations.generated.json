@@ -1,6 +1,6 @@
 {
   "note": "ملف مُولّد آلياً من scripts/check-relations.js — لا تحرره يدوياً. المصدر: src/firebase/multi-tenant.ts + src/types/*.ts",
-  "generatedAt": "2026-11-07T08:50:45.857Z",
+  "generatedAt": "2026-11-07T08:59:49.786Z",
   "paths": {
     "globalUser": "global_users/{uid}",
     "company": "companies/{companyId}",
@@ -1605,6 +1605,51 @@
       }
     ]
   },
+  "verticals": {
+    "howItWorks": "النظام لا ينفصل بالكود بل بالبيانات: نوع النشاط (activityType) على المعاملة + pricingMode/measurementMode على الوثيقة + خصائص المرحلة (isTimed/isNumeric) + profile في settings/work_hours + قسم الموظف. لا يوجد أي حقل vertical صريح في المستندات.",
+    "items": [
+      {
+        "id": "consulting",
+        "nameAr": "الاستشارات الهندسية والتصميم",
+        "code": "CONSULTING",
+        "signature": "مراحل isTimed بزمن مستهدف، مستندات pricingMode='percentage'، measurementMode='lumpsum'، لا كميات ولا تنفيذ ميداني",
+        "costDriver": "زمن الموظف (رواتب + workHours.architectural)",
+        "revenueDriver": "دفعات مرتبطة باعتماد المخططات/الختم لا بالكميات"
+      },
+      {
+        "id": "construction",
+        "nameAr": "المقاولات والإنشاءات",
+        "code": "CONSTRUCTION",
+        "signature": "مراحل isNumeric بمستهدف كمّي، مستندات pricingMode='itemized'، measurementMode='quantity'، مقايسة + تنفيذ + مشتريات",
+        "costDriver": "عمالة ومعدات بالساعة (costRateCards/equipment) + مواد (PO → inventory)",
+        "revenueDriver": "مستخلصات IPC على كميات معتمدة − محتجزات 5%"
+      },
+      {
+        "id": "hybrid",
+        "nameAr": "تصميم وإنشاء (Design & Build)",
+        "code": "DESIGN_BUILD",
+        "signature": "معاملة واحدة تمرّ بمراحل تصميم ثم مراحل تنفيذ: نفس الـ transactionStages لكن نصفها isTimed ونصفها isNumeric، وقالب موحّد DB-VILLA-01",
+        "costDriver": "مختلط: زمن مكتب + تكلفة ميدانية",
+        "revenueDriver": "milestones متتالية (تصميم → ترخيص → هيكل → تشطيبات)"
+      },
+      {
+        "id": "hr",
+        "nameAr": "الموارد البشرية والامتثال",
+        "code": "HR",
+        "signature": "عمودي خدمي يغلّف كل الموديولات: موظف → بصمة → إجازة → مسير → نهاية خدمة، ومصدَّق على قانون العمل الكويتي (41/44/51/53)",
+        "costDriver": "الراتب الأساسي والبدلات + سلّم الإجازة المرضية",
+        "revenueDriver": "غير مباشر: تكلفة الساعة تُجمَّد في التنفيذ فتُقاس ربحية المشروع"
+      },
+      {
+        "id": "core",
+        "nameAr": "اللب المشترك (Shared Core)",
+        "code": "CORE",
+        "signature": "هوية/تأجير، مرجعيات، كتالوج هندسي، عملاء، معاملات، وثائق، محاسبة — تعمل لنفس الموديولات الثلاثة",
+        "costDriver": "—",
+        "revenueDriver": "—"
+      }
+    ]
+  },
   "stats": {
     "collectionsInCode": 68,
     "collectionsInRegistry": 76,
@@ -1683,6 +1728,13 @@
       "company": 27,
       "globalUser": 10,
       "company_requests": 3
+    },
+    "verticalCounts": {
+      "core": 43,
+      "hr": 14,
+      "consulting": 26,
+      "construction": 48,
+      "hybrid": 27
     }
   }
 }

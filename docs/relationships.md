@@ -6,9 +6,10 @@
 >
 > | الأداة | الوظيفة |
 > | :--- | :--- |
-> | `docs/relations.json` | السجل المرجعي: الكيانات، اختصارات الحقول (aliases)، خطوط الأنابيب، الفجوات |
+> | `docs/relations.json` | السجل المرجعي: الكيانات، اختصارات الحقول (aliases)، وسوم الموديولات الرأسية، خطوط الأنابيب، الفجوات |
+| `docs/verticals.md` | شرح النظام مقسّماً إلى موديولات: استشارات هندسية · مقاولات · D&B · موارد بشرية · اللب المشترك |
 > | `docs/relations.generated.json` | لقطة مولّدة: كل مسار، كل علاقة، عدادات الاستخدام — **لا تُحرَّر يدوياً** |
-> | `npm run check:relations` | رقيب يمنع انحراف الكود عن التوثيق (٦ فحوصات، خروج بكود 1 عند أي خطأ) |
+> | `npm run check:relations` | رقيب يمنع انحراف الكود عن التوثيق (٧ فحوصات، خروج بكود 1 عند أي خطأ) |
 
 ---
 
@@ -142,6 +143,20 @@ flowchart TD
 | الفوترة والمحاسبة | `vouchers` | `companies/{companyId}/vouchers` | `Voucher` | `company` | نشطة | `accounting-service.ts` | سند قبض/صرف مرتبط تلقائياً بقيد محاسبي في نفس الـ batch. |
 
 > **مسار نصي ⚠️** = المجموعة تُكتب بمسار نصي خارج `paths` (لا يحميه المترجم)، و**معلَّنة بلا استخدام** = لها تابع في `paths` ولا يُستدعى في أي ملف.
+
+### 1.2 التقسيم الرأسي: استشارات / مقاولات / D&B / HR / لب مشترك
+
+> التفصيل الكامل لكل موديول (رحلات العمل، الكيانات، الالتباسات، وخطة فصل نظيفة) في **[`docs/verticals.md`](verticals.md)**. الجدول أدناه هو الملخّص المشتق من وسوم `verticals` في السجل.
+
+| الموديول | id | مجموعاته | حصري له | أمثلة حصرية |
+| :--- | :--- | ---: | ---: | :--- |
+| الاستشارات الهندسية والتصميم | `consulting` | 26 | 0 | — |
+| المقاولات والإنشاءات | `construction` | 48 | 8 | `equipmentAssignments`, `inventoryItems`, `inventoryTransactions`, `subIpcs`, `subconContractTemplates`, `subconContracts`, `suppliers`, `warehouses` |
+| تصميم وإنشاء (Design & Build) | `hybrid` | 27 | 0 | — |
+| الموارد البشرية والامتثال | `hr` | 14 | 7 | `applications`, `attendance`, `employeeAuditLogs`, `leaveRequests`, `payroll`, `payrollRecords`, `permissionRequests` |
+| اللب المشترك (Shared Core) | `core` | 43 | 16 | `areas`, `company`, `company_requests`, `costTypeCategories`, `counters`, `customReferenceItems`, `customReferenceLists`, `globalUser`, `governorates` |
+
+**كيف ينفصل الموديول فعلياً؟** لا يوجد حقل `vertical` في القاعدة: الفصل يشتق من 5 مفاتيح — كود `activityType` على المعاملة، `pricingMode` و`measurementMode` على الوثيقة، `isTimed`/`isNumeric` على المرحلة، الـ profile في `settings/work_hours`، وقسم/مسمى الموظف. التنفيد الحالي مطابقات نصية في 5 مواضع (**G11**).
 
 ---
 
