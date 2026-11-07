@@ -45,6 +45,7 @@ git pull origin main
 - **المرجع البصري والنصي الكامل**: [`docs/relationships.md`](docs/relationships.md) — كل مجموعة، كل مفتاح أجنبي، كل خط أنابيب تشغيلي←مالي، وكل فجوة معروفة.
 - **السجل الآلي**: [`docs/relations.json`](docs/relations.json) (يدوي) + [`docs/relations.generated.json`](docs/relations.generated.json) (مُولَّد).
 - **التقسيم إلى موديولات**: [`docs/verticals.md`](docs/verticals.md) — الاستشارات الهندسية / المقاولات والإنشاءات / التصميم والتنفيذ / الموارد البشرية / اللب المشترك، مع خطة فصل نظيفة.
+- **📕 ملف واحد قابل للتنزيل**: [`docs/NovaFlow-Guide-AR.md`](docs/NovaFlow-Guide-AR.md) (نسخة HTML معروضة بالمخططات: [`docs/NovaFlow-Guide-AR.html`](docs/NovaFlow-Guide-AR.html)) — يُوَلَّد من الوثيقتين أعلاه بواسطة `npm run docs:guide`.
 - **الحارس**: `npm run check:relations` (٧ فحوصات) يقارن الكود بالتوثيق ويفشل عند أي انحراف — بما فيها وسوم الموديولات.
 
 ```bash

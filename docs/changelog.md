@@ -1,6 +1,10 @@
 
 # سجل تطوير مشروع NovaFlow ERP 🚀
 
+## [2.3.2] - الدليل الكامل القابل للتنزيل
+- **`scripts/build-guide.js`** + `npm run docs:guide`: يدمج `docs/verticals.md` و`docs/relationships.md` في ملف واحد `docs/NovaFlow-Guide-AR.md` مع فهرس عام ومقدمة «12 سطرًا تختصر النظام»، وينتج `docs/NovaFlow-Guide-AR.html` (RTL + رسم Mermaid في المتصفح + زر طباعة/PDF، ويعمل بلا إنترنت كنص خام).
+- `docs:guide:check` يكتشف تقادم الدليل المولّد عن مصادره.
+
 ## [2.3.1] - تقسيم الموديولات الرأسية (Vertical Module Map)
 - **`docs/verticals.md`**: شرح كامل للنظام مقسوماً إلى `consulting` (استشارات هندسية) و`construction` (مقاولات وإنشاءات) و`hybrid` (تصميم وإنشاء) و`hr` و`core` — رحلات العمل، الكيانات، 10 تقاطعات بين الموديولات، وخطة فصل على 3 مراحل.
 - **وسوم `verticals`** لكل مجموعة في `docs/relations.json` + فحص سابع في `scripts/check-relations.js` يمنع وجود مجموعة بلا موديول أو موديول بلا توثيق.

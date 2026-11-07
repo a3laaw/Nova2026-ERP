@@ -12,7 +12,9 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "check:relations": "node scripts/check-relations.js",
-    "check:relations:write": "node scripts/check-relations.js --write"
+    "check:relations:write": "node scripts/check-relations.js --write",
+    "docs:guide": "node scripts/build-guide.js",
+    "docs:guide:check": "node scripts/build-guide.js --check"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.28.0",
