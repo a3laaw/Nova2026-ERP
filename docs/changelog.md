@@ -1,6 +1,14 @@
 
 # سجل تطوير مشروع NovaFlow ERP 🚀
 
+## [2.3.3] - تحرير المشروع من منصة التطوير (نقل + استقلالية)
+- **`src/firebase/config.ts`** صار يقرأ من `NEXT_PUBLIC_FIREBASE_*` في البيئة مع رجوع للقيم القديمة — تغيير المشروع صار تعديل `.env.local` لا تعديل كود. + `.env.example` يوثّق كل المتغيرات (بيانات Firebase + `GOOGLE_GENAI_API_KEY` + حساب الخدمة).
+- **`firebase.json` + `firestore.indexes.json`** لأول مرة في المستودع: نشر قواعد/فهارس من Git (`npm run deploy:rules|deploy:indexes|deploy:config`) وإميليتر محلي (`npm run emulator`) — والفهارس الآن فارغة عمداً حتى تُملأ من المشروع الجاري إغلاقه (`npm run db:indexes`).
+- **`scripts/db-transfer.js`** + سكربتات `db:counts|db:export|db:import`: نقل Firestore كاملاً مع المجموعات الفرعية، الحفاظ على معرّفات المستندات (`cc_/pc_/referenceId/counters`)، تحويل `Timestamp/GeoPoint/Blob`، و`--dry-run` و`--only` و`--company`.
+- **`docs/migration-runbook.md`**: 9 أقسام — طبقات الخطر الثلاث واختبار ملكية المشروع، قائمة الإخراج الليلة، مقارنة وجهات (Firebase مملوك / Supabase / استضافة ذاتية) مع حسم أن كلمات المرور تنتقل فقط Firebase→Firebase، خطة 7 مراحل، قائمة تحقق بـ10 نقاط، إغلاق ثغرة `global_users` أثناء النقل، ومولّد schema لمسار Postgres.
+- **استقلالية التطوير**: `AGENTS.md` (دستور محمول لكل الوكلاء) + `.devcontainer/` (بيئة تعمل في أي محرر) + CI في `.ci/github-actions/ci.yml` (يُنقل بخطوة واحدة إلى `.github/workflows/` — typecheck · بوابة العلاقات · فحص الدليل · البناء الحقيقي · إقلاع الإميليتر كأول فحص آلي لصياغة `firestore.rules`)، و`GEMINI.md`/`.idx/dev.nix` أصبحا مؤشرات تحذير.
+- الدليل المجمّع `docs/NovaFlow-Guide-AR.*` صار يضم الملحق التشغيلي (النقل) داخل الملف القابل للتنزيل.
+
 ## [2.3.2] - الدليل الكامل القابل للتنزيل
 - **`scripts/build-guide.js`** + `npm run docs:guide`: يدمج `docs/verticals.md` و`docs/relationships.md` في ملف واحد `docs/NovaFlow-Guide-AR.md` مع فهرس عام ومقدمة «12 سطرًا تختصر النظام»، وينتج `docs/NovaFlow-Guide-AR.html` (RTL + رسم Mermaid في المتصفح + زر طباعة/PDF، ويعمل بلا إنترنت كنص خام).
 - `docs:guide:check` يكتشف تقادم الدليل المولّد عن مصادره.

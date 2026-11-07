@@ -45,6 +45,8 @@ git pull origin main
 - **المرجع البصري والنصي الكامل**: [`docs/relationships.md`](docs/relationships.md) — كل مجموعة، كل مفتاح أجنبي، كل خط أنابيب تشغيلي←مالي، وكل فجوة معروفة.
 - **السجل الآلي**: [`docs/relations.json`](docs/relations.json) (يدوي) + [`docs/relations.generated.json`](docs/relations.generated.json) (مُولَّد).
 - **التقسيم إلى موديولات**: [`docs/verticals.md`](docs/verticals.md) — الاستشارات الهندسية / المقاولات والإنشاءات / التصميم والتنفيذ / الموارد البشرية / اللب المشترك، مع خطة فصل نظيفة.
+- **🛟 دليل النقل من المنصة المغلقة**: [`docs/migration-runbook.md`](docs/migration-runbook.md) — إخراج البيانات والمستخدمين والمفاتيح والفهارس، ومقارنة الوجهات، وخطة 7 مراحل بأوامر جاهزة. أدواته: `npm run db:counts | db:export | db:import | db:indexes` و`npm run emulator` و`npm run deploy:config`.
+- **🤖 دستور الوكيل المحمول**: [`AGENTS.md`](AGENTS.md) (و`GEMINI.md` صار مؤشراً له) + بيئة عمل مستقلة في [`.devcontainer/`](.devcontainer) ووبوابات CI جاهزة في [`.ci/github-actions/ci.yml`](.ci/github-actions/ci.yml) (نقلها خطوة واحدة — راجع README بجانبها).
 - **📕 ملف واحد قابل للتنزيل**: [`docs/NovaFlow-Guide-AR.md`](docs/NovaFlow-Guide-AR.md) (نسخة HTML معروضة بالمخططات: [`docs/NovaFlow-Guide-AR.html`](docs/NovaFlow-Guide-AR.html)) — يُوَلَّد من الوثيقتين أعلاه بواسطة `npm run docs:guide`.
 - **الحارس**: `npm run check:relations` (٧ فحوصات) يقارن الكود بالتوثيق ويفشل عند أي انحراف — بما فيها وسوم الموديولات.
 

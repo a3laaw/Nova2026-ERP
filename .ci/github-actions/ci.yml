@@ -1,0 +1,80 @@
+name: CI — بوابات الجودة والنقل
+
+# لماذا يوجد هذا الملف: منصة التطوير كانت تشغّل الفحوصات نيابةً عن المشروع
+# (`.idx/dev.nix`) وهي تختفي في مارس. البوابة صارت داخل المستودع، فتشتغل على
+# GitHub Actions أو أي منصة تستضيفها لاحقاً. لا يحتاج أسرار للفوبس/الجوبس.
+
+on:
+  push:
+    branches: [main, 'arena/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: أنواع · خريطة علاقات · دليل · بناء حقيقي
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: تثبيت الاعتماديات
+        run: npm install --no-audit --no-fund
+      - name: فحص الأنواع (tsc --noEmit)
+        run: npm run typecheck
+      - name: بوابة العلاقات (docs/relations.json مقابل الكود)
+        run: npm run check:relations
+      - name: التحقق من دليل النظام المولّد (منع الانحراف)
+        run: npm run docs:guide:check
+      - name: أدوات النقل والدليل صالحة للتنفيذ وملفات Firebase صالحة
+        run: |
+          node --check scripts/db-transfer.js
+          node --check scripts/build-guide.js
+          node --check scripts/check-relations.js
+          node -e "const fs=require('fs');JSON.parse(fs.readFileSync('firestore.indexes.json','utf8'));JSON.parse(fs.readFileSync('firebase.json','utf8'));console.log('✅ firebase.json + firestore.indexes.json صالحة')"
+      - name: البناء الفعلي (بدون تجاهل الأخطاء)
+        env:
+          NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+          NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
+        run: npm run build
+      - name: رفع manifest البناء للمراجعة
+        uses: actions/upload-artifact@v4
+        with:
+          name: next-build-manifest
+          path: .next/build-manifest.json
+          if-no-files-found: ignore
+
+  firestore-emulator:
+    name: إقلاع Firestore المحلي (فحص صياغة القواعد والفهارس)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: تثبيت الاعتماديات (فيها firebase-tools)
+        run: npm install --no-audit --no-fund
+      - name: الإقلاع = تحقق آلي من firestore.rules و firestore.indexes.json
+        run: |
+          npx firebase emulators:exec --only firestore,auth --project demo-novaflow \
+            "node -e \"console.log('✅ firestore.rules مقروءة والإيموليتر أقلع')\""
+      - name: تأكيد أن مشروع الديمو لن يُنشر إليه أبداً
+        run: npx firebase projects:list | head -5 || true

@@ -1,0 +1,44 @@
+{
+  "name": "NovaFlow ERP (محمول)",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "postCreateCommand": "npm install",
+  "postStartCommand": "npm run dev",
+  "forwardPorts": [3000, 4000, 8080, 9099],
+  "portsAttributes": {
+    "3000": { "label": "Next.js dev" },
+    "4000": { "label": "Firebase UI" },
+    "8080": { "label": "Firestore emulator" },
+    "9099": { "label": "Auth emulator" }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "bradlc.vscode-tailwindcss",
+        "esbenp.prettier-vscode",
+        "firsttris.vscode-jest-runner",
+        "Firebase.firebase-vscode"
+      ],
+      "settings": {
+        "editor.formatOnSave": false,
+        "typescript.tsdk": "node_modules/typescript/lib",
+        "files.associations": {
+          "*.rules": "plaintext"
+        }
+      }
+    }
+  },
+  "containerEnv": {
+    "GOOGLE_APPLICATION_CREDENTIALS": "/workspaces/Nova2026-ERP/.dev/local/service-account.json"
+  },
+  "mounts": [
+    "source=${localEnv:HOME}/.config/gcloud,target=/home/vscode/.config/gcloud,type=bind,consistency=cached"
+  ],
+  "secrets": [
+    "GOOGLE_GENAI_API_KEY",
+    "FIREBASE_API_KEY",
+    "SERVICE_ACCOUNT_JSON"
+  ]
+}

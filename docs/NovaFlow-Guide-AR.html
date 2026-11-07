@@ -133,13 +133,7 @@
     - [المرحلة 4 · البيانات](#المرحلة-4-البيانات)
     - [المرحلة 5 · المستخدمون](#المرحلة-5-المستخدمون)
     - [المرحلة 6 · الاستضافة والأمام](#المرحلة-6-الاستضافة-والأمام)
-    - [المرحلة 7 · بيئة التطوير والوكلاء (نفسها)](#المرحلة-7-بيئة-التطوير-والوكلاء-نفسها)
-  - [4. قائمة تحقق «تم النقل فعلاً» (لا تنتقل قبل إكمالها)](#4-قائمة-تحقق-تم-النقل-فعلا-لا-تنتقل-قبل-إكمالها)
-  - [5. ثغرة يجب إغلاقها **أثناء** النقل (سطران، وحان وقتها)](#5-ثغرة-يجب-إغلاقها-أثناء-النقل-سطران-وحان-وقتها)
-  - [6. إن اخترت B (Postgres/Supabase) — المسار الأقصر](#6-إن-اخترت-b-postgressupabase-المسار-الأقصر)
-  - [7. جدول زمني حتى مارس (~17 أسبوعاً)](#7-جدول-زمني-حتى-مارس-17-أسبوعا)
-  - [8. إن صارت المنصة read-only أو اختفت قبل أن تكمل](#8-إن-صارت-المنصة-read-only-أو-اختفت-قبل-أن-تكمل)
-  - [9. قرارات تحتاجها مني / منك](#9-قرارات-تحتاجها-مني-منك)
+    - [المرحلة 7 · بيئة التطوير والوكلاء — ✅ **تم تنفيذها في هذا المستودع**](#المرحلة-7-بيئة-التطوير-والوكلاء-تم-تنفيذها-في-هذا-المستودع)
 
 ---
 
@@ -1632,95 +1626,14 @@ firebase auth:import users.csv --hash-algorithm=SCRYPT --project novaflow-erp
 
 **⚠️ قبل أول Deploy على المنصة الجديدة**: `next.config.ts` فيه `typescript.ignoreBuildErrors: true` و`eslint.ignoreDuringBuilds: true`. كانت المنصة القديمة تتسامح؛ الآن البناء سينجح **و يخفي** أي أخطاء أنواع. اجعل أول build حقيقي لك: `npm run build` محلياً بلا flag، أو `npx tsc --noEmit` (الأمر موجود: `npm run typecheck`) ثم أزل الاستثناءات.
 
-#### المرحلة 7 · بيئة التطوير والوكلاء (نفسها)
-- احذف/استبدل `.idx/dev.nix` بـ `.devcontainer/devcontainer.yml` (node:22 + `npm i` + `firebase emulators:start`) — فيصبح أي محرر (Cursor، Claude Code، VS Code remote) قادراً على تشغيل نفس البيئة بلا منصة.
-- القواعد انتقلت من `GEMINI.md` إلى **`AGENTS.md`** (يقرأه أي وكيل؛ `GEMINI.md` صار مؤشراً له فقط) — فلا تفقد «دستور المشروع» مع المنصة.
-- `npm run emulator` الآن يعمل من المستودع (`firebase.json` + `firestore.indexes.json` أُضيفا اليوم) بدل الاعتماد على محاكي المنصة.
-- أضف GitHub Actions يشغّل `typecheck + check:relations + tests` — لا ثقة بدون CI (المنصة كانت تؤدّي هذا ضمنيّاً).
-
----
-
-### 4. قائمة تحقق «تم النقل فعلاً» (لا تنتقل قبل إكمالها)
-
-- [ ] `db:counts`: عدد المستندات متطابق في المشروعين لكل منشأة (وثّق الرقم).
-- [ ] تسجيل دخول بمستخدم **قديم** وبكلمة سره القديمة بدون إعادة تعيين.
-- [ ] الأدمن يرى `companies/{c}/…` كلها؛ مستخدم عادي **لا يرى** منشأة أخرى (جرّب بـ token من شركة أخرى).
-- [ ] شاشة المشاريع تعرض نفس المعاملات، وشاشة المقايسة تعرض نفس العدّادات الست.
-- [ ] قيد يدوي غير متوازن يُرفض (`القيد غير متوازن` من `AccountingService`) — دليل أن الخدمات تعمل على المشروع الجديد.
-- [ ] إنشاء عميل جديد يأخذ `fileNumber` التالي **بدون تعارض** (`counters` نُقلت؛ لو نسخت `counters` خطأ ستبدأ أرقامك بالتصادم مع أرقام قديمة → هذا من أخطر الأخطاء الصامتة).
-- [ ] مستخلص IPC يدوي: `retention` = 5% من `totalAmount` كما في العقد المنقول.
-- [ ] صورة/مرفق واحد يفتح من الرابط الجديد (Storage bucket تغيّر ⇒ الروابط القديمة تحتاج إعادة كتابة أو bucket موحّد).
-- [ ] `npm run check:relations` ✅ و`npm run typecheck` ✅ على الفرع الجديد.
-- [ ] المشروع القديم read-only لمدة أسبوعين قبل حذفه (ولا تحذفه في يوم الانتقال).
-
----
-
-### 5. ثغرة يجب إغلاقها **أثناء** النقل (سطران، وحان وقتها)
-
-```
-match /global_users/{uid} {
-  // ❌ الحالي: أي مستخدم يرفع roleCode إلى ADMIN لنفسه، أو يغيّر companyId ويقفز لمستأجر آخر
-  allow update: if isAuthenticated() &amp;&amp; (request.auth.uid == uid || isGlobalAdmin());
-
-  // ✅ المطلوب: منع تعديل حقول الهوية الحساسة ذاتياً
-  allow update: if isAuthenticated() &amp;&amp; (
-    isSovereignDev() ||
-    (request.auth.uid == uid
-      &amp;&amp; request.resource.data.roleCode == resource.data.roleCode
-      &amp;&amp; request.resource.data.role == resource.data.role
-      &amp;&amp; request.resource.data.companyId == resource.data.companyId)
-  );
-}
-```
-وبما أنك ستنشر القواعد من المستودع (`npm run deploy:rules`) بدلاً من الكونسول، فهذا الإصلاح **يصبح حقيقياً وقابلاً للمراجعة** لأول مرة.
-
----
-
-### 6. إن اخترت B (Postgres/Supabase) — المسار الأقصر
-
-الخريطة التي بنيناها تجعل هذا ممكناً بدل أن يكون مغامرة. الترتيب المقترح:
-
-1. توليد `schema.sql` من `docs/relations.generated.json` (المسارات + 132 علاقة): كل مجموعة → جدول، `companyId` → `tenant_id uuid not null references companies(id) on delete cascade`، كل `xxxId` → FK، `parentId/ancestorIds` → `parent_id` + عمود `path ltree`.
-2. `subcollections` حقيقية (`stageInstances`, `timeline`, `comments`, `items`, `auditLogs`, `records`) → جداول بعلاقات `on delete cascade`؛ والباقي → `jsonb` للعمود المرن مع `GIN` index حيث يلزم.
-3. `counters` → `sequence` لكل (tenant, key) — يختفي سباق `writeBatch` وتصبح الأرقام مضمونة.
-4. `increment` على العدّادات → `trigger AFTER INSERT ON executions` يحدّث `boq_items.executed_quantity` (نفس الدلالة، لكن **في القاعدة** لا في المتصفح — ينفّض 70% من دين الاستمرارية).
-5. `firestore.rules` → Supabase RLS policy واحدة عامة: `tenant_id = (select auth.jwt()-&gt;&gt;'tenantId')` + سياسات أدوار مولّدة من `roles.matrix`.
-6. اترك `src/types/*.ts` كما هو وأضف طبقة ترجمة (`Row ↔ Domain`) — 90% من 48 ألف سطر لا يلمسه النقل.
-7. **لا تفعل هذا بلا اختبارات**: بعد كل جدول، اختبار integrity (FK + unique + counter consistency) قبل الانتقال للتالي.
-
-وإن أردت هذا الخيار، أقترح أن نبدأ بمولّد `schema.sql` من الخريطة (يوم عمل واحد بوساطة) بدل «إعادة كتابة النظام».
-
----
-
-### 7. جدول زمني حتى مارس (~17 أسبوعاً)
-
-| الأسبوع | الهدف | مخرَج ملموس |
-| :--- | :--- | :--- |
-| 1 (الآن) | الإخراج + تقرير الملكية + القرار | `.env` وusers.csv وindexes وbackups/ في مكان آمن؛ قرار A/B |
-| 2 | مشروع جديد + قواعد + فهارس + نقل تجريبي لبيانات منشأة واحدة | `db:counts` مطابق لمنشأة واحدة |
-| 3 | نقل كامل + المستخدمون + استضافة + دومين | موقع حيّ على المنصة الجديدة |
-| 4 | إغلاق الثغرات الثلاث + `typecheck` نظيف + اختبارات المعادلات | rules tests + 4 اختبارات حسابية |
-| 5–8 | تشغيل توأم (التسجيلات على الجديد، قراءة من القديم) أو read-only على القديم | لا اعتماد على منصة ميتة |
-| قبل الحذف بأسبوعين | تصدير أخير + توقيع قائمة التحقق §4 | أرشيف نهائي في مكانين |
-
----
-
-### 8. إن صارت المنصة read-only أو اختفت قبل أن تكمل
-
-1. **الكود آمن**: `git clone` من GitHub (عليه كل الوثائق والأدوات).
-2. **البيانات**: إن تعذّر `db:export`، اعمل Export من كونسول Firebase إلى Cloud Storage (إن كان الوصول للكونسول متاح) — هذه الطريقة لا تمر بالمنصة.
-3. **إن فُقد كل شيء**: لا يمكن استرجاع Firestore؛ لكن خريطة النموذج (`docs/relations.json` + `default-coa.ts` + `seed-data.ts`) تسمح بإعادة بناء **الهيكل والمرجعيات** في ساعة، وخسارة البيانات هي خسارة سجلات العملاء — ولهذا البند رقم 5 في §1 هو الأهم في هذه الوثيقة كلها.
-
----
-
-### 9. قرارات تحتاجها مني / منك
-
-| سؤال | إن اخترت… سأفعل… |
-| :--- | :--- |
-| هل مشروع Firebase مملوك لك؟ | (نعم) أكتب لك `.firebaserc` الجديد وأعدّل `apphosting.yaml` · (لا) أولّد لك مولّد `schema.sql` لخيار B |
-| الوجهة A أم B؟ | A: تنفيذ المراحل 1–7 كاملة · B: مولّد schema + طبقة ترجمة + RLS |
-| هل تريد CI؟ | ملف GitHub Actions يشغّل `typecheck + check:relations + tests` |
-| أهم شيء الآن | **`npm run db:export` الليلة** — كل ما عداه يمكن أن ينتظر، التصدير لا ينتظر |
+#### المرحلة 7 · بيئة التطوير والوكلاء — ✅ **تم تنفيذها في هذا المستودع**
+- **`.devcontainer/Dockerfile` + `.devcontainer/devcontainer.json`**: node 20 + `firebase-tools` + `npm install` عند التهيئة + `npm run dev` عند التشغيل، ومنافذ 3000/4000/8080/9099 مفتوحة. أي محرر يدعم Dev Containers (VS Code، Cursor، Windsurf، JetBrains، GitHub Codespaces) يشغّل نفس البيئة بلا منصة.
+- **CI بوظيفتين** — الملف مكتوب في **`.ci/github-actions/ci.yml`** ولا ينتقل إلى `.github/workflows/` إلا بخطوة واحدة (اقرأ `.ci/github-actions/README.md`): تطبيق GitHub المستخدم هنا لا يملك صلاحية `workflows`، فيرفض GitHub دفع ملف workflow من وكيل. نفّذ `git mv .ci/github-actions/ci.yml .github/workflows/ci.yml` من حسابك أو امنح التطبيق الصلاحية:
+  - `quality`: `typecheck` → `check:relations` → `docs:guide:check` → فحص صيغة `firebase.json`/`firestore.indexes.json` → `npm run build` (تُمرَّر قيم Firebase كـ secrets؛ بدونها يعمل المشروع على القيم القديمة الافتراضية في `src/firebase/config.ts`).
+  - `firestore-emulator`: يُقلع إيموليتر Firestore/Auth — وهو **أول تحقق آلي من صياغة `firestore.rules`** (لم يكن موجوداً قط؛ خطأ إملائي واحد في القواعد كان يصل إلى الإنتاج بصمت).
+- **`AGENTS.md`**: دستور الوكيل صار في المستودع، و`GEMINI.md` أصبح مؤشراً له — فلا تضيع قواعد العمل مع أدوات المنصة.
+- **`.idx/dev.nix`** تُرك كما هو مع تعليق تحذيري أعلى الملف (حذفه الآن قد يعطّل ما تبقّى من البيئة القديمة؛ احذفه بعد انتقالك نهائياً).
+- ملاحظة أمانة: `npm run lint` في `package.json` هو `next lint` بدون أي إعداد ESLint مثبّت — لن ينجح إلا بعد `npm i -D eslint eslint-config-next`، لذلك CI لا يعتمد عليه.
 
 ---
 

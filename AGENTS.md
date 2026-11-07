@@ -60,7 +60,13 @@ npm run typecheck          # أنواع
 npm run lint               # ستايل
 npm run check:relations    # سلامة خريطة العلاقات (إلزامي عند أي تعديل بيانات)
 npm run docs:guide         # إعادة توليد الدليل المجمّع إن لمست docs/
+npm run check:relations    # (بديل الكتابة) npm run check:relations:write عند إضافة مجموعة عمداً
 ```
+
+- هذه الأوامر هي نفسها ما يشغّله **CI** (المكتوب في `.ci/github-actions/ci.yml` إلى أن يُنقل إلى `.github/workflows/`) — أي فشل محليًا فشلٌ على CI.
+- بيئة التطوير المحمولة في **`.devcontainer/`**؛ وللمرة الأولى يوجد **`firebase.json`** للإميليتر المحلي (`npm run emulator`) — جرّب أي قاعدة Firestore عليه قبل النشر.
+- `npm run lint` حاليًا `next lint` بلا إعداد ESLint؛ لا تعتبره بوابة. إن أردته ثبّت `eslint` + `eslint-config-next`.
+- للنقل من المنصة المغلقة: **`docs/migration-runbook.md`** (`npm run db:counts` ثم `db:export` قبل أي محو).
 
 - أضف/حدّث اختبارات لأي منطق مالي أو قانوني (retention، السلّم المرضي، توازن القيد، نسبة الإنجاز).
 - اكتب في رسالة الـ commit أي فجوات من `docs/relations.json → gaps` أثّرت عليها أو أغلقتها.
