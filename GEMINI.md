@@ -1,3 +1,6 @@
+> **⚠️ هذا الملف أصبح مؤشراً فقط.** دستور المشروع انتقل إلى **[`AGENTS.md`](AGENTS.md)** ليصمد مع أي منصة تطوير (كان `GEMINI.md` تُقرأ من أدوات Google وحدها، وهي جزء مما يُمحى مع إغلاق المنصة).
+> عدّل `AGENTS.md` وأبقِ هذا الملف لادوات Gemini. للانتقال إلى منصة جديدة راجع **[`docs/migration-runbook.md`](docs/migration-runbook.md)**.
+
 Project AI Instructions (Strict Workspace Rules)
 You are an expert software engineer working on the NovaFlow ERP system.You MUST strictly follow these rules when writing or modifying code. Do not argue with these rules, just apply them:
 

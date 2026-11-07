@@ -43,3 +43,8 @@ next-env.d.ts
 # firebase
 firebase-debug.log
 firestore-debug.log
+
+# نسخ البيانات (تُخرج خارج المستودع — انظر docs/migration-runbook.md)
+/backups
+service-account*.json
+

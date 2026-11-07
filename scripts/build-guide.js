@@ -25,6 +25,7 @@ const ROOT = path.join(__dirname, '..');
 const SOURCES = [
   { file: 'docs/verticals.md', part: 'الجزء الأول', title: 'الموديولات: الاستشارات · المقاولات · D&B · الموارد البشرية · اللب المشترك' },
   { file: 'docs/relationships.md', part: 'الجزء الثاني', title: 'خريطة العلاقات المرجعية: المجموعات، المفاتيح الأجنبية، خطوط الأنابيب، الفجوات' },
+  { file: 'docs/migration-runbook.md', part: 'ملحق تشغيلي', title: 'دليل النقل: الخروج الآمن من منصة مغلقة (بيانات، مستخدمون، فهارس، استضافة)' },
 ];
 const OUT_MD = path.join(ROOT, 'docs/NovaFlow-Guide-AR.md');
 const OUT_HTML = path.join(ROOT, 'docs/NovaFlow-Guide-AR.html');

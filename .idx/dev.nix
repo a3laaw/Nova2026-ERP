@@ -1,3 +1,6 @@
+# ⚠️ هذا الملف خاص ببيئة Project IDX / Firebase Studio التي أُغلقت.
+# بيئة التطوير المحمولة صارت: .devcontainer (مقترح) + `npm run emulator` من firebase.json.
+# راجع docs/migration-runbook.md §3 المرحلة 7 — لا تحذف الملف قبل التأكد من عدم استخدام المنصة له.
 # To learn more about how to use Nix to configure your environment
 # see: https://firebase.google.com/docs/studio/customize-workspace
 {pkgs}: {
