@@ -727,6 +727,53 @@ def render_whiteboard_audio(
     return HtmlAudioResult(path, sum(durations), total, audio_bytes)
 
 
+def render_whiteboard_with_audio(
+    engine: SpeechEngine,
+    lesson: Lesson,
+    cast: Mapping[int, DialogueVoice],
+    destination: Path,
+    options: RenderOptions,
+    cancel: Event | None = None,
+    progress: Callable[[int], None] | None = None,
+    *,
+    turn_pause_ms: int = 350,
+    audio_format: str = "mp3",
+    appearance: BoardAppearance | None = None,
+) -> HtmlAudioResult:
+    """One user output, using the SAME saved-lesson/measured-audio pipeline.
+
+    The silent HTML is private staging, not an extra user save or a UI source.
+    It is removed on success, failure and cancellation. Audio remains one
+    sequential encoder/file per step; only the final atomic HTML is published.
+    The caller snapshots the current editor lesson/appearance before the worker.
+    """
+    cancel = cancel if cancel is not None else Event()
+    progress = progress or (lambda _: None)
+    check_cancelled(cancel)
+    validate_lesson_cast(lesson, cast, options)
+    with tempfile.TemporaryDirectory(prefix="nova-whiteboard-combined-") as folder:
+        source = Path(folder) / "lesson.html"
+        save_whiteboard(
+            lesson,
+            source,
+            cancel,
+            lambda value: progress(round(5 * value / 100)),
+            appearance=appearance,
+        )
+        check_cancelled(cancel)
+        return render_whiteboard_audio(
+            engine,
+            source,
+            cast,
+            destination,
+            options,
+            cancel,
+            lambda value: progress(-1 if value < 0 else 5 + round(95 * value / 100)),
+            turn_pause_ms=turn_pause_ms,
+            audio_format=audio_format,
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="سكريبت TXT إلى سبورة HTML محلية بلا صوت.")
     parser.add_argument("script", type=Path)

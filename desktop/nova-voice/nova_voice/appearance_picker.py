@@ -70,7 +70,7 @@ class AppearancePicker(QWidget):
         row_actions.addWidget(self.clear_sentence_button)
         layout.addLayout(row_actions)
         self.hint = label(
-            "جهّز السكريبت ثم حدّث قائمة الجمل. التخصيص يظهر بعد إعادة الخطوة 1. "
+            "جهّز السكريبت ثم حدّث قائمة الجمل. التخصيص يظهر بالتوليد الموحّد أو بعد إعادة الخطوة 1. "
             "يمكن أيضًا تعديل الألوان والشخصيات وحفظ نسخة من داخل HTML. "
             "الشخصيات للعرض فقط، ولا تغيّر الصوت أو لغته.",
             "muted",

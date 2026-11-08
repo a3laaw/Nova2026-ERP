@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 )
 
 from . import __version__
+from .appearance import AppearanceError
 from .appearance_picker import AppearancePicker
 from .controls import button, card, clock, combo, label
 from .dialogue import (
@@ -70,6 +71,7 @@ from .whiteboard import (
     WhiteboardResult,
     parse_lesson,
     render_whiteboard_audio,
+    render_whiteboard_with_audio,
     save_whiteboard,
     validate_lesson_cast,
 )
@@ -285,17 +287,25 @@ class MainWindow(QMainWindow):
         root.addLayout(columns, 1)
 
         board_card, board_layout = card()
-        board_layout.addWidget(label("من السكريبت إلى سبورة وصوت · خطوتان", "section"))
+        board_layout.addWidget(label("من السكريبت إلى سبورة وصوت · زر واحد أو خطوتان", "section"))
         board_layout.addWidget(
             label(
                 "1. اكتب السكريبت أعلاه: # لعنوان الدرس و## لكل خطوة، أو افصل الفقرات بسطر فارغ. "
                 "تُنشأ سبورة بالقلم بلا حاجة إلى نموذج صوتي. "
                 "2. اختر الأصوات وأضفها من النص المحفوظ داخل السبورة، دون إعادة إدخاله. "
+                "أو اختر الأصوات واضغط «توليد السبورة بالنص والصوت معًا» لحفظ ملف HTML واحد مباشرة. "
                 "للغتين استخدم [1]/[2] واختر وضع الحوار.",
                 "muted",
                 True,
             )
         )
+        self.combined_board_button = button("توليد السبورة بالنص والصوت معًا", "primary")
+        self.combined_board_button.setToolTip(
+            "من السكريبت الحالي والأصوات والتخصيصات المختارة إلى HTML واحد؛ "
+            "لا تحتاج إنشاء سبورة محفوظة أولًا."
+        )
+        self.combined_board_button.clicked.connect(self.generate_whiteboard_with_audio)
+        board_layout.addWidget(self.combined_board_button)
         board_actions = QHBoxLayout()
         self.board_example_button = button("مثال سكريبت سبورة")
         self.board_example_button.clicked.connect(self._board_example)
@@ -555,6 +565,16 @@ class MainWindow(QMainWindow):
         self.html_export_button.setEnabled(not busy and ready and self._html_source is not None)
         self.clear_html_button.setEnabled(not busy and self._html_source is not None)
         self.create_board_button.setEnabled(not busy and 0 < len(text.strip()) <= MAX_CHARACTERS)
+        combined_ready = False
+        if not busy and 0 < len(text.strip()) <= MAX_CHARACTERS and (cast := self._cast()):
+            try:
+                # Lesson headings are structural, not untagged dialogue turns.
+                combined_ready = parse_lesson(
+                    text, dialogue=self.dialogue_mode()
+                ).speakers.issubset(cast)
+            except ScriptError:
+                pass
+        self.combined_board_button.setEnabled(combined_ready)
         self.open_board_button.setEnabled(not busy and self._board_open_file is not None)
         board_ready = self._board_lesson is not None and self._board_lesson.speakers.issubset(
             self._cast()
@@ -572,6 +592,12 @@ class MainWindow(QMainWindow):
                 f"{self._board_source.name} · {len(self._board_lesson.steps)} خطوات" + note
             )
             self.board_source_label.setToolTip(str(self._board_source))
+        elif self._board_open_file:
+            self.board_source_label.setText(
+                f"{self._board_open_file.name} · سبورة بالنص والصوت في ملف واحد. "
+                "لإعادة التوليد استخدم السكريبت والزر الموحّد، أو أنشئ نسخة صامتة بالخطوة 1."
+            )
+            self.board_source_label.setToolTip(str(self._board_open_file))
         for widget in (
             self.primary_voice,
             self.choose_html_button,
@@ -747,6 +773,55 @@ class MainWindow(QMainWindow):
                 lesson, path, cancel, progress, appearance=appearance
             ),
             "whiteboard",
+        )
+
+    def generate_whiteboard_with_audio(self) -> None:
+        if self.worker:
+            return
+        try:
+            lesson = parse_lesson(self.editor.toPlainText(), dialogue=self.dialogue_mode())
+            cast, options = self._cast(), self._options()
+            validate_lesson_cast(lesson, cast, options)
+            appearance = self.appearance_picker.snapshot(lesson)
+        except (ScriptError, VoiceError, AudioError, AppearanceError) as error:
+            QMessageBox.warning(self, "راجع السكريبت والأصوات والتخصيصات", str(error))
+            return
+        directory = (
+            Path(self.preferences.output_dir) if self.preferences.output_dir else Path.home()
+        )
+        path = self._board_save_path(
+            "حفظ السبورة بالنص والصوت في ملف HTML واحد",
+            directory / f"NovaLesson-{datetime.now():%Y%m%d-%H%M%S}-with-voice.html",
+        )
+        if path is None:
+            return
+        try:
+            # A one-click editor export must not overwrite either selected
+            # original page, including aliases/hard links checked by this helper.
+            for source in (self._board_source, self._html_source):
+                if source is not None and source.exists():
+                    validate_destination(source, path)
+        except (OSError, HtmlExportError) as error:
+            QMessageBox.warning(self, "اختر اسمًا آخر", str(error))
+            return
+        self.preferences.output_dir = str(path.parent)
+        pause, audio_format = self.turn_pause_spin.value(), self.format_combo.currentData()
+        self._release_player()
+        self.open_html_button.setEnabled(False)
+        self._start_task(
+            lambda cancel, progress: render_whiteboard_with_audio(
+                self.engine,
+                lesson,
+                cast,
+                path,
+                options,
+                cancel,
+                progress,
+                turn_pause_ms=pause,
+                audio_format=audio_format,
+                appearance=appearance,
+            ),
+            "whiteboard-combined",
         )
 
     def _choose_whiteboard(self) -> None:
@@ -948,6 +1023,7 @@ class MainWindow(QMainWindow):
             "html": "جارٍ تجهيز الصفحة وتوليد الصوت محليًا…",
             "whiteboard": "جارٍ تحويل السكريبت إلى سبورة HTML محليًا…",
             "whiteboard-audio": "جارٍ توليد مقطع صوتي لكل خطوة من السبورة…",
+            "whiteboard-combined": "جارٍ إنشاء السبورة وتوليد صوتها في ملف HTML واحد…",
         }
         self.status.setText(messages.get(kind, "جارٍ تجهيز المحرك المحلي…"))
         self.progress.setRange(0, 0)
@@ -957,11 +1033,26 @@ class MainWindow(QMainWindow):
     def _task_progress(self, value: int) -> None:
         if value < 0:
             self.progress.setRange(0, 0)
+            if (
+                self._progress_kind == "whiteboard-combined"
+                and self.worker
+                and not self.worker.cancel_event.is_set()
+            ):
+                self.status.setText("جارٍ تجهيز نماذج الصوت المحلية للسبورة…")
         else:
             self.progress.setRange(0, 100)
             self.progress.setValue(value)
             if self.worker and not self.worker.cancel_event.is_set():
-                if self._progress_kind in ("html", "whiteboard-audio"):
+                if self._progress_kind == "whiteboard-combined":
+                    stage = (
+                        "إنشاء السبورة المؤقتة"
+                        if value <= 5
+                        else "توليد صوت السبورة"
+                        if value < 86
+                        else "حفظ النص والصوت داخل HTML"
+                    )
+                    self.status.setText(f"جارٍ {stage} محليًا… {value}%")
+                elif self._progress_kind in ("html", "whiteboard-audio"):
                     stage = "حفظ الصوت داخل HTML" if value >= 85 else "توليد صوت الصفحة"
                     self.status.setText(f"جارٍ {stage} محليًا… {value}%")
                 elif self._progress_kind == "whiteboard":
@@ -996,14 +1087,19 @@ class MainWindow(QMainWindow):
             self.open_html_button.setEnabled(True)
             return
         if isinstance(result, HtmlAudioResult):
-            if self._progress_kind == "whiteboard-audio":
+            if self._progress_kind in ("whiteboard-audio", "whiteboard-combined"):
+                # Never store the combined job's deleted staging HTML as a source.
+                # Keep any previously selected silent board for the old step 2.
                 self._board_open_file = result.path
             self._result_file = result.path
             self._html_result_file = result.path
             self.player_title.setText("صفحة HTML الصوتية جاهزة")
             self.result_path.setText(str(result.path))
             message = (
-                "اكتملت الخطوة 2: نسخة السبورة بالصوت لكل خطوة جاهزة. "
+                "تم توليد السبورة بالنص والصوت معًا في ملف HTML واحد. "
+                "افتحه لعرض النص وتشغيل الصوت والتحكم بالسرعة. "
+                if self._progress_kind == "whiteboard-combined"
+                else "اكتملت الخطوة 2: نسخة السبورة بالصوت لكل خطوة جاهزة. "
                 "افتحها للتحكم بالصوت والكتابة. "
                 if self._progress_kind == "whiteboard-audio"
                 else "تم حفظ نسخة HTML جديدة والصوت داخلها. افتحها للتحكم بالسرعة. "

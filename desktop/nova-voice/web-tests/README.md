@@ -58,3 +58,10 @@ whole-step weighting without console errors. MP3 tests check metadata semantics,
 **not actual browser decoder trimming**. The Python codec test separately decodes
 and correlates real MP3 files with development-only miniaudio. No real-browser,
 Windows, natural-voice or 4 GB hardware test is implied.
+
+
+The measured-timing suite also creates a page with the one-click combined
+exporter and reopens it offline, checking embedded audio, row boundaries and
+seeking. The combined path reuses the saved-lesson exporter; it does not introduce
+a second browser controller. Native Qt button tests are separate Python tests
+and require the system Qt dependencies (not provided by jsdom).

@@ -405,3 +405,172 @@ def test_editing_script_invalidates_row_overrides_but_keeps_character_choices(wi
     assert picker._row_colors == {}
     assert picker.first_character.currentData() == "salma"
     assert not picker.sentence_color_button.isEnabled()
+
+
+def test_combined_button_requires_script_and_voices_without_removing_two_step_flow(
+    window, voice_files
+):
+    assert not window.combined_board_button.isEnabled()
+    assert window.combined_board_button.text() == "توليد السبورة بالنص والصوت معًا"
+    window.editor.setPlainText("# Lesson\n## Step\nHello.")
+    assert window.create_board_button.isEnabled()
+    assert not window.combined_board_button.isEnabled()
+    add_test_voice(window, voice_files)
+    assert window.combined_board_button.isEnabled()
+    assert window.create_board_button.isEnabled()
+    assert not window.board_audio_button.isEnabled()
+    window.editor.setPlainText("# Empty title only")
+    assert not window.combined_board_button.isEnabled()
+    window.editor.clear()
+    assert not window.combined_board_button.isEnabled()
+
+
+def test_combined_button_handles_headings_and_only_used_dialogue_roles(window, voice_files):
+    add_test_voice(window, voice_files)
+    window.mode_combo.setCurrentIndex(1)
+    window.primary_voice.language_combo.setCurrentIndex(1)  # No Arabic model installed.
+    window.secondary_voice.language_combo.setCurrentIndex(2)
+    window.editor.setPlainText("# Title\n## Step\n[2] Hello.[/2]")
+    assert window.primary_voice.selected_voice() is None
+    assert window.combined_board_button.isEnabled()
+    window.editor.setPlainText("# Title\n## Step\n[1] مرحبًا.[/1][2] Hello.[/2]")
+    assert not window.combined_board_button.isEnabled()
+
+
+def test_combined_click_asks_for_one_output_and_keeps_no_temporary_source(
+    window, voice_files, tmp_path, monkeypatch
+):
+    from PySide6.QtWidgets import QFileDialog
+
+    from nova_voice.whiteboard import WhiteboardPage
+
+    add_test_voice(window, voice_files)
+    window.editor.setPlainText("# Together\n## Step\nHello.")
+    window.format_combo.setCurrentIndex(1)
+    window.appearance_picker.first_character.setCurrentIndex(
+        window.appearance_picker.first_character.findData("adam")
+    )
+    window.appearance_picker.layout_combo.setCurrentIndex(
+        window.appearance_picker.layout_combo.findData("columns")
+    )
+    output, dialogs = tmp_path / "complete.html", []
+
+    def choose(*args, **kwargs):
+        dialogs.append(args)
+        return str(output), ""
+
+    monkeypatch.setattr(QFileDialog, "getSaveFileName", choose)
+    window.combined_board_button.click()
+    worker = window.worker
+    assert worker is not None
+    assert not window.combined_board_button.isEnabled()
+    assert not window.create_board_button.isEnabled()
+    assert QSignalSpy(worker.finished).wait(30000)
+    QApplication.processEvents()
+    assert window.worker is None and len(dialogs) == 1
+    assert window._board_source is None and window._board_lesson is None
+    assert window._board_open_file == window._html_result_file == output
+    assert window.open_board_button.isEnabled() and window.open_html_button.isEnabled()
+    assert not window.board_audio_button.isEnabled()
+    assert window.combined_board_button.isEnabled() and window.create_board_button.isEnabled()
+    assert window.player.source().isEmpty()
+    assert "ملف HTML واحد" in window.status.text()
+    assert "النص والصوت" in window.board_source_label.text()
+    loaded = WhiteboardPage.load(output, allow_recordings=True)
+    assert loaded.lesson.script == window.editor.toPlainText()
+    assert loaded.timing is not None
+    assert loaded.appearance.first_character == "adam"
+    assert loaded.appearance.layout == "columns"
+    assert list(tmp_path.glob("*.html")) == [output]
+
+
+@pytest.mark.parametrize("source_attribute", ["_board_source", "_html_source"])
+def test_combined_export_refuses_to_overwrite_a_selected_original(
+    window, voice_files, tmp_path, monkeypatch, source_attribute
+):
+    from PySide6.QtWidgets import QFileDialog
+
+    add_test_voice(window, voice_files)
+    window.editor.setPlainText("# New lesson\nHello.")
+    source = tmp_path / "original.html"
+    source.write_bytes(b"original untouched page")
+    setattr(window, source_attribute, source)
+    messages = []
+    monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *a, **k: (str(source), ""))
+    monkeypatch.setattr(QMessageBox, "warning", lambda *a, **k: messages.append(a[-1]))
+    window.generate_whiteboard_with_audio()
+    assert window.worker is None and len(messages) == 1
+    assert source.read_bytes() == b"original untouched page"
+
+
+def test_combined_export_uses_current_editor_and_preserves_the_old_saved_board_selection(
+    window, voice_files, tmp_path, monkeypatch
+):
+    from PySide6.QtWidgets import QFileDialog
+
+    from nova_voice.whiteboard import WhiteboardPage, parse_lesson, save_whiteboard
+
+    add_test_voice(window, voice_files)
+    old_lesson = parse_lesson("# Saved\nOld saved sentence.")
+    source, output = tmp_path / "saved.html", tmp_path / "new-combined.html"
+    save_whiteboard(old_lesson, source)
+    original = source.read_bytes()
+    window._board_source, window._board_lesson = source, old_lesson
+    window.editor.setPlainText("# Current\nCurrent editor sentence.")
+    window.format_combo.setCurrentIndex(1)
+    monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *a, **k: (str(output), ""))
+    monkeypatch.setattr(
+        QMessageBox, "question", lambda *a, **k: pytest.fail("Unexpected old-text prompt")
+    )
+    window.generate_whiteboard_with_audio()
+    assert QSignalSpy(window.worker.finished).wait(30000)
+    QApplication.processEvents()
+    assert WhiteboardPage.load(output, allow_recordings=True).lesson.title == "Current"
+    assert window._board_source == source and window._board_lesson == old_lesson
+    assert window._board_open_file == output
+    assert window.board_audio_button.isEnabled()  # The saved-source step 2 still works.
+    assert source.read_bytes() == original
+
+
+def test_combined_invalid_voice_or_cancelled_save_starts_no_worker(
+    window, voice_files, monkeypatch
+):
+    from PySide6.QtWidgets import QFileDialog
+
+    add_test_voice(window, voice_files)
+    messages = []
+    window.editor.setPlainText("# Lesson\nنص عربي.")
+    monkeypatch.setattr(QMessageBox, "warning", lambda *a, **k: messages.append(a[-1]))
+    monkeypatch.setattr(
+        QFileDialog,
+        "getSaveFileName",
+        lambda *a, **k: pytest.fail("Invalid voice opened save dialog"),
+    )
+    window.generate_whiteboard_with_audio()
+    assert window.worker is None and messages
+    window.editor.setPlainText("# Lesson\nHello.")
+    monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *a, **k: ("", ""))
+    window.generate_whiteboard_with_audio()
+    assert window.worker is None and window._board_source is None
+
+
+def test_combined_job_can_be_cancelled_and_reenables_both_generation_paths(window, voice_files):
+    add_test_voice(window, voice_files)
+    window.editor.setPlainText("# Lesson\nHello.")
+
+    def wait_for_cancel(cancel, progress):
+        cancel.wait(30)
+        raise Cancelled()
+
+    window._start_task(wait_for_cancel, "whiteboard-combined")
+    worker = window.worker
+    assert not window.combined_board_button.isEnabled()
+    assert not window.create_board_button.isEnabled()
+    window.generate_whiteboard_with_audio()  # A second click cannot replace the running worker.
+    assert window.worker is worker
+    window._cancel()
+    assert QSignalSpy(worker.finished).wait(30000)
+    QApplication.processEvents()
+    assert window.worker is None
+    assert window.combined_board_button.isEnabled() and window.create_board_button.isEnabled()
+    assert "الإلغاء" in window.status.text()

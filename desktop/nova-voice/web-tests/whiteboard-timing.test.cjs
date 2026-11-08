@@ -17,7 +17,7 @@ from pathlib import Path
 from dataclasses import replace
 from types import SimpleNamespace
 import sys
-from nova_voice.whiteboard import parse_lesson, save_whiteboard, render_whiteboard_audio
+from nova_voice.whiteboard import parse_lesson, save_whiteboard, render_whiteboard_audio, render_whiteboard_with_audio
 from nova_voice.engine import DialogueVoice, RenderOptions, SpeechEngine
 from nova_voice.voices import VoiceSpec
 root = Path(sys.argv[1])
@@ -36,6 +36,7 @@ class MeasuredEngine(SpeechEngine):
                 yield SimpleNamespace(sample_rate=8000, sample_width=2, sample_channels=1, audio_int16_bytes=bytes(4000))
         return SimpleNamespace(config=SimpleNamespace(sample_rate=8000, length_scale=1.0), synthesize=synthesize)
 engine = MeasuredEngine()
+render_whiteboard_with_audio(engine, lesson, cast, root/'combined.html', RenderOptions(), audio_format='wav')
 for ext in ('wav', 'mp3'):
     render_whiteboard_audio(engine, source, cast, root/('timed.' + ext + '.html'), RenderOptions(), audio_format=ext)
 class TinyEngine(SpeechEngine):
@@ -382,5 +383,19 @@ test("customized narrated downloads keep the measured map, pass Python integrity
       reopened.position(8.85); near(reopened.row(1), 0.5);
       assert.equal(reopened.audio.paused, true);
     } finally { reopened.close(); }
+  } finally { app.close(); }
+});
+
+
+test("one-click combined export reopens offline with the same measured row cues and embedded audio", () => {
+  const app = mount({ file: "combined.html" });
+  try {
+    assert.equal(app.mode, "measured");
+    assert.ok(app.audio.src.startsWith("data:audio/wav;base64,"));
+    assert.equal(app.audio.paused, true);
+    assert.equal(app.get("lesson-outline").querySelectorAll("button").length, 2);
+    app.position(1); near(app.row(0), 0.125); near(app.row(1), 0);
+    app.position(8.85, "seeked"); near(app.row(0), 1); near(app.row(1), 0.5);
+    app.position(1, "seeked"); near(app.row(1), 0);
   } finally { app.close(); }
 });
