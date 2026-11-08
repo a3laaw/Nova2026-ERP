@@ -57,3 +57,13 @@ for Nova Voice and are distributed under this app's GPL-3.0-or-later license.
 They do not use licensed cartoon franchises, remote images, generated video, or
 an additional model. Their decorative CSS motion does not represent lip sync or
 voice identity. No third-party character/image dependency is introduced.
+
+
+## Development-only codec measurement
+
+`miniaudio` **1.72** (MIT; https://github.com/irmen/pyminiaudio) is pinned in
+`requirements-dev.txt` / the dev extra only. Its installed distribution carries
+its own license notices, including those for its bundled decoder components.
+It decodes deterministic MP3 test files for `tools/measure_mp3_delay.py` and the
+Python tests. Neither the app's rendering pipeline nor its offline HTML imports
+it; it is not a new playback backend or runtime dependency.

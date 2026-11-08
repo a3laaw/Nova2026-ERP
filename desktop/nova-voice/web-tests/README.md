@@ -43,3 +43,18 @@ English-above-Arabic grouping, two columns, narrow-screen fallback, unchanged le
 manifests and audio position, original-row color targeting, and a browser-downloaded
 layout surviving Python reimport and offline narration. Geometry is simulated by
 jsdom; these tests do not replace real-browser visual or Windows listening tests.
+
+
+## Measured per-line timing (0.5.0)
+
+`whiteboard-timing.test.cjs` uses the actual Python streaming writer with
+controlled PCM chunks and deliberately unequal row durations. It checks Python/JS
+canonical SHA-256 (including Arabic, emoji and all 120 step keys), row onset and
+reveal, measured reply gaps, seek both ways, pause/replay, slider and native
+ratechange at 0.5x/2x, resize and within-row wrapping, reduced motion, speaker
+motion and browser-customized round trips back through Python integrity checks.
+Missing, malformed, partial or inconsistent timing falls back to the old
+whole-step weighting without console errors. MP3 tests check metadata semantics,
+**not actual browser decoder trimming**. The Python codec test separately decodes
+and correlates real MP3 files with development-only miniaudio. No real-browser,
+Windows, natural-voice or 4 GB hardware test is implied.

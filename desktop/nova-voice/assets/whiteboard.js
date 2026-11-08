@@ -17,6 +17,9 @@
     }
   } catch (_) { /* A malformed recording cannot prevent reading the lesson. */ }
   const hasAudio = recordings !== null;
+  const timing = hasAudio && window.novaWhiteboardTiming
+    ? window.novaWhiteboardTiming.read($("nova-whiteboard-timings"), lesson, recordings) : null;
+  svg.dataset.timing = timing ? "measured" : hasAudio ? "weighted" : "silent";
   let current = 0, rate = 1, lines = [], totalWeight = 1, virtualTime = 0;
   let silentPlaying = false, frame = null, lastFrame = null, version = 0, completed = false;
   let canvasWidth = window.innerWidth <= 720 ? 720 : 1200;
@@ -29,6 +32,13 @@
     window.dispatchEvent(new CustomEvent("nova-whiteboard:state", {
       detail: { step: current + 1, steps: lesson.steps.length, rate, playing: isPlaying(), hasAudio },
     }));
+    // The transport state remains true during a measured gap; child motion
+    // must nevertheless follow the current speech cue, not the last speaker.
+    if (timing && appearance) {
+      const clip = timing.steps[String(current)], samples = audio.currentTime * clip.sample_rate;
+      const cue = clip.lines.find(line => samples >= line.start_sample && samples < line.end_sample);
+      appearance.setActiveSpeaker(cue ? cue.speaker : 1, !!cue && isPlaying());
+    }
   }
 
   function refreshButton() {
@@ -56,12 +66,22 @@
     return clamp(hasAudio ? audio.currentTime / duration() : virtualTime / totalWeight);
   }
 
-  function renderProgress(value) {
+  function renderProgress(value, finished = false) {
     const fraction = clamp(value);
     const elapsed = fraction * totalWeight;
+    const clip = timing ? timing.steps[String(current)] : null;
+    // No elapsed wall time, playbackRate multiplier or whole-clip stretching.
+    // Only ended may force the final reveal (MP3 can trim/pad its PCM clock).
+    const samples = clip ? (finished ? clip.total_samples : audio.currentTime * clip.sample_rate) : 0;
     let active = null;
     for (const line of lines) {
-      const part = reducedMotion ? (fraction > 0 ? 1 : 0) : clamp((elapsed - line.start) / line.weight);
+      let part;
+      if (clip) {
+        const cue = clip.lines[line.row];
+        const rowPart = clamp((samples - cue.start_sample) / (cue.end_sample - cue.start_sample));
+        // Text weights are confined to visual wrapping INSIDE this source row.
+        part = reducedMotion ? (rowPart > 0 ? 1 : 0) : clamp((rowPart * line.rowWeight - line.rowStart) / line.weight);
+      } else part = reducedMotion ? (fraction > 0 ? 1 : 0) : clamp((elapsed - line.start) / line.weight);
       const width = (line.box.width + 12) * part;
       line.rect.setAttribute("width", String(width));
       line.rect.setAttribute("x", String(line.rtl ? line.box.x + line.box.width + 6 - width : line.box.x - 6));
@@ -74,8 +94,10 @@
       pen.setAttribute("transform", `translate(${x} ${y})`);
       pen.setAttribute("opacity", "1");
     } else pen.setAttribute("opacity", "0");
-    const activeLine = active ? active.line : lines.find(line => elapsed < line.start + line.weight) || lines[lines.length - 1];
-    if (appearance && activeLine) appearance.setActiveSpeaker(activeLine.speaker, isPlaying() && fraction < 1);
+    const cue = clip ? clip.lines.find(line => samples >= line.start_sample && samples < line.end_sample) : null;
+    const activeLine = clip ? (cue ? lines.find(line => line.row === cue.line_id) : null)
+      : active ? active.line : lines.find(line => elapsed < line.start + line.weight) || lines[lines.length - 1];
+    if (appearance) appearance.setActiveSpeaker(activeLine ? activeLine.speaker : 1, !!activeLine && isPlaying() && !finished && (clip ? samples < clip.total_samples : fraction < 1));
     $("board-placeholder").hidden = fraction > 0;
     $("position-label").textContent = `${Math.round(fraction * 100)}%`;
     $("writing-status").textContent = fraction >= 1 ? "اكتملت الخطوة" : fraction > 0 ? "نكتب ونتعلّم…" : "السبورة جاهزة";
@@ -175,6 +197,8 @@
         const font = measure.getAttribute("font-family");
         measure.remove();
         const rowStart = rowY;
+        const rowWeight = wrapped.reduce((sum, content) => sum + Math.max(500, Array.from(content).length * 65), 0);
+        let withinRow = 0;
         for (const content of wrapped) {
           const text = make("text");
           text.textContent = content;
@@ -205,7 +229,9 @@
           defs.append(clip);
           text.setAttribute("clip-path", `url(#${clip.id})`);
           const weight = Math.max(500, Array.from(content).length * 65);
-          lines.push({ rect, box, rtl, speaker: row.speaker, start: totalWeight, weight });
+          lines.push({ rect, box, rtl, speaker: row.speaker, row: rowIndex,
+            start: totalWeight, weight, rowStart: withinRow, rowWeight });
+          withinRow += weight;
           totalWeight += weight;
           rowY += 54;
         }
@@ -248,7 +274,7 @@
     completed = true;
     silentPlaying = false;
     cancelFrame();
-    renderProgress(1);
+    renderProgress(1, true);
     refreshButton();
     setStatus("اكتملت الخطوة. يمكنك إعادتها أو الانتقال إلى التالية.");
     if ($("wb-auto-next").checked && current + 1 < lesson.steps.length) navigate(current + 1, true);
@@ -328,7 +354,9 @@
       audio.playbackRate = rate;
       audio.preservesPitch = true;
       audio.webkitPreservesPitch = true;
-      setStatus("الصوت مضمّن لهذه الخطوة. تشغيله وتحريك الكتابة يستخدمان ساعة الصوت نفسها؛ المحاذاة داخل الخطوة تقريبية.");
+      setStatus(timing
+        ? "توقيت فعلي لكل سطر من عينات الصوت؛ الكتابة داخل السطر تقريبية." + (timing.steps[String(index)].audio_format === "mp3" ? " قد يضيف MP3 تأخيرًا صغيرًا؛ WAV أدق." : "")
+        : "الصوت مضمّن لهذه الخطوة. تشغيله وتحريك الكتابة يستخدمان ساعة الصوت نفسها؛ المحاذاة داخل الخطوة تقريبية.");
     }
     renderProgress(0);
     refreshButton();
@@ -382,7 +410,7 @@
       refreshButton();
     });
     audio.addEventListener("pause", () => { cancelFrame(); renderProgress(progress()); refreshButton(); });
-    for (const event of ["timeupdate", "seeked", "loadedmetadata"]) audio.addEventListener(event, () => {
+    for (const event of ["timeupdate", "seeking", "seeked", "loadedmetadata"]) audio.addEventListener(event, () => {
       renderProgress(progress());
       if (progress() < 1) completed = false;
       refreshButton();

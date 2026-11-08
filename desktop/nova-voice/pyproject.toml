@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest==8.4.2", "ruff==0.14.4", "pyinstaller==6.22.3"]
+dev = ["pytest==8.4.2", "ruff==0.14.4", "pyinstaller==6.22.3", "miniaudio==1.72"]
 
 [project.gui-scripts]
 nova-voice = "nova_voice.__main__:main"

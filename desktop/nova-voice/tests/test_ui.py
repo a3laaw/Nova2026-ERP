@@ -293,13 +293,13 @@ def test_whiteboard_audio_comes_from_saved_html_not_editor(
     monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *a, **k: (str(output), ""))
     monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.StandardButton.Yes)
     calls = []
-    original = window.engine.render
+    original = window.engine.render_lines
 
-    def render(text, *args, **kwargs):
-        calls.append(text)
-        return original(text, *args, **kwargs)
+    def render(lines, *args, **kwargs):
+        calls.extend(line.text for line in lines)
+        return original(lines, *args, **kwargs)
 
-    monkeypatch.setattr(window.engine, "render", render)
+    monkeypatch.setattr(window.engine, "render_lines", render)
     window.generate_whiteboard_audio()
     worker = window.worker
     assert worker is not None

@@ -6,7 +6,6 @@ manifest is used for speech; titles and structural markers are never pronounced.
 
 import argparse
 import base64
-import hashlib
 import hmac
 import json
 import math
@@ -33,6 +32,7 @@ from .engine import (
     DialogueVoice,
     RenderOptions,
     SpeechEngine,
+    SpeechLine,
     validate_dialogue_cast,
 )
 from .html_export import (
@@ -47,6 +47,7 @@ from .html_export import (
 from .language import narration_text, text_language, validate_spoken_language
 from .storage import resource_dir
 from .text import ScriptError, read_script, split_text, validate_text
+from .timing import TIMINGS_ID, ClipTiming, TimingMap, data_fingerprint
 from .voices import VoiceError, check_cancelled
 
 MAX_STEPS = 120
@@ -128,8 +129,8 @@ class Lesson:
 
     @property
     def spoken_script(self) -> str:
-        # Keep the saved-lesson transcript stable; display rows are not the
-        # synthesis units. BoardStep.speech coalesces them only for playback.
+        # Keep the saved-lesson transcript stable. Legacy whole-step rendering
+        # coalesces rows; the opt-in measured renderer keeps each saved row ID.
         return "\n".join(
             f"[{row.speaker}] {row.text}" if self.dialogue else row.text
             for step in self.steps
@@ -163,18 +164,20 @@ class WhiteboardPage:
     page: HtmlPage
     lesson: Lesson
     appearance: BoardAppearance = BoardAppearance()
+    timing: TimingMap | None = None
 
     @classmethod
-    def load(cls, source: Path) -> "WhiteboardPage":
+    def load(cls, source: Path, *, allow_recordings: bool = False) -> "WhiteboardPage":
         page = HtmlPage.load(source)
         inspector = _ManifestInspector()
         inspector.feed(page.content)
         inspector.close()
-        if inspector.recordings:
+        if inspector.recordings and not allow_recordings:
             raise WhiteboardError(
                 "هذه سبورة بالصوت بالفعل. اختر نسخة السبورة الأصلية بلا صوت لإعادة التوليد."
             )
-        if len(inspector.manifests) != 1 or page.content.count(AUDIO_MARKER) != 1:
+        expected_markers = 0 if inspector.recordings else 1
+        if len(inspector.manifests) != 1 or page.content.count(AUDIO_MARKER) != expected_markers:
             raise WhiteboardError(
                 "هذا ليس ملف سبورة Nova المدعوم. أنشئ السبورة من السكريبت في الخطوة 1، "
                 "أو استخدم قسم إضافة الصوت إلى HTML للصفحات الأخرى."
@@ -232,7 +235,42 @@ class WhiteboardPage:
             raise WhiteboardError(
                 "ألوان السبورة أو شخصياتها غير صالحة. أعد حفظ التخصيصات."
             ) from error
-        return cls(page, lesson, appearance)
+        timing = None
+        try:
+            if len(inspector.timings) > 1 or (inspector.timings and not inspector.recordings):
+                raise ValueError("Duplicate timing data, or timings without recordings")
+            if inspector.recordings:
+                if len(inspector.recording_data) != 1 or inspector.duplicate_audio:
+                    raise ValueError("Invalid recording metadata")
+                recordings = json.loads(inspector.recording_data[0])
+                durations = recordings["durations"]
+                if (
+                    not isinstance(durations, list)
+                    or len(durations) != len(lesson.steps)
+                    or any(
+                        type(d) not in (int, float) or not math.isfinite(d) or d <= 0
+                        for d in durations
+                    )
+                    or set(inspector.audio_types)
+                    != {f"nova-wb-audio-{index}" for index in range(len(lesson.steps))}
+                ):
+                    raise ValueError("Missing recording data")
+                if inspector.timings:
+                    timing = TimingMap.from_data(
+                        json.loads(inspector.timings[0]),
+                        lesson.manifest()["fingerprint"],
+                        tuple(tuple(row.speaker for row in step.rows) for step in lesson.steps),
+                        durations,
+                    )
+                    for index, clip in enumerate(timing.steps):
+                        mime = "audio/wav" if clip.audio_format == "wav" else "audio/mpeg"
+                        if inspector.audio_types[f"nova-wb-audio-{index}"] != mime:
+                            raise ValueError("Timing format does not match the recording")
+        except (ValueError, TypeError, KeyError, RecursionError) as error:
+            raise WhiteboardError(
+                "خريطة توقيت السطور أو بيانات الصوت ناقصة أو تغيّرت؛ أعد التوليد من الأصل الصامت."
+            ) from error
+        return cls(page, lesson, appearance, timing)
 
 
 class _ManifestInspector(HTMLParser):
@@ -241,6 +279,10 @@ class _ManifestInspector(HTMLParser):
         self.manifests: list[str] = []
         self.recordings = False
         self.styles: list[str] = []
+        self.timings: list[str] = []
+        self.recording_data: list[str] = []
+        self.audio_types: dict[str, str | None] = {}
+        self.duplicate_audio = False
         self._collecting: str | None = None
         self._parts: list[str] = []
 
@@ -250,7 +292,15 @@ class _ManifestInspector(HTMLParser):
         attributes = dict(attrs)
         if attributes.get("id") == RECORDINGS_ID:
             self.recordings = True
-        if attributes.get("id") in (DATA_ID, STYLE_ID):
+        identifier = attributes.get("id") or ""
+        if identifier.startswith("nova-wb-audio-"):
+            if (
+                identifier in self.audio_types
+                or attributes.get("type") != "application/x-nova-audio"
+            ):
+                self.duplicate_audio = True
+            self.audio_types[identifier] = attributes.get("data-mime")
+        if attributes.get("id") in (DATA_ID, STYLE_ID, TIMINGS_ID, RECORDINGS_ID):
             if attributes.get("type") != "application/json":
                 raise WhiteboardError("بيانات السبورة ليست بالصيغة المدعومة.")
             self._collecting = attributes["id"]
@@ -262,14 +312,18 @@ class _ManifestInspector(HTMLParser):
 
     def handle_endtag(self, tag: str) -> None:
         if tag == "script" and self._collecting:
-            target = self.manifests if self._collecting == DATA_ID else self.styles
+            target = {
+                DATA_ID: self.manifests,
+                STYLE_ID: self.styles,
+                TIMINGS_ID: self.timings,
+                RECORDINGS_ID: self.recording_data,
+            }[self._collecting]
             target.append("".join(self._parts))
             self._collecting = None
 
 
 def _fingerprint(payload: dict) -> str:
-    canonical = json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(canonical.encode("ascii")).hexdigest()
+    return data_fingerprint(payload)
 
 
 def _heading(value: str) -> str:
@@ -402,6 +456,8 @@ def whiteboard_html(lesson: Lesson, appearance: BoardAppearance | None = None) -
     controller = (
         (assets / "whiteboard-appearance.js").read_text(encoding="utf-8")
         + "\n"
+        + (assets / "whiteboard-timing.js").read_text(encoding="utf-8")
+        + "\n"
         + (assets / "whiteboard.js").read_text(encoding="utf-8")
     )
     if "</script" in controller.lower() or "</style" in css.lower():
@@ -527,6 +583,7 @@ def render_whiteboard_audio(
     if not 0 <= turn_pause_ms <= 2000:
         raise WhiteboardError("فاصل الردود يجب أن يكون بين 0 و2000 ملّي ثانية.")
     clips: list[tuple[Path, float, int]] = []
+    measured: list[ClipTiming] = []
     completed = 0
     audio_bytes = 0
     total = board.lesson.characters
@@ -543,7 +600,37 @@ def render_whiteboard_audio(
                     progress(min(85, round(85 * (completed + weight * value / 100) / total)))
 
             clip = Path(folder) / f"step-{index}.{audio_format}"
-            if board.lesson.dialogue:
+            render_lines = getattr(engine, "render_lines", None)
+            if callable(render_lines):
+                # Stable manifest-row IDs are attached before any TTS splitting.
+                # Do not create a separate file or artificial pause per row.
+                lines = tuple(
+                    SpeechLine(
+                        row_index,
+                        row.text,
+                        row.speaker,
+                        turn_pause_ms
+                        if (
+                            board.lesson.dialogue
+                            and row_index + 1 < len(step.rows)
+                            and step.rows[row_index + 1].speaker != row.speaker
+                        )
+                        else 0,
+                    )
+                    for row_index, row in enumerate(step.rows)
+                )
+                result = render_lines(lines, cast, clip, options, cancel, speech_progress)
+                if not isinstance(result.timing, ClipTiming):
+                    raise WhiteboardError("لم يُرجع المحرك قياسًا فعليًا لسطور الخطوة.")
+                timing = ClipTiming.from_data(
+                    result.timing.to_data(), tuple(row.speaker for row in step.rows)
+                )
+                if timing.audio_format != audio_format:
+                    raise WhiteboardError("صيغة خريطة التوقيت لا تطابق الصوت.")
+                measured.append(timing)
+            elif board.lesson.dialogue:
+                # Compatibility with older injected engines: do not fabricate
+                # line measurements from their whole-clip duration.
                 result = engine.render_dialogue(
                     text,
                     cast,
@@ -575,8 +662,23 @@ def render_whiteboard_audio(
             clips.append((clip, result.duration_seconds, size))
             completed += weight
         check_cancelled(cancel)
-        prefix, suffix = board.page.content.split(AUDIO_MARKER)
+        # A saved v0.4/v0.5 board contains its old controller. Re-export only
+        # supported Nova lessons with the trusted current template and validated
+        # saved appearance; never execute imported JavaScript or change the source.
+        prefix, suffix = whiteboard_html(board.lesson, board.appearance).split(AUDIO_MARKER)
         durations = [duration for _, duration, _ in clips]
+        timing_data = None
+        if measured:
+            if len(measured) != len(board.lesson.steps):
+                raise WhiteboardError("خريطة توقيت الخطوات غير مكتملة.")
+            timing_map = TimingMap(board.lesson.manifest()["fingerprint"], tuple(measured))
+            timing_data = timing_map.to_data()
+            TimingMap.from_data(
+                timing_data,
+                board.lesson.manifest()["fingerprint"],
+                tuple(tuple(row.speaker for row in step.rows) for step in board.lesson.steps),
+                durations,
+            )
         mime = "audio/mpeg" if audio_format == "mp3" else "audio/wav"
         written = 0
 
@@ -590,6 +692,14 @@ def render_whiteboard_audio(
                     + "</script>\n"
                 ).encode("ascii")
             )
+            if timing_data is not None:
+                output.write(
+                    (
+                        f'<script id="{TIMINGS_ID}" type="application/json">'
+                        + _safe_json(timing_data)
+                        + "</script>\n"
+                    ).encode("ascii")
+                )
             for index, (clip, _, expected) in enumerate(clips):
                 output.write(
                     (

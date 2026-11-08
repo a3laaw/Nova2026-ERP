@@ -4,7 +4,7 @@ import os
 import tempfile
 import wave
 from collections import OrderedDict
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 from threading import Event, Lock
@@ -14,6 +14,7 @@ from .dialogue import DialogueTurn, has_voice_markers, merge_turns, parse_dialog
 from .language import narration_text, validate_spoken_language
 from .pcm import resample_pcm16
 from .text import ScriptError, split_text, validate_text
+from .timing import ClipTiming, LineTiming
 from .voices import VoiceError, VoiceSpec, check_cancelled
 
 
@@ -47,6 +48,21 @@ class RenderResult:
     path: Path
     duration_seconds: float
     characters: int
+    timing: ClipTiming | None = None
+
+
+@dataclass(frozen=True)
+class SpeechLine:
+    """One logical saved row, identified BEFORE bounded TTS segmentation.
+
+    Explicit trailing silence belongs outside the line's speech span. Wrapped
+    same-role rows normally request zero silence. No path/model data is serialized.
+    """
+
+    line_id: int
+    text: str
+    speaker: int = 1
+    pause_after_ms: int = 0
 
 
 @dataclass(frozen=True)
@@ -55,6 +71,8 @@ class _SpeechBlock:
     voice: VoiceSpec
     options: RenderOptions
     pause_after_ms: int
+    line_id: int | None = None
+    speaker: int = 1
 
 
 def validate_dialogue_cast(
@@ -184,6 +202,61 @@ class SpeechEngine:
                 blocks.append(_SpeechBlock(piece.text, assignment.voice, turn_options, pause))
         return self._render(blocks, destination, cancel, progress)
 
+    def render_lines(
+        self,
+        lines: Sequence[SpeechLine],
+        cast: Mapping[int, DialogueVoice],
+        destination: Path,
+        options: RenderOptions,
+        cancel: Event | None = None,
+        progress: Callable[[int], None] | None = None,
+    ) -> RenderResult:
+        """Count each logical row in ONE sequential PCM/encoder stream.
+
+        This opt-in API leaves render/render_dialogue callers and their existing
+        segmentation unchanged. Every bounded piece retains its original ID;
+        no line audio files, concatenation, alignment model or extra reply gaps.
+        Internal paragraph pauses remain inside a row span. Explicit trailing
+        pauses are separate, measured gaps, omitted after the very last row.
+        """
+        lines = tuple(lines)
+        if not lines or any(
+            not isinstance(line, SpeechLine)
+            or type(line.line_id) is not int
+            or line.line_id != index
+            or not isinstance(line.text, str)
+            or type(line.speaker) is not int
+            or line.speaker not in (1, 2)
+            or type(line.pause_after_ms) is not int
+            or not 0 <= line.pause_after_ms <= 2000
+            for index, line in enumerate(lines)
+        ):
+            raise AudioError("سطور التوقيت تحتاج معرّفات متتابعة وأدوارًا وفواصل صالحة.")
+        validate_text("\n".join(line.text for line in lines))
+        validate_dialogue_cast(
+            [DialogueTurn(line.speaker, line.text) for line in lines], cast, options
+        )
+        blocks: list[_SpeechBlock] = []
+        for line in lines:
+            assignment = cast[line.speaker]
+            pieces = split_text(narration_text(line.text))
+            line_options = replace(options, speaker_id=assignment.speaker_id)
+            for index, piece in enumerate(pieces):
+                pause = options.pause_ms if piece.paragraph_end else 0
+                if index == len(pieces) - 1:
+                    pause = line.pause_after_ms
+                blocks.append(
+                    _SpeechBlock(
+                        piece.text,
+                        assignment.voice,
+                        line_options,
+                        pause,
+                        line.line_id,
+                        line.speaker,
+                    )
+                )
+        return self._render(blocks, destination, cancel, progress)
+
     def _render(
         self,
         blocks: list[_SpeechBlock],
@@ -231,6 +304,9 @@ class SpeechEngine:
         total = sum(len(block.text) for block in blocks)
         encoder = None
         wav = None
+        line_timings: list[LineTiming] = []
+        line_start = 0
+        timing = None
         try:
             with os.fdopen(fd, "wb") as handle:
                 progress(0)
@@ -262,6 +338,10 @@ class SpeechEngine:
 
                     for index, block in enumerate(blocks):
                         check_cancelled(cancel)
+                        if block.line_id is not None and (
+                            index == 0 or blocks[index - 1].line_id != block.line_id
+                        ):
+                            line_start = frames
                         voice = loaded[block.voice]
                         synthesis = SynthesisConfig(
                             length_scale=voice.config.length_scale / block.options.speed,
@@ -286,8 +366,19 @@ class SpeechEngine:
                             write_pcm(pcm)
                         if not speech_frames:
                             raise AudioError("لم ينتج أحد المقاطع أي صوت. جرّب نصًا أو نموذجًا آخر.")
+                        speech_end = frames
+                        gap_frames = 0
                         if block.pause_after_ms and index < len(blocks) - 1:
-                            write_pcm(bytes(round(rate * block.pause_after_ms / 1000) * 2))
+                            gap_frames = round(rate * block.pause_after_ms / 1000)
+                            write_pcm(bytes(gap_frames * 2))
+                        if block.line_id is not None and (
+                            index + 1 == len(blocks) or blocks[index + 1].line_id != block.line_id
+                        ):
+                            line_timings.append(
+                                LineTiming(
+                                    block.line_id, block.speaker, line_start, speech_end, gap_frames
+                                )
+                            )
                         completed += len(block.text)
                         progress(min(99, round(100 * completed / total)))
                     check_cancelled(cancel)
@@ -299,8 +390,14 @@ class SpeechEngine:
                 handle.flush()
                 os.fsync(handle.fileno())
             check_cancelled(cancel)
+            if line_timings:
+                timing = ClipTiming(
+                    rate, frames, tuple(line_timings), destination.suffix.lower()[1:]
+                )
+                # Validate before publishing either audio or its metadata.
+                ClipTiming.from_data(timing.to_data(), tuple(line.speaker for line in line_timings))
             temporary.replace(destination)
         finally:
             temporary.unlink(missing_ok=True)
         progress(100)
-        return RenderResult(destination, frames / rate, total)
+        return RenderResult(destination, frames / rate, total, timing)

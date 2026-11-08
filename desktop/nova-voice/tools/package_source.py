@@ -21,6 +21,8 @@ FILES = (
     "RUN-FIRST-AR.html",
     "HTML-GUIDE.md",
     "WHITEBOARD-GUIDE.md",
+    "CHANGELOG.md",
+    "TIMING-VERIFICATION-AR.md",
     "KIDS-GUIDE-AR.md",
     "LICENSE",
     "THIRD_PARTY.md",
