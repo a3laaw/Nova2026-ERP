@@ -25,6 +25,8 @@ FILES = (
     "TIMING-VERIFICATION-AR.md",
     "UI-ORGANIZATION-AR.md",
     "EGYPTIAN-VOICES-AR.md",
+    "BRITISH-ENGLISH-AR.md",
+    "FINAL-RELEASE-AR.md",
     "KIDS-GUIDE-AR.md",
     "LICENSE",
     "THIRD_PARTY.md",

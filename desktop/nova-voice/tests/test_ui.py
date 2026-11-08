@@ -1,4 +1,4 @@
-"""Run natively on Windows CI; headless Linux needs Qt's system GL/EGL libraries."""
+"""Run natively on Windows; headless Linux needs Qt's system GL/EGL libraries."""
 
 import os
 import shutil
@@ -645,3 +645,23 @@ def test_success_expands_shared_result_without_moving_or_changing_the_editor(win
     assert window.editor.toPlainText() == "My current editor text."
     assert window.result_path.toolTip() == str(result.path)
     assert window.open_html_button.isEnabled()
+
+
+def test_english_model_picker_discloses_uk_us_without_changing_the_selected_model(
+    window, voice_files
+):
+    from dataclasses import replace
+
+    from nova_voice.voices import VoiceSpec
+
+    original = VoiceSpec.from_path(*voice_files)
+    uk = replace(original, language_code="en_GB", name="UK test")
+    us = replace(original, language_code="en_US", name="US test")
+    picker = window.primary_voice
+    picker.set_voices([uk, us])
+    assert "UK" in picker.voice_combo.itemText(0)
+    assert "US" in picker.voice_combo.itemText(1)
+    picker.voice_combo.setCurrentIndex(1)
+    assert picker.selected_voice() is us
+    assert "US" in picker.details.text()
+    assert picker.selected_voice().model_path == original.model_path

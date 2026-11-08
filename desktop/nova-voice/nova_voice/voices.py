@@ -40,8 +40,17 @@ class VoiceSpec:
         return code.lower().replace("_", "-").split("-", 1)[0]
 
     @property
+    def locale_label(self) -> str:
+        # Locale is metadata, NOT a quality/RP certification or an accent conversion.
+        code = self.language_code.lower().replace("_", "-").split("-")
+        if len(code) > 1 and code[0] == "en":
+            return {"gb": "UK · بريطاني", "us": "US · أمريكي"}.get(code[1], "")
+        return ""
+
+    @property
     def label(self) -> str:
-        return f"{self.name} · {self.language}"
+        locale = f" · {self.locale_label}" if self.locale_label else ""
+        return f"{self.name} · {self.language}{locale}"
 
     @classmethod
     def from_path(cls, model_path: Path, config_path: Path | None = None) -> "VoiceSpec":

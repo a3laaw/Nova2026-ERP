@@ -85,3 +85,28 @@ def test_arabic_and_english_family_codes_support_language_filters(bilingual_cast
     assert arabic.language_family == "ar"
     assert english.language_family == "en"
     assert arabic.language_code == "ar_JO"
+
+
+@pytest.mark.parametrize(
+    "code,expected",
+    [
+        ("en_GB", "UK · بريطاني"),
+        ("en-GB-x-rp", "UK · بريطاني"),
+        ("en_US", "US · أمريكي"),
+        ("en-us", "US · أمريكي"),
+        ("en", ""),
+        ("en_AU", ""),
+        ("ar_JO", ""),
+    ],
+)
+def test_voice_locale_labels_do_not_rename_or_relabel_the_model(voice_spec, code, expected):
+    from dataclasses import replace
+
+    voice = replace(voice_spec, language_code=code)
+    assert voice.locale_label == expected
+    assert voice.name == voice_spec.name and voice.model_path == voice_spec.model_path
+    assert voice.language_code == code
+    assert (
+        (expected in voice.label) if expected else voice.label == f"{voice.name} · {voice.language}"
+    )
+    assert "RP" not in voice.label

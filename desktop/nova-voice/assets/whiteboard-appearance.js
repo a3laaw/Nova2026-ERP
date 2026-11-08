@@ -174,6 +174,14 @@
       // nodes are preserved and the controller restores the first clip on load.
       copy.querySelector("#wb-audio").removeAttribute("src");
       copy.querySelector("#wb-rows").replaceChildren();
+      copy.querySelector("#wb-rows").removeAttribute("clip-path");
+      copy.querySelector("#whiteboard").dataset.transition = "idle";
+      copy.querySelector("#whiteboard").setAttribute("aria-busy", "false");
+      copy.querySelector("#wb-eraser").setAttribute("opacity", "0");
+      copy.querySelector("#wb-eraser").removeAttribute("transform");
+      copy.querySelector("#wb-pen").setAttribute("opacity", "0");
+      copy.querySelector("#wb-play").disabled = false;
+      copy.querySelector("#wb-restart").disabled = false;
       copy.querySelector("#wb-defs").replaceChildren();
       copy.querySelector("#lesson-outline").replaceChildren();
       copy.querySelector("#wb-character-library").replaceChildren();

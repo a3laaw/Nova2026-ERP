@@ -119,7 +119,8 @@ class VoicePicker(QWidget):
                     names.get(speaker_id, f"متحدث {speaker_id + 1}"), speaker_id
                 )
             self.speaker_combo.setCurrentIndex(max(0, self.speaker_combo.findData(previous_id)))
-            self.details.setText(f"{voice.language} · {voice.sample_rate:,} Hz · محلي")
+            locale = f" · {voice.locale_label}" if voice.locale_label else ""
+            self.details.setText(f"{voice.language}{locale} · {voice.sample_rate:,} Hz · محلي")
             self._preferred_path = str(voice.model_path)
         else:
             self._speaker_model = ""

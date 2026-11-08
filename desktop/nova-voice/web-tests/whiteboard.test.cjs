@@ -21,6 +21,7 @@ root = Path(sys.argv[1])
 lesson = parse_lesson('# Timing lesson\\n## First step\\nHello world.\\n## Second step\\nNext sentence.')
 source = root / 'silent.html'
 save_whiteboard(lesson, source)
+save_whiteboard(parse_lesson('# Three steps\\n## One\\nFirst sentence.\\n## Two\\nSecond sentence.\\n## Three\\nThird sentence.'), root/'three.html')
 inline = parse_lesson(Path('examples/greetings-inline-dialogue.txt').read_text(encoding='utf-8'), dialogue=True)
 save_whiteboard(inline, root / 'inline.html')
 paired = parse_lesson(chr(10).join(['# Paired lesson', '## Greetings', '[2] Hello، everyone.[/2][1] مرحبًا بكم.[/1]', '[2] How are you?[/2][1] كيف حالك؟[/1]']), dialogue=True)
@@ -47,7 +48,8 @@ after(() => fs.rmSync(folder, { recursive: true, force: true }));
 function mount(file = "silent.html", options = {}) {
   const callbacks = new Map();
   let nextId = 0, networkCalls = 0, playCalls = 0;
-  const downloads = [];
+  const downloads = [], timers = new Map(), motionListeners = [];
+  let motionQuery;
   const media = new WeakMap();
   const state = element => {
     if (!media.has(element)) media.set(element, { paused: true, ended: false, time: 0, duration: 1 });
@@ -66,7 +68,12 @@ function mount(file = "silent.html", options = {}) {
         window.HTMLAnchorElement.prototype.click = function () {};
       }
       if (options.width) window.innerWidth = options.width;
-      window.matchMedia = () => ({ matches: !!options.reducedMotion });
+      motionQuery = { matches: !!options.reducedMotion, addEventListener(event, callback) { if (event === "change") motionListeners.push(callback); } };
+      window.matchMedia = () => motionQuery;
+      if (options.captureTimers) {
+        window.setTimeout = callback => { const id = ++nextId; timers.set(id, callback); return id; };
+        window.clearTimeout = id => timers.delete(id);
+      }
       window.fetch = () => { networkCalls++; throw new Error("No network permitted"); };
       window.requestAnimationFrame = callback => { const id = ++nextId; callbacks.set(id, callback); return id; };
       window.cancelAnimationFrame = id => callbacks.delete(id);
@@ -106,6 +113,12 @@ function mount(file = "silent.html", options = {}) {
     get playCalls() { return playCalls; },
     get networkCalls() { return networkCalls; },
     get frames() { return callbacks.size; },
+    get timers() { return timers.size; },
+    frameCallbacks() { return Array.from(callbacks.values()); },
+    timerCallbacks() { return Array.from(timers.values()); },
+    finishErase() { this.advance(0); this.advance(560); },
+    expireTimers() { const pending = Array.from(timers.values()); timers.clear(); pending.forEach(callback => callback()); },
+    reduced(value) { motionQuery.matches = value; motionListeners.forEach(callback => callback({ matches: value })); },
     advance(time) { const current = Array.from(callbacks.values()); callbacks.clear(); current.forEach(callback => callback(time)); },
     position(time, event = "timeupdate") { audio.currentTime = time; audio.dispatchEvent(new window.Event(event)); },
     ended() { state(audio).time = state(audio).duration; state(audio).paused = true; state(audio).ended = true; audio.dispatchEvent(new window.Event("ended")); },
@@ -224,6 +237,9 @@ test("finishing a step keeps the answer hidden unless automatic progression was 
     app.get("wb-auto-next").checked = true;
     app.get("wb-play").click(); await Promise.resolve();
     app.ended(); await Promise.resolve();
+    assert.equal(app.get("whiteboard").dataset.transition, "erasing");
+    assert.equal(app.audio.paused, true);
+    app.finishErase(); await Promise.resolve();
     assert.equal(app.get("scene-title").textContent, "Second step");
     assert.equal(app.get("position-label").textContent, "0%");
     assert.equal(app.audio.paused, false);
@@ -697,5 +713,299 @@ test("appearance remains available in three named groups without changing the sa
     tools.open = false;
     assert.equal(app.get("nova-whiteboard-data").textContent, original);
     assert.equal(app.playCalls, 0);
+  } finally { app.close(); }
+});
+
+// Erasing is a separate, bounded UI phase BEFORE selecting/playing a new clip.
+test("eraser is local, hidden on load and never wipes a blank board or a same-step restart", () => {
+  const app = mount("audio.html");
+  try {
+    assert.equal(app.get("whiteboard").dataset.transition, "idle");
+    assert.equal(app.get("wb-eraser").getAttribute("opacity"), "0");
+    assert.equal(app.get("wb-eraser").getAttribute("aria-hidden"), "true");
+    app.get("wb-next").click();
+    assert.equal(app.get("scene-title").textContent, "Second step");
+    assert.equal(app.get("wb-erase-clip"), null);
+    app.position(0.5);
+    app.get("wb-restart").click();
+    assert.equal(app.audio.currentTime, 0);
+    assert.equal(app.get("whiteboard").dataset.transition, "idle");
+    assert.equal(app.frames, 0);
+    assert.equal(app.playCalls, 0);
+  } finally { app.close(); }
+});
+
+test("a visible paused board is wiped by three bands before changing words, without autoplay", () => {
+  const app = mount("audio.html");
+  try {
+    const lesson = app.get("nova-whiteboard-data").textContent;
+    app.position(0.5);
+    const source = app.audio.src, oldRows = app.get("wb-rows").textContent;
+    app.get("wb-next").click();
+    assert.equal(app.get("whiteboard").dataset.transition, "erasing");
+    assert.equal(app.get("whiteboard").getAttribute("aria-busy"), "true");
+    assert.equal(app.get("wb-eraser").getAttribute("opacity"), "1");
+    assert.equal(app.get("wb-erase-clip").children.length, 3);
+    assert.equal(app.get("wb-rows").getAttribute("clip-path"), "url(#wb-erase-clip)");
+    assert.equal(app.get("wb-rows").textContent, oldRows);
+    assert.equal(app.audio.src, source);
+    assert.equal(app.audio.currentTime, 0.5);
+    assert.equal(app.get("wb-play").disabled, true);
+    assert.equal(app.get("wb-restart").disabled, true);
+    app.advance(0); app.advance(100);
+    assert.ok(Number(app.get("wb-erase-clip").firstElementChild.getAttribute("width")) < 1200);
+    app.advance(250);
+    assert.equal(Number(app.get("wb-erase-clip").firstElementChild.getAttribute("width")), 0);
+    app.advance(560);
+    assert.equal(app.get("scene-title").textContent, "Second step");
+    assert.match(app.get("step-transcript").textContent, /Next sentence/);
+    assert.equal(app.get("wb-erase-clip"), null);
+    assert.equal(app.get("wb-rows").hasAttribute("clip-path"), false);
+    assert.equal(app.get("wb-eraser").getAttribute("opacity"), "0");
+    assert.equal(app.get("whiteboard").getAttribute("aria-busy"), "false");
+    assert.equal(app.get("wb-play").disabled, false);
+    assert.equal(app.get("wb-restart").disabled, false);
+    assert.notEqual(app.audio.src, source);
+    assert.equal(app.audio.currentTime, 0);
+    assert.equal(app.audio.paused, true);
+    assert.equal(app.playCalls, 0);
+    assert.equal(app.frames, 0);
+    assert.equal(app.get("nova-whiteboard-data").textContent, lesson);
+  } finally { app.close(); }
+});
+
+test("playing narration pauses the outgoing clip and resumes only the new clip after the wipe", async () => {
+  const app = mount("audio.html");
+  try {
+    chooseCharacter(app, "adam");
+    app.get("wb-play").click(); await Promise.resolve();
+    app.position(0.4);
+    const plays = app.playCalls;
+    app.get("wb-next").click();
+    assert.equal(app.audio.paused, true);
+    assert.equal(app.playCalls, plays);
+    assert.equal(app.document.querySelectorAll(".is-moving").length, 0);
+    assert.equal(app.frames, 1); // Eraser only, never the writing/media loop.
+    app.advance(0); app.advance(300);
+    assert.equal(app.audio.currentTime, 0.4);
+    assert.equal(app.playCalls, plays);
+    app.advance(560); await Promise.resolve();
+    assert.equal(app.audio.currentTime, 0);
+    assert.equal(app.audio.paused, false);
+    assert.equal(app.playCalls, plays + 1);
+    assert.equal(app.frames, 1); // Writing/media loop only now.
+    app.advance(999999999);
+    assert.equal(app.get("position-label").textContent, "0%");
+    app.position(0.25);
+    assert.equal(app.get("position-label").textContent, "25%");
+  } finally { app.close(); }
+});
+
+test("silent writing resumes from zero after erasing, not from elapsed transition time", () => {
+  const app = mount();
+  try {
+    app.get("wb-play").click(); app.advance(0); app.advance(300);
+    app.get("wb-next").click();
+    assert.equal(app.get("whiteboard").dataset.transition, "erasing");
+    app.finishErase();
+    assert.equal(app.get("scene-title").textContent, "Second step");
+    assert.equal(app.get("position-label").textContent, "0%");
+    app.advance(999999); // First new writing frame establishes its own baseline.
+    assert.equal(app.get("position-label").textContent, "0%");
+    app.advance(1000199);
+    assert.notEqual(app.get("position-label").textContent, "0%");
+    assert.equal(app.playCalls, 0);
+  } finally { app.close(); }
+});
+
+test("rapid next/previous/outline requests share one wipe and only the latest destination wins", () => {
+  const app = mount("three.html");
+  try {
+    app.get("wb-play").click(); app.advance(0); app.advance(200);
+    app.get("wb-play").click();
+    app.get("wb-next").click();
+    const clip = app.get("wb-erase-clip");
+    app.get("wb-next").click();
+    assert.equal(app.get("wb-next").disabled, true);
+    assert.equal(app.get("wb-erase-clip"), clip);
+    app.get("wb-previous").click();
+    app.get("lesson-outline").querySelectorAll("button")[2].click();
+    assert.equal(app.get("scene-title").textContent, "One");
+    assert.equal(app.document.querySelectorAll("#wb-erase-clip").length, 1);
+    assert.equal(app.frames, 1);
+    app.finishErase();
+    assert.equal(app.get("scene-title").textContent, "Three");
+    assert.equal(app.get("lesson-outline").querySelector('[aria-current="step"]').textContent, "3Three");
+    assert.equal(app.get("wb-next").disabled, true);
+    assert.equal(app.frames, 0);
+  } finally { app.close(); }
+});
+
+for (const rate of [0.5, 2]) test(`erasing has a fixed short duration independent of the ${rate}x audio rate`, () => {
+  const app = mount("audio.html");
+  try {
+    app.position(0.5);
+    input(app, "wb-rate", String(rate));
+    app.get("wb-next").click();
+    app.advance(0); app.advance(550);
+    assert.equal(app.get("whiteboard").dataset.transition, "erasing");
+    app.advance(560);
+    assert.equal(app.get("scene-title").textContent, "Second step");
+    assert.equal(app.audio.playbackRate, rate);
+    assert.equal(app.audio.currentTime, 0);
+  } finally { app.close(); }
+});
+
+test("reduced motion switches visible boards immediately with no eraser frame or timer", () => {
+  const app = mount("audio.html", { reducedMotion: true, captureTimers: true });
+  try {
+    app.position(0.5);
+    app.get("wb-next").click();
+    assert.equal(app.get("scene-title").textContent, "Second step");
+    assert.equal(app.get("whiteboard").dataset.transition, "idle");
+    assert.equal(app.get("wb-eraser").getAttribute("opacity"), "0");
+    assert.equal(app.frames, 0); assert.equal(app.timers, 0);
+  } finally { app.close(); }
+});
+
+test("enabling reduced motion during a wipe commits once and removes all transient state", () => {
+  const app = mount("audio.html", { captureTimers: true });
+  try {
+    app.position(0.5); app.get("wb-next").click();
+    app.reduced(true);
+    assert.equal(app.get("scene-title").textContent, "Second step");
+    assert.equal(app.get("wb-erase-clip"), null);
+    assert.equal(app.get("wb-eraser").getAttribute("opacity"), "0");
+    assert.equal(app.frames, 0); assert.equal(app.timers, 0);
+    app.expireTimers();
+    assert.equal(app.playCalls, 0);
+  } finally { app.close(); }
+});
+
+test("a fallback completes a wipe when animation frames are throttled, without autoplay", () => {
+  const app = mount("audio.html", { captureTimers: true });
+  try {
+    app.position(0.5); app.get("wb-next").click();
+    assert.equal(app.timers, 1);
+    app.expireTimers();
+    assert.equal(app.get("scene-title").textContent, "Second step");
+    assert.equal(app.frames, 0); assert.equal(app.timers, 0);
+    assert.equal(app.get("whiteboard").dataset.transition, "idle");
+    assert.equal(app.playCalls, 0);
+  } finally { app.close(); }
+});
+
+test("pagehide cancels erasing and prevents a stale frame/timeout from selecting or playing another step", async () => {
+  const app = mount("audio.html", { captureTimers: true });
+  try {
+    app.get("wb-play").click(); await Promise.resolve();
+    app.position(0.5); app.get("wb-next").click();
+    const plays = app.playCalls;
+    app.window.dispatchEvent(new app.window.Event("pagehide"));
+    assert.equal(app.frames, 0); assert.equal(app.timers, 0);
+    app.advance(100000); app.expireTimers(); await Promise.resolve();
+    assert.equal(app.get("scene-title").textContent, "First step");
+    assert.equal(app.audio.paused, true);
+    assert.equal(app.playCalls, plays);
+    assert.equal(app.get("wb-erase-clip"), null);
+  } finally { app.close(); }
+});
+
+for (const operation of ["resize", "appearance", "hidden"]) test(`${operation} during erasing finishes cleanly without altering the lesson or autoplay`, () => {
+  const app = mount("audio.html");
+  try {
+    const lesson = app.get("nova-whiteboard-data").textContent;
+    app.position(0.5); app.get("wb-next").click();
+    if (operation === "resize") { app.window.innerWidth = 360; app.window.dispatchEvent(new app.window.Event("resize")); }
+    else if (operation === "appearance") input(app, "wb-color-1", "#475569");
+    else { Object.defineProperty(app.document, "hidden", { configurable: true, value: true }); app.document.dispatchEvent(new app.window.Event("visibilitychange")); }
+    assert.equal(app.get("scene-title").textContent, "Second step");
+    assert.equal(app.get("wb-erase-clip"), null);
+    assert.equal(app.get("wb-rows").hasAttribute("clip-path"), false);
+    assert.equal(app.get("wb-eraser").getAttribute("opacity"), "0");
+    assert.equal(app.audio.currentTime, 0);
+    assert.equal(app.get("nova-whiteboard-data").textContent, lesson);
+    assert.equal(app.playCalls, 0);
+    if (operation === "resize") assert.match(app.get("whiteboard").getAttribute("viewBox"), /^0 0 720 /);
+    if (operation === "appearance") assert.equal(app.get("wb-rows").querySelector("text").getAttribute("fill"), "#475569");
+  } finally { app.close(); }
+});
+
+test("late outgoing media events cannot repaint or finish the step during erasing", async () => {
+  const app = mount("audio.html");
+  try {
+    app.position(0.5); app.get("wb-next").click();
+    app.advance(0); app.advance(100);
+    const clip = app.get("wb-erase-clip"), width = clip.firstElementChild.getAttribute("width");
+    app.position(0.9, "seeking"); app.audio.dispatchEvent(new app.window.Event("loadedmetadata"));
+    app.ended();
+    await app.audio.play(); // Native controls also cannot play outgoing audio over the wipe.
+    assert.equal(app.audio.paused, true);
+    assert.equal(app.get("wb-erase-clip"), clip);
+    assert.equal(clip.firstElementChild.getAttribute("width"), width);
+    assert.equal(app.get("scene-title").textContent, "First step");
+    app.advance(560);
+    assert.equal(app.get("scene-title").textContent, "Second step");
+    assert.equal(app.audio.paused, true);
+  } finally { app.close(); }
+});
+
+test("saving during erasing removes transient clip/hand/disabled state and reopens normally", () => {
+  const app = mount("audio.html", { captureDownloads: true });
+  try {
+    const lesson = app.get("nova-whiteboard-data").textContent;
+    app.position(0.5); app.get("wb-next").click(); app.advance(0); app.advance(120);
+    app.get("wb-save-customized").click();
+    const saved = new JSDOM(app.downloads[0]);
+    try {
+      const doc = saved.window.document;
+      assert.equal(doc.getElementById("wb-eraser").getAttribute("opacity"), "0");
+      assert.equal(doc.getElementById("wb-rows").hasAttribute("clip-path"), false);
+      assert.equal(doc.getElementById("whiteboard").getAttribute("aria-busy"), "false");
+      assert.equal(doc.getElementById("wb-play").disabled, false);
+      assert.equal(doc.getElementById("wb-restart").disabled, false);
+      assert.equal(doc.getElementById("wb-audio").hasAttribute("src"), false);
+      assert.equal(doc.getElementById("nova-whiteboard-data").textContent, lesson);
+    } finally { saved.window.close(); }
+    fs.writeFileSync(path.join(folder, "saved-mid-erase.html"), app.downloads[0]);
+    const reopened = mount("saved-mid-erase.html");
+    try {
+      assert.equal(reopened.get("scene-title").textContent, "First step");
+      assert.equal(reopened.get("whiteboard").dataset.transition, "idle");
+      assert.equal(reopened.frames, 0); assert.equal(reopened.playCalls, 0);
+    } finally { reopened.close(); }
+  } finally { app.close(); }
+});
+
+test("an already-collected old wipe callback cannot finish or drive a newer transition", () => {
+  const app = mount("audio.html", { captureTimers: true });
+  try {
+    app.position(0.5); app.get("wb-next").click();
+    const [staleFrame] = app.frameCallbacks(), [staleTimeout] = app.timerCallbacks();
+    app.finishErase();
+    app.position(0.5); app.get("wb-previous").click();
+    const clip = app.get("wb-erase-clip");
+    staleFrame(999999); staleTimeout();
+    assert.equal(app.get("wb-erase-clip"), clip);
+    assert.equal(app.get("scene-title").textContent, "Second step");
+    assert.equal(app.frames, 1); assert.equal(app.timers, 1);
+    app.finishErase();
+    assert.equal(app.get("scene-title").textContent, "First step");
+    assert.equal(app.playCalls, 0);
+  } finally { app.close(); }
+});
+
+test("a cancelled outgoing writing frame cannot alter the new step or duplicate its loop", async () => {
+  const app = mount("audio.html");
+  try {
+    app.get("wb-play").click(); await Promise.resolve();
+    const [staleWritingFrame] = app.frameCallbacks();
+    app.position(0.5); app.get("wb-next").click(); app.finishErase(); await Promise.resolve();
+    assert.equal(app.frames, 1);
+    staleWritingFrame(999999999);
+    assert.equal(app.frames, 1);
+    assert.equal(app.audio.currentTime, 0);
+    assert.equal(app.get("position-label").textContent, "0%");
+    assert.equal(app.get("scene-title").textContent, "Second step");
   } finally { app.close(); }
 });

@@ -12,7 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-ARCHIVE_NAME = "NovaVoice-Source-v0.5.0.rar"
+ARCHIVE_NAME = "NovaVoice-Source-v0.5.1.rar"
 
 
 def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
@@ -47,6 +47,8 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         "WHITEBOARD-GUIDE.md",
         "KIDS-GUIDE-AR.md",
         "EGYPTIAN-VOICES-AR.md",
+        "BRITISH-ENGLISH-AR.md",
+        "FINAL-RELEASE-AR.md",
     ):
         routes["/desktop/nova-voice/" + name] = (
             source / name,

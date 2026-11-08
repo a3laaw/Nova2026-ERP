@@ -38,6 +38,8 @@ def site(tmp_path):
         "WHITEBOARD-GUIDE.md",
         "KIDS-GUIDE-AR.md",
         "EGYPTIAN-VOICES-AR.md",
+        "BRITISH-ENGLISH-AR.md",
+        "FINAL-RELEASE-AR.md",
     ):
         (source / name).write_text("Public guide")
     (tmp_path / ".git").mkdir()
@@ -130,6 +132,15 @@ def test_egyptian_voice_report_is_explicitly_public_not_the_rest_of_the_source(s
     with urlopen(
         base + "/desktop/nova-voice/EGYPTIAN-VOICES-AR.md", timeout=3
     ) as response:
+        assert response.status == 200
+        assert response.headers["Content-Type"] == "text/plain; charset=utf-8"
+        assert response.read() == b"Public guide"
+
+
+@pytest.mark.parametrize("name", ["BRITISH-ENGLISH-AR.md", "FINAL-RELEASE-AR.md"])
+def test_final_release_guides_are_public_without_exposing_the_source(site, name):
+    base, _ = site
+    with urlopen(base + "/desktop/nova-voice/" + name, timeout=3) as response:
         assert response.status == 200
         assert response.headers["Content-Type"] == "text/plain; charset=utf-8"
         assert response.read() == b"Public guide"

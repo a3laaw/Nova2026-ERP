@@ -1,7 +1,7 @@
 {
   "name": "nova-voice-html-player-tests",
   "private": true,
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "DOM/controller tests only; Node is not needed to run the desktop app or exported HTML.",
   "scripts": {
     "test": "node --test player.test.cjs exported.test.cjs whiteboard.test.cjs whiteboard-timing.test.cjs"

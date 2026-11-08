@@ -18,6 +18,8 @@ from nova_voice.voices import VoiceSpec  # noqa: E402
 
 BASE_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/main/"
 VOICE_PATHS = {
+    "en_GB-alan-medium": "en/en_GB/alan/medium/",
+    "en_GB-cori-medium": "en/en_GB/cori/medium/",
     "ar_JO-kareem-medium": "ar/ar_JO/kareem/medium/",
     "en_US-lessac-medium": "en/en_US/lessac/medium/",
     "en_US-amy-medium": "en/en_US/amy/medium/",
@@ -91,15 +93,63 @@ def download_voice(voice: str, output_dir: Path) -> Path:
     return destination
 
 
+def setup_english(output_dir: Path) -> int:
+    """Explicit one-time choice: UK first, no automatic voice/gender selection."""
+    choices = {
+        "1": ("en_GB-alan-medium", "en_GB-cori-medium"),
+        "2": ("en_GB-cori-medium", "en_GB-alan-medium"),
+        "3": ("en_US-lessac-medium", "en_US-amy-medium"),
+        "4": ("en_US-amy-medium", "en_US-lessac-medium"),
+    }
+    print("English setup: British (UK) is the primary teaching path.")
+    print("1. Alan - UK; published config uses the RP phonemizer")
+    print("2. Cori - UK")
+    print("3. Lessac - US (optional American alternative)")
+    print("4. Amy - US (optional American alternative)")
+    print("Q. Cancel without downloading")
+    print("Listen before teaching: https://rhasspy.github.io/piper-samples/")
+    print("A locale/RP frontend setting is NOT a listening or voice-quality guarantee.")
+    print("Read each MODEL_CARD/license. Existing voices and selections are not replaced.")
+    while True:
+        try:
+            selected = input("Choose a voice [1-4/Q]: ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print("\nCancelled. No voice was selected.")
+            return 0
+        if selected == "q":
+            print("Cancelled. No voice was selected.")
+            return 0
+        if selected in choices:
+            break
+        print("Enter 1, 2, 3, 4 or Q. No default voice is selected for you.")
+    first, second = choices[selected]
+    download_voice(first, output_dir)
+    try:
+        additional = input("Download the other voice of the SAME UK/US group for dialogue? [y/N]: ")
+    except (EOFError, KeyboardInterrupt):
+        additional = "n"
+    if additional.strip().lower() in ("y", "yes"):
+        download_voice(second, output_dir)
+    print("In Nova Voice, select the downloaded UK/US model for the English role.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("voice", choices=VOICE_PATHS, nargs="?", default="ar_JO-kareem-medium")
+    parser.add_argument("voice", choices=VOICE_PATHS, nargs="?")
+    parser.add_argument(
+        "--english-setup", action="store_true", help="Choose a UK-first English voice interactively"
+    )
     parser.add_argument(
         "--output", type=Path, default=Path(__file__).resolve().parents[1] / "voices"
     )
     args = parser.parse_args(argv)
+    if args.english_setup and args.voice:
+        parser.error("Use either an explicit voice or --english-setup, not both")
     try:
-        download_voice(args.voice, args.output)
+        if args.english_setup:
+            return setup_english(args.output)
+        download_voice(args.voice or "ar_JO-kareem-medium", args.output)
     except (OSError, ValueError, KeyError, TypeError) as error:
         print(f"Voice setup failed: {error}", file=sys.stderr)
         print("No incomplete voice was installed. Retry online or import the two files manually.")

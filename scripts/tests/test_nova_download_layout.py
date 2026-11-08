@@ -37,7 +37,7 @@ def test_delivery_is_arabic_with_one_main_heading_and_one_primary_download(docum
     assert (
         downloads[0]["href"]
         == downloads[0]["download"]
-        == "NovaVoice-Source-v0.5.0.rar"
+        == "NovaVoice-Source-v0.5.1.rar"
     )
     assert "primary" in downloads[0]["class"].split()
 

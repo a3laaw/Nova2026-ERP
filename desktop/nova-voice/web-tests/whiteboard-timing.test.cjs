@@ -121,6 +121,7 @@ function mount(options = {}) {
     get mode() { return document.getElementById("whiteboard").dataset.timing; },
     get networkCalls() { return networkCalls; },
     get frames() { return callbacks.size; },
+    finishErase() { this.advance(0); this.advance(560); },
     set duration(value) { state(audio).duration = value; },
     position(time, event = "timeupdate") { audio.currentTime = time; audio.dispatchEvent(new window.Event(event)); },
     advance(time) { const pending = Array.from(callbacks.values()); callbacks.clear(); pending.forEach(callback => callback(time)); },
@@ -258,7 +259,10 @@ test("ended completes the last row, replay resets it, and step navigation select
     app.get("wb-next").click(); app.duration = 4;
     assert.equal(app.get("scene-title").textContent, "Second");
     app.position(1); near(app.row(0), 0.25);
-    app.get("wb-previous").click(); app.duration = 12.7;
+    app.get("wb-previous").click();
+    assert.equal(app.get("whiteboard").dataset.transition, "erasing");
+    assert.equal(app.audio.paused, true);
+    app.finishErase(); await Promise.resolve(); app.duration = 12.7;
     app.position(1); near(app.row(0), 0.125); near(app.row(1), 0);
   } finally { app.close(); }
 });
@@ -397,5 +401,45 @@ test("one-click combined export reopens offline with the same measured row cues 
     app.position(1); near(app.row(0), 0.125); near(app.row(1), 0);
     app.position(8.85, "seeked"); near(app.row(0), 1); near(app.row(1), 0.5);
     app.position(1, "seeked"); near(app.row(1), 0);
+  } finally { app.close(); }
+});
+
+test("measured navigation erases before new audio and never offsets its row samples or timing JSON", async () => {
+  const app = mount();
+  try {
+    const original = app.get(TIMINGS).textContent;
+    app.get("wb-play").click(); await Promise.resolve();
+    app.position(8.85); near(app.row(1), 0.5);
+    const oldSource = app.audio.src;
+    app.get("wb-next").click();
+    assert.equal(app.get("whiteboard").dataset.transition, "erasing");
+    assert.equal(app.audio.paused, true); assert.equal(app.audio.currentTime, 8.85);
+    assert.equal(app.audio.src, oldSource);
+    app.finishErase(); await Promise.resolve(); app.duration = 4;
+    assert.equal(app.get("scene-title").textContent, "Second");
+    assert.equal(app.audio.currentTime, 0); assert.equal(app.audio.paused, false);
+    app.advance(999999999); near(app.row(0), 0);
+    app.position(1); near(app.row(0), 0.25);
+    assert.equal(app.get(TIMINGS).textContent, original);
+    assert.equal(app.mode, "measured");
+  } finally { app.close(); }
+});
+
+test("a measured file saved mid-wipe preserves integrity and cues, without persisting its transient mask", () => {
+  const app = mount({ captureDownloads: true });
+  try {
+    const metadata = app.get(TIMINGS).textContent;
+    app.position(8.85); app.get("wb-next").click(); app.advance(0); app.advance(120);
+    app.get("wb-save-customized").click();
+    fs.writeFileSync(path.join(folder, "mid-wipe.html"), app.downloads[0]);
+    execFileSync(process.env.NOVA_VOICE_PYTHON || "python", ["-c", "from pathlib import Path; import sys; from nova_voice.whiteboard import WhiteboardPage; p=WhiteboardPage.load(Path(sys.argv[1]), allow_recordings=True); assert p.timing is not None", path.join(folder, "mid-wipe.html")], { cwd: path.join(__dirname, ".."), stdio: "pipe" });
+    const reopened = mount({ file: "mid-wipe.html" });
+    try {
+      assert.equal(reopened.get(TIMINGS).textContent, metadata);
+      assert.equal(reopened.get("wb-rows").hasAttribute("clip-path"), false);
+      assert.equal(reopened.get("wb-erase-clip"), null);
+      reopened.position(8.85); near(reopened.row(1), 0.5);
+      assert.equal(reopened.audio.paused, true); assert.equal(reopened.mode, "measured");
+    } finally { reopened.close(); }
   } finally { app.close(); }
 });

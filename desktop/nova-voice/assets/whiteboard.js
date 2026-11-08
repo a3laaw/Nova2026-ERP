@@ -6,7 +6,11 @@
   const appearance = window.novaWhiteboardAppearance;
   const svg = $("whiteboard"), rowsGroup = $("wb-rows"), defs = $("wb-defs"), pen = $("wb-pen");
   const audio = $("wb-audio"), playButton = $("wb-play"), rateInput = $("wb-rate");
-  const reducedMotion = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const motionQuery = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : null;
+  let reducedMotion = !!(motionQuery && motionQuery.matches);
+  const eraser = $("wb-eraser");
+  const ERASE_MS = 560;
+  let transition = null;
   const recordingNode = $("nova-whiteboard-recordings");
   let recordings = null;
   try {
@@ -26,7 +30,9 @@
   const outline = [];
   const clamp = value => Math.max(0, Math.min(1, value));
   const make = tag => document.createElementNS(NS, tag);
-  const isPlaying = () => hasAudio ? !audio.paused && !audio.ended : silentPlaying;
+  const isPlaying = () => !transition && (hasAudio ? !audio.paused && !audio.ended : silentPlaying);
+  const continueAfterNavigation = () => transition ? transition.resume : isPlaying();
+  const navigationIndex = () => transition ? transition.index : current;
 
   function publish() {
     window.dispatchEvent(new CustomEvent("nova-whiteboard:state", {
@@ -42,7 +48,7 @@
   }
 
   function refreshButton() {
-    playButton.textContent = isPlaying() ? "إيقاف مؤقت" : completed ? "إعادة تشغيل الخطوة" : "تشغيل الخطوة";
+    playButton.textContent = transition ? "نمسح السبورة…" : isPlaying() ? "إيقاف مؤقت" : completed ? "إعادة تشغيل الخطوة" : "تشغيل الخطوة";
     playButton.setAttribute("aria-label", playButton.textContent);
     publish();
   }
@@ -67,6 +73,7 @@
   }
 
   function renderProgress(value, finished = false) {
+    if (transition) return; // Never repaint/reveal old speech while its board is being erased.
     const fraction = clamp(value);
     const elapsed = fraction * totalWeight;
     const clip = timing ? timing.steps[String(current)] : null;
@@ -262,6 +269,7 @@
   }
 
   window.addEventListener("nova-whiteboard:appearance", () => {
+    if (transition) { finishErase(); return; }
     const fraction = progress();
     layoutStep();
     if (!hasAudio) virtualTime = fraction * totalWeight;
@@ -270,6 +278,7 @@
   });
 
   function finishStep() {
+    if (transition) return; // Ignore a late ended event from the outgoing clip.
     if (completed) return;
     completed = true;
     silentPlaying = false;
@@ -289,14 +298,23 @@
     }
     renderProgress(progress());
     if (!hasAudio && virtualTime >= totalWeight) { finishStep(); return; }
-    frame = requestAnimationFrame(tick);
+    queueFrame();
+  }
+
+  function queueFrame() {
+    const ticket = version;
+    const id = requestAnimationFrame(timestamp => {
+      if (ticket === version && frame === id) tick(timestamp);
+    });
+    frame = id;
   }
 
   function startFrame() {
-    if (frame === null) { lastFrame = null; frame = requestAnimationFrame(tick); }
+    if (frame === null) { lastFrame = null; queueFrame(); }
   }
 
   async function play() {
+    if (transition) return;
     const ticket = version;
     if (completed) {
       completed = false;
@@ -330,8 +348,109 @@
     refreshButton();
   }
 
+  function updateNavigation(index) {
+    $("wb-previous").disabled = index === 0;
+    $("wb-next").disabled = index + 1 === lesson.steps.length;
+  }
+
+  function clearErase() {
+    const job = transition;
+    if (!job) return null;
+    transition = null;
+    if (job.frame !== null) cancelAnimationFrame(job.frame);
+    clearTimeout(job.timeout);
+    rowsGroup.removeAttribute("clip-path");
+    job.clip.remove();
+    eraser.setAttribute("opacity", "0");
+    eraser.removeAttribute("transform");
+    svg.dataset.transition = "idle";
+    svg.setAttribute("aria-busy", "false");
+    playButton.disabled = false;
+    $("wb-restart").disabled = false;
+    return job;
+  }
+
+  function finishErase() {
+    const job = clearErase();
+    if (job) showStep(job.index, job.resume);
+  }
+
+  function drawErase(job, fraction) {
+    const phase = fraction * 3, band = Math.min(2, Math.floor(phase));
+    const local = clamp(phase - band), smooth = local * local * (3 - 2 * local);
+    const x = job.width * (band % 2 ? smooth : 1 - smooth);
+    job.rects.forEach((rect, index) => {
+      const remaining = index < band ? 0 : index > band ? job.width : band % 2 ? job.width - x : x;
+      rect.setAttribute("x", String(index === band && band % 2 ? x : 0));
+      rect.setAttribute("width", String(remaining));
+    });
+    eraser.setAttribute("transform", `translate(${x} ${(band + 0.5) * job.height / 3}) rotate(${band % 2 ? 8 : -8})`);
+  }
+
+  function eraseFrame(job, timestamp) {
+    if (transition !== job) return;
+    job.frame = null;
+    if (job.started === null) job.started = timestamp;
+    const fraction = clamp((timestamp - job.started) / ERASE_MS);
+    drawErase(job, fraction);
+    if (fraction >= 1) finishErase();
+    else job.frame = requestAnimationFrame(next => eraseFrame(job, next));
+  }
+
   function navigate(index, continuePlaying = false) {
-    if (index < 0 || index >= lesson.steps.length) return;
+    if (!Number.isInteger(index) || index < 0 || index >= lesson.steps.length) return;
+    if (transition) {
+      // One bounded wipe, latest requested destination wins. No stacked delays.
+      transition.index = index;
+      transition.resume = continuePlaying;
+      updateNavigation(index);
+      return;
+    }
+    const visible = lines.some(line => Number(line.rect.getAttribute("width")) > 0);
+    const viewBox = svg.getAttribute("viewBox").trim().split(/\s+/).map(Number);
+    const [, , width, height] = viewBox;
+    if (index === current || !visible || reducedMotion || document.hidden || !eraser ||
+        !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+      showStep(index, continuePlaying);
+      return;
+    }
+    version++; // Invalidate a pending play promise BEFORE pausing the outgoing clip.
+    const clip = make("clipPath"), rects = [];
+    clip.id = "wb-erase-clip";
+    clip.setAttribute("clipPathUnits", "userSpaceOnUse");
+    for (let band = 0; band < 3; band++) {
+      const rect = make("rect");
+      rect.setAttribute("x", "0"); rect.setAttribute("y", String(band * height / 3));
+      rect.setAttribute("width", String(width)); rect.setAttribute("height", String(height / 3 + 0.5));
+      clip.append(rect); rects.push(rect);
+    }
+    transition = { index, resume: continuePlaying, clip, rects, width, height, started: null, frame: null, timeout: null };
+    cancelFrame();
+    silentPlaying = false;
+    if (hasAudio) audio.pause();
+    defs.append(clip);
+    rowsGroup.setAttribute("clip-path", "url(#wb-erase-clip)");
+    const felt = $("wb-eraser-felt");
+    felt.setAttribute("y", String(-height / 6 - 6));
+    felt.setAttribute("height", String(height / 3 + 12));
+    eraser.setAttribute("opacity", "1");
+    pen.setAttribute("opacity", "0");
+    $("board-placeholder").hidden = true;
+    svg.dataset.transition = "erasing";
+    svg.setAttribute("aria-busy", "true");
+    playButton.disabled = true;
+    $("wb-restart").disabled = true;
+    $("writing-status").textContent = "نمسح السبورة للخطوة التالية…";
+    updateNavigation(index);
+    refreshButton();
+    drawErase(transition, 0);
+    // UI-only clock: never advances/offsets media time or the measured PCM map.
+    const job = transition;
+    job.frame = requestAnimationFrame(timestamp => eraseFrame(job, timestamp));
+    job.timeout = setTimeout(() => { if (transition === job) finishErase(); }, 1000); // Throttled frame fallback.
+  }
+
+  function showStep(index, continuePlaying = false) {
     version++;
     cancelFrame();
     if (hasAudio) audio.pause();
@@ -341,8 +460,7 @@
     current = index;
     $("scene-title").textContent = lesson.steps[index].title;
     $("scene-number").textContent = `الخطوة ${index + 1} من ${lesson.steps.length}`;
-    $("wb-previous").disabled = index === 0;
-    $("wb-next").disabled = index + 1 === lesson.steps.length;
+    updateNavigation(index);
     outline.forEach((button, i) => {
       if (i === index) button.setAttribute("aria-current", "step");
       else button.removeAttribute("aria-current");
@@ -387,7 +505,7 @@
     title.className = "outline-text";
     title.textContent = step.title;
     button.append(number, title);
-    button.addEventListener("click", () => navigate(index, isPlaying()));
+    button.addEventListener("click", () => navigate(index, continueAfterNavigation()));
     item.append(button);
     list.append(item);
     outline.push(button);
@@ -398,19 +516,21 @@
     $("audio-badge").classList.add("ready");
   }
   playButton.addEventListener("click", () => isPlaying() ? pause() : void play());
-  $("wb-restart").addEventListener("click", () => navigate(current, isPlaying()));
-  $("wb-previous").addEventListener("click", () => navigate(current - 1, isPlaying()));
-  $("wb-next").addEventListener("click", () => navigate(current + 1, isPlaying()));
+  $("wb-restart").addEventListener("click", () => navigate(current, continueAfterNavigation()));
+  $("wb-previous").addEventListener("click", () => navigate(navigationIndex() - 1, continueAfterNavigation()));
+  $("wb-next").addEventListener("click", () => navigate(navigationIndex() + 1, continueAfterNavigation()));
   rateInput.addEventListener("input", event => setRate(event.target.value));
   $("wb-reset-rate").addEventListener("click", () => setRate(1));
   if (hasAudio) {
     audio.addEventListener("play", () => {
+      if (transition) { audio.pause(); return; }
       completed = false;
       startFrame();
       refreshButton();
     });
     audio.addEventListener("pause", () => { cancelFrame(); renderProgress(progress()); refreshButton(); });
     for (const event of ["timeupdate", "seeking", "seeked", "loadedmetadata"]) audio.addEventListener(event, () => {
+      if (transition) return;
       renderProgress(progress());
       if (progress() < 1) completed = false;
       refreshButton();
@@ -418,6 +538,7 @@
     audio.addEventListener("ended", finishStep);
     audio.addEventListener("ratechange", () => setRate(audio.playbackRate));
     audio.addEventListener("error", () => {
+      if (transition) return;
       cancelFrame();
       setStatus("تعذّر تشغيل الصوت المضمّن. جرّب متصفحًا حديثًا أو أعد توليده بصيغة MP3/WAV أخرى.");
       refreshButton();
@@ -425,22 +546,33 @@
   }
   window.addEventListener("resize", () => {
     if ((window.innerWidth <= 720 ? 720 : 1200) !== canvasWidth) {
+      if (transition) { finishErase(); return; }
       const value = progress();
       layoutStep();
       renderProgress(value);
     }
   });
-  document.addEventListener("visibilitychange", () => { lastFrame = null; });
-  window.addEventListener("pagehide", () => { version++; pause(); });
+  document.addEventListener("visibilitychange", () => {
+    lastFrame = null;
+    if (document.hidden && transition) finishErase();
+  });
+  if (motionQuery && typeof motionQuery.addEventListener === "function") motionQuery.addEventListener("change", event => {
+    reducedMotion = event.matches;
+    if (reducedMotion && transition) finishErase();
+    else renderProgress(progress(), completed);
+  });
+  window.addEventListener("pagehide", () => { version++; clearErase(); pause(); });
   window.addEventListener("keydown", event => {
     const target = event.target;
     if (event.altKey || event.ctrlKey || event.metaKey || event.repeat ||
         (target && (target.isContentEditable || target.closest("input,select,textarea,button,audio,summary")))) return;
-    if (event.key === "ArrowLeft") { event.preventDefault(); navigate(current + 1, isPlaying()); }
-    else if (event.key === "ArrowRight") { event.preventDefault(); navigate(current - 1, isPlaying()); }
+    if (event.key === "ArrowLeft") { event.preventDefault(); navigate(navigationIndex() + 1, continueAfterNavigation()); }
+    else if (event.key === "ArrowRight") { event.preventDefault(); navigate(navigationIndex() - 1, continueAfterNavigation()); }
     else if (event.key === " ") { event.preventDefault(); if (isPlaying()) pause(); else void play(); }
   });
   // No timer monkey-patching, HTML execution service, Web Speech API or network.
+  svg.dataset.transition = "idle";
+  svg.setAttribute("aria-busy", "false");
   navigate(0);
   if (recordingNode && !hasAudio) setStatus("بيانات الصوت غير مكتملة. أعد إنشاء نسخة بالصوت من السبورة الأصلية.");
 })();
