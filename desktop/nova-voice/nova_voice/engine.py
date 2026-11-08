@@ -10,9 +10,9 @@ from pathlib import Path
 from threading import Event, Lock
 from typing import Any
 
-from .dialogue import DialogueTurn, parse_dialogue
+from .dialogue import DialogueTurn, has_voice_markers, parse_dialogue
 from .pcm import resample_pcm16
-from .text import split_text
+from .text import ScriptError, split_text
 from .voices import VoiceError, VoiceSpec, check_cancelled
 
 
@@ -127,6 +127,10 @@ class SpeechEngine:
         cancel: Event | None = None,
         progress: Callable[[int], None] | None = None,
     ) -> RenderResult:
+        if has_voice_markers(text):
+            raise ScriptError(
+                "السكريبت يحتوي وسوم أصوات. اختر «حوار بين صوتين» حتى لا تُقرأ الوسوم."
+            )
         options.validate(voice)
         blocks = [
             _SpeechBlock(block.text, voice, options, options.pause_ms if block.paragraph_end else 0)

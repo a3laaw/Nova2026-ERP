@@ -20,7 +20,7 @@ installing a real voice model.
 
 `whiteboard.test.cjs` creates real silent/narrated lesson pages with the Python
 exporter, then checks SVG writing, pause/resume, step navigation, audio-clock
-seeking, half speed, opt-in progression, safe text insertion, reduced motion,
+seeking, half speed, opt-in progression, safe text insertion, inline dialogue tags, reduced motion,
 blocked playback, and narrow-screen reflow. Audio and SVG metrics are mocked:
 these are controller/integration tests, not a listening or screenshot review.
 

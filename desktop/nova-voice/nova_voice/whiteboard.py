@@ -20,7 +20,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 from threading import Event
 
-from .dialogue import MARKER, UNKNOWN_MARKER, DialogueTurn, parse_dialogue
+from .dialogue import DialogueTurn, has_voice_markers, parse_dialogue
 from .engine import (
     DialogueVoice,
     RenderOptions,
@@ -220,6 +220,10 @@ def _fingerprint(payload: dict) -> str:
 
 
 def _heading(value: str) -> str:
+    if has_voice_markers(value):
+        raise WhiteboardError(
+            "العناوين لا تحتاج وسوم أصوات. احذف الوسوم من العنوان وضعها في محتوى الخطوة فقط."
+        )
     if not value or not any(char.isalnum() for char in value) or len(value) > MAX_TITLE:
         raise WhiteboardError(f"اكتب عنوانًا واضحًا لا يزيد على {MAX_TITLE} حرفًا.")
     return value
@@ -228,9 +232,10 @@ def _heading(value: str) -> str:
 def parse_lesson(script: str, *, dialogue: bool = False) -> Lesson:
     """# title, ## step; otherwise blank-line-separated paragraphs become steps.
 
-    In dialogue mode the familiar [1]/[2] tags assign languages/voices. Without
-    dialogue, each content line is narrated by role 1. Long rows and steps are
-    paginated, never discarded. This is a template, not semantic AI scene design.
+    In dialogue mode [1]/[2] tags assign voices on separate lines or inline;
+    optional matching [/1]/[/2] tags are structural, never displayed or spoken.
+    Without dialogue, each content line is narrated by role 1. Long rows and
+    steps are paginated, never discarded. This is not semantic AI scene design.
     """
     try:
         script = validate_text(script)
@@ -292,7 +297,7 @@ def parse_lesson(script: str, *, dialogue: bool = False) -> Lesson:
             turns = parse_dialogue("\n".join(lines))
             source_rows = [(turn.speaker, turn.text) for turn in turns]
         else:
-            if any(MARKER.match(line) or UNKNOWN_MARKER.match(line) for line in lines):
+            if has_voice_markers("\n".join(lines)):
                 raise WhiteboardError(
                     "الدرس يحتوي وسوم متحدثين. اختر «حوار بين صوتين» قبل الخطوة 1."
                 )

@@ -320,3 +320,45 @@ def test_whiteboard_example_only_replaces_text_after_confirmation(window, monkey
     window._board_example()
     assert window.dialogue_mode()
     assert window.editor.toPlainText().startswith("# التحيات")
+
+
+@pytest.mark.parametrize("text", ["Intro [1] Hello.", "Intro [/1] Hello."])
+def test_single_mode_inline_markers_show_a_warning_before_synthesis(
+    window, voice_files, monkeypatch, text
+):
+    add_test_voice(window, voice_files)
+    messages = []
+    monkeypatch.setattr(QMessageBox, "warning", lambda *args: messages.append(args[-1]))
+    window.editor.setPlainText(text)
+    assert window._input() is None
+    assert "حوار" in messages[-1]
+    assert window.worker is None
+
+
+def test_inline_paired_dialogue_input_preserves_both_voice_choices(window, bilingual_cast):
+    add_bilingual_voices(window, bilingual_cast)
+    window.primary_voice.language_combo.setCurrentIndex(1)
+    window.secondary_voice.language_combo.setCurrentIndex(2)
+    window.mode_combo.setCurrentIndex(1)
+    window.editor.setPlainText("[1] مرحبًا.[/1][2] Hello.[/2]")
+    assert window.generate_button.isEnabled()
+    assert set(window._input()[1]) == {1, 2}
+
+
+def test_reassigning_paired_paragraph_and_undo_keep_valid_closing_tags(window):
+    original = "[1] Hello world.[/1]"
+    window.editor.setPlainText(original)
+    window._tag_paragraph(2)
+    assert window.editor.toPlainText() == "[2] Hello world."
+    window.editor.undo()
+    assert window.editor.toPlainText() == original
+
+
+def test_tagging_invalid_closing_marker_warns_without_changing_the_editor(window, monkeypatch):
+    messages = []
+    monkeypatch.setattr(QMessageBox, "warning", lambda *args: messages.append(args[-1]))
+    window.editor.setPlainText("[/1] Hello.")
+    window._tag_paragraph(2)
+    assert window.editor.toPlainText() == "[/1] Hello."
+    assert messages
+    assert window.worker is None

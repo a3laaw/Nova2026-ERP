@@ -46,6 +46,12 @@ firestore-debug.log
 # Local Python environment for the standalone desktop app
 /.venv/
 
+# Python caches from the desktop app and workspace delivery tests
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
 # Historical desktop packages are retained locally, not mixed with current delivery.
 /deliverables/archive/nova-voice/*.zip
 /deliverables/archive/nova-voice/*.rar

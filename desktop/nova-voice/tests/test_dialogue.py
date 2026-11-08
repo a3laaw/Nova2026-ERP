@@ -66,10 +66,11 @@ def test_whole_script_limit_includes_labels():
         parse_dialogue("[1] " + "س" * MAX_CHARACTERS)
 
 
-def test_embedded_brackets_are_content_not_voice_switches():
-    assert parse_dialogue("[1] Say [2] as part of this sentence.")[0].text == (
-        "Say [2] as part of this sentence."
-    )
+def test_embedded_voice_markers_switch_roles_but_other_brackets_are_content():
+    assert parse_dialogue("[1] Say [example].[2] This is the reply.") == [
+        DialogueTurn(1, "Say [example]."),
+        DialogueTurn(2, "This is the reply."),
+    ]
 
 
 def test_preview_trims_content_but_keeps_valid_labels_and_order():

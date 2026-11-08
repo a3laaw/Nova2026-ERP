@@ -29,7 +29,13 @@ from PySide6.QtWidgets import (
 
 from . import __version__
 from .controls import button, card, clock, combo, label
-from .dialogue import BILINGUAL_EXAMPLE, MARKER, parse_dialogue, preview_dialogue, tag_line
+from .dialogue import (
+    BILINGUAL_EXAMPLE,
+    has_voice_markers,
+    parse_dialogue,
+    preview_dialogue,
+    tag_line,
+)
 from .engine import (
     AudioError,
     DialogueVoice,
@@ -163,8 +169,11 @@ class MainWindow(QMainWindow):
         turn_actions.addWidget(self.dialogue_example_button)
         editor_layout.addWidget(self.dialogue_toolbar)
         self.dialogue_hint = label(
-            "ابدأ كلام كل شخص بسطر [1] أو [2]. السطور التالية له حتى يظهر وسم آخر. "
-            "اختر صوت كل شخص ولغته من تبويبات الإعدادات؛ الوسوم لا تُقرأ.",
+            "ابدأ كلام كل شخص بوسم <span dir='ltr'>[1]</span> أو "
+            "<span dir='ltr'>[2]</span>؛ يمكن تبديل الصوت داخل السطر نفسه. "
+            "الإغلاق اختياري: <span dir='ltr'>[1] نص عربي [/1]</span>، "
+            "<span dir='ltr'>[2] English [/2]</span>. "
+            "لا تبدأ بوسم إغلاق. اختر الصوت واللغة لكل دور؛ الوسوم لا تظهر على السبورة ولا تُنطق.",
             "setup",
             True,
         )
@@ -463,10 +472,15 @@ class MainWindow(QMainWindow):
         cursor = self.editor.textCursor()
         if cursor.hasSelection():
             cursor.setPosition(cursor.selectionStart())
-        cursor.beginEditBlock()
         cursor.movePosition(QTextCursor.MoveOperation.StartOfBlock)
         cursor.movePosition(QTextCursor.MoveOperation.EndOfBlock, QTextCursor.MoveMode.KeepAnchor)
-        cursor.insertText(tag_line(cursor.selectedText(), speaker))
+        try:
+            tagged = tag_line(cursor.selectedText(), speaker)
+        except ScriptError as error:
+            QMessageBox.warning(self, "راجع وسوم الفقرة", str(error))
+            return
+        cursor.beginEditBlock()
+        cursor.insertText(tagged)
         cursor.endEditBlock()
         self.editor.setTextCursor(cursor)
         self.editor.setFocus()
@@ -591,7 +605,7 @@ class MainWindow(QMainWindow):
             if self.dialogue_mode():
                 validate_dialogue_cast(parse_dialogue(text), cast, self._options())
             else:
-                if any(MARKER.match(line) for line in text.splitlines()):
+                if has_voice_markers(text):
                     raise ScriptError(
                         "السكريبت يحتوي وسوم أصوات. اختر «حوار بين صوتين» حتى لا تُقرأ الوسوم."
                     )

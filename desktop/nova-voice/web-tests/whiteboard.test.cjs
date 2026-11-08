@@ -21,6 +21,8 @@ root = Path(sys.argv[1])
 lesson = parse_lesson('# Timing lesson\\n## First step\\nHello world.\\n## Second step\\nNext sentence.')
 source = root / 'silent.html'
 save_whiteboard(lesson, source)
+inline = parse_lesson(Path('examples/greetings-inline-dialogue.txt').read_text(encoding='utf-8'), dialogue=True)
+save_whiteboard(inline, root / 'inline.html')
 voice = VoiceSpec.from_path(Path('tests/fixtures/test_voice.onnx'))
 class Engine:
     count = 0
@@ -275,3 +277,33 @@ test("narrow screens reflow the SVG instead of shrinking desktop text, preservin
     assert.equal(app.audio.currentTime, 0.4);
   } finally { app.close(); }
 });
+
+
+for (const width of [720, 1200]) {
+  test(`inline paired tags never appear in the board, transcript or fallback at ${width}px`, () => {
+    const app = mount("inline.html", { width });
+    try {
+      const marker = /\[\/?[12]\]/;
+      assert.equal(app.get("lesson-title").textContent, "التحيات والتعارف");
+      assert.equal(app.get("lesson-outline").children.length, 2);
+      assert.deepEqual(
+        Array.from(app.get("step-transcript").children, node => node.dataset.speaker),
+        ["1", "2", "1"],
+      );
+      assert.match(app.get("step-transcript").textContent, /Greetings and Introductions/);
+      assert.doesNotMatch(app.get("step-transcript").textContent, marker);
+      assert.doesNotMatch(app.get("wb-rows").textContent, marker);
+      assert.doesNotMatch(app.document.querySelector("noscript").textContent, marker);
+      app.get("wb-next").click();
+      assert.equal(app.get("scene-title").textContent, "التحيات");
+      assert.deepEqual(
+        Array.from(app.get("step-transcript").children, node => [node.dataset.speaker, node.textContent]),
+        [["2", "Hello!"], ["1", "مرحبًا!"], ["2", "Good morning!"], ["1", "صباح الخير!"]],
+      );
+      assert.doesNotMatch(app.get("step-transcript").textContent, marker);
+      assert.doesNotMatch(app.get("wb-rows").textContent, marker);
+      assert.equal(app.networkCalls, 0);
+      assert.equal(app.playCalls, 0);
+    } finally { app.close(); }
+  });
+}
