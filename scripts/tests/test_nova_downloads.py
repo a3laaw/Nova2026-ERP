@@ -33,6 +33,11 @@ def site(tmp_path):
         "<h1>Board preview</h1>"
     )
     (source / "examples" / "greetings-kids.html").write_text("<h1>Kids preview</h1>")
+    (source / "examples" / "visual-scenes.html").write_text(
+        "<h1>Local scenes demo</h1>"
+    )
+    (source / "examples" / "visual-scenes.json").write_text('{"demo":true}')
+    (source / "examples" / "visual-scenes.txt").write_text("Hand-authored demo")
     for name in (
         "HTML-GUIDE.md",
         "WHITEBOARD-GUIDE.md",
@@ -40,6 +45,7 @@ def site(tmp_path):
         "EGYPTIAN-VOICES-AR.md",
         "BRITISH-ENGLISH-AR.md",
         "FINAL-RELEASE-AR.md",
+        "SMART-SCENES-AR.md",
     ):
         (source / name).write_text("Public guide")
     (tmp_path / ".git").mkdir()
@@ -144,3 +150,23 @@ def test_final_release_guides_are_public_without_exposing_the_source(site, name)
         assert response.status == 200
         assert response.headers["Content-Type"] == "text/plain; charset=utf-8"
         assert response.read() == b"Public guide"
+
+
+@pytest.mark.parametrize(
+    "route,mime",
+    [
+        ("/preview-scenes", "text/html; charset=utf-8"),
+        (
+            "/desktop/nova-voice/examples/visual-scenes.json",
+            "application/json; charset=utf-8",
+        ),
+        ("/examples/visual-scenes.txt", "text/plain; charset=utf-8"),
+        ("/SMART-SCENES-AR.md", "text/plain; charset=utf-8"),
+    ],
+)
+def test_explicit_visual_demo_routes_and_guide_sibling_links(site, route, mime):
+    base, _ = site
+    with urlopen(base + route, timeout=3) as response:
+        assert response.status == 200
+        assert response.headers["Content-Type"] == mime
+        assert response.headers["Cache-Control"] == "no-store"

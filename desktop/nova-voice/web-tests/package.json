@@ -1,10 +1,10 @@
 {
   "name": "nova-voice-html-player-tests",
   "private": true,
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "DOM/controller tests only; Node is not needed to run the desktop app or exported HTML.",
   "scripts": {
-    "test": "node --test player.test.cjs exported.test.cjs whiteboard.test.cjs whiteboard-timing.test.cjs"
+    "test": "node --test player.test.cjs exported.test.cjs whiteboard.test.cjs whiteboard-timing.test.cjs whiteboard-scenes.test.cjs"
   },
   "devDependencies": {
     "jsdom": "26.1.0"

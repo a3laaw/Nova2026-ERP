@@ -21,6 +21,7 @@ FILES = (
     "RUN-FIRST-AR.html",
     "HTML-GUIDE.md",
     "WHITEBOARD-GUIDE.md",
+    "SMART-SCENES-AR.md",
     "CHANGELOG.md",
     "TIMING-VERIFICATION-AR.md",
     "UI-ORGANIZATION-AR.md",

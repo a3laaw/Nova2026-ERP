@@ -67,3 +67,13 @@ its own license notices, including those for its bundled decoder components.
 It decodes deterministic MP3 test files for `tools/measure_mp3_delay.py` and the
 Python tests. Neither the app's rendering pipeline nor its offline HTML imports
 it; it is not a new playback backend or runtime dependency.
+
+## Optional scene planning and local symbols (0.6.0)
+
+The ten simple symbols and procedural SVG primitives in `whiteboard-scenes.js`
+are original Nova Voice artwork/code under GPL-3.0-or-later, not a third-party
+image library. No LLM weights or SDK are bundled. The optional, consent-only
+OpenRouter API uses Python's standard library; service/model/provider terms
+apply separately (https://openrouter.ai/terms, https://openrouter.ai/privacy).
+Free access, output accuracy, downstream licensing and regional/age eligibility
+are not guaranteed by this application. Exported HTML never calls that API.

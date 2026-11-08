@@ -3,6 +3,22 @@
   const $ = id => document.getElementById(id);
   const lesson = JSON.parse($("nova-whiteboard-data").textContent);
   const NS = "http://www.w3.org/2000/svg";
+  const sceneEngine = window.novaWhiteboardScenes;
+  let visualPlan = null;
+  function rejectVisualPlayback(message) {
+    ["wb-play", "wb-restart", "wb-previous", "wb-next", "wb-save-customized"].forEach(id => { $(id).disabled = true; });
+    $("wb-audio").hidden = true;
+    $("wb-status").textContent = message;
+    $("board-placeholder").textContent = "تعذّر التحقق من بيانات المشاهد";
+    $("step-transcript").textContent = lesson.script;
+  }
+  try {
+    if (!sceneEngine && lesson.schema !== 1) throw new Error("Missing scenes controller");
+    visualPlan = sceneEngine ? sceneEngine.read(lesson) : null;
+  } catch (_) {
+    rejectVisualPlayback("خطة المشاهد أو ارتباطها بالنص غير صالح. أعد التصدير من Nova؛ لم يبدأ أي صوت.");
+    return;
+  }
   const appearance = window.novaWhiteboardAppearance;
   const svg = $("whiteboard"), rowsGroup = $("wb-rows"), defs = $("wb-defs"), pen = $("wb-pen");
   const audio = $("wb-audio"), playButton = $("wb-play"), rateInput = $("wb-rate");
@@ -23,7 +39,24 @@
   const hasAudio = recordings !== null;
   const timing = hasAudio && window.novaWhiteboardTiming
     ? window.novaWhiteboardTiming.read($("nova-whiteboard-timings"), lesson, recordings) : null;
+  if (visualPlan && visualPlan.policy === "sacred" && recordingNode) {
+    rejectVisualPlayback("الصوت في وضع النصوص المقدسة غير مدعوم في هذه النسخة؛ لا تلاوة آلية أو تسجيل موثّق هنا.");
+    return;
+  }
+  if (visualPlan && recordingNode && (!hasAudio || !timing)) {
+    rejectVisualPlayback("هذه المشاهد تحتاج خريطة توقيت سليمة مرتبطة بالنص والنطق المعتمدين. أعد توليد الصوت؛ لم يبدأ التشغيل.");
+    return;
+  }
   svg.dataset.timing = timing ? "measured" : hasAudio ? "weighted" : "silent";
+  svg.dataset.visuals = visualPlan ? "validated" : "none";
+  if (visualPlan) {
+    const note = $("wb-visual-note");
+    note.hidden = false;
+    note.textContent = visualPlan.policy === "sacred"
+      ? "نص للمراجعة كما أدخله المُعدّ؛ لا توثيق آلي للآيات أو أحكام التجويد، ولا تلاوة مولّدة في هذا الوضع."
+      : "مشاهد توضيحية؛ المحرك لا يوثّق الخرائط أو الحقائق العلمية. راجع المحتوى والنطق قبل التدريس.";
+  }
+  let sceneView = null, rowBounds = [];
   let current = 0, rate = 1, lines = [], totalWeight = 1, virtualTime = 0;
   let silentPlaying = false, frame = null, lastFrame = null, version = 0, completed = false;
   let canvasWidth = window.innerWidth <= 720 ? 720 : 1200;
@@ -80,12 +113,18 @@
     // No elapsed wall time, playbackRate multiplier or whole-clip stretching.
     // Only ended may force the final reveal (MP3 can trim/pad its PCM clock).
     const samples = clip ? (finished ? clip.total_samples : audio.currentTime * clip.sample_rate) : 0;
+    if (sceneView) {
+      const bounds = clip ? clip.lines.map(cue => ({ start: cue.start_sample, end: cue.end_sample })) : rowBounds;
+      sceneView.update(bounds, clip ? samples : elapsed, reducedMotion);
+    }
     let active = null;
     for (const line of lines) {
       let part;
-      if (clip) {
-        const cue = clip.lines[line.row];
-        const rowPart = clamp((samples - cue.start_sample) / (cue.end_sample - cue.start_sample));
+      if (clip || visualPlan) {
+        const cue = clip ? clip.lines[line.row] : rowBounds[line.row];
+        const now = clip ? samples : elapsed;
+        const start = clip ? cue.start_sample : cue.start, end = clip ? cue.end_sample : cue.end;
+        const rowPart = clamp((now - start) / (end - start));
         // Text weights are confined to visual wrapping INSIDE this source row.
         part = reducedMotion ? (rowPart > 0 ? 1 : 0) : clamp((rowPart * line.rowWeight - line.rowStart) / line.weight);
       } else part = reducedMotion ? (fraction > 0 ? 1 : 0) : clamp((elapsed - line.start) / line.weight);
@@ -102,10 +141,12 @@
       pen.setAttribute("opacity", "1");
     } else pen.setAttribute("opacity", "0");
     const cue = clip ? clip.lines.find(line => samples >= line.start_sample && samples < line.end_sample) : null;
+    const silentRow = visualPlan ? rowBounds.findIndex(bound => elapsed >= bound.start && elapsed < bound.end) : -1;
     const activeLine = clip ? (cue ? lines.find(line => line.row === cue.line_id) : null)
+      : visualPlan ? lines.find(line => line.row === silentRow)
       : active ? active.line : lines.find(line => elapsed < line.start + line.weight) || lines[lines.length - 1];
     if (appearance) appearance.setActiveSpeaker(activeLine ? activeLine.speaker : 1, !!activeLine && isPlaying() && !finished && (clip ? samples < clip.total_samples : fraction < 1));
-    $("board-placeholder").hidden = fraction > 0;
+    $("board-placeholder").hidden = fraction > 0 || !!sceneView;
     $("position-label").textContent = `${Math.round(fraction * 100)}%`;
     $("writing-status").textContent = fraction >= 1 ? "اكتملت الخطوة" : fraction > 0 ? "نكتب ونتعلّم…" : "السبورة جاهزة";
   }
@@ -161,7 +202,14 @@
     lines = [];
     totalWeight = 0;
     let y = 80;
-    const step = lesson.steps[current];
+    const originalStep = lesson.steps[current];
+    const step = { ...originalStep, rows: originalStep.rows.map((row, i) => ({ ...row,
+      text: visualPlan ? sceneEngine.rowText(visualPlan, current, i, row.text) : row.text })) };
+    sceneView = null;
+    if (visualPlan && visualPlan.steps[current].elements.length) {
+      sceneView = sceneEngine.mount(rowsGroup, visualPlan.steps[current], canvasWidth, 25, version);
+      y = sceneView.bottom;
+    }
     const selected = appearance && appearance.layout ? appearance.layout() : "script";
     const columns = selected === "columns" && canvasWidth > 720;
     const transcript = $("step-transcript");
@@ -265,6 +313,42 @@
       y = bottom + (background ? 16 : 0);
     }
     totalWeight = Math.max(1, totalWeight);
+    rowBounds = originalStep.rows.map((_, row) => {
+      const parts = lines.filter(line => line.row === row);
+      return { start: Math.min(...parts.map(line => line.start)), end: Math.max(...parts.map(line => line.start + line.weight)) };
+    });
+    if (visualPlan) {
+      // Silent reviews have no recording. Estimate their row clock from the
+      // approved narration, not a one-character formula on the board. Measured
+      // audio still uses PCM cues exclusively, never these estimated bounds.
+      let cursor = 0;
+      rowBounds = originalStep.rows.map((row, i) => {
+        const speech = sceneEngine.rowText(visualPlan, current, i, row.text, true);
+        const weight = Math.max(1000, Array.from(speech).length * 65);
+        const bound = { start: cursor, end: cursor + weight }; cursor += weight; return bound;
+      });
+      totalWeight = cursor;
+      const description = document.createElement("p");
+      description.className = "visual-description";
+      description.textContent = visualPlan.steps[current].description;
+      description.setAttribute("dir", "auto");
+      transcript.prepend(description);
+      originalStep.rows.forEach((row, i) => {
+        const display = sceneEngine.rowText(visualPlan, current, i, row.text);
+        const speech = sceneEngine.rowText(visualPlan, current, i, row.text, true);
+        if (display !== speech) {
+          const note = document.createElement("p"); note.dir = "auto";
+          note.className = "visual-speech"; note.textContent = `${i + 1}. النطق المعتمد: ${speech}`;
+          transcript.append(note);
+        }
+      });
+      const original = document.createElement("details"), summary = document.createElement("summary"), raw = document.createElement("pre");
+      original.className = "visual-source";
+      summary.textContent = "النص الأصلي لهذه الخطوة";
+      raw.dir = "auto";
+      raw.textContent = originalStep.rows.map(row => lesson.dialogue ? `[${row.speaker}] ${row.text}` : row.text).join("\n");
+      original.append(summary, raw); transcript.append(original);
+    }
     svg.setAttribute("viewBox", `0 0 ${canvasWidth} ${Math.max(430, y + 25)}`);
   }
 
@@ -406,7 +490,8 @@
       updateNavigation(index);
       return;
     }
-    const visible = lines.some(line => Number(line.rect.getAttribute("width")) > 0);
+    const visible = lines.some(line => Number(line.rect.getAttribute("width")) > 0) ||
+      !!(sceneView && sceneView.hasVisibleContent());
     const viewBox = svg.getAttribute("viewBox").trim().split(/\s+/).map(Number);
     const [, , width, height] = viewBox;
     if (index === current || !visible || reducedMotion || document.hidden || !eraser ||

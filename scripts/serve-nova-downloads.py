@@ -12,7 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-ARCHIVE_NAME = "NovaVoice-Source-v0.5.1.rar"
+ARCHIVE_NAME = "NovaVoice-Source-v0.6.0.rar"
 
 
 def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
@@ -31,6 +31,7 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         ),
         "/preview": (source / "examples" / "greetings-whiteboard.html", html, False),
         "/preview-kids": (source / "examples" / "greetings-kids.html", html, False),
+        "/preview-scenes": (source / "examples" / "visual-scenes.html", html, False),
         "/desktop/nova-voice/examples/greetings-kids.html": (
             source / "examples" / "greetings-kids.html",
             html,
@@ -49,12 +50,34 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         "EGYPTIAN-VOICES-AR.md",
         "BRITISH-ENGLISH-AR.md",
         "FINAL-RELEASE-AR.md",
+        "SMART-SCENES-AR.md",
     ):
         routes["/desktop/nova-voice/" + name] = (
             source / name,
             "text/plain; charset=utf-8",
             False,
         )
+    # Sibling links also work in the separately served RUN-FIRST guide. This
+    # remains an explicit allowlist, not a repository/static directory server.
+    for name in (
+        "HTML-GUIDE.md",
+        "WHITEBOARD-GUIDE.md",
+        "KIDS-GUIDE-AR.md",
+        "EGYPTIAN-VOICES-AR.md",
+        "BRITISH-ENGLISH-AR.md",
+        "FINAL-RELEASE-AR.md",
+        "SMART-SCENES-AR.md",
+    ):
+        routes["/" + name] = routes["/desktop/nova-voice/" + name]
+    for name, mime in (
+        ("visual-scenes.html", html),
+        ("visual-scenes.json", "application/json; charset=utf-8"),
+        ("visual-scenes.txt", "text/plain; charset=utf-8"),
+        ("greetings-kids.html", html),
+    ):
+        route = (source / "examples" / name, mime, False)
+        routes["/examples/" + name] = route
+        routes["/desktop/nova-voice/examples/" + name] = route
     return routes
 
 

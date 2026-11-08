@@ -1,1 +1,2 @@
-a40ca04ef6c96db03794ccd4d5d844e7abc605f408bad048222180828968000d  NovaVoice-Source-v0.5.1.rar
+9f5444229d962c9d03fc9114e4bf8dc0ae65e6db8f0cd6a8db4cbcafae99b29c  NovaVoice-Source-v0.6.0.rar
+13e0ce9b2ac6b38a27fd103e00e613ac7bb73f41bd14a7d688d86e7f58cf60cc  RUN-FIRST-AR.html

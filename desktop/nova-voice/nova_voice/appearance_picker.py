@@ -152,8 +152,8 @@ class AppearancePicker(QWidget):
         self._fingerprint = fingerprint
         self._row_speakers.clear()
         self.sentence_combo.clear()
-        for step_index, step in enumerate(lesson.steps):
-            for row_index, row in enumerate(step.rows):
+        for step_index in range(len(lesson.steps)):
+            for row_index, row in enumerate(lesson.effective_rows(step_index)):
                 self._row_speakers[(step_index, row_index)] = row.speaker
                 self.sentence_combo.addItem(
                     f"{step_index + 1}.{row_index + 1} · {row.text[:60]}",

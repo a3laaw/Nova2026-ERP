@@ -1,0 +1,1595 @@
+﻿<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>أعداد وأشكال وطبيعة</title>
+<style>:root{color-scheme:light;--primary:#FFB000;--secondary:#FF5722;--accent:#FFD600;--info:#2563EB;--pink:#FCE4EC;--ink:#1E293B;--body:#475569;--muted:#64748B;--line:#E2E8F0;font-family:'Segoe UI',Tahoma,Arial,sans-serif;color:var(--ink);background:#F8FAFC;font-synthesis:none}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 85% 0,#FFF1C2 0,transparent 35%),radial-gradient(ellipse at 0 80%,#FCE4EC 0,transparent 35%),#F8FAFC;padding:clamp(16px,3vw,38px);padding-bottom:max(24px,env(safe-area-inset-bottom))}
+button,input,select{font:inherit}
+button{min-height:40px;border:2px solid var(--line);border-radius:12px;background:#FFF;color:var(--ink);padding:8px 16px;cursor:pointer;font-size:14px;font-weight:600;transition:background .15s,border-color .15s}
+button:hover:not(:disabled){border-color:var(--primary);background:#FFF7E0}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--info);outline-offset:4px}
+button:disabled{opacity:.4;cursor:default}
+button.primary{background:var(--primary);border-color:var(--primary);border-bottom:4px solid var(--secondary);min-height:48px;padding:10px 25px}
+button.primary:hover{background:#FFC137}
+button.quiet{background:transparent;border-color:transparent;color:var(--muted);font-size:13px}
+.lesson-shell{width:100%;max-width:1600px;margin-inline:auto}
+.lesson-heading{display:flex;align-items:center;gap:18px;margin:0 0 28px}
+.brand-mark{width:58px;height:58px;display:grid;place-items:center;background:var(--primary);border-radius:20px;border-bottom:4px solid var(--secondary);flex-shrink:0;color:var(--ink)}
+.brand-mark svg{width:30px;height:30px}
+.eyebrow{font-size:12px;font-weight:700;color:#C2410C;letter-spacing:.04em;margin:0 0 7px}
+h1{font-size:clamp(21px,2.4vw,33px);line-height:1.5;margin:0;font-weight:750;overflow-wrap:anywhere}
+.subtitle{font-size:13px;color:var(--muted);line-height:1.8;margin:4px 0 0}
+.local-badge{margin-inline-start:auto;font-size:12px;padding:9px 14px;border:1px solid #BFDBFE;border-radius:100px;background:#EFF6FF;color:var(--info);white-space:nowrap}
+.lesson-layout{display:grid;grid-template-columns:260px minmax(0,1fr);gap:24px;align-items:start}
+.outline-panel,.board-panel,.controls-panel,.transcript-panel{background:#FFF;border:2px solid #F1F5F9;border-radius:32px;box-shadow:0 10px 35px #1E293B05}
+.outline-panel{padding:22px 16px;position:sticky;top:18px}
+.outline-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 8px 14px}
+.outline-heading h2{font-size:15px;margin:0}
+#step-count{font-size:12px;color:var(--muted);white-space:nowrap}
+#lesson-outline{padding:0;margin:0;list-style:none;max-height:55vh;overflow-y:auto;scrollbar-width:thin}
+#lesson-outline li+li{margin-top:7px}
+.outline-step{display:flex;align-items:center;gap:12px;width:100%;text-align:start;border-color:transparent;background:transparent;padding:10px 12px;line-height:1.8}
+.outline-number{width:28px;height:28px;display:grid;place-items:center;flex-shrink:0;background:#F1F5F9;border-radius:9px;font-size:12px;color:var(--muted)}
+.outline-step[aria-current=step]{background:#FFF7E0;border-color:#FFE2A3;color:#9A3412}
+.outline-step[aria-current=step] .outline-number{background:var(--primary);color:var(--ink)}
+.outline-text{overflow-wrap:anywhere}
+.outline-note{font-size:12px;line-height:1.9;color:var(--muted);padding:16px 8px 0;margin:14px 0 0;border-top:1px solid #F1F5F9}
+.lesson-main{min-width:0;display:grid;gap:16px}
+.board-panel{overflow:hidden;border-color:#E2E8F0}
+.board-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 26px;background:linear-gradient(110deg,#FFF,#FFF9EB);border-bottom:2px solid #F1F5F9}
+.board-heading h2{font-size:clamp(17px,1.7vw,24px);line-height:1.6;margin:0;overflow-wrap:anywhere}
+.pen-badge{font-size:32px;color:#C2410C;background:#FFF1C2;width:48px;height:48px;display:grid;place-items:center;border-radius:16px;flex-shrink:0}
+.board-paper{position:relative;min-height:260px;background-color:#FFF;background-image:radial-gradient(#CBD5E188 .8px,transparent .8px);background-size:22px 22px}
+#whiteboard{display:block;width:100%;height:auto;min-height:260px;touch-action:pan-y}
+#board-placeholder{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;padding:25px;color:var(--muted);text-align:center;font-size:clamp(14px,1.7vw,19px)}
+.board-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 24px;border-top:1px solid #F1F5F9;font-size:12px;color:var(--muted)}
+#position-label{direction:ltr;color:#C2410C;font-variant-numeric:tabular-nums}
+.controls-panel{padding:22px 24px}
+.transport{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.step-buttons{display:flex;gap:8px;margin-inline-start:auto}
+.speed-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-top:1px solid #F1F5F9;margin-top:18px;padding-top:16px}
+.speed-row label{font-size:13px;color:var(--body)}
+#wb-rate{accent-color:var(--primary);direction:ltr;flex:1;min-width:110px;max-width:360px;cursor:pointer}
+#wb-rate-label{min-width:52px;font-size:14px;font-weight:700;color:#C2410C;direction:ltr;font-variant-numeric:tabular-nums}
+#wb-audio{width:100%;margin-top:18px;height:42px}
+[hidden]{display:none!important}
+.playback-options{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:18px;font-size:12px;color:var(--body)}
+.playback-options label{display:flex;gap:7px;align-items:center;line-height:1.7}
+.playback-options input{accent-color:var(--secondary);width:16px;height:16px}
+.audio-badge{padding:5px 10px;border-radius:100px;background:var(--pink);color:#9D174D}
+.audio-badge.ready{background:#EFF6FF;color:var(--info)}
+.hint{font-size:12px;line-height:1.9;color:var(--muted);margin:15px 0 0}
+.transcript-panel{padding:18px 24px;color:var(--body)}
+.transcript-panel summary{font-size:13px;font-weight:600;cursor:pointer}
+#step-transcript{font-size:16px;line-height:1.9;padding-top:12px}
+.transcript-line{padding:12px 16px;background:#F8FAFC;border-radius:14px;margin:8px 0;white-space:pre-wrap;overflow-wrap:anywhere;border-inline-start:3px solid var(--info)}
+.transcript-line[data-speaker='2']{border-inline-start-color:var(--secondary)}
+.page-footer{font-size:12px;line-height:1.9;color:var(--muted);text-align:center;margin-top:24px}
+@media(max-width:1000px){.lesson-layout{grid-template-columns:210px minmax(0,1fr);gap:16px}.outline-panel{padding:18px 10px}.local-badge{display:none}.board-heading{padding:18px 20px}.controls-panel{padding:18px}}
+@media(max-width:720px){body{padding:16px 12px}.lesson-heading{gap:12px;margin-bottom:18px}.brand-mark{width:46px;height:46px;border-radius:16px}.brand-mark svg{width:24px;height:24px}.subtitle{font-size:11px}.lesson-layout{display:flex;flex-direction:column;gap:14px}.outline-panel{position:static;width:100%;padding:14px;border-radius:24px}.outline-heading{padding-bottom:10px}.outline-heading h2{font-size:13px}#lesson-outline{display:flex;gap:8px;max-height:160px;overflow:auto}#lesson-outline li{flex-shrink:0;max-width:230px}#lesson-outline li+li{margin:0}.outline-step{font-size:12px;padding:8px;line-height:1.6}.outline-text{max-width:160px}.outline-note{display:none}.lesson-main{width:100%}.board-panel,.controls-panel,.transcript-panel{border-radius:24px}.board-paper,#whiteboard{min-height:210px}.board-heading{padding:16px}.pen-badge{width:36px;height:36px;font-size:26px;border-radius:12px}.transport{gap:8px}button{font-size:12px;padding:8px 12px}button.primary{padding:10px 18px}.step-buttons{margin-inline-start:0}.speed-row{gap:10px}.speed-row label{width:100%}.board-footer{padding:12px 16px}.page-footer{font-size:11px}}
+@media(prefers-reduced-motion:reduce){button{transition:none}}
+@media print{body{background:#FFF;padding:0}.brand-mark,.outline-panel,.controls-panel,.board-panel,.page-footer,.subtitle{display:none}.lesson-layout{display:block}.transcript-panel{border:0;padding:0}.transcript-panel>div{display:block}.transcript-panel summary{display:none}.lesson-heading{margin-bottom:10px}.transcript-line{break-inside:avoid}}
+
+/* Local child-friendly library. No videos, remote images, fonts or extra timers. */
+.customization-panel{background:#FFF;border:2px solid #F1F5F9;border-radius:32px;padding:20px 24px}
+.customization-panel>summary{cursor:pointer;font-size:14px;font-weight:700;color:var(--ink)}
+.customization-content{padding-top:10px}
+.color-tools,.library-tools{display:flex;gap:14px;align-items:end;flex-wrap:wrap;margin-top:18px}
+.color-tools label,.library-tools label{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--body)}
+.color-tools input[type=color]{width:48px;height:40px;padding:3px;border:2px solid var(--line);border-radius:12px;background:#FFF;cursor:pointer}
+.color-tools select,.library-tools select{height:40px;max-width:100%;border:2px solid var(--line);border-radius:12px;background:#FFF;color:var(--ink);padding:5px 9px;font-size:12px}
+.color-tools .sentence-choice{flex:1;min-width:180px}
+#wb-sentence{width:100%;max-width:370px;text-overflow:ellipsis}
+.library-tools{padding-top:18px;border-top:1px solid #F1F5F9}
+.library-tools input[type=checkbox]{width:16px;height:16px;accent-color:var(--info)}
+.character-library{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:10px;margin-top:16px}
+.character-option{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 6px;border-radius:18px;font-size:12px;background:#F8FAFC}
+.character-option[aria-pressed=true]{background:#FFF7E0;border-color:var(--primary);box-shadow:0 0 0 2px #FFD60066}
+.character-thumbnail{height:95px;width:76px;display:grid;place-items:center;color:var(--muted)}
+.character-thumbnail svg{height:95px;width:76px;display:block}
+.customization-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.character-stage{display:flex;justify-content:center;align-items:center;gap:clamp(10px,3vw,35px);padding:12px 18px;background:linear-gradient(110deg,#FFF7E0,#FCE4EC);border:2px solid #F1F5F9;border-radius:32px}
+.character-card{flex:0 0 auto;padding:6px 15px 8px;border:2px solid transparent;border-radius:24px;--buddy-duration:1.8s}
+.character-card.is-active{border-color:var(--primary);background:#FFFFFFB8}
+.character-art svg{width:118px;height:151px;display:block}
+.character-caption{margin:0;font-size:12px;text-align:center;color:var(--body)}
+.character-note{text-align:center;font-size:13px;font-weight:700;line-height:1.9;color:var(--ink)}
+.character-note span{font-size:11px;font-weight:400;color:var(--muted)}
+.character-card.is-moving .buddy-wave{transform-box:view-box;transform-origin:139px 142px;animation:buddy-wave var(--buddy-duration) ease-in-out infinite}
+.character-card.is-moving .buddy-head{transform-box:view-box;transform-origin:90px 110px;animation:buddy-nod calc(var(--buddy-duration)*1.6) ease-in-out infinite}
+.character-card.is-moving .buddy-eyes{transform-box:fill-box;transform-origin:center;animation:buddy-blink calc(var(--buddy-duration)*2.4) linear infinite}
+@keyframes buddy-wave{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(13deg)}}
+@keyframes buddy-nod{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(3deg)}}
+@keyframes buddy-blink{0%,91%,97%,100%{transform:scaleY(1)}94%{transform:scaleY(.12)}}
+@media(max-width:720px){.customization-panel{padding:18px 14px;border-radius:24px}.color-tools,.library-tools{gap:10px}.color-tools .sentence-choice{width:100%;flex-basis:100%}.character-library{grid-template-columns:repeat(3,minmax(0,1fr))}.character-stage{padding:8px;gap:6px;border-radius:24px}.character-card{padding:4px}.character-art svg{width:88px;height:113px}.character-note{font-size:11px}.character-note span{display:none}.customization-actions{flex-direction:column}}
+@media(prefers-reduced-motion:reduce){.character-card .buddy-wave,.character-card .buddy-head,.character-card .buddy-eyes{animation:none!important}}
+@media print{.customization-panel,.character-stage{display:none!important}}
+
+/* Separate direction and pairing from role numbers and spoken utterances. */
+#step-transcript[data-layout=columns]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));direction:ltr;gap:10px}
+#step-transcript[data-layout=columns] .transcript-line[data-unpaired=true]{grid-column:1/-1}
+#step-transcript .transcript-line[dir=rtl]{direction:rtl;text-align:right;unicode-bidi:plaintext}
+#step-transcript .transcript-line[dir=ltr]{direction:ltr;text-align:left;unicode-bidi:plaintext}
+@media(max-width:720px){#step-transcript[data-layout=columns]{display:block}}
+
+/* Organized, native disclosures. Runtime IDs, SVG geometry and clocks unchanged. */
+.skip-link{position:absolute;top:8px;inset-inline-start:16px;z-index:10;padding:10px 16px;background:#FFF;color:var(--info);border:2px solid var(--info);border-radius:12px;transform:translateY(-180%)}
+.skip-link:focus{transform:none}
+.lesson-heading{flex-wrap:wrap;row-gap:12px;margin-bottom:22px}
+.lesson-shortcuts{display:flex;gap:6px;flex-wrap:wrap;margin-inline-start:auto}
+.lesson-shortcuts a{display:inline-flex;align-items:center;min-height:40px;padding:6px 12px;border:1px solid var(--line);border-radius:12px;background:#FFF;color:var(--body);font-size:12px;text-decoration:none}
+.lesson-shortcuts a:hover{background:#FFF7E0;border-color:var(--primary)}
+.lesson-shortcuts a:focus-visible{outline:3px solid var(--info);outline-offset:3px}
+.lesson-heading .local-badge{margin-inline-start:0}
+.outline-heading{font-size:14px;font-weight:700;cursor:pointer;list-style:none}
+.outline-heading::-webkit-details-marker{display:none}
+.outline-heading:after{content:'';width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin-inline:4px;flex-shrink:0}
+.outline-disclosure:not([open]) .outline-heading:after{transform:rotate(135deg)}
+.pen-badge svg{width:26px;height:26px}
+.outline-disclosure:not([open]) .outline-heading{padding-bottom:0}
+.controls-heading{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px}
+.controls-heading h2{font-size:14px;line-height:1.8;margin:0}
+.playback-settings{border-top:1px solid #F1F5F9;margin-top:16px;padding-top:12px}
+.playback-settings summary{font-size:12px;color:var(--body);cursor:pointer;line-height:1.8}
+.playback-settings .playback-options{margin-top:12px}
+.settings-group{border:1px solid var(--line);border-radius:18px;padding:16px;margin:18px 0 0;min-width:0;background:#F8FAFC}
+.settings-group legend{font-size:13px;font-weight:700;color:var(--ink);padding:0 8px}
+.settings-group .color-tools,.settings-group .library-tools{margin-top:0;padding-top:0;border:0}
+.settings-group .color-tools label{align-items:center}
+.settings-group .sentence-choice{min-width:0;flex-basis:100%}
+.settings-group .sentence-choice select{max-width:none;min-width:0;flex:1}
+.settings-group .character-library{grid-template-columns:repeat(auto-fit,minmax(88px,1fr))}
+.lesson-main>details>summary{min-height:24px;line-height:1.8}
+@media(max-width:1000px){.lesson-shortcuts{margin-inline-start:0}.lesson-heading .local-badge{display:none}}
+@media(max-width:720px){.lesson-shortcuts{width:100%}.lesson-shortcuts a{flex:1;justify-content:center}.controls-heading h2{font-size:13px}.settings-group{padding:12px;margin-top:14px}.settings-group .character-library{grid-template-columns:repeat(3,minmax(0,1fr))}.color-tools select{min-width:0;width:100%}.settings-group .color-tools label{width:100%}.controls-panel .transport>button{flex:1}.step-buttons{width:100%}.step-buttons button{flex:1}.controls-panel .transport button{min-height:40px}.controls-panel .transport .primary{min-height:48px}}
+@media print{.skip-link,.lesson-shortcuts{display:none!important}}
+
+/* One local, bounded transition. Text is clipped, never rasterized/duplicated. */
+#whiteboard[data-transition=erasing]{cursor:progress}
+#wb-eraser{pointer-events:none}
+@media(prefers-reduced-motion:reduce){#wb-eraser{display:none}}
+@media print{#wb-eraser{display:none}}
+
+/* Visual plans remain readable and carry their limitations in offline exports. */
+.visual-note{margin:0;padding:12px 20px;border-top:2px solid #E2E8F0;background:#FFF7E0;color:#475569;font-size:12px;line-height:1.8;overflow-wrap:anywhere}
+.visual-description,.visual-speech,.visual-source{grid-column:1/-1;overflow-wrap:anywhere}
+.visual-description{padding:12px 16px;border-inline-start:3px solid #FFB000;background:#F8FAFC;border-radius:12px}
+.visual-speech{font-size:14px;color:#475569}
+.visual-source pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#wb-play">تخطَّ إلى تشغيل الخطوة</a>
+<main class="lesson-shell">
+  <header class="lesson-heading">
+    <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="m7 23 2-8L22 2l8 8-13 13-8 2Z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/><path d="m18 6 8 8M9 15l8 8M4 30h23" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></div>
+    <div><p class="eyebrow">NOVA · تعلّم خطوة بخطوة</p><h1 id="lesson-title" dir="auto">أعداد وأشكال وطبيعة</h1><p class="subtitle">سبورة تفاعلية · كتابة بالقلم · نص الدرس محفوظ داخل هذا الملف</p></div>
+    <nav class="lesson-shortcuts" aria-label="أقسام صفحة الدرس">
+      <a href="#board-paper">السبورة</a><a href="#wb-customization">ألوان وأطفال</a><a href="#wb-transcript">النص المقروء</a>
+    </nav>
+    <span class="local-badge">محلي · دون خدمات خارجية</span>
+  </header>
+  <div class="lesson-layout">
+    <aside class="outline-panel" aria-label="خطوات الدرس">
+      <details class="outline-disclosure" open>
+        <summary class="outline-heading"><span>خطوات الدرس</span><span id="step-count"></span></summary>
+        <ol id="lesson-outline"></ol>
+        <p class="outline-note">اختر خطوة، أو استخدم التالي والسابق. يمكنك طي القائمة لتوسيع مساحة الدرس. لا يبدأ الصوت تلقائيًا.</p>
+      </details>
+    </aside>
+    <div class="lesson-main">
+      <section class="board-panel" aria-labelledby="scene-title">
+        <div class="board-heading"><div><p id="scene-number" class="eyebrow"></p><h2 id="scene-title" dir="auto"></h2></div><span class="pen-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m4 17 1-4L16 2l6 6-11 11-4 1Z M13 5l6 6 M3 23h18"/></svg></span></div>
+        <div class="board-paper" id="board-paper">
+          <svg id="whiteboard" viewBox="0 0 1200 540" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="محتوى الخطوة مكتوب على السبورة؛ توجد نسخة نصية أسفلها">
+            <defs id="wb-defs"></defs><g id="wb-rows"></g>
+            <g id="wb-pen" opacity="0" pointer-events="none" aria-hidden="true">
+              <path d="M0 0 7-22 20-9Z" fill="#F5D0A9" stroke="#475569" stroke-width="2"/>
+              <path d="M0 0 3-9 8-4Z" fill="#334155"/>
+              <path d="m7-22 13 13 51-51-13-13Z" fill="#FFB000" stroke="#C2410C" stroke-width="2"/>
+              <path d="m58-73 13 13 10-10-13-13Z" fill="#FF5722" stroke="#C2410C" stroke-width="2"/>
+            </g>
+            <g id="wb-eraser" opacity="0" pointer-events="none" aria-hidden="true">
+              <rect id="wb-eraser-felt" x="-27" y="-78" width="54" height="156" rx="12" fill="#E2E8F0" stroke="#94A3B8" stroke-width="2"/>
+              <rect x="-23" y="-34" width="46" height="68" rx="11" fill="#FFB000" stroke="#C2410C" stroke-width="2"/>
+              <path d="M-14-12c-5-11-13-8-11-1l7 20c3 10 10 16 23 14l22-5 5-22c1-7-7-9-9-2l-2 8 1-23c0-7-9-7-9 0v17l-2-23c-1-6-9-5-9 1l1 21-4-18c-2-6-10-4-8 2Z" fill="#F5D0A9" stroke="#B77952" stroke-width="2" stroke-linejoin="round"/>
+              <path d="m-1 24 27-5 7 22-29 7Z" fill="#FF5722" stroke="#C2410C" stroke-width="2"/>
+            </g>
+          </svg>
+          <div id="board-placeholder">اضغط «تشغيل الخطوة» لبدء الكتابة</div>
+        </div>
+        <div class="board-footer"><span id="writing-status" role="status">السبورة جاهزة</span><span id="position-label">0%</span></div>
+        <p id="wb-visual-note" class="visual-note" hidden></p>
+      </section>
+      <section class="controls-panel" aria-labelledby="playback-heading">
+        <div class="controls-heading"><h2 id="playback-heading">شاهد، اسمع، وتعلّم</h2><span id="audio-badge" class="audio-badge">نسخة بلا صوت</span></div>
+        <div class="transport">
+          <button id="wb-play" class="primary" type="button">تشغيل الخطوة</button>
+          <button id="wb-restart" type="button">إعادة الخطوة</button>
+          <div class="step-buttons"><button id="wb-previous" type="button">السابقة</button><button id="wb-next" type="button">التالية</button></div>
+        </div>
+        <div class="speed-row"><label for="wb-rate">سرعة الصوت والكتابة</label><input id="wb-rate" type="range" min="0.5" max="2" step="0.05" value="1"><output id="wb-rate-label" for="wb-rate">1.00×</output><button id="wb-reset-rate" class="quiet" type="button">السرعة العادية</button></div>
+        <audio id="wb-audio" controls preload="metadata" aria-label="صوت الخطوة الحالية" hidden></audio>
+        <details class="playback-settings">
+          <summary>خيارات التشغيل ومعلومات الصوت</summary>
+          <div class="playback-options"><label><input id="wb-auto-next" type="checkbox"> الانتقال إلى الخطوة التالية تلقائيًا</label></div>
+          <p class="hint">للتقديم والترجيع استخدم شريط الصوت عند وجود تسجيل. السرعة تربط الصوت بالكتابة.</p>
+        </details>
+        <p id="wb-status" class="hint" role="status">هذه نسخة السبورة قبل توليد الصوت. أضف الصوت من الخطوة 2 داخل Nova Voice؛ الكتابة تعمل الآن دون نموذج صوتي.</p>
+      </section>
+      <section id="character-stage" class="character-stage" aria-label="شخصيات الدرس" hidden>
+        <div id="character-role-1" class="character-card" hidden><div class="character-art"></div><p class="character-caption"></p></div>
+        <p class="character-note">أصدقاء التعلّم<br><span>حركات تشجيعية؛ ليست مزامنة شفاه أو أصواتًا جديدة</span></p>
+        <div id="character-role-2" class="character-card" hidden><div class="character-art"></div><p class="character-caption"></p></div>
+      </section>
+      <details id="wb-customization" class="customization-panel">
+        <summary>ألوان الجمل ومكتبة شخصيات الأطفال</summary>
+        <div class="customization-content">
+          <p class="hint">اختر لونًا لكل دور أو لكل جملة. اختر شخصية للدور الأول أو الثاني؛ الشخصيات لا تغيّر النموذج الصوتي أو لغته. التغييرات مؤقتة حتى تنزيل نسخة بالتخصيصات.</p>
+          <fieldset class="settings-group"><legend>1 · ترتيب اللغتين</legend>
+          <div class="color-tools"><label for="wb-language-layout">ترتيب اللغتين <select id="wb-language-layout"><option value="stacked">الإنجليزي فوق والعربي تحته</option><option value="columns">عمودان: English يسار / العربي يمين</option><option value="script">ترتيب السكريبت</option></select></label></div>
+          </fieldset>
+          <fieldset class="settings-group"><legend>2 · ألوان الأدوار والجمل</legend>
+          <div class="color-tools">
+            <label for="wb-color-1">لون الدور 1 <input id="wb-color-1" type="color" value="#2563eb"></label>
+            <label for="wb-color-2">لون الدور 2 <input id="wb-color-2" type="color" value="#c2410c"></label>
+            <label class="sentence-choice" for="wb-sentence">جملة من الخطوة الحالية <select id="wb-sentence"></select></label>
+            <label for="wb-sentence-color">لون الجملة <input id="wb-sentence-color" type="color" value="#2563eb"></label>
+            <button id="wb-clear-sentence-color" type="button">إعادة لون الدور للجملة</button>
+          </div>
+          </fieldset>
+          <fieldset class="settings-group"><legend>3 · أصدقاء التعلّم</legend>
+          <div class="library-tools">
+            <label for="wb-character-role">الشخصية للدور <select id="wb-character-role"><option value="1">الدور 1</option><option value="2">الدور 2</option></select></label>
+            <label for="wb-character-filter">المكتبة <select id="wb-character-filter"><option value="all">كل الشخصيات</option><option value="boy">الأولاد</option><option value="girl">البنات</option></select></label>
+            <label><input id="wb-character-motion" type="checkbox" checked> حركة أثناء التشغيل</label>
+          </div>
+          <div id="wb-character-library" class="character-library" aria-label="اختر شخصية كرتونية"></div>
+          </fieldset>
+          <div class="customization-actions"><button id="wb-save-customized" class="primary" type="button">تنزيل نسخة بالتخصيصات</button><button id="wb-reset-appearance" type="button">إعادة التخصيصات الافتراضية</button></div>
+          <p id="wb-customization-status" class="hint" role="status">كل الألوان والشخصيات محلية ومضمّنة في HTML. الشخصيات ثابتة عند الإيقاف أو تفعيل تقليل الحركة.</p>
+        </div>
+      </details>
+      <details id="wb-transcript" class="transcript-panel"><summary>نص الخطوة · نسخة مقروءة</summary><div id="step-transcript"></div></details>
+    </div>
+  </div>
+  <footer class="page-footer">العناوين للتنظيم ولا تُقرأ صوتيًا. عند وجود خريطة التوقيت: حدود فعلية لكل سطر وتقدير للكتابة داخله، وليس محاذاة كلمة بكلمة. دونها يعمل التقدير السابق.</footer>
+  <noscript><p>السبورة والصوت يحتاجان JavaScript. يمكنك قراءة الدرس هنا:</p><section><h2>جمع التفاح</h2><p>تفاحتان تظهران أولًا، ثم تدخل ثلاث تفاحات مع السطر الثاني؛ مع الثالث تظهر نتيجة الجمع المحسوبة محليًا.</p><p dir="auto">2</p><p dir="auto">+ 3</p><p dir="auto">= 5</p></section><section><h2>المثلث القائم</h2><p>مثلث قائم بضلعي طول ثلاثة وأربعة، مرسوم بنسبة طول صحيحة وعلامة الزاوية القائمة. المساحة ستة كما في السكريبت.</p><p dir="auto">مثلث قائم ضلعاه المتعامدان ثلاثة وأربعة سنتيمترات.</p><p dir="auto">مساحته ستة سنتيمترات مربعة.</p></section><section><h2>الجبل والوادي</h2><p>رسم توضيحي غير مقياسي لجبلين ووادي بينهما، مع شمس ونهر أزرق يظهر مع السطر الثاني. لا يمثل خريطة موثقة.</p><p dir="auto">هذا رسم توضيحي لجبل وواديه، وليس خريطة مكان حقيقي.</p><p dir="auto">يمر النهر في الوادي بين الجبال.</p></section></noscript>
+</main>
+<script id="nova-whiteboard-data" type="application/json">{"schema":2,"script":"# \u0623\u0639\u062f\u0627\u062f \u0648\u0623\u0634\u0643\u0627\u0644 \u0648\u0637\u0628\u064a\u0639\u0629\n## \u062c\u0645\u0639 \u0627\u0644\u062a\u0641\u0627\u062d\n\u0644\u062f\u064a\u0646\u0627 \u062a\u0641\u0627\u062d\u062a\u0627\u0646.\n\u0646\u0636\u064a\u0641 \u062b\u0644\u0627\u062b \u062a\u0641\u0627\u062d\u0627\u062a.\n\u0623\u0635\u0628\u062d \u0627\u0644\u0645\u062c\u0645\u0648\u0639 \u062e\u0645\u0633 \u062a\u0641\u0627\u062d\u0627\u062a.\n## \u0627\u0644\u0645\u062b\u0644\u062b \u0627\u0644\u0642\u0627\u0626\u0645\n\u0645\u062b\u0644\u062b \u0642\u0627\u0626\u0645 \u0636\u0644\u0639\u0627\u0647 \u0627\u0644\u0645\u062a\u0639\u0627\u0645\u062f\u0627\u0646 \u062b\u0644\u0627\u062b\u0629 \u0648\u0623\u0631\u0628\u0639\u0629 \u0633\u0646\u062a\u064a\u0645\u062a\u0631\u0627\u062a.\n\u0645\u0633\u0627\u062d\u062a\u0647 \u0633\u062a\u0629 \u0633\u0646\u062a\u064a\u0645\u062a\u0631\u0627\u062a \u0645\u0631\u0628\u0639\u0629.\n## \u0627\u0644\u062c\u0628\u0644 \u0648\u0627\u0644\u0648\u0627\u062f\u064a\n\u0647\u0630\u0627 \u0631\u0633\u0645 \u062a\u0648\u0636\u064a\u062d\u064a \u0644\u062c\u0628\u0644 \u0648\u0648\u0627\u062f\u064a\u0647\u060c \u0648\u0644\u064a\u0633 \u062e\u0631\u064a\u0637\u0629 \u0645\u0643\u0627\u0646 \u062d\u0642\u064a\u0642\u064a.\n\u064a\u0645\u0631 \u0627\u0644\u0646\u0647\u0631 \u0641\u064a \u0627\u0644\u0648\u0627\u062f\u064a \u0628\u064a\u0646 \u0627\u0644\u062c\u0628\u0627\u0644.","title":"\u0623\u0639\u062f\u0627\u062f \u0648\u0623\u0634\u0643\u0627\u0644 \u0648\u0637\u0628\u064a\u0639\u0629","dialogue":false,"steps":[{"title":"\u062c\u0645\u0639 \u0627\u0644\u062a\u0641\u0627\u062d","rows":[{"speaker":1,"text":"\u0644\u062f\u064a\u0646\u0627 \u062a\u0641\u0627\u062d\u062a\u0627\u0646."},{"speaker":1,"text":"\u0646\u0636\u064a\u0641 \u062b\u0644\u0627\u062b \u062a\u0641\u0627\u062d\u0627\u062a."},{"speaker":1,"text":"\u0623\u0635\u0628\u062d \u0627\u0644\u0645\u062c\u0645\u0648\u0639 \u062e\u0645\u0633 \u062a\u0641\u0627\u062d\u0627\u062a."}]},{"title":"\u0627\u0644\u0645\u062b\u0644\u062b \u0627\u0644\u0642\u0627\u0626\u0645","rows":[{"speaker":1,"text":"\u0645\u062b\u0644\u062b \u0642\u0627\u0626\u0645 \u0636\u0644\u0639\u0627\u0647 \u0627\u0644\u0645\u062a\u0639\u0627\u0645\u062f\u0627\u0646 \u062b\u0644\u0627\u062b\u0629 \u0648\u0623\u0631\u0628\u0639\u0629 \u0633\u0646\u062a\u064a\u0645\u062a\u0631\u0627\u062a."},{"speaker":1,"text":"\u0645\u0633\u0627\u062d\u062a\u0647 \u0633\u062a\u0629 \u0633\u0646\u062a\u064a\u0645\u062a\u0631\u0627\u062a \u0645\u0631\u0628\u0639\u0629."}]},{"title":"\u0627\u0644\u062c\u0628\u0644 \u0648\u0627\u0644\u0648\u0627\u062f\u064a","rows":[{"speaker":1,"text":"\u0647\u0630\u0627 \u0631\u0633\u0645 \u062a\u0648\u0636\u064a\u062d\u064a \u0644\u062c\u0628\u0644 \u0648\u0648\u0627\u062f\u064a\u0647\u060c \u0648\u0644\u064a\u0633 \u062e\u0631\u064a\u0637\u0629 \u0645\u0643\u0627\u0646 \u062d\u0642\u064a\u0642\u064a."},{"speaker":1,"text":"\u064a\u0645\u0631 \u0627\u0644\u0646\u0647\u0631 \u0641\u064a \u0627\u0644\u0648\u0627\u062f\u064a \u0628\u064a\u0646 \u0627\u0644\u062c\u0628\u0627\u0644."}]}],"visuals":{"grade":"\u0645\u062b\u0627\u0644 \u062a\u0648\u0636\u064a\u062d\u064a\u060c \u0644\u0627 \u0645\u0646\u0647\u062c \u0645\u062d\u062f\u062f","notes":["\u062e\u0637\u0629 \u0643\u064f\u062a\u0628\u062a \u0645\u062d\u0644\u064a\u064b\u0627 \u0644\u0627\u062e\u062a\u0628\u0627\u0631 \u0627\u0644\u0645\u062d\u0631\u0643\u061b \u0644\u064a\u0633\u062a \u0646\u062a\u064a\u062c\u0629 \u0627\u0633\u062a\u062f\u0639\u0627\u0621 \u0630\u0643\u0627\u0621 \u0627\u0635\u0637\u0646\u0627\u0639\u064a.","\u0627\u0644\u0631\u0633\u0645 \u0627\u0644\u0637\u0628\u064a\u0639\u064a \u062a\u0648\u0636\u064a\u062d\u064a \u0648\u063a\u064a\u0631 \u0645\u0642\u064a\u0627\u0633\u064a. \u0631\u0627\u062c\u0639 \u0627\u0644\u0645\u062d\u062a\u0648\u0649 \u0648\u0627\u0644\u0645\u0648\u0627\u0636\u0639 \u0642\u0628\u0644 \u0627\u0644\u0627\u0633\u062a\u062e\u062f\u0627\u0645."],"policy":"general","schema":1,"source_fingerprint":"422151f5109afa9002070a94abb0376e7527de49ea288a8564f20c8e0c1d5fe9","steps":[{"description":"\u062a\u0641\u0627\u062d\u062a\u0627\u0646 \u062a\u0638\u0647\u0631\u0627\u0646 \u0623\u0648\u0644\u064b\u0627\u060c \u062b\u0645 \u062a\u062f\u062e\u0644 \u062b\u0644\u0627\u062b \u062a\u0641\u0627\u062d\u0627\u062a \u0645\u0639 \u0627\u0644\u0633\u0637\u0631 \u0627\u0644\u062b\u0627\u0646\u064a\u061b \u0645\u0639 \u0627\u0644\u062b\u0627\u0644\u062b \u062a\u0638\u0647\u0631 \u0646\u062a\u064a\u062c\u0629 \u0627\u0644\u062c\u0645\u0639 \u0627\u0644\u0645\u062d\u0633\u0648\u0628\u0629 \u0645\u062d\u0644\u064a\u064b\u0627.","elements":[{"columns":2,"count":2,"icon":"apple","kind":"icons","row":0,"size":100,"x":70,"y":100},{"kind":"text","row":1,"size":60,"text":"+","x":340,"y":160},{"columns":3,"count":3,"dx":120,"icon":"apple","kind":"icons","row":1,"size":100,"x":420,"y":100},{"a":2,"b":3,"kind":"calculation","op":"+","row":2,"size":60,"x":500,"y":325}],"index":0,"rows":[{"display":"2","index":0,"speech":"\u0644\u062f\u064a\u0646\u0627 \u062a\u0641\u0627\u062d\u062a\u0627\u0646."},{"display":"+ 3","index":1,"speech":"\u0646\u0636\u064a\u0641 \u062b\u0644\u0627\u062b \u062a\u0641\u0627\u062d\u0627\u062a."},{"display":"= 5","index":2,"speech":"\u0623\u0635\u0628\u062d \u0627\u0644\u0645\u062c\u0645\u0648\u0639 \u062e\u0645\u0633 \u062a\u0641\u0627\u062d\u0627\u062a."}]},{"description":"\u0645\u062b\u0644\u062b \u0642\u0627\u0626\u0645 \u0628\u0636\u0644\u0639\u064a \u0637\u0648\u0644 \u062b\u0644\u0627\u062b\u0629 \u0648\u0623\u0631\u0628\u0639\u0629\u060c \u0645\u0631\u0633\u0648\u0645 \u0628\u0646\u0633\u0628\u0629 \u0637\u0648\u0644 \u0635\u062d\u064a\u062d\u0629 \u0648\u0639\u0644\u0627\u0645\u0629 \u0627\u0644\u0632\u0627\u0648\u064a\u0629 \u0627\u0644\u0642\u0627\u0626\u0645\u0629. \u0627\u0644\u0645\u0633\u0627\u062d\u0629 \u0633\u062a\u0629 \u0643\u0645\u0627 \u0641\u064a \u0627\u0644\u0633\u0643\u0631\u064a\u0628\u062a.","elements":[{"a":3,"b":4,"fill":"#DBEAFE","h":280,"kind":"right_triangle","row":0,"unit":"\u0633\u0645","w":500,"x":230,"y":30},{"direction":"rtl","kind":"text","row":1,"size":42,"text":"\u0627\u0644\u0645\u0633\u0627\u062d\u0629 = 6 \u0633\u0645\u00b2","x":760,"y":180}],"index":1,"rows":[]},{"description":"\u0631\u0633\u0645 \u062a\u0648\u0636\u064a\u062d\u064a \u063a\u064a\u0631 \u0645\u0642\u064a\u0627\u0633\u064a \u0644\u062c\u0628\u0644\u064a\u0646 \u0648\u0648\u0627\u062f\u064a \u0628\u064a\u0646\u0647\u0645\u0627\u060c \u0645\u0639 \u0634\u0645\u0633 \u0648\u0646\u0647\u0631 \u0623\u0632\u0631\u0642 \u064a\u0638\u0647\u0631 \u0645\u0639 \u0627\u0644\u0633\u0637\u0631 \u0627\u0644\u062b\u0627\u0646\u064a. \u0644\u0627 \u064a\u0645\u062b\u0644 \u062e\u0631\u064a\u0637\u0629 \u0645\u0648\u062b\u0642\u0629.","elements":[{"columns":1,"count":1,"icon":"sun","kind":"icons","row":0,"size":80,"x":790,"y":15},{"d":"M40 340L250 70L460 340L680 90L960 340Z","fill":"#E2E8F0","kind":"path","row":0,"stroke":"#475569","x":0,"y":0},{"d":"M180 160L250 70L322 162L275 145L250 170L225 145Z","fill":"#F8FAFC","kind":"path","row":0,"stroke":"#94A3B8","x":0,"y":0},{"direction":"rtl","kind":"text","row":0,"size":44,"text":"\u0642\u0645\u0629","x":170,"y":45},{"d":"M460 320C500 340 400 365 460 380C500 400 540 390 550 415","kind":"path","line_width":12,"row":1,"stroke":"#2563EB","x":0,"y":0},{"direction":"rtl","kind":"text","row":1,"size":44,"text":"\u0648\u0627\u062f\u064d \u0648\u0646\u0647\u0631","x":650,"y":395}],"index":2,"rows":[]}],"subject":"\u0631\u064a\u0627\u0636\u064a\u0627\u062a \u0648\u0637\u0628\u064a\u0639\u0629 \u00b7 \u0645\u062b\u0627\u0644 \u0645\u062d\u0644\u064a"},"fingerprint":"29c0310b64732b490a6d339685a595428176b710482f0974e6d83a06ae28ba0b"}</script>
+<!-- NOVA_WHITEBOARD_AUDIO_V1 -->
+<script id="nova-whiteboard-appearance" type="application/json">{"version":1,"first_color":"#2563EB","second_color":"#C2410C","first_character":"none","second_character":"none","animate_characters":true,"row_colors":[],"layout":"stacked"}</script>
+<script id="nova-character-catalog" type="application/json">[{"id":"adam","name":"\u0622\u062f\u0645","kind":"boy"},{"id":"omar","name":"\u0639\u0645\u0631","kind":"boy"},{"id":"youssef","name":"\u064a\u0648\u0633\u0641","kind":"boy"},{"id":"layla","name":"\u0644\u064a\u0644\u0649","kind":"girl"},{"id":"nour","name":"\u0646\u0648\u0631","kind":"girl"},{"id":"salma","name":"\u0633\u0644\u0645\u0649","kind":"girl"}]</script>
+<template id="nova-character-adam" data-name="آدم"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 230" aria-hidden="true" focusable="false">
+<ellipse cx="91" cy="217" rx="57" ry="7" fill="#E2E8F0"/>
+<g class="buddy-body">
+<path d="M62 179 59 208H80L87 180M95 180 102 208H123L119 179" fill="#475569"/>
+<path d="M57 204H80V214H50Q46 207 57 204M103 204H123Q137 207 133 214H103Z" fill="#2563EB"/>
+<path d="M57 128Q38 138 33 166L46 173 65 148M123 128Q142 138 147 165L134 172 116 148" fill="#2563EB"/>
+<circle cx="39" cy="170" r="10" fill="#E9B58B"/>
+<g class="buddy-wave"><path d="M130 149 149 133 142 114" fill="none" stroke="#E9B58B" stroke-width="13" stroke-linecap="round"/><path d="M141 116 134 103M144 115 144 99M147 116 154 104" stroke="#E9B58B" stroke-width="6" stroke-linecap="round"/></g>
+<path d="M59 125Q90 114 122 125L127 186Q91 197 54 186Z" fill="#2563EB"/>
+<path d="m75 122 16 16 16-16" fill="#FCE4EC"/><path d="m91 151 6 12 14 2-10 10 2 14-12-7-12 7 2-14-10-10 14-2Z" fill="#FFD600" stroke="#C2410C" stroke-width="1.5"/>
+<path d="M78 102V125Q91 135 104 125V102" fill="#E9B58B"/>
+<g class="buddy-head"><circle cx="48" cy="79" r="10" fill="#E9B58B"/><circle cx="132" cy="79" r="10" fill="#E9B58B"/>
+<ellipse cx="90" cy="73" rx="44" ry="47" fill="#E9B58B"/>
+<path d="M47 61Q42 24 88 24Q137 23 134 63L117 49 108 57 93 44 82 53 68 46Z" fill="#475569"/>
+<g class="buddy-eyes" fill="#334155"><ellipse cx="72" cy="75" rx="4" ry="6"/><ellipse cx="108" cy="75" rx="4" ry="6"/></g>
+<path d="M65 63Q72 59 79 63M101 63Q108 59 115 63" fill="none" stroke="#475569" stroke-width="2.5" stroke-linecap="round"/>
+<ellipse cx="62" cy="88" rx="7" ry="4" fill="#FCE4EC"/><ellipse cx="118" cy="88" rx="7" ry="4" fill="#FCE4EC"/>
+<path d="M80 95Q90 105 102 94" fill="none" stroke="#9A3412" stroke-width="3" stroke-linecap="round"/>
+</g></g></svg>
+</template>
+<template id="nova-character-omar" data-name="عمر"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 230" aria-hidden="true" focusable="false">
+<ellipse cx="91" cy="217" rx="57" ry="7" fill="#E2E8F0"/>
+<g class="buddy-body">
+<path d="M62 179 59 208H80L87 180M95 180 102 208H123L119 179" fill="#475569"/>
+<path d="M57 204H80V214H50Q46 207 57 204M103 204H123Q137 207 133 214H103Z" fill="#2563EB"/>
+<path d="M57 128Q38 138 33 166L46 173 65 148M123 128Q142 138 147 165L134 172 116 148" fill="#FFB000"/>
+<circle cx="39" cy="170" r="10" fill="#B8794E"/>
+<g class="buddy-wave"><path d="M130 149 149 133 142 114" fill="none" stroke="#B8794E" stroke-width="13" stroke-linecap="round"/><path d="M141 116 134 103M144 115 144 99M147 116 154 104" stroke="#B8794E" stroke-width="6" stroke-linecap="round"/></g>
+<path d="M59 125Q90 114 122 125L127 186Q91 197 54 186Z" fill="#FFB000"/>
+<path d="m75 122 16 16 16-16" fill="#FCE4EC"/><rect x="68" y="153" width="43" height="29" rx="7" fill="#FCE4EC"/><path d="m79 164 9 8 15-18" fill="none" stroke="#2563EB" stroke-width="4" stroke-linecap="round"/>
+<path d="M78 102V125Q91 135 104 125V102" fill="#B8794E"/>
+<g class="buddy-head"><circle cx="48" cy="79" r="10" fill="#B8794E"/><circle cx="132" cy="79" r="10" fill="#B8794E"/>
+<ellipse cx="90" cy="73" rx="44" ry="47" fill="#B8794E"/>
+<path d="M46 62Q33 46 48 38Q42 21 62 22Q71 8 87 23Q103 8 114 24Q140 23 132 46L131 64 114 48 98 53 83 46 65 54Z" fill="#334155"/>
+<g class="buddy-eyes" fill="#334155"><ellipse cx="72" cy="75" rx="4" ry="6"/><ellipse cx="108" cy="75" rx="4" ry="6"/></g>
+<path d="M65 63Q72 59 79 63M101 63Q108 59 115 63" fill="none" stroke="#475569" stroke-width="2.5" stroke-linecap="round"/>
+<ellipse cx="62" cy="88" rx="7" ry="4" fill="#FCE4EC"/><ellipse cx="118" cy="88" rx="7" ry="4" fill="#FCE4EC"/>
+<path d="M80 95Q90 105 102 94" fill="none" stroke="#9A3412" stroke-width="3" stroke-linecap="round"/><g fill="none" stroke="#475569" stroke-width="3"><rect x="56" y="63" width="28" height="23" rx="9"/><rect x="96" y="63" width="28" height="23" rx="9"/><path d="M84 71H96"/></g>
+</g></g></svg>
+</template>
+<template id="nova-character-youssef" data-name="يوسف"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 230" aria-hidden="true" focusable="false">
+<ellipse cx="91" cy="217" rx="57" ry="7" fill="#E2E8F0"/>
+<g class="buddy-body">
+<path d="M62 179 59 208H80L87 180M95 180 102 208H123L119 179" fill="#475569"/>
+<path d="M57 204H80V214H50Q46 207 57 204M103 204H123Q137 207 133 214H103Z" fill="#2563EB"/>
+<path d="M57 128Q38 138 33 166L46 173 65 148M123 128Q142 138 147 165L134 172 116 148" fill="#FF5722"/>
+<circle cx="39" cy="170" r="10" fill="#DDA374"/>
+<g class="buddy-wave"><path d="M130 149 149 133 142 114" fill="none" stroke="#DDA374" stroke-width="13" stroke-linecap="round"/><path d="M141 116 134 103M144 115 144 99M147 116 154 104" stroke="#DDA374" stroke-width="6" stroke-linecap="round"/></g>
+<path d="M59 125Q90 114 122 125L127 186Q91 197 54 186Z" fill="#FF5722"/>
+<path d="m75 122 16 16 16-16" fill="#FCE4EC"/><circle cx="91" cy="169" r="15" fill="#FCE4EC"/><path d="m91 158 9 7-4 10H85L81 165Z" fill="#475569"/>
+<path d="M78 102V125Q91 135 104 125V102" fill="#DDA374"/>
+<g class="buddy-head"><circle cx="48" cy="79" r="10" fill="#DDA374"/><circle cx="132" cy="79" r="10" fill="#DDA374"/>
+<ellipse cx="90" cy="73" rx="44" ry="47" fill="#DDA374"/>
+<path d="M46 64Q34 20 96 22L134 17 123 36Q146 43 132 67L111 47Q87 61 65 52Z" fill="#475569"/>
+<g class="buddy-eyes" fill="#334155"><ellipse cx="72" cy="75" rx="4" ry="6"/><ellipse cx="108" cy="75" rx="4" ry="6"/></g>
+<path d="M65 63Q72 59 79 63M101 63Q108 59 115 63" fill="none" stroke="#475569" stroke-width="2.5" stroke-linecap="round"/>
+<ellipse cx="62" cy="88" rx="7" ry="4" fill="#FCE4EC"/><ellipse cx="118" cy="88" rx="7" ry="4" fill="#FCE4EC"/>
+<path d="M80 95Q90 105 102 94" fill="none" stroke="#9A3412" stroke-width="3" stroke-linecap="round"/>
+</g></g></svg>
+</template>
+<template id="nova-character-layla" data-name="ليلى"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 230" aria-hidden="true" focusable="false">
+<ellipse cx="91" cy="217" rx="57" ry="7" fill="#E2E8F0"/>
+<g class="buddy-body">
+<path d="M62 179 59 208H80L87 180M95 180 102 208H123L119 179" fill="#475569"/>
+<path d="M57 204H80V214H50Q46 207 57 204M103 204H123Q137 207 133 214H103Z" fill="#2563EB"/>
+<path d="M57 128Q38 138 33 166L46 173 65 148M123 128Q142 138 147 165L134 172 116 148" fill="#2563EB"/>
+<circle cx="39" cy="170" r="10" fill="#F0C49E"/>
+<g class="buddy-wave"><path d="M130 149 149 133 142 114" fill="none" stroke="#F0C49E" stroke-width="13" stroke-linecap="round"/><path d="M141 116 134 103M144 115 144 99M147 116 154 104" stroke="#F0C49E" stroke-width="6" stroke-linecap="round"/></g>
+<path d="M59 125Q90 114 122 125L127 186Q91 197 54 186Z" fill="#2563EB"/>
+<path d="m75 122 16 16 16-16" fill="#FCE4EC"/><path d="M64 157Q77 150 90 156Q103 150 117 157V184Q103 178 90 184Q77 178 64 184Z" fill="#FCE4EC" stroke="#475569" stroke-width="2"/><path d="M90 157V182M70 164H83M97 164H110M70 171H83M97 171H110" stroke="#2563EB" stroke-width="2"/>
+<path d="M78 102V125Q91 135 104 125V102" fill="#F0C49E"/>
+<g class="buddy-head"><path d="M66 50Q27 32 33 103L57 112 66 71M112 49Q151 31 147 103L123 111 111 72" fill="#475569"/><circle cx="52" cy="76" r="6" fill="#FFB000"/><circle cx="128" cy="76" r="6" fill="#FFB000"/><circle cx="48" cy="79" r="10" fill="#F0C49E"/><circle cx="132" cy="79" r="10" fill="#F0C49E"/>
+<ellipse cx="90" cy="73" rx="44" ry="47" fill="#F0C49E"/>
+<path d="M48 62Q44 25 90 24Q137 27 132 63L115 47 103 58 89 44 76 56 64 48Z" fill="#475569"/>
+<g class="buddy-eyes" fill="#334155"><ellipse cx="72" cy="75" rx="4" ry="6"/><ellipse cx="108" cy="75" rx="4" ry="6"/></g>
+<path d="M65 63Q72 59 79 63M101 63Q108 59 115 63" fill="none" stroke="#475569" stroke-width="2.5" stroke-linecap="round"/>
+<ellipse cx="62" cy="88" rx="7" ry="4" fill="#FCE4EC"/><ellipse cx="118" cy="88" rx="7" ry="4" fill="#FCE4EC"/>
+<path d="M80 95Q90 105 102 94" fill="none" stroke="#9A3412" stroke-width="3" stroke-linecap="round"/>
+</g></g></svg>
+</template>
+<template id="nova-character-nour" data-name="نور"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 230" aria-hidden="true" focusable="false">
+<ellipse cx="91" cy="217" rx="57" ry="7" fill="#E2E8F0"/>
+<g class="buddy-body">
+<path d="M62 179 59 208H80L87 180M95 180 102 208H123L119 179" fill="#475569"/>
+<path d="M57 204H80V214H50Q46 207 57 204M103 204H123Q137 207 133 214H103Z" fill="#2563EB"/>
+<path d="M57 128Q38 138 33 166L46 173 65 148M123 128Q142 138 147 165L134 172 116 148" fill="#FF5722"/>
+<circle cx="39" cy="170" r="10" fill="#C98D65"/>
+<g class="buddy-wave"><path d="M130 149 149 133 142 114" fill="none" stroke="#C98D65" stroke-width="13" stroke-linecap="round"/><path d="M141 116 134 103M144 115 144 99M147 116 154 104" stroke="#C98D65" stroke-width="6" stroke-linecap="round"/></g>
+<path d="M59 125Q90 114 122 125L127 186Q91 197 54 186Z" fill="#FF5722"/>
+<path d="m75 122 16 16 16-16" fill="#FCE4EC"/><path d="m91 151 6 12 14 2-10 10 2 14-12-7-12 7 2-14-10-10 14-2Z" fill="#FFD600" stroke="#C2410C" stroke-width="1.5"/>
+<path d="M78 102V125Q91 135 104 125V102" fill="#C98D65"/>
+<g class="buddy-head"><path d="M45 87Q23 55 47 37Q51 17 80 20Q119 9 132 42Q157 56 135 91L117 114H59Z" fill="#334155"/><circle cx="48" cy="79" r="10" fill="#C98D65"/><circle cx="132" cy="79" r="10" fill="#C98D65"/>
+<ellipse cx="90" cy="73" rx="44" ry="47" fill="#C98D65"/>
+<path d="M46 61Q36 39 58 29Q75 17 90 26Q109 13 127 36L133 64 118 52 108 61 96 47 82 56 69 45 59 58Z" fill="#334155"/>
+<g class="buddy-eyes" fill="#334155"><ellipse cx="72" cy="75" rx="4" ry="6"/><ellipse cx="108" cy="75" rx="4" ry="6"/></g>
+<path d="M65 63Q72 59 79 63M101 63Q108 59 115 63" fill="none" stroke="#475569" stroke-width="2.5" stroke-linecap="round"/>
+<ellipse cx="62" cy="88" rx="7" ry="4" fill="#FCE4EC"/><ellipse cx="118" cy="88" rx="7" ry="4" fill="#FCE4EC"/>
+<path d="M80 95Q90 105 102 94" fill="none" stroke="#9A3412" stroke-width="3" stroke-linecap="round"/>
+</g></g></svg>
+</template>
+<template id="nova-character-salma" data-name="سلمى"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 230" aria-hidden="true" focusable="false">
+<ellipse cx="91" cy="217" rx="57" ry="7" fill="#E2E8F0"/>
+<g class="buddy-body">
+<path d="M62 179 59 208H80L87 180M95 180 102 208H123L119 179" fill="#475569"/>
+<path d="M57 204H80V214H50Q46 207 57 204M103 204H123Q137 207 133 214H103Z" fill="#2563EB"/>
+<path d="M57 128Q38 138 33 166L46 173 65 148M123 128Q142 138 147 165L134 172 116 148" fill="#FFB000"/>
+<circle cx="39" cy="170" r="10" fill="#E1AD86"/>
+<g class="buddy-wave"><path d="M130 149 149 133 142 114" fill="none" stroke="#E1AD86" stroke-width="13" stroke-linecap="round"/><path d="M141 116 134 103M144 115 144 99M147 116 154 104" stroke="#E1AD86" stroke-width="6" stroke-linecap="round"/></g>
+<path d="M59 125Q90 114 122 125L127 186Q91 197 54 186Z" fill="#FFB000"/>
+<path d="m75 122 16 16 16-16" fill="#FCE4EC"/><path d="M64 157Q77 150 90 156Q103 150 117 157V184Q103 178 90 184Q77 178 64 184Z" fill="#FCE4EC" stroke="#475569" stroke-width="2"/><path d="M90 157V182M70 164H83M97 164H110M70 171H83M97 171H110" stroke="#2563EB" stroke-width="2"/>
+<path d="M78 102V125Q91 135 104 125V102" fill="#E1AD86"/>
+<g class="buddy-head"><path d="M39 93Q35 25 90 19Q148 25 143 100L154 142Q91 162 27 142Z" fill="#2563EB"/><path d="M42 111Q90 148 137 111L145 140Q91 154 35 141Z" fill="#93C5FD"/><circle cx="48" cy="79" r="10" fill="#E1AD86"/><circle cx="132" cy="79" r="10" fill="#E1AD86"/>
+<ellipse cx="90" cy="73" rx="44" ry="47" fill="#E1AD86"/>
+<path d="M48 63Q43 29 90 27Q136 29 132 65L119 48Q90 35 61 49Z" fill="#2563EB"/>
+<g class="buddy-eyes" fill="#334155"><ellipse cx="72" cy="75" rx="4" ry="6"/><ellipse cx="108" cy="75" rx="4" ry="6"/></g>
+<path d="M65 63Q72 59 79 63M101 63Q108 59 115 63" fill="none" stroke="#475569" stroke-width="2.5" stroke-linecap="round"/>
+<ellipse cx="62" cy="88" rx="7" ry="4" fill="#FCE4EC"/><ellipse cx="118" cy="88" rx="7" ry="4" fill="#FCE4EC"/>
+<path d="M80 95Q90 105 102 94" fill="none" stroke="#9A3412" stroke-width="3" stroke-linecap="round"/>
+</g></g></svg>
+</template>
+<script>"use strict";
+(() => {
+  const $ = id => document.getElementById(id);
+  const lesson = JSON.parse($("nova-whiteboard-data").textContent);
+  const settingsNode = $("nova-whiteboard-appearance");
+  const catalog = JSON.parse($("nova-character-catalog").textContent);
+  const known = new Set(["none", "adam", "omar", "youssef", "layla", "nour", "salma"]);
+  const defaults = () => ({ version: 1, first_color: "#2563EB", second_color: "#C2410C", first_character: "none", second_character: "none", animate_characters: true, row_colors: [], layout: "stacked" });
+  const validColor = value => typeof value === "string" && value.length === 7 && /^#[0-9a-f]{6}$/i.test(value);
+  const safeJSON = value => JSON.stringify(value).replace(/</g, "\\u003c").replace(/&/g, "\\u0026");
+  function validated(value) {
+    if (!value || value.version !== 1 || !validColor(value.first_color) || !validColor(value.second_color) ||
+        !known.has(value.first_character) || !known.has(value.second_character) || typeof value.animate_characters !== "boolean" ||
+        !(value.layout === undefined || ["stacked", "columns", "script"].includes(value.layout)) ||
+        !Array.isArray(value.row_colors) || value.row_colors.length > 720) return null;
+    const seen = new Set();
+    for (const item of value.row_colors) {
+      if (!item || !Number.isInteger(item.step) || !Number.isInteger(item.row) ||
+          !lesson.steps[item.step] || !lesson.steps[item.step].rows[item.row] || !validColor(item.color)) return null;
+      const key = `${item.step}:${item.row}`;
+      if (seen.has(key)) return null;
+      seen.add(key);
+    }
+    return {
+      version: 1, first_color: value.first_color.toUpperCase(), second_color: value.second_color.toUpperCase(),
+      first_character: value.first_character, second_character: value.second_character,
+      animate_characters: value.animate_characters, layout: value.layout || "script",
+      row_colors: value.row_colors.map(item => ({ step: item.step, row: item.row, color: item.color.toUpperCase() })),
+    };
+  }
+  let settings = defaults();
+  try { settings = validated(JSON.parse(settingsNode.textContent)) || defaults(); } catch (_) { /* Safe, readable defaults. */ }
+  let current = 0, activeRole = 1, playing = false, rate = 1;
+  let lastActive = "";
+  const motionQuery = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : null;
+  const roleKey = role => role === 2 ? "second_character" : "first_character";
+  const baseColor = role => role === 2 ? settings.second_color : settings.first_color;
+  const colorFor = (step, row, role) => {
+    const custom = settings.row_colors.find(item => item.step === step && item.row === row);
+    return custom ? custom.color : baseColor(role);
+  };
+  const message = text => { $("wb-customization-status").textContent = text; };
+  const characterName = key => key === "none" ? "بدون شخصية" : catalog.find(item => item.id === key).name;
+  function characterArt(key) {
+    const template = $("nova-character-" + key);
+    return known.has(key) && template ? template.content.cloneNode(true) : document.createDocumentFragment();
+  }
+  function updateMotion(force = false) {
+    const moving = playing && settings.animate_characters && !(motionQuery && motionQuery.matches) && !document.hidden;
+    const stamp = `${moving}:${activeRole}:${rate}`;
+    if (!force && stamp === lastActive) return;
+    lastActive = stamp;
+    for (const role of [1, 2]) {
+      const card = $("character-role-" + role);
+      const visible = settings[roleKey(role)] !== "none" && (role === 1 || lesson.dialogue);
+      card.classList.toggle("is-active", visible && playing && role === activeRole);
+      card.classList.toggle("is-moving", visible && moving && role === activeRole);
+      card.style.setProperty("--buddy-duration", `${1.8 / Math.max(0.5, rate)}s`);
+    }
+  }
+  function updateStage() {
+    for (const role of [1, 2]) {
+      const card = $("character-role-" + role);
+      const key = settings[roleKey(role)];
+      card.hidden = key === "none" || (role === 2 && !lesson.dialogue);
+      card.querySelector(".character-art").replaceChildren(characterArt(key));
+      card.querySelector(".character-caption").textContent = `الدور ${role} · ${characterName(key)}`;
+      card.dataset.character = key;
+    }
+    $("character-stage").hidden = $("character-role-1").hidden && $("character-role-2").hidden;
+    updateMotion(true);
+  }
+  function syncSentenceColor() {
+    const row = Number($("wb-sentence").value);
+    if (lesson.steps[current].rows[row]) $("wb-sentence-color").value = colorFor(current, row, lesson.steps[current].rows[row].speaker);
+  }
+  function updateSentences() {
+    const picker = $("wb-sentence");
+    picker.replaceChildren();
+    lesson.steps[current].rows.forEach((row, index) => {
+      const option = document.createElement("option");
+      option.value = String(index);
+      const display = lesson.visuals && window.novaWhiteboardScenes
+        ? window.novaWhiteboardScenes.rowText(lesson.visuals, current, index, row.text) : row.text;
+      option.textContent = `${index + 1}. ${display.slice(0, 90)}`;
+      picker.append(option);
+    });
+    syncSentenceColor();
+  }
+  function updateLibrary() {
+    const role = Number($("wb-character-role").value);
+    const filter = $("wb-character-filter").value;
+    const library = $("wb-character-library");
+    library.replaceChildren();
+    const items = [{ id: "none", name: "بدون شخصية", kind: "all" }, ...catalog];
+    for (const item of items) {
+      if (item.id !== "none" && filter !== "all" && item.kind !== filter) continue;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "character-option";
+      button.dataset.character = item.id;
+      button.setAttribute("aria-pressed", String(settings[roleKey(role)] === item.id));
+      button.setAttribute("aria-label", `${item.name} للدور ${role}`);
+      const art = document.createElement("span");
+      art.className = "character-thumbnail";
+      art.setAttribute("aria-hidden", "true");
+      if (item.id === "none") art.textContent = "—";
+      else art.append(characterArt(item.id));
+      const caption = document.createElement("span");
+      caption.textContent = item.name;
+      button.append(art, caption);
+      button.addEventListener("click", () => {
+        settings[roleKey(role)] = item.id;
+        updateStage(); updateLibrary(); commit(false);
+      });
+      library.append(button);
+    }
+  }
+  function commit(relayout = true) {
+    settingsNode.textContent = safeJSON(settings);
+    syncSentenceColor();
+    message("تم تطبيق التخصيص في هذه الجلسة. اضغط تنزيل نسخة بالتخصيصات للاحتفاظ به؛ لا تتغير الأصوات.");
+    if (relayout) window.dispatchEvent(new CustomEvent("nova-whiteboard:appearance"));
+  }
+  for (const role of [1, 2]) {
+    const input = $("wb-color-" + role);
+    input.value = baseColor(role);
+    input.addEventListener("input", () => {
+      if (!validColor(input.value)) return;
+      settings[role === 1 ? "first_color" : "second_color"] = input.value.toUpperCase();
+      commit();
+    });
+  }
+  $("wb-language-layout").value = settings.layout;
+  $("wb-language-layout").addEventListener("change", event => {
+    if (!["stacked", "columns", "script"].includes(event.target.value)) return;
+    settings.layout = event.target.value;
+    commit();
+  });
+  $("wb-sentence").addEventListener("change", syncSentenceColor);
+  $("wb-sentence-color").addEventListener("input", event => {
+    const row = Number($("wb-sentence").value);
+    if (!Number.isInteger(row) || !lesson.steps[current].rows[row] || !validColor(event.target.value)) return;
+    settings.row_colors = settings.row_colors.filter(item => item.step !== current || item.row !== row);
+    settings.row_colors.push({ step: current, row, color: event.target.value.toUpperCase() });
+    commit();
+  });
+  $("wb-clear-sentence-color").addEventListener("click", () => {
+    const row = Number($("wb-sentence").value);
+    settings.row_colors = settings.row_colors.filter(item => item.step !== current || item.row !== row);
+    commit();
+  });
+  $("wb-character-role").querySelector('option[value="2"]').disabled = !lesson.dialogue;
+  $("wb-color-2").disabled = !lesson.dialogue;
+  $("wb-character-role").addEventListener("change", updateLibrary);
+  $("wb-character-filter").addEventListener("change", updateLibrary);
+  $("wb-character-motion").checked = settings.animate_characters;
+  $("wb-character-motion").addEventListener("change", event => {
+    settings.animate_characters = event.target.checked;
+    updateMotion(true); commit(false);
+  });
+  $("wb-reset-appearance").addEventListener("click", () => {
+    settings = defaults();
+    $("wb-color-1").value = settings.first_color;
+    $("wb-color-2").value = settings.second_color;
+    $("wb-character-motion").checked = true;
+    $("wb-language-layout").value = settings.layout;
+    updateLibrary(); updateStage(); commit();
+  });
+  $("wb-save-customized").addEventListener("click", () => {
+    try {
+      if (typeof URL.createObjectURL !== "function") throw new Error("Download API unavailable");
+      const copy = document.documentElement.cloneNode(true);
+      copy.querySelector("#nova-whiteboard-appearance").textContent = safeJSON(settings);
+      // Do not duplicate a live base64 audio src; the original per-step recording
+      // nodes are preserved and the controller restores the first clip on load.
+      copy.querySelector("#wb-audio").removeAttribute("src");
+      copy.querySelector("#wb-rows").replaceChildren();
+      copy.querySelector("#wb-rows").removeAttribute("clip-path");
+      copy.querySelector("#whiteboard").dataset.transition = "idle";
+      copy.querySelector("#whiteboard").setAttribute("aria-busy", "false");
+      copy.querySelector("#wb-eraser").setAttribute("opacity", "0");
+      copy.querySelector("#wb-eraser").removeAttribute("transform");
+      copy.querySelector("#wb-pen").setAttribute("opacity", "0");
+      copy.querySelector("#wb-play").disabled = false;
+      copy.querySelector("#wb-restart").disabled = false;
+      copy.querySelector("#wb-defs").replaceChildren();
+      copy.querySelector("#lesson-outline").replaceChildren();
+      copy.querySelector("#wb-character-library").replaceChildren();
+      copy.querySelector("#wb-sentence").replaceChildren();
+      copy.querySelectorAll(".character-art").forEach(node => node.replaceChildren());
+      copy.querySelectorAll(".is-moving,.is-active").forEach(node => node.classList.remove("is-moving", "is-active"));
+      const blob = new Blob(["\ufeff<!doctype html>\n", copy.outerHTML], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "NovaVoice-" + String(lesson.title).replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-").slice(0, 70) + "-custom.html";
+      document.body.append(link);
+      link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      message("طُلب تنزيل نسخة بالتخصيصات. افتح الملف الجديد للتأكد؛ للسبورة الصامتة اختره في الخطوة 2 لإضافة الصوت بنفس المظهر.");
+    } catch (_) {
+      message("لم يبدأ تنزيل النسخة. استخدم متصفحًا حديثًا يسمح بتنزيل الملفات المحلية ثم حاول مجددًا.");
+    }
+  });
+  window.addEventListener("nova-whiteboard:state", event => {
+    if (Number.isInteger(event.detail.step) && event.detail.step - 1 !== current) {
+      current = event.detail.step - 1;
+      updateSentences();
+    }
+    playing = !!event.detail.playing;
+    rate = event.detail.rate;
+    updateMotion();
+  });
+  document.addEventListener("visibilitychange", () => updateMotion(true));
+  if (motionQuery && typeof motionQuery.addEventListener === "function") motionQuery.addEventListener("change", () => updateMotion(true));
+  window.addEventListener("pagehide", () => { playing = false; updateMotion(true); });
+  window.novaWhiteboardAppearance = {
+    colorFor,
+    layout: () => settings.layout,
+    setActiveSpeaker(role, moving) { activeRole = role; playing = moving; updateMotion(); },
+  };
+  updateSentences(); updateStage(); updateLibrary();
+})();
+
+"use strict";
+(() => {
+  // Small, synchronous SHA-256 for our ASCII-only timing schema. Works on file://
+  // and in jsdom without WebCrypto, a server, libraries, network or async clocks.
+  const constants = [
+    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2,
+  ];
+  const rotate = (word, bits) => (word >>> bits) | (word << (32 - bits));
+  function sha256ASCII(text) {
+    const size = Math.ceil((text.length + 9) / 64) * 64;
+    const bytes = new Uint8Array(size);
+    for (let index = 0; index < text.length; index++) {
+      const code = text.charCodeAt(index);
+      if (code > 127) throw new Error("Timing canonical JSON must be ASCII");
+      bytes[index] = code;
+    }
+    bytes[text.length] = 0x80;
+    const view = new DataView(bytes.buffer);
+    view.setUint32(size - 8, Math.floor(text.length * 8 / 4294967296));
+    view.setUint32(size - 4, text.length * 8 >>> 0);
+    const hash = new Uint32Array([0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19]);
+    const words = new Uint32Array(64);
+    for (let offset = 0; offset < size; offset += 64) {
+      for (let index = 0; index < 16; index++) words[index] = view.getUint32(offset + index * 4);
+      for (let index = 16; index < 64; index++) {
+        const a = words[index - 15], b = words[index - 2];
+        const first = rotate(a, 7) ^ rotate(a, 18) ^ (a >>> 3);
+        const second = rotate(b, 17) ^ rotate(b, 19) ^ (b >>> 10);
+        words[index] = words[index - 16] + first + words[index - 7] + second;
+      }
+      let [a,b,c,d,e,f,g,h] = hash;
+      for (let index = 0; index < 64; index++) {
+        const sum1 = rotate(e, 6) ^ rotate(e, 11) ^ rotate(e, 25);
+        const choose = (e & f) ^ (~e & g);
+        const first = (h + sum1 + choose + constants[index] + words[index]) >>> 0;
+        const sum0 = rotate(a, 2) ^ rotate(a, 13) ^ rotate(a, 22);
+        const majority = (a & b) ^ (a & c) ^ (b & c);
+        const second = (sum0 + majority) >>> 0;
+        h = g; g = f; f = e; e = (d + first) >>> 0;
+        d = c; c = b; b = a; a = (first + second) >>> 0;
+      }
+      const state = [a,b,c,d,e,f,g,h];
+      for (let index = 0; index < 8; index++) hash[index] += state[index];
+    }
+    return Array.from(hash, word => word.toString(16).padStart(8, "0")).join("");
+  }
+  function canonical(value) {
+    if (Array.isArray(value)) return "[" + value.map(canonical).join(",") + "]";
+    if (value && typeof value === "object") return "{" + Object.keys(value).sort().map(key => canonical(key) + ":" + canonical(value[key])).join(",") + "}";
+    const encoded = JSON.stringify(value);
+    // Python ensure_ascii=True also escapes DEL, BMP characters and each
+    // surrogate of a non-BMP code point. Preserve its existing lesson hashes.
+    return encoded.replace(/[\u007f-\uffff]/g, char => "\\u" + char.charCodeAt(0).toString(16).padStart(4, "0"));
+  }
+  const fingerprint = value => sha256ASCII(canonical(value));
+  const integer = value => Number.isSafeInteger(value) && value >= 0;
+  const hex256 = value => typeof value === "string" && /^[0-9a-f]{64}$/.test(value) && value.length === 64;
+  function keys(value, expected) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const actual = Object.keys(value).sort(), wanted = expected.slice().sort();
+    return actual.length === wanted.length && actual.every((key, index) => key === wanted[index]);
+  }
+  function validate(data, lesson, recordings) {
+    try {
+      if (!keys(data, ["schema_version", "lesson_fingerprint", "steps", "fingerprint"]) ||
+          data.schema_version !== 1 || !hex256(data.lesson_fingerprint) ||
+          data.lesson_fingerprint !== lesson.fingerprint || !hex256(data.fingerprint) ||
+          !Array.isArray(lesson.steps) || !Array.isArray(recordings.durations) ||
+          lesson.steps.length < 1 || lesson.steps.length > 120 || recordings.durations.length !== lesson.steps.length ||
+          !keys(data.steps, lesson.steps.map((_, index) => String(index)))) return null;
+      for (let index = 0; index < lesson.steps.length; index++) {
+        const clip = data.steps[String(index)], rows = lesson.steps[index].rows;
+        if (!keys(clip, ["sample_rate", "total_samples", "audio_format", "clock", "encoder_delay_samples", "lines"]) ||
+            !integer(clip.sample_rate) || clip.sample_rate < 8000 || clip.sample_rate > 48000 ||
+            !integer(clip.total_samples) || clip.total_samples === 0 || clip.clock !== "pcm" ||
+            !["mp3", "wav"].includes(clip.audio_format) ||
+            (clip.audio_format === "wav" ? clip.encoder_delay_samples !== 0 : clip.encoder_delay_samples !== null) ||
+            !Array.isArray(rows) || rows.length < 1 || rows.length > 6 ||
+            !Array.isArray(clip.lines) || clip.lines.length !== rows.length ||
+            !Number.isFinite(recordings.durations[index]) || recordings.durations[index] <= 0 ||
+            Math.abs(recordings.durations[index] * clip.sample_rate - clip.total_samples) > 1) return null;
+        const payload = document.getElementById("nova-wb-audio-" + index);
+        if (!payload || payload.type !== "application/x-nova-audio" || document.querySelectorAll(`[id="nova-wb-audio-${index}"]`).length !== 1 || payload.dataset.mime !== (clip.audio_format === "wav" ? "audio/wav" : "audio/mpeg")) return null;
+        let cursor = 0;
+        for (let row = 0; row < rows.length; row++) {
+          const line = clip.lines[row];
+          if (!keys(line, ["line_id", "speaker", "start_sample", "end_sample", "pause_after_samples"]) ||
+              !Object.values(line).every(integer) || line.line_id !== row ||
+              ![1, 2].includes(line.speaker) || line.speaker !== rows[row].speaker ||
+              line.start_sample !== cursor || line.end_sample <= cursor || line.end_sample > clip.total_samples) return null;
+          cursor = line.end_sample + line.pause_after_samples;
+          if (!integer(cursor)) return null;
+        }
+        if (cursor !== clip.total_samples || clip.lines[clip.lines.length - 1].pause_after_samples !== 0) return null;
+      }
+      const payload = { schema_version: data.schema_version, lesson_fingerprint: data.lesson_fingerprint, steps: data.steps };
+      const lessonPayload = Object.fromEntries(Object.entries(lesson).filter(([key]) => key !== "fingerprint"));
+      return fingerprint(payload) === data.fingerprint && fingerprint(lessonPayload) === lesson.fingerprint ? data : null;
+    } catch (_) { return null; } // Malformed optional metadata must never break a lesson.
+  }
+  function read(node, lesson, recordings) {
+    try {
+      if (!node || node.type !== "application/json" || node.textContent.length > 250000 ||
+          document.querySelectorAll('[id="nova-whiteboard-timings"]').length !== 1) return null;
+      return validate(JSON.parse(node.textContent), lesson, recordings);
+    } catch (_) { return null; }
+  }
+  window.novaWhiteboardTiming = { read, validate, fingerprint, sha256ASCII };
+})();
+
+"use strict";
+(() => {
+  // Declarative primitives only. No innerHTML, generated code, external URLs,
+  // images, SMIL, animation timers or document-wide element IDs from the plan.
+  const NS = "http://www.w3.org/2000/svg";
+  const kinds = {
+    rect: ["w", "h", "radius"], circle: ["r"], ellipse: ["rx", "ry"],
+    line: ["x2", "y2"], arrow: ["x2", "y2"], polygon: ["points"], polyline: ["points"],
+    path: ["d"], text: ["text", "size", "align", "direction"],
+    icons: ["icon", "count", "columns", "size"],
+    right_triangle: ["a", "b", "w", "h", "unit"], calculation: ["a", "b", "op", "size"],
+  };
+  const icons = ["apple", "ball", "block", "leaf", "star", "sun", "cloud", "drop", "book", "person"];
+  const common = ["kind", "row", "until", "x", "y", "fill", "stroke", "line_width", "dx", "dy"];
+  const integer = (v, a, b) => Number.isSafeInteger(v) && v >= a && v <= b;
+  const text = (v, n, empty = false) => typeof v === "string" && (empty || !!v.trim()) && Array.from(v).length <= n && !/[\u0000-\u0008\u000b-\u001f]/.test(v) && !Array.from(v).some(c => c.length === 1 && c.charCodeAt(0) >= 0xd800 && c.charCodeAt(0) <= 0xdfff);
+  const check = condition => { if (!condition) throw new Error("Invalid visual plan"); };
+  function keys(value, allowed, required = allowed) {
+    check(value && typeof value === "object" && !Array.isArray(value));
+    check(Object.keys(value).every(key => allowed.includes(key)) && required.every(key => Object.prototype.hasOwnProperty.call(value, key)));
+  }
+  function validateElement(e, rows) {
+    check(e && typeof e.kind === "string" && Object.prototype.hasOwnProperty.call(kinds, e.kind));
+    keys(e, common.concat(kinds[e.kind]), ["kind", "row", "x", "y"]);
+    check(Object.values(e).every(value => value !== null));
+    check(integer(e.row, 0, rows - 1) && integer(e.until ?? rows, e.row + 1, rows));
+    check(integer(e.x, 0, 1000) && integer(e.y, 0, 420));
+    for (const key of ["dx", "dy"]) check(integer(e[key] ?? 0, -1000, 1000));
+    for (const key of ["fill", "stroke"]) check(typeof (e[key] ?? "none") === "string" && /^(none|#[0-9a-fA-F]{6})$/.test(e[key] ?? "none"));
+    check(integer(e.line_width ?? 3, 1, 12));
+    const n = (key, a, b, fallback) => check(integer(e[key] ?? fallback, a, b));
+    switch (e.kind) {
+      case "rect": n("w", 1, 1000 - e.x); n("h", 1, 420 - e.y); n("radius", 0, 60, 0); break;
+      case "circle": n("r", 1, 200); break;
+      case "ellipse": n("rx", 1, 400); n("ry", 1, 200); break;
+      case "arrow": case "line": n("x2", 0, 1000); n("y2", 0, 420); break;
+      case "polygon": case "polyline":
+        check(Array.isArray(e.points) && e.points.length >= (e.kind === "polygon" ? 3 : 2) && e.points.length <= 40);
+        e.points.forEach(p => check(Array.isArray(p) && p.length === 2 && integer(p[0], 0, 1000) && integer(p[1], 0, 420))); break;
+      case "path": {
+        check(typeof e.d === "string" && e.d.length > 0 && e.d.length <= 2000 && /^[MmLlHhVvCcSsQqTtAaZz0-9eE+.,\s-]+$/.test(e.d) && /^[Mm]/.test(e.d.trimStart()));
+        const numbers = e.d.match(/[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?/g) || [];
+        check(numbers.length <= 400 && numbers.every(v => Number.isFinite(Number(v)) && Math.abs(Number(v)) <= 5000)); break;
+      }
+      case "text":
+        check(text(e.text, 120)); n("size", 12, 64, 28);
+        check(["start", "middle", "end"].includes(e.align ?? "middle") && ["auto", "rtl", "ltr"].includes(e.direction ?? "auto")); break;
+      case "icons":
+        check(icons.includes(e.icon)); n("count", 0, 20); n("columns", 1, 10); n("size", 24, 100);
+        check(e.x + Math.min(e.count, e.columns) * e.size <= 1000 && e.y + Math.ceil(e.count / e.columns) * e.size <= 420); break;
+      case "right_triangle":
+        n("a", 1, 100); n("b", 1, 100); n("w", 40, 1000 - e.x); n("h", 40, 370 - e.y); check(e.x >= 90);
+        check(text(e.unit ?? "", 12, true)); break;
+      case "calculation":
+        n("a", -1000, 1000); n("b", -1000, 1000); n("size", 16, 60, 36);
+        check(["+", "-", "*", "/"].includes(e.op) && !(e.op === "/" && e.b === 0)); break;
+    }
+  }
+  function read(lesson) {
+    if (lesson.schema === 1 && !Object.prototype.hasOwnProperty.call(lesson, "visuals")) return null;
+    keys(lesson, ["schema", "script", "title", "dialogue", "steps", "visuals", "fingerprint"]);
+    check(lesson.schema === 2 && typeof lesson.dialogue === "boolean" && text(lesson.script, 100000) && text(lesson.title, 120));
+    check(Array.isArray(lesson.steps) && lesson.steps.length > 0 && lesson.steps.length <= 120);
+    lesson.steps.forEach(step => {
+      keys(step, ["title", "rows"]); check(text(step.title, 140) && Array.isArray(step.rows) && step.rows.length > 0 && step.rows.length <= 6);
+      step.rows.forEach(row => { keys(row, ["speaker", "text"]); check([1, 2].includes(row.speaker) && text(row.text, 180)); });
+    });
+    const p = lesson.visuals;
+    keys(p, ["schema", "source_fingerprint", "subject", "grade", "policy", "notes", "steps"]);
+    check(p.schema === 1 && text(p.subject, 80, true) && text(p.grade, 80, true) && ["general", "sacred"].includes(p.policy));
+    check(Array.isArray(p.notes) && p.notes.length <= 12 && p.notes.every(n => text(n, 400)));
+    check(Array.isArray(p.steps) && p.steps.length === lesson.steps.length && JSON.stringify(p).length <= 524288);
+    let count = 0, spoken = lesson.steps.reduce((sum, step) => sum + step.rows.reduce((n, r) => n + Array.from(r.text).length, 0), 0);
+    p.steps.forEach((step, index) => {
+      keys(step, ["index", "description", "rows", "elements"]);
+      check(step.index === index && text(step.description, 400) && Array.isArray(step.rows) && step.rows.length <= lesson.steps[index].rows.length);
+      const seen = new Set();
+      step.rows.forEach(row => {
+        keys(row, ["index", "display", "speech"]);
+        check(integer(row.index, 0, lesson.steps[index].rows.length - 1) && !seen.has(row.index) && text(row.display, 180) && text(row.speech, 480));
+        check(/[\p{L}\p{N}]/u.test(row.speech) && !/\[[ \t]*(?:[12١٢ABab]\]|\/|[0-9٠-٩])|^[ \t]*(?:[12١٢ABab][ \t]*[:：]|\[[^\]\n]*\]|(?:[0-9٠-٩]+|[A-Za-z])[ \t]*[:：])/m.test(row.speech));
+        seen.add(row.index); spoken += Array.from(row.speech).length - Array.from(lesson.steps[index].rows[row.index].text).length;
+      });
+      check(Array.isArray(step.elements) && step.elements.length <= 60);
+      step.elements.forEach(e => validateElement(e, lesson.steps[index].rows.length)); count += step.elements.length;
+      if (p.policy === "sacred") check(step.elements.length === 0 && step.rows.length === 0 && step.description === lesson.steps[index].title);
+    });
+    check(count <= 600 && spoken > 0 && spoken <= 100000);
+    const fingerprint = window.novaWhiteboardTiming.fingerprint;
+    const source = { schema: 1, script: lesson.script, title: lesson.title, dialogue: lesson.dialogue, steps: lesson.steps };
+    check(fingerprint(source) === p.source_fingerprint);
+    const payload = Object.fromEntries(Object.entries(lesson).filter(([key]) => key !== "fingerprint"));
+    check(fingerprint(payload) === lesson.fingerprint);
+    return p;
+  }
+  function rowText(plan, step, row, original, speech = false) {
+    const override = plan && plan.steps[step].rows.find(r => r.index === row);
+    return override ? override[speech ? "speech" : "display"] : original;
+  }
+  function node(tag, attrs = {}, content) {
+    const el = document.createElementNS(NS, tag);
+    Object.entries(attrs).forEach(([key, value]) => el.setAttribute(key, String(value)));
+    if (content !== undefined) el.textContent = String(content);
+    return el;
+  }
+  function label(parent, x, y, value, size = 28, anchor = "middle", direction = "ltr") {
+    parent.append(node("text", { x, y, "font-size": size, "text-anchor": anchor, direction, "unicode-bidi": "plaintext", "font-family": "'Segoe UI',Tahoma,Arial,sans-serif", fill: "#334155", stroke: "none", "font-weight": 600 }, value));
+  }
+  function icon(parent, name) {
+    // Original local vector symbols. Their IDs/markup never come from a model.
+    const p = (d, fill, stroke = "#475569") => parent.append(node("path", { d, fill, stroke, "stroke-width": 2.5, "stroke-linejoin": "round" }));
+    if (name === "apple") { p("M50 28C22 10 9 45 23 75C32 95 45 84 50 86C56 84 69 95 79 74C93 44 78 9 50 28Z", "#FF5722"); p("M50 28Q46 10 57 6M53 20Q62 3 78 10Q70 25 53 20", "#65A30D"); }
+    else if (name === "ball") { parent.append(node("circle", { cx: 50, cy: 50, r: 38, fill: "#FFB000", stroke: "#C2410C", "stroke-width": 3 })); p("M12 50H88M50 12Q25 50 50 88M50 12Q75 50 50 88", "none"); }
+    else if (name === "block") { p("M15 25L68 12L88 35L35 49Z", "#93C5FD"); p("M15 25V76L35 92V49Z", "#2563EB"); p("M35 49L88 35V78L35 92Z", "#FFB000"); }
+    else if (name === "leaf") { p("M18 85Q1 18 86 12Q100 82 18 85Z", "#65A30D"); p("M18 85L76 24M35 68L31 43M52 52L74 54", "none"); }
+    else if (name === "star") p("M50 8L62 35L92 38L69 59L75 90L50 74L25 90L31 59L8 38L38 35Z", "#FFB000");
+    else if (name === "sun") { p("M50 4V16M50 84V96M4 50H16M84 50H96M17 17L26 26M74 74L83 83M17 83L26 74M74 26L83 17", "none", "#C2410C"); parent.append(node("circle", { cx: 50, cy: 50, r: 28, fill: "#FFB000", stroke: "#C2410C", "stroke-width": 3 })); }
+    else if (name === "cloud") p("M24 76C0 75 0 43 23 40C23 8 71 5 77 37C104 34 108 75 80 76Z", "#E2E8F0");
+    else if (name === "drop") p("M50 6C48 28 16 43 20 65C25 103 81 103 83 65C84 45 56 25 50 6Z", "#38BDF8");
+    else if (name === "book") { p("M50 25Q25 12 8 20V80Q30 72 50 88Q71 72 92 80V20Q74 12 50 25Z", "#DBEAFE"); p("M50 25V88M18 35L39 41M18 49L39 55M62 41L82 35M62 55L82 49", "none", "#2563EB"); }
+    else if (name === "person") { parent.append(node("circle", { cx: 50, cy: 22, r: 14, fill: "#F5D0A9", stroke: "#475569", "stroke-width": 2 })); p("M28 84V56Q29 38 50 38Q71 38 72 56V84Z", "#2563EB"); p("M39 84V98M61 84V98", "none"); }
+  }
+  function calculation(a, b, op) {
+    check(integer(a, -1000, 1000) && integer(b, -1000, 1000) && ["+", "-", "*", "/"].includes(op) && !(op === "/" && b === 0));
+    if (op === "+") return String(a + b);
+    if (op === "-") return String(a - b);
+    if (op === "*") return String(a * b);
+    const gcd = (x, y) => y ? gcd(y, x % y) : x;
+    const g = gcd(Math.abs(a), Math.abs(b));
+    const top = (b < 0 ? -a : a) / g, bottom = Math.abs(b) / g;
+    return bottom === 1 ? String(top) : `${top}/${bottom}`;
+  }
+  function draw(group, e) {
+    const style = { fill: e.fill ?? "none", stroke: e.stroke ?? "#2563EB", "stroke-width": e.line_width ?? 3, "stroke-linejoin": "round", "stroke-linecap": "round" };
+    const xy = { x: e.x, y: e.y };
+    switch (e.kind) {
+      case "rect": group.append(node("rect", { ...style, ...xy, width: e.w, height: e.h, rx: e.radius ?? 0 })); break;
+      case "circle": group.append(node("circle", { ...style, cx: e.x, cy: e.y, r: e.r })); break;
+      case "ellipse": group.append(node("ellipse", { ...style, cx: e.x, cy: e.y, rx: e.rx, ry: e.ry })); break;
+      case "line": case "arrow": {
+        group.append(node("line", { ...style, x1: e.x, y1: e.y, x2: e.x2, y2: e.y2 }));
+        if (e.kind === "arrow") {
+          const angle = Math.atan2(e.y2 - e.y, e.x2 - e.x), a = Math.PI / 6;
+          const x = e.x2, y = e.y2;
+          group.append(node("path", { ...style, d: `M${x - 14 * Math.cos(angle - a)} ${y - 14 * Math.sin(angle - a)}L${x} ${y}L${x - 14 * Math.cos(angle + a)} ${y - 14 * Math.sin(angle + a)}` }));
+        } break;
+      }
+      case "polygon": case "polyline": group.append(node(e.kind, { ...style, points: e.points.map(p => p.join(",")).join(" ") })); break;
+      case "path": group.append(node("path", { ...style, d: e.d })); break;
+      case "text": {
+        const direction = e.direction === "auto" || !e.direction ? (/\p{Script=Arabic}/u.test(e.text) ? "rtl" : "ltr") : e.direction;
+        label(group, e.x, e.y, e.text, e.size ?? 28, e.align ?? "middle", direction);
+        group.lastChild.setAttribute("fill", e.fill && e.fill !== "none" ? e.fill : "#334155"); break;
+      }
+      case "icons":
+        for (let i = 0; i < e.count; i++) {
+          const item = node("g", { transform: `translate(${e.x + (i % e.columns) * e.size} ${e.y + Math.floor(i / e.columns) * e.size}) scale(${e.size / 100})`, "data-icon": e.icon });
+          icon(item, e.icon); group.append(item);
+        } break;
+      case "right_triangle": {
+        // Uniform scale keeps both leg lengths and the right angle correct.
+        const scale = Math.min(e.w / e.a, e.h / e.b), w = e.a * scale, h = e.b * scale;
+        group.append(node("path", { ...style, fill: e.fill ?? "#DBEAFE", d: `M${e.x} ${e.y}v${h}h${w}Z` }));
+        const corner = Math.min(20, w / 4, h / 4);
+        group.append(node("path", { ...style, fill: "none", d: `M${e.x} ${e.y + h - corner}h${corner}v${corner}` }));
+        label(group, e.x + w / 2, e.y + h + 40, `${e.a} ${e.unit ?? ""}`, 40);
+        label(group, Math.max(20, e.x - 80), e.y + h / 2, `${e.b} ${e.unit ?? ""}`, 40); break;
+      }
+      case "calculation": {
+        const op = { "+": "+", "-": "−", "*": "×", "/": "÷" }[e.op];
+        const result = calculation(e.a, e.b, e.op);
+        label(group, e.x, e.y, `${e.a} ${op} ${e.b} = ${result}`, e.size ?? 36);
+        group.dataset.result = result; break;
+      }
+    }
+  }
+  function mount(parent, step, width, top, version) {
+    const frame = node("svg", { x: 35, y: top, width: width - 70, height: (width - 70) * 420 / 1000, viewBox: "0 0 1000 420", overflow: "hidden", "data-visual-scene": String(version), "aria-hidden": "true", "pointer-events": "none" });
+    frame.append(node("rect", { x: 0, y: 0, width: 1000, height: 420, rx: 18, fill: "#F8FAFC", stroke: "#E2E8F0", "stroke-width": 2 }));
+    const groups = step.elements.map((e, i) => {
+      const g = node("g", { opacity: 0, "data-scene-element": i }); draw(g, e); frame.append(g); return { e, g };
+    });
+    parent.append(frame);
+    return {
+      bottom: top + (width - 70) * 420 / 1000 + 55,
+      hasVisibleContent: () => groups.some(({ g }) => g.childNodes.length > 0 && g.getAttribute("opacity") === "1"),
+      update(bounds, now, reduced) {
+        groups.forEach(({ e, g }) => {
+          const start = bounds[e.row].start, end = bounds[e.row].end;
+          const until = e.until ?? bounds.length;
+          const visible = now >= start && (until === bounds.length || now < bounds[until].start);
+          const part = reduced ? 1 : Math.max(0, Math.min(1, (now - start) / Math.max(1, (end - start) * 0.6)));
+          g.setAttribute("opacity", visible ? "1" : "0");
+          g.setAttribute("transform", `translate(${(e.dx ?? 0) * (1 - part)} ${(e.dy ?? 0) * (1 - part)})`);
+        });
+      },
+    };
+  }
+  window.novaWhiteboardScenes = { read, rowText, mount, calculation };
+})();
+
+"use strict";
+(() => {
+  const $ = id => document.getElementById(id);
+  const lesson = JSON.parse($("nova-whiteboard-data").textContent);
+  const NS = "http://www.w3.org/2000/svg";
+  const sceneEngine = window.novaWhiteboardScenes;
+  let visualPlan = null;
+  function rejectVisualPlayback(message) {
+    ["wb-play", "wb-restart", "wb-previous", "wb-next", "wb-save-customized"].forEach(id => { $(id).disabled = true; });
+    $("wb-audio").hidden = true;
+    $("wb-status").textContent = message;
+    $("board-placeholder").textContent = "تعذّر التحقق من بيانات المشاهد";
+    $("step-transcript").textContent = lesson.script;
+  }
+  try {
+    if (!sceneEngine && lesson.schema !== 1) throw new Error("Missing scenes controller");
+    visualPlan = sceneEngine ? sceneEngine.read(lesson) : null;
+  } catch (_) {
+    rejectVisualPlayback("خطة المشاهد أو ارتباطها بالنص غير صالح. أعد التصدير من Nova؛ لم يبدأ أي صوت.");
+    return;
+  }
+  const appearance = window.novaWhiteboardAppearance;
+  const svg = $("whiteboard"), rowsGroup = $("wb-rows"), defs = $("wb-defs"), pen = $("wb-pen");
+  const audio = $("wb-audio"), playButton = $("wb-play"), rateInput = $("wb-rate");
+  const motionQuery = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : null;
+  let reducedMotion = !!(motionQuery && motionQuery.matches);
+  const eraser = $("wb-eraser");
+  const ERASE_MS = 560;
+  let transition = null;
+  const recordingNode = $("nova-whiteboard-recordings");
+  let recordings = null;
+  try {
+    const candidate = recordingNode ? JSON.parse(recordingNode.textContent) : null;
+    if (candidate && Array.isArray(candidate.durations) && candidate.durations.length === lesson.steps.length &&
+        candidate.durations.every((duration, i) => Number.isFinite(duration) && duration > 0 && $("nova-wb-audio-" + i))) {
+      recordings = candidate;
+    }
+  } catch (_) { /* A malformed recording cannot prevent reading the lesson. */ }
+  const hasAudio = recordings !== null;
+  const timing = hasAudio && window.novaWhiteboardTiming
+    ? window.novaWhiteboardTiming.read($("nova-whiteboard-timings"), lesson, recordings) : null;
+  if (visualPlan && visualPlan.policy === "sacred" && recordingNode) {
+    rejectVisualPlayback("الصوت في وضع النصوص المقدسة غير مدعوم في هذه النسخة؛ لا تلاوة آلية أو تسجيل موثّق هنا.");
+    return;
+  }
+  if (visualPlan && recordingNode && (!hasAudio || !timing)) {
+    rejectVisualPlayback("هذه المشاهد تحتاج خريطة توقيت سليمة مرتبطة بالنص والنطق المعتمدين. أعد توليد الصوت؛ لم يبدأ التشغيل.");
+    return;
+  }
+  svg.dataset.timing = timing ? "measured" : hasAudio ? "weighted" : "silent";
+  svg.dataset.visuals = visualPlan ? "validated" : "none";
+  if (visualPlan) {
+    const note = $("wb-visual-note");
+    note.hidden = false;
+    note.textContent = visualPlan.policy === "sacred"
+      ? "نص للمراجعة كما أدخله المُعدّ؛ لا توثيق آلي للآيات أو أحكام التجويد، ولا تلاوة مولّدة في هذا الوضع."
+      : "مشاهد توضيحية؛ المحرك لا يوثّق الخرائط أو الحقائق العلمية. راجع المحتوى والنطق قبل التدريس.";
+  }
+  let sceneView = null, rowBounds = [];
+  let current = 0, rate = 1, lines = [], totalWeight = 1, virtualTime = 0;
+  let silentPlaying = false, frame = null, lastFrame = null, version = 0, completed = false;
+  let canvasWidth = window.innerWidth <= 720 ? 720 : 1200;
+  const outline = [];
+  const clamp = value => Math.max(0, Math.min(1, value));
+  const make = tag => document.createElementNS(NS, tag);
+  const isPlaying = () => !transition && (hasAudio ? !audio.paused && !audio.ended : silentPlaying);
+  const continueAfterNavigation = () => transition ? transition.resume : isPlaying();
+  const navigationIndex = () => transition ? transition.index : current;
+
+  function publish() {
+    window.dispatchEvent(new CustomEvent("nova-whiteboard:state", {
+      detail: { step: current + 1, steps: lesson.steps.length, rate, playing: isPlaying(), hasAudio },
+    }));
+    // The transport state remains true during a measured gap; child motion
+    // must nevertheless follow the current speech cue, not the last speaker.
+    if (timing && appearance) {
+      const clip = timing.steps[String(current)], samples = audio.currentTime * clip.sample_rate;
+      const cue = clip.lines.find(line => samples >= line.start_sample && samples < line.end_sample);
+      appearance.setActiveSpeaker(cue ? cue.speaker : 1, !!cue && isPlaying());
+    }
+  }
+
+  function refreshButton() {
+    playButton.textContent = transition ? "نمسح السبورة…" : isPlaying() ? "إيقاف مؤقت" : completed ? "إعادة تشغيل الخطوة" : "تشغيل الخطوة";
+    playButton.setAttribute("aria-label", playButton.textContent);
+    publish();
+  }
+
+  function setStatus(text) {
+    if ($("wb-status").textContent !== text) $("wb-status").textContent = text;
+  }
+
+  function cancelFrame() {
+    if (frame !== null) cancelAnimationFrame(frame);
+    frame = null;
+    lastFrame = null;
+  }
+
+  function duration() {
+    if (!hasAudio) return totalWeight;
+    return Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : recordings.durations[current];
+  }
+
+  function progress() {
+    return clamp(hasAudio ? audio.currentTime / duration() : virtualTime / totalWeight);
+  }
+
+  function renderProgress(value, finished = false) {
+    if (transition) return; // Never repaint/reveal old speech while its board is being erased.
+    const fraction = clamp(value);
+    const elapsed = fraction * totalWeight;
+    const clip = timing ? timing.steps[String(current)] : null;
+    // No elapsed wall time, playbackRate multiplier or whole-clip stretching.
+    // Only ended may force the final reveal (MP3 can trim/pad its PCM clock).
+    const samples = clip ? (finished ? clip.total_samples : audio.currentTime * clip.sample_rate) : 0;
+    if (sceneView) {
+      const bounds = clip ? clip.lines.map(cue => ({ start: cue.start_sample, end: cue.end_sample })) : rowBounds;
+      sceneView.update(bounds, clip ? samples : elapsed, reducedMotion);
+    }
+    let active = null;
+    for (const line of lines) {
+      let part;
+      if (clip || visualPlan) {
+        const cue = clip ? clip.lines[line.row] : rowBounds[line.row];
+        const now = clip ? samples : elapsed;
+        const start = clip ? cue.start_sample : cue.start, end = clip ? cue.end_sample : cue.end;
+        const rowPart = clamp((now - start) / (end - start));
+        // Text weights are confined to visual wrapping INSIDE this source row.
+        part = reducedMotion ? (rowPart > 0 ? 1 : 0) : clamp((rowPart * line.rowWeight - line.rowStart) / line.weight);
+      } else part = reducedMotion ? (fraction > 0 ? 1 : 0) : clamp((elapsed - line.start) / line.weight);
+      const width = (line.box.width + 12) * part;
+      line.rect.setAttribute("width", String(width));
+      line.rect.setAttribute("x", String(line.rtl ? line.box.x + line.box.width + 6 - width : line.box.x - 6));
+      if (part > 0 && part < 1) active = { line, width, part };
+    }
+    if (active && !reducedMotion) {
+      const { line, width, part } = active;
+      const x = line.rtl ? line.box.x + line.box.width + 6 - width : line.box.x - 6 + width;
+      const y = line.box.y + line.box.height * 0.85 + Math.sin(part * 36) * 2;
+      pen.setAttribute("transform", `translate(${x} ${y})`);
+      pen.setAttribute("opacity", "1");
+    } else pen.setAttribute("opacity", "0");
+    const cue = clip ? clip.lines.find(line => samples >= line.start_sample && samples < line.end_sample) : null;
+    const silentRow = visualPlan ? rowBounds.findIndex(bound => elapsed >= bound.start && elapsed < bound.end) : -1;
+    const activeLine = clip ? (cue ? lines.find(line => line.row === cue.line_id) : null)
+      : visualPlan ? lines.find(line => line.row === silentRow)
+      : active ? active.line : lines.find(line => elapsed < line.start + line.weight) || lines[lines.length - 1];
+    if (appearance) appearance.setActiveSpeaker(activeLine ? activeLine.speaker : 1, !!activeLine && isPlaying() && !finished && (clip ? samples < clip.total_samples : fraction < 1));
+    $("board-placeholder").hidden = fraction > 0 || !!sceneView;
+    $("position-label").textContent = `${Math.round(fraction * 100)}%`;
+    $("writing-status").textContent = fraction >= 1 ? "اكتملت الخطوة" : fraction > 0 ? "نكتب ونتعلّم…" : "السبورة جاهزة";
+  }
+
+  function textWidth(node, text) {
+    node.textContent = text;
+    try {
+      const length = node.getComputedTextLength();
+      if (Number.isFinite(length) && length > 0) return length;
+    } catch (_) { /* Conservative local-font estimate for minimal SVG implementations. */ }
+    return Array.from(text).length * 18;
+  }
+
+  function splitLongWord(word, measure, maxWidth) {
+    const pieces = [];
+    let piece = "";
+    const units = typeof Intl.Segmenter === "function"
+      ? Array.from(new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(word), unit => unit.segment)
+      : Array.from(word);
+    for (const unit of units) {
+      if (piece && textWidth(measure, piece + unit) > maxWidth) { pieces.push(piece); piece = ""; }
+      piece += unit;
+    }
+    if (piece) pieces.push(piece);
+    return pieces;
+  }
+
+  function wrap(text, measure, maxWidth) {
+    const words = text.split(/\s+/).filter(Boolean).flatMap(word => splitLongWord(word, measure, maxWidth));
+    const result = [];
+    let line = "";
+    for (const word of words) {
+      const candidate = line ? line + " " + word : word;
+      if (line && textWidth(measure, candidate) > maxWidth) { result.push(line); line = word; }
+      else line = candidate;
+    }
+    if (line) result.push(line);
+    return result;
+  }
+
+  function directionOf(text) {
+    // Punctuation, including the Arabic comma, is not a language signal.
+    const letters = Array.from(text).filter(char => /\p{Letter}/u.test(char));
+    const arabic = letters.filter(char => /\p{Script=Arabic}/u.test(char)).length;
+    const latin = letters.filter(char => /\p{Script=Latin}/u.test(char)).length;
+    return arabic > latin || (arabic > 0 && arabic === latin && /\p{Script=Arabic}/u.test(letters[0])) ? "rtl" : "ltr";
+  }
+
+  function layoutStep() {
+    canvasWidth = window.innerWidth <= 720 ? 720 : 1200;
+    rowsGroup.replaceChildren();
+    defs.replaceChildren();
+    lines = [];
+    totalWeight = 0;
+    let y = 80;
+    const originalStep = lesson.steps[current];
+    const step = { ...originalStep, rows: originalStep.rows.map((row, i) => ({ ...row,
+      text: visualPlan ? sceneEngine.rowText(visualPlan, current, i, row.text) : row.text })) };
+    sceneView = null;
+    if (visualPlan && visualPlan.steps[current].elements.length) {
+      sceneView = sceneEngine.mount(rowsGroup, visualPlan.steps[current], canvasWidth, 25, version);
+      y = sceneView.bottom;
+    }
+    const selected = appearance && appearance.layout ? appearance.layout() : "script";
+    const columns = selected === "columns" && canvasWidth > 720;
+    const transcript = $("step-transcript");
+    transcript.replaceChildren();
+    transcript.dataset.layout = columns ? "columns" : selected === "script" ? "script" : "stacked";
+    const blocks = [];
+    const entries = step.rows.map((row, index) => ({ row, index, rtl: directionOf(row.text) === "rtl" }));
+    for (let index = 0; index < entries.length; index++) {
+      const entry = entries[index];
+      // Adjacent English -> Arabic entries are presentation pairs, not an AI
+      // translation or permission to reorder unrelated utterances.
+      if (selected !== "script" && !entry.rtl && entries[index + 1] && entries[index + 1].rtl) {
+        blocks.push([entry, entries[++index]]);
+      } else blocks.push([entry]);
+    }
+    for (const [blockIndex, block] of blocks.entries()) {
+      const group = make("g");
+      group.classList.add(block.length === 2 ? "bilingual-pair" : "board-entry");
+      group.dataset.layout = columns && block.length === 2 ? "columns" : "stacked";
+      group.dataset.pair = String(blockIndex);
+      rowsGroup.append(group);
+      const start = y;
+      let bottom = y;
+      let background = null;
+      if (block.length === 2) {
+        background = make("rect");
+        for (const [key, value] of Object.entries({ x: 35, y: y - 48, width: canvasWidth - 70, rx: 20, fill: "#F8FAFC", stroke: "#E2E8F0" })) background.setAttribute(key, String(value));
+        group.append(background);
+      }
+      for (const { row, index: rowIndex, rtl } of block) {
+        let rowY = columns && block.length === 2 ? start : bottom;
+        const color = appearance ? appearance.colorFor(current, rowIndex, row.speaker) : row.speaker === 2 ? "#C2410C" : "#2563EB";
+        const measure = make("text");
+        measure.setAttribute("font-size", "34");
+        measure.setAttribute("font-family", rtl ? "'Segoe UI',Tahoma,Arial,sans-serif" : "'Segoe Print','Comic Sans MS','Segoe UI',sans-serif");
+        measure.setAttribute("font-weight", "600");
+        measure.setAttribute("opacity", "0");
+        rowsGroup.append(measure);
+        const wrapped = wrap(row.text, measure, columns && block.length === 2 ? (canvasWidth - 280) / 2 : canvasWidth - 210);
+        const font = measure.getAttribute("font-family");
+        measure.remove();
+        const rowStart = rowY;
+        const rowWeight = wrapped.reduce((sum, content) => sum + Math.max(500, Array.from(content).length * 65), 0);
+        let withinRow = 0;
+        for (const content of wrapped) {
+          const text = make("text");
+          text.textContent = content;
+          text.dataset.row = String(rowIndex);
+          text.dataset.language = rtl ? "ar" : "en";
+          text.setAttribute("x", rtl ? String(canvasWidth - 100) : "100");
+          text.setAttribute("y", String(rowY));
+          text.setAttribute("font-size", "34");
+          text.setAttribute("font-family", font);
+          text.setAttribute("font-weight", "600");
+          text.setAttribute("direction", rtl ? "rtl" : "ltr");
+          text.setAttribute("unicode-bidi", "plaintext");
+          text.setAttribute("text-anchor", "start");
+          text.setAttribute("fill", color);
+          group.append(text);
+          let box;
+          try { box = text.getBBox(); } catch (_) { /* Geometry may be unavailable. */ }
+          if (!box || !Number.isFinite(box.width) || box.width <= 0) {
+            const width = Array.from(content).length * 18;
+            box = { x: rtl ? canvasWidth - 100 - width : 100, y: rowY - 34, width, height: 44 };
+          }
+          const clip = make("clipPath"), rect = make("rect");
+          clip.id = `wb-clip-${version}-${lines.length}`;
+          rect.setAttribute("y", String(box.y - 6));
+          rect.setAttribute("height", String(box.height + 12));
+          rect.setAttribute("width", "0");
+          clip.append(rect);
+          defs.append(clip);
+          text.setAttribute("clip-path", `url(#${clip.id})`);
+          const weight = Math.max(500, Array.from(content).length * 65);
+          lines.push({ rect, box, rtl, speaker: row.speaker, row: rowIndex,
+            start: totalWeight, weight, rowStart: withinRow, rowWeight });
+          withinRow += weight;
+          totalWeight += weight;
+          rowY += 54;
+        }
+        const bullet = make("circle");
+        bullet.setAttribute("cx", rtl ? String(canvasWidth - 58) : "58");
+        bullet.setAttribute("cy", String(rowStart - 12));
+        bullet.setAttribute("r", "7");
+        bullet.setAttribute("fill", color);
+        group.append(bullet);
+        bottom = Math.max(bottom, rowY + 28);
+        const paragraph = document.createElement("p");
+        paragraph.className = "transcript-line";
+        paragraph.dir = rtl ? "rtl" : "ltr";
+        paragraph.dataset.speaker = String(row.speaker);
+        paragraph.dataset.pair = String(blockIndex);
+        paragraph.dataset.unpaired = String(block.length === 1);
+        paragraph.style.textAlign = rtl ? "right" : "left";
+        paragraph.style.borderInlineStartColor = color;
+        paragraph.style.color = color;
+        paragraph.textContent = row.text;
+        transcript.append(paragraph);
+      }
+      if (background) background.setAttribute("height", String(bottom - start + 30));
+      y = bottom + (background ? 16 : 0);
+    }
+    totalWeight = Math.max(1, totalWeight);
+    rowBounds = originalStep.rows.map((_, row) => {
+      const parts = lines.filter(line => line.row === row);
+      return { start: Math.min(...parts.map(line => line.start)), end: Math.max(...parts.map(line => line.start + line.weight)) };
+    });
+    if (visualPlan) {
+      // Silent reviews have no recording. Estimate their row clock from the
+      // approved narration, not a one-character formula on the board. Measured
+      // audio still uses PCM cues exclusively, never these estimated bounds.
+      let cursor = 0;
+      rowBounds = originalStep.rows.map((row, i) => {
+        const speech = sceneEngine.rowText(visualPlan, current, i, row.text, true);
+        const weight = Math.max(1000, Array.from(speech).length * 65);
+        const bound = { start: cursor, end: cursor + weight }; cursor += weight; return bound;
+      });
+      totalWeight = cursor;
+      const description = document.createElement("p");
+      description.className = "visual-description";
+      description.textContent = visualPlan.steps[current].description;
+      description.setAttribute("dir", "auto");
+      transcript.prepend(description);
+      originalStep.rows.forEach((row, i) => {
+        const display = sceneEngine.rowText(visualPlan, current, i, row.text);
+        const speech = sceneEngine.rowText(visualPlan, current, i, row.text, true);
+        if (display !== speech) {
+          const note = document.createElement("p"); note.dir = "auto";
+          note.className = "visual-speech"; note.textContent = `${i + 1}. النطق المعتمد: ${speech}`;
+          transcript.append(note);
+        }
+      });
+      const original = document.createElement("details"), summary = document.createElement("summary"), raw = document.createElement("pre");
+      original.className = "visual-source";
+      summary.textContent = "النص الأصلي لهذه الخطوة";
+      raw.dir = "auto";
+      raw.textContent = originalStep.rows.map(row => lesson.dialogue ? `[${row.speaker}] ${row.text}` : row.text).join("\n");
+      original.append(summary, raw); transcript.append(original);
+    }
+    svg.setAttribute("viewBox", `0 0 ${canvasWidth} ${Math.max(430, y + 25)}`);
+  }
+
+  window.addEventListener("nova-whiteboard:appearance", () => {
+    if (transition) { finishErase(); return; }
+    const fraction = progress();
+    layoutStep();
+    if (!hasAudio) virtualTime = fraction * totalWeight;
+    renderProgress(fraction);
+    refreshButton();
+  });
+
+  function finishStep() {
+    if (transition) return; // Ignore a late ended event from the outgoing clip.
+    if (completed) return;
+    completed = true;
+    silentPlaying = false;
+    cancelFrame();
+    renderProgress(1, true);
+    refreshButton();
+    setStatus("اكتملت الخطوة. يمكنك إعادتها أو الانتقال إلى التالية.");
+    if ($("wb-auto-next").checked && current + 1 < lesson.steps.length) navigate(current + 1, true);
+  }
+
+  function tick(timestamp) {
+    frame = null;
+    if (!isPlaying()) { lastFrame = null; return; }
+    if (!hasAudio) {
+      if (lastFrame !== null) virtualTime = Math.min(totalWeight, virtualTime + Math.max(0, timestamp - lastFrame) * rate);
+      lastFrame = timestamp;
+    }
+    renderProgress(progress());
+    if (!hasAudio && virtualTime >= totalWeight) { finishStep(); return; }
+    queueFrame();
+  }
+
+  function queueFrame() {
+    const ticket = version;
+    const id = requestAnimationFrame(timestamp => {
+      if (ticket === version && frame === id) tick(timestamp);
+    });
+    frame = id;
+  }
+
+  function startFrame() {
+    if (frame === null) { lastFrame = null; queueFrame(); }
+  }
+
+  async function play() {
+    if (transition) return;
+    const ticket = version;
+    if (completed) {
+      completed = false;
+      virtualTime = 0;
+      if (hasAudio) audio.currentTime = 0;
+      renderProgress(0);
+    }
+    if (hasAudio) {
+      try {
+        await audio.play();
+        if (ticket === version) { startFrame(); refreshButton(); }
+      } catch (_) {
+        if (ticket === version) {
+          setStatus("لم يبدأ الصوت. اضغط تشغيل داخل مشغّل الصوت أو افتح الملف بمتصفح حديث.");
+          refreshButton();
+        }
+      }
+    } else {
+      if (reducedMotion) { virtualTime = totalWeight; finishStep(); return; }
+      silentPlaying = true;
+      startFrame();
+      refreshButton();
+      setStatus("عرض الكتابة فقط؛ يمكنك إضافة الصوت لاحقًا من الخطوة 2 داخل البرنامج.");
+    }
+  }
+
+  function pause() {
+    if (hasAudio) audio.pause();
+    else silentPlaying = false;
+    cancelFrame();
+    refreshButton();
+  }
+
+  function updateNavigation(index) {
+    $("wb-previous").disabled = index === 0;
+    $("wb-next").disabled = index + 1 === lesson.steps.length;
+  }
+
+  function clearErase() {
+    const job = transition;
+    if (!job) return null;
+    transition = null;
+    if (job.frame !== null) cancelAnimationFrame(job.frame);
+    clearTimeout(job.timeout);
+    rowsGroup.removeAttribute("clip-path");
+    job.clip.remove();
+    eraser.setAttribute("opacity", "0");
+    eraser.removeAttribute("transform");
+    svg.dataset.transition = "idle";
+    svg.setAttribute("aria-busy", "false");
+    playButton.disabled = false;
+    $("wb-restart").disabled = false;
+    return job;
+  }
+
+  function finishErase() {
+    const job = clearErase();
+    if (job) showStep(job.index, job.resume);
+  }
+
+  function drawErase(job, fraction) {
+    const phase = fraction * 3, band = Math.min(2, Math.floor(phase));
+    const local = clamp(phase - band), smooth = local * local * (3 - 2 * local);
+    const x = job.width * (band % 2 ? smooth : 1 - smooth);
+    job.rects.forEach((rect, index) => {
+      const remaining = index < band ? 0 : index > band ? job.width : band % 2 ? job.width - x : x;
+      rect.setAttribute("x", String(index === band && band % 2 ? x : 0));
+      rect.setAttribute("width", String(remaining));
+    });
+    eraser.setAttribute("transform", `translate(${x} ${(band + 0.5) * job.height / 3}) rotate(${band % 2 ? 8 : -8})`);
+  }
+
+  function eraseFrame(job, timestamp) {
+    if (transition !== job) return;
+    job.frame = null;
+    if (job.started === null) job.started = timestamp;
+    const fraction = clamp((timestamp - job.started) / ERASE_MS);
+    drawErase(job, fraction);
+    if (fraction >= 1) finishErase();
+    else job.frame = requestAnimationFrame(next => eraseFrame(job, next));
+  }
+
+  function navigate(index, continuePlaying = false) {
+    if (!Number.isInteger(index) || index < 0 || index >= lesson.steps.length) return;
+    if (transition) {
+      // One bounded wipe, latest requested destination wins. No stacked delays.
+      transition.index = index;
+      transition.resume = continuePlaying;
+      updateNavigation(index);
+      return;
+    }
+    const visible = lines.some(line => Number(line.rect.getAttribute("width")) > 0) ||
+      !!(sceneView && sceneView.hasVisibleContent());
+    const viewBox = svg.getAttribute("viewBox").trim().split(/\s+/).map(Number);
+    const [, , width, height] = viewBox;
+    if (index === current || !visible || reducedMotion || document.hidden || !eraser ||
+        !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+      showStep(index, continuePlaying);
+      return;
+    }
+    version++; // Invalidate a pending play promise BEFORE pausing the outgoing clip.
+    const clip = make("clipPath"), rects = [];
+    clip.id = "wb-erase-clip";
+    clip.setAttribute("clipPathUnits", "userSpaceOnUse");
+    for (let band = 0; band < 3; band++) {
+      const rect = make("rect");
+      rect.setAttribute("x", "0"); rect.setAttribute("y", String(band * height / 3));
+      rect.setAttribute("width", String(width)); rect.setAttribute("height", String(height / 3 + 0.5));
+      clip.append(rect); rects.push(rect);
+    }
+    transition = { index, resume: continuePlaying, clip, rects, width, height, started: null, frame: null, timeout: null };
+    cancelFrame();
+    silentPlaying = false;
+    if (hasAudio) audio.pause();
+    defs.append(clip);
+    rowsGroup.setAttribute("clip-path", "url(#wb-erase-clip)");
+    const felt = $("wb-eraser-felt");
+    felt.setAttribute("y", String(-height / 6 - 6));
+    felt.setAttribute("height", String(height / 3 + 12));
+    eraser.setAttribute("opacity", "1");
+    pen.setAttribute("opacity", "0");
+    $("board-placeholder").hidden = true;
+    svg.dataset.transition = "erasing";
+    svg.setAttribute("aria-busy", "true");
+    playButton.disabled = true;
+    $("wb-restart").disabled = true;
+    $("writing-status").textContent = "نمسح السبورة للخطوة التالية…";
+    updateNavigation(index);
+    refreshButton();
+    drawErase(transition, 0);
+    // UI-only clock: never advances/offsets media time or the measured PCM map.
+    const job = transition;
+    job.frame = requestAnimationFrame(timestamp => eraseFrame(job, timestamp));
+    job.timeout = setTimeout(() => { if (transition === job) finishErase(); }, 1000); // Throttled frame fallback.
+  }
+
+  function showStep(index, continuePlaying = false) {
+    version++;
+    cancelFrame();
+    if (hasAudio) audio.pause();
+    silentPlaying = false;
+    completed = false;
+    virtualTime = 0;
+    current = index;
+    $("scene-title").textContent = lesson.steps[index].title;
+    $("scene-number").textContent = `الخطوة ${index + 1} من ${lesson.steps.length}`;
+    updateNavigation(index);
+    outline.forEach((button, i) => {
+      if (i === index) button.setAttribute("aria-current", "step");
+      else button.removeAttribute("aria-current");
+    });
+    layoutStep();
+    if (hasAudio) {
+      const payload = $("nova-wb-audio-" + index);
+      audio.src = `data:${payload.dataset.mime};base64,${payload.textContent.trim()}`;
+      audio.playbackRate = rate;
+      audio.preservesPitch = true;
+      audio.webkitPreservesPitch = true;
+      setStatus(timing
+        ? "توقيت فعلي لكل سطر من عينات الصوت؛ الكتابة داخل السطر تقريبية." + (timing.steps[String(index)].audio_format === "mp3" ? " قد يضيف MP3 تأخيرًا صغيرًا؛ WAV أدق." : "")
+        : "الصوت مضمّن لهذه الخطوة. تشغيله وتحريك الكتابة يستخدمان ساعة الصوت نفسها؛ المحاذاة داخل الخطوة تقريبية.");
+    }
+    renderProgress(0);
+    refreshButton();
+    if (continuePlaying) void play();
+  }
+
+  function setRate(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return;
+    rate = Math.max(0.5, Math.min(2, number));
+    rateInput.value = String(rate);
+    $("wb-rate-label").textContent = rate.toFixed(2) + "×";
+    if (hasAudio && audio.playbackRate !== rate) audio.playbackRate = rate;
+    publish();
+  }
+
+  $("lesson-title").textContent = lesson.title;
+  $("step-count").textContent = `${lesson.steps.length} خطوات`;
+  const list = $("lesson-outline");
+  list.replaceChildren();
+  lesson.steps.forEach((step, index) => {
+    const item = document.createElement("li"), button = document.createElement("button");
+    button.className = "outline-step";
+    button.type = "button";
+    const number = document.createElement("span"), title = document.createElement("span");
+    number.className = "outline-number";
+    number.textContent = String(index + 1);
+    title.className = "outline-text";
+    title.textContent = step.title;
+    button.append(number, title);
+    button.addEventListener("click", () => navigate(index, continueAfterNavigation()));
+    item.append(button);
+    list.append(item);
+    outline.push(button);
+  });
+  audio.hidden = !hasAudio;
+  if (hasAudio) {
+    $("audio-badge").textContent = "الصوت مضمّن · لكل خطوة";
+    $("audio-badge").classList.add("ready");
+  }
+  playButton.addEventListener("click", () => isPlaying() ? pause() : void play());
+  $("wb-restart").addEventListener("click", () => navigate(current, continueAfterNavigation()));
+  $("wb-previous").addEventListener("click", () => navigate(navigationIndex() - 1, continueAfterNavigation()));
+  $("wb-next").addEventListener("click", () => navigate(navigationIndex() + 1, continueAfterNavigation()));
+  rateInput.addEventListener("input", event => setRate(event.target.value));
+  $("wb-reset-rate").addEventListener("click", () => setRate(1));
+  if (hasAudio) {
+    audio.addEventListener("play", () => {
+      if (transition) { audio.pause(); return; }
+      completed = false;
+      startFrame();
+      refreshButton();
+    });
+    audio.addEventListener("pause", () => { cancelFrame(); renderProgress(progress()); refreshButton(); });
+    for (const event of ["timeupdate", "seeking", "seeked", "loadedmetadata"]) audio.addEventListener(event, () => {
+      if (transition) return;
+      renderProgress(progress());
+      if (progress() < 1) completed = false;
+      refreshButton();
+    });
+    audio.addEventListener("ended", finishStep);
+    audio.addEventListener("ratechange", () => setRate(audio.playbackRate));
+    audio.addEventListener("error", () => {
+      if (transition) return;
+      cancelFrame();
+      setStatus("تعذّر تشغيل الصوت المضمّن. جرّب متصفحًا حديثًا أو أعد توليده بصيغة MP3/WAV أخرى.");
+      refreshButton();
+    });
+  }
+  window.addEventListener("resize", () => {
+    if ((window.innerWidth <= 720 ? 720 : 1200) !== canvasWidth) {
+      if (transition) { finishErase(); return; }
+      const value = progress();
+      layoutStep();
+      renderProgress(value);
+    }
+  });
+  document.addEventListener("visibilitychange", () => {
+    lastFrame = null;
+    if (document.hidden && transition) finishErase();
+  });
+  if (motionQuery && typeof motionQuery.addEventListener === "function") motionQuery.addEventListener("change", event => {
+    reducedMotion = event.matches;
+    if (reducedMotion && transition) finishErase();
+    else renderProgress(progress(), completed);
+  });
+  window.addEventListener("pagehide", () => { version++; clearErase(); pause(); });
+  window.addEventListener("keydown", event => {
+    const target = event.target;
+    if (event.altKey || event.ctrlKey || event.metaKey || event.repeat ||
+        (target && (target.isContentEditable || target.closest("input,select,textarea,button,audio,summary")))) return;
+    if (event.key === "ArrowLeft") { event.preventDefault(); navigate(navigationIndex() + 1, continueAfterNavigation()); }
+    else if (event.key === "ArrowRight") { event.preventDefault(); navigate(navigationIndex() - 1, continueAfterNavigation()); }
+    else if (event.key === " ") { event.preventDefault(); if (isPlaying()) pause(); else void play(); }
+  });
+  // No timer monkey-patching, HTML execution service, Web Speech API or network.
+  svg.dataset.transition = "idle";
+  svg.setAttribute("aria-busy", "false");
+  navigate(0);
+  if (recordingNode && !hasAudio) setStatus("بيانات الصوت غير مكتملة. أعد إنشاء نسخة بالصوت من السبورة الأصلية.");
+})();
+</script>
+</body>
+</html>

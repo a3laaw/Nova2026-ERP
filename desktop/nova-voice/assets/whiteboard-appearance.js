@@ -80,7 +80,9 @@
     lesson.steps[current].rows.forEach((row, index) => {
       const option = document.createElement("option");
       option.value = String(index);
-      option.textContent = `${index + 1}. ${row.text.slice(0, 90)}`;
+      const display = lesson.visuals && window.novaWhiteboardScenes
+        ? window.novaWhiteboardScenes.rowText(lesson.visuals, current, index, row.text) : row.text;
+      option.textContent = `${index + 1}. ${display.slice(0, 90)}`;
       picker.append(option);
     });
     syncSentenceColor();

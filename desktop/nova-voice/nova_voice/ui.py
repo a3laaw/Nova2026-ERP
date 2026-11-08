@@ -2,6 +2,7 @@
 
 import logging
 import tempfile
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -53,6 +54,10 @@ from .html_export import (
     render_html,
     validate_destination,
 )
+from .scene_examples import VISUAL_EXAMPLE, example_plan
+from .scene_picker import PlannerRequest, ScenePicker
+from .scene_planner import request_plan
+from .scenes import VisualPlan
 from .storage import (
     application_dir,
     load_preferences,
@@ -142,7 +147,7 @@ class MainWindow(QMainWindow):
         titles.addWidget(label("اكتب النص، اختر الأصوات، ثم أنشئ درسك في ملف واحد.", "muted"))
         heading.addLayout(titles)
         heading.addStretch()
-        heading.addWidget(label("محلي بالكامل · دون إنترنت", "privacy"))
+        heading.addWidget(label("محلي · الاقتراح الشبكي اختياري", "privacy"))
         about = button("حول البرنامج")
         about.clicked.connect(self._about)
         heading.addWidget(about)
@@ -214,7 +219,7 @@ class MainWindow(QMainWindow):
         editor_layout.addWidget(self.text_stats)
         editor_layout.addWidget(
             label(
-                "النص لا يغادر جهازك ولا يُحفظ تلقائيًا. "
+                "النص لا يُرسل أو يُحفظ تلقائيًا. الاقتراح الشبكي اختياري وبإذن لكل طلب. "
                 "يمكن تشكيل الكلمات العربية الملتبسة لتحسين النطق.",
                 "muted",
                 True,
@@ -303,6 +308,13 @@ class MainWindow(QMainWindow):
         settings.addWidget(self.guide_button)
         columns.addWidget(settings_card, 4)
         input_layout.addLayout(columns, 1)
+        self.scene_section = Disclosure("مشاهد ذكية · اختياري: سكريبت ← مسودة ← مراجعة ← اعتماد")
+        self.scene_picker = ScenePicker(self._source_lesson)
+        self.scene_picker.changed.connect(self._update_buttons)
+        self.scene_picker.requested.connect(self._request_scenes)
+        self.scene_picker.example_requested.connect(self._scene_example)
+        self.scene_section.content_layout.addWidget(self.scene_picker)
+        input_layout.addWidget(self.scene_section)
         self.workspace_tabs.addTab(input_page, "النص والأصوات")
 
         appearance_card, appearance_layout = card()
@@ -431,7 +443,9 @@ class MainWindow(QMainWindow):
         self.progress = QProgressBar()
         self.progress.hide()
         export_layout.addWidget(self.progress)
-        self.status = label("اكتب سكريبتًا لإنشاء سبورة، أو أضف نموذجًا لتوليد الصوت.", "muted", True)
+        self.status = label(
+            ("اكتب سكريبتًا لإنشاء سبورة، أو أضف نموذجًا لتوليد الصوت."), "muted", True
+        )
         self.status.setAccessibleName("حالة العملية")
         export_layout.addWidget(self.status)
 
@@ -597,6 +611,7 @@ class MainWindow(QMainWindow):
     def _update_text_stats(self) -> None:
         text = self.editor.toPlainText()
         self.appearance_picker.invalidate_rows()
+        self.scene_picker.invalidate_source()
         self.text_stats.setText(
             f"{len(text):,} / {MAX_CHARACTERS:,} حرف   ·   {len(text.split()):,} كلمة"
         )
@@ -613,11 +628,17 @@ class MainWindow(QMainWindow):
             except ScriptError:
                 required = {1, 2}
         ready = required.issubset(self._cast()) and 0 < len(text.strip()) <= MAX_CHARACTERS
-        self.generate_button.setEnabled(not busy and ready)
-        self.preview_button.setEnabled(not busy and ready)
-        self.html_export_button.setEnabled(not busy and ready and self._html_source is not None)
+        speech_allowed = self.scene_picker.audio_allowed()
+        self.generate_button.setEnabled(not busy and ready and speech_allowed)
+        self.preview_button.setEnabled(not busy and ready and speech_allowed)
+        self.html_export_button.setEnabled(
+            not busy and ready and speech_allowed and self._html_source is not None
+        )
         self.clear_html_button.setEnabled(not busy and self._html_source is not None)
-        self.create_board_button.setEnabled(not busy and 0 < len(text.strip()) <= MAX_CHARACTERS)
+        scene_ready = self.scene_picker.export_ready()
+        self.create_board_button.setEnabled(
+            not busy and scene_ready and 0 < len(text.strip()) <= MAX_CHARACTERS
+        )
         combined_ready = False
         if not busy and 0 < len(text.strip()) <= MAX_CHARACTERS and (cast := self._cast()):
             try:
@@ -627,20 +648,31 @@ class MainWindow(QMainWindow):
                 ).speakers.issubset(cast)
             except ScriptError:
                 pass
-        self.combined_board_button.setEnabled(combined_ready)
+        self.combined_board_button.setEnabled(
+            combined_ready and scene_ready and self.scene_picker.audio_allowed()
+        )
         self.open_board_button.setEnabled(not busy and self._board_open_file is not None)
         board_ready = self._board_lesson is not None and self._board_lesson.speakers.issubset(
             self._cast()
         )
-        self.board_audio_button.setEnabled(not busy and board_ready)
+        sacred_board = bool(
+            self._board_lesson
+            and self._board_lesson.visuals
+            and self._board_lesson.visuals.to_data()["policy"] == "sacred"
+        )
+        self.board_audio_button.setEnabled(
+            not busy and board_ready and not sacred_board and speech_allowed
+        )
         if self._board_source and self._board_lesson:
             changed = bool(text.strip()) and text.strip() != self._board_lesson.script
             note = (
                 " · السكريبت الحالي مختلف؛ الخطوة 2 تستخدم النص المحفوظ في هذه السبورة. "
                 "أعد الخطوة 1 لتطبيق تعديلات النص."
                 if changed
-                else " · جاهزة لإضافة الصوت من السكريبت المحفوظ داخلها."
+                else " · الصوت من النص والخطة المحفوظين في HTML، لا تعديلات المحرر الحالية."
             )
+            if sacred_board:
+                note = " · نصوص مقدسة: عرض النص المراجع فقط؛ لا توليد تلاوة آلي في هذه النسخة."
             self.board_source_label.setText(
                 f"{self._board_source.name} · {len(self._board_lesson.steps)} خطوات" + note
             )
@@ -676,6 +708,8 @@ class MainWindow(QMainWindow):
         self.progress.setVisible(busy)
 
     def _options(self) -> RenderOptions:
+        if not self.scene_picker.audio_allowed():
+            raise VoiceError("حماية النصوص المقدسة مفعّلة؛ لا نطق آلي أو تلاوة Piper في هذا الوضع.")
         return RenderOptions(
             speed=self.speed_slider.value() / 100,
             pause_ms=self.pause_spin.value(),
@@ -686,6 +720,7 @@ class MainWindow(QMainWindow):
         if self.worker:
             return None
         try:
+            self._options()  # Also guard keyboard/shortcut paths before any save dialog.
             text = validate_text(self.editor.toPlainText())
             cast = self._cast()
             if self.dialogue_mode():
@@ -791,11 +826,57 @@ class MainWindow(QMainWindow):
                 return None
         return path
 
+    def _source_lesson(self) -> Lesson:
+        return parse_lesson(self.editor.toPlainText(), dialogue=self.dialogue_mode())
+
+    def _lesson_for_export(self) -> Lesson:
+        lesson = self._source_lesson()
+        return replace(lesson, visuals=self.scene_picker.approved_for(lesson))
+
+    def _request_scenes(self, request: PlannerRequest) -> None:
+        if self.worker:
+            return
+        self._start_task(
+            lambda cancel, progress: request_plan(
+                request.source,
+                request.key,
+                cancel,
+                progress,
+                consent=request.consent,
+                adult=request.adult,
+                subject=request.subject,
+                grade=request.grade,
+                policy=request.policy,
+            ),
+            "scene-plan",
+        )
+
+    def _scene_example(self) -> None:
+        if self.worker:
+            return
+        if (
+            self.editor.toPlainText().strip()
+            and QMessageBox.question(
+                self,
+                "مثال مشاهد محلي",
+                "سيُستبدل السكريبت بمثال محلي بلا اتصال. هل تتابع؟",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            != QMessageBox.StandardButton.Yes
+        ):
+            return
+        self.mode_combo.setCurrentIndex(0)
+        self.editor.setPlainText(VISUAL_EXAMPLE)
+        self.scene_picker.policy.setCurrentIndex(0)
+        self.scene_section.set_expanded(True)
+        self.scene_picker.set_draft(example_plan(self._source_lesson().manifest()))
+
     def _refresh_appearance_sentences(self) -> None:
         if self.worker:
             return
         try:
-            lesson = parse_lesson(self.editor.toPlainText(), dialogue=self.dialogue_mode())
+            lesson = self._lesson_for_export()
         except ScriptError as error:
             QMessageBox.warning(self, "راجع السكريبت قبل اختيار ألوان الجمل", str(error))
             return
@@ -805,7 +886,7 @@ class MainWindow(QMainWindow):
         if self.worker:
             return
         try:
-            lesson = parse_lesson(self.editor.toPlainText(), dialogue=self.dialogue_mode())
+            lesson = self._lesson_for_export()
         except ScriptError as error:
             QMessageBox.warning(self, "راجع سكريبت السبورة", str(error))
             return
@@ -832,7 +913,7 @@ class MainWindow(QMainWindow):
         if self.worker:
             return
         try:
-            lesson = parse_lesson(self.editor.toPlainText(), dialogue=self.dialogue_mode())
+            lesson = self._lesson_for_export()
             cast, options = self._cast(), self._options()
             validate_lesson_cast(lesson, cast, options)
             appearance = self.appearance_picker.snapshot(lesson)
@@ -1073,6 +1154,7 @@ class MainWindow(QMainWindow):
         self.worker.finished.connect(self._task_finished)
         messages = {
             "import": "جارٍ استيراد النموذج…",
+            "scene-plan": "جارٍ طلب اقتراح مجاني واحد بإذنك؛ لا رسم أو نطق قبل المراجعة…",
             "html": "جارٍ تجهيز الصفحة وتوليد الصوت محليًا…",
             "whiteboard": "جارٍ تحويل السكريبت إلى سبورة HTML محليًا…",
             "whiteboard-audio": "جارٍ توليد مقطع صوتي لكل خطوة من السبورة…",
@@ -1108,6 +1190,8 @@ class MainWindow(QMainWindow):
                 elif self._progress_kind in ("html", "whiteboard-audio"):
                     stage = "حفظ الصوت داخل HTML" if value >= 85 else "توليد صوت الصفحة"
                     self.status.setText(f"جارٍ {stage} محليًا… {value}%")
+                elif self._progress_kind == "scene-plan":
+                    self.status.setText("وصل رد المزود؛ جارٍ التحقق المحلي من خطة المشاهد…")
                 elif self._progress_kind == "whiteboard":
                     self.status.setText(f"جارٍ إنشاء ملف السبورة… {value}%")
                 else:
@@ -1122,6 +1206,14 @@ class MainWindow(QMainWindow):
             return
         if self._progress_kind == "import":
             self.status.setText("تمت إضافة النموذج. اكتب السكريبت لتجربة الصوت.")
+            return
+        if isinstance(result, VisualPlan):
+            self.scene_section.set_expanded(True)
+            self.scene_picker.set_draft(result)
+            self.status.setText(
+                "وصلت مسودة مشاهد؛ راجع الوصف والعرض والنطق والمعاينة ثم اعتمدها. "
+                "لم يبدأ تصدير أو صوت."
+            )
             return
         if isinstance(result, (WhiteboardResult, HtmlAudioResult, RenderResult)):
             self.result_section.set_expanded(True)
@@ -1218,7 +1310,7 @@ class MainWindow(QMainWindow):
             self.worker.cancel_event.set()
             self.cancel_button.setEnabled(False)
             self.status.setText(
-                "جارٍ الإلغاء… قد يلزم انتظار اكتمال المقطع الحالي أو تحميل النموذج."
+                "جارٍ الإلغاء… قد يلزم انتظار مهلة الشبكة أو اكتمال المقطع المحلي الحالي."
             )
 
     def _import_text(self) -> None:
@@ -1334,7 +1426,8 @@ class MainWindow(QMainWindow):
             self,
             "حول Nova Voice",
             f"Nova Voice {__version__}\nتحويل النص إلى صوت محليًا باستخدام Piper.\n\n"
-            "لا يتم إرسال النص أو الصوت إلى خادم، ولا يُحفظ السكريبت تلقائيًا.\n"
+            "الصوت والرسم محليان. اقتراح المشاهد عبر الإنترنت اختياري وبإذن لكل طلب.\n"
+            "لا يُحفظ السكريبت أو مفتاح API تلقائيًا؛ لا تُرسل بيانات شخصية.\n"
             "الأصوات تعتمد على النماذج المثبتة؛ لا يتضمن التطبيق استنساخ الأصوات.\n\n"
             "هذا التطبيق الفرعي مرخص تحت GPL-3.0-or-later، دون أي ضمان. "
             "يسمح بإعادة توزيعه وتعديله وفق الترخيص. راجع LICENSE وTHIRD_PARTY.md بجانب البرنامج. "
@@ -1363,10 +1456,11 @@ class MainWindow(QMainWindow):
             save_preferences(self.data_dir, self.preferences)
         except OSError:
             logging.getLogger(__name__).warning("Could not save local preferences")
-        try:
-            self._preview_directory.cleanup()
-        except OSError:
-            logging.getLogger(__name__).warning("Could not remove temporary preview directory")
+        for temporary in (self.scene_picker, self._preview_directory):
+            try:
+                temporary.cleanup()
+            except OSError:
+                logging.getLogger(__name__).warning("Could not remove temporary preview directory")
 
     def closeEvent(self, event: QCloseEvent) -> None:
         if self.worker:

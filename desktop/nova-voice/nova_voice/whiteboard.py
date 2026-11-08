@@ -1,7 +1,7 @@
 """Deterministic, offline script -> whiteboard HTML -> narrated whiteboard HTML.
 
-No language model, HTML execution or network is involved. Only the saved lesson's
-manifest is used for speech; titles and structural markers are never pronounced.
+Rendering and speech remain offline. Optional reviewed visual plans contain only
+declarative data; no generated HTML/code is executed. Titles are never pronounced.
 """
 
 import argparse
@@ -45,6 +45,7 @@ from .html_export import (
     validate_destination,
 )
 from .language import narration_text, text_language, validate_spoken_language
+from .scenes import SceneError, VisualPlan, review_text
 from .storage import resource_dir
 from .text import ScriptError, read_script, split_text, validate_text
 from .timing import TIMINGS_ID, ClipTiming, TimingMap, data_fingerprint
@@ -126,6 +127,21 @@ class Lesson:
     title: str
     dialogue: bool
     steps: tuple[BoardStep, ...]
+    visuals: VisualPlan | None = None
+
+    def effective_rows(self, index: int, *, speech: bool = False) -> tuple[BoardRow, ...]:
+        rows = self.steps[index].rows
+        if self.visuals is None:
+            return rows
+        return tuple(
+            BoardRow(row.speaker, self.visuals.row_text(index, number, row.text, speech=speech))
+            for number, row in enumerate(rows)
+        )
+
+    def step_speech(self, index: int) -> str:
+        return BoardStep(self.steps[index].title, self.effective_rows(index, speech=True)).speech(
+            self.dialogue
+        )
 
     @property
     def spoken_script(self) -> str:
@@ -133,22 +149,36 @@ class Lesson:
         # coalesces rows; the opt-in measured renderer keeps each saved row ID.
         return "\n".join(
             f"[{row.speaker}] {row.text}" if self.dialogue else row.text
-            for step in self.steps
-            for row in step.rows
+            for index in range(len(self.steps))
+            for row in self.effective_rows(index, speech=True)
         )
 
     @property
     def characters(self) -> int:
-        return sum(len(row.text) for step in self.steps for row in step.rows)
+        return sum(
+            len(row.text)
+            for index in range(len(self.steps))
+            for row in self.effective_rows(index, speech=True)
+        )
 
     @property
     def speakers(self) -> set[int]:
         return {row.speaker for step in self.steps for row in step.rows}
 
     def manifest(self) -> dict:
-        payload = {"schema": 1, **asdict(self)}
-        # Convert tuples to JSON's list representation before equality checks.
+        # Explicit fields preserve every legacy schema-1 payload/fingerprint.
+        payload = {
+            "schema": 1,
+            "script": self.script,
+            "title": self.title,
+            "dialogue": self.dialogue,
+            "steps": [asdict(step) for step in self.steps],
+        }
         payload = json.loads(json.dumps(payload, ensure_ascii=True))
+        if self.visuals is not None:
+            source = {**payload, "fingerprint": _fingerprint(payload)}
+            plan = VisualPlan.from_data(self.visuals.to_data(), source)
+            payload = {**payload, "schema": 2, "visuals": plan.to_data()}
         return {**payload, "fingerprint": _fingerprint(payload)}
 
 
@@ -185,42 +215,43 @@ class WhiteboardPage:
         try:
             manifest = json.loads(inspector.manifests[0])
             if not isinstance(manifest, dict) or (
-                type(manifest.get("schema")) is not int or manifest["schema"] != 1
+                type(manifest.get("schema")) is not int or manifest["schema"] not in (1, 2)
             ):
                 raise ValueError("Unsupported schema")
-            if type(manifest.get("dialogue")) is not bool:
-                raise ValueError("Invalid dialogue flag")
-            if not isinstance(manifest.get("script"), str):
-                raise ValueError("Missing script")
-            try:
-                lesson = parse_lesson(manifest["script"], dialogue=manifest["dialogue"])
-            except WhiteboardError:
-                # A historical maximum-sized lesson can exceed the new page
-                # limit after pair-preserving pagination; still verify its
-                # exact old manifest rather than rejecting valid saved work.
-                lesson = parse_lesson(
-                    manifest["script"], dialogue=manifest["dialogue"], _pair_pages=False
-                )
-            expected = lesson.manifest()
+            if type(manifest.get("dialogue")) is not bool or not isinstance(
+                manifest.get("script"), str
+            ):
+                raise ValueError("Invalid source")
             if not isinstance(manifest.get("fingerprint"), str):
                 raise ValueError("Missing fingerprint")
-            if manifest != expected:
-                # Older supported files paginated strictly every six rows.
-                # Accept only their exact historical manifest, never a changed
-                # row or unchecked fingerprint. Existing HTML is not executed.
-                legacy = parse_lesson(
-                    manifest["script"], dialogue=manifest["dialogue"], _pair_pages=False
-                )
-                expected = legacy.manifest()
-                if manifest != expected:
-                    raise ValueError("Inconsistent lesson data")
-                lesson = legacy
-            if not hmac.compare_digest(manifest["fingerprint"], expected["fingerprint"]):
-                raise ValueError("Changed lesson")
+            for pair_pages in (True, False):
+                try:
+                    candidate = parse_lesson(
+                        manifest["script"], dialogue=manifest["dialogue"], _pair_pages=pair_pages
+                    )
+                    if manifest["schema"] == 2:
+                        plan = VisualPlan.from_data(manifest["visuals"], candidate.manifest())
+                        candidate = replace(candidate, visuals=plan)
+                    expected = candidate.manifest()
+                except (WhiteboardError, SceneError):
+                    continue
+                if manifest == expected and hmac.compare_digest(
+                    manifest["fingerprint"], expected["fingerprint"]
+                ):
+                    lesson = candidate
+                    break
+            else:
+                raise ValueError("Inconsistent lesson data")
         except (ValueError, TypeError, KeyError, RecursionError) as error:
             raise WhiteboardError(
                 "بيانات الدرس ناقصة أو تغيّرت. أعد توليد السبورة من السكريبت في الخطوة 1."
             ) from error
+        if (
+            lesson.visuals
+            and lesson.visuals.to_data()["policy"] == "sacred"
+            and inspector.recordings
+        ):
+            raise WhiteboardError("الصوت في وضع النصوص المقدسة غير مدعوم في هذه النسخة.")
         if len(inspector.styles) > 1:
             raise WhiteboardError("بيانات تخصيص السبورة مكررة؛ استخدم نسخة سليمة من الملف.")
         try:
@@ -458,6 +489,8 @@ def whiteboard_html(lesson: Lesson, appearance: BoardAppearance | None = None) -
         + "\n"
         + (assets / "whiteboard-timing.js").read_text(encoding="utf-8")
         + "\n"
+        + (assets / "whiteboard-scenes.js").read_text(encoding="utf-8")
+        + "\n"
         + (assets / "whiteboard.js").read_text(encoding="utf-8")
     )
     if "</script" in controller.lower() or "</style" in css.lower():
@@ -466,9 +499,16 @@ def whiteboard_html(lesson: Lesson, appearance: BoardAppearance | None = None) -
         "<section><h2>"
         + escape(step.title)
         + "</h2>"
-        + "".join('<p dir="auto">' + escape(row.text) + "</p>" for row in step.rows)
+        + (
+            "<p>" + escape(lesson.visuals.to_data()["steps"][index]["description"]) + "</p>"
+            if lesson.visuals
+            else ""
+        )
+        + "".join(
+            '<p dir="auto">' + escape(row.text) + "</p>" for row in lesson.effective_rows(index)
+        )
         + "</section>"
-        for step in lesson.steps
+        for index, step in enumerate(lesson.steps)
     )
     try:
         characters = character_templates(assets)
@@ -545,9 +585,18 @@ def save_whiteboard(
 def validate_lesson_cast(
     lesson: Lesson, cast: Mapping[int, DialogueVoice], options: RenderOptions
 ) -> None:
+    if lesson.visuals and lesson.visuals.to_data()["policy"] == "sacred":
+        raise VoiceError(
+            "وضع النصوص المقدسة يعرض النص المراجع فقط في هذه النسخة. لا "
+            "يُستخدم Piper كتلاوة أو تجويد معتمدين."
+        )
     if lesson.dialogue:
         validate_dialogue_cast(
-            [DialogueTurn(row.speaker, row.text) for step in lesson.steps for row in step.rows],
+            [
+                DialogueTurn(row.speaker, row.text)
+                for index in range(len(lesson.steps))
+                for row in lesson.effective_rows(index, speech=True)
+            ],
             cast,
             options,
         )
@@ -555,8 +604,8 @@ def validate_lesson_cast(
         if 1 not in cast:
             raise VoiceError("اختر نموذج الراوي قبل توليد صوت السبورة.")
         replace(options, speaker_id=cast[1].speaker_id).validate(cast[1].voice)
-        for step in lesson.steps:
-            validate_spoken_language(step.speech(False), cast[1].voice.language_family)
+        for index in range(len(lesson.steps)):
+            validate_spoken_language(lesson.step_speech(index), cast[1].voice.language_family)
 
 
 def render_whiteboard_audio(
@@ -578,6 +627,10 @@ def render_whiteboard_audio(
     board = WhiteboardPage.load(source)
     validate_destination(board.page.source, destination)
     validate_lesson_cast(board.lesson, cast, options)
+    if board.lesson.visuals and not callable(getattr(engine, "render_lines", None)):
+        raise WhiteboardError(
+            "المشاهد المعتمدة تحتاج محرك قياس توقيت السطور. استخدم نسخة Nova كاملة حديثة."
+        )
     if audio_format not in ("mp3", "wav"):
         raise WhiteboardError("اختر MP3 أو WAV للصوت المضمّن في السبورة.")
     if not 0 <= turn_pause_ms <= 2000:
@@ -590,8 +643,9 @@ def render_whiteboard_audio(
     with tempfile.TemporaryDirectory(prefix="nova-whiteboard-speech-") as folder:
         for index, step in enumerate(board.lesson.steps):
             check_cancelled(cancel)
-            text = step.speech(board.lesson.dialogue)
-            weight = sum(len(row.text) for row in step.rows)
+            text = board.lesson.step_speech(index)
+            speech_rows = board.lesson.effective_rows(index, speech=True)
+            weight = sum(len(row.text) for row in speech_rows)
 
             def speech_progress(value: int, completed=completed, weight=weight) -> None:
                 if value < 0:
@@ -617,7 +671,7 @@ def render_whiteboard_audio(
                         )
                         else 0,
                     )
-                    for row_index, row in enumerate(step.rows)
+                    for row_index, row in enumerate(speech_rows)
                 )
                 result = render_lines(lines, cast, clip, options, cancel, speech_progress)
                 if not isinstance(result.timing, ClipTiming):
@@ -779,11 +833,28 @@ def main() -> None:
     parser.add_argument("script", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("--dialogue", action="store_true", help="تفعيل وسوم [1]/[2]")
+    parser.add_argument("--scene-plan", type=Path, help="خطة JSON محلية مرتبطة بالسكريبت")
+    parser.add_argument(
+        "--approve-scenes", action="store_true", help="تأكيد مراجعة واعتماد هذه الخطة"
+    )
     args = parser.parse_args()
+    if args.approve_scenes and not args.scene_plan:
+        parser.error("--approve-scenes يحتاج --scene-plan")
     try:
         lesson = parse_lesson(read_script(args.script), dialogue=args.dialogue)
+        if args.scene_plan:
+            plan = VisualPlan.load(args.scene_plan, lesson.manifest())
+            if not args.approve_scenes:
+                print(review_text(plan, lesson.manifest()))
+                parser.exit(
+                    2, "راجع الخطة والمعاينة ثم أضف --approve-scenes إن اعتمدتها؛ لم يُكتب HTML.\n"
+                )
+            lesson = replace(lesson, visuals=plan)
+        validate_destination(args.script, args.output)
+        if args.scene_plan:
+            validate_destination(args.scene_plan, args.output)
         result = save_whiteboard(lesson, args.output)
-    except (OSError, ScriptError, HtmlExportError) as error:
+    except (OSError, UnicodeError, ScriptError, HtmlExportError) as error:
         parser.exit(1, f"{error}\n")
     print(f"Saved {len(lesson.steps)} steps: {result.path}")
 

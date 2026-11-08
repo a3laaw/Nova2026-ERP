@@ -665,3 +665,126 @@ def test_english_model_picker_discloses_uk_us_without_changing_the_selected_mode
     assert picker.selected_voice() is us
     assert "US" in picker.details.text()
     assert picker.selected_voice().model_path == original.model_path
+
+
+def test_visual_demo_is_a_draft_until_explicit_teacher_approval(window, monkeypatch):
+    window._scene_example()
+    panel = window.scene_picker
+    assert panel.use_plan.isChecked()
+    assert panel._approved is None
+    assert not window.create_board_button.isEnabled()
+    assert "تفاحتان" in panel.review.toPlainText()
+    monkeypatch.setattr(
+        QMessageBox, "question", lambda *args, **kwargs: QMessageBox.StandardButton.Yes
+    )
+    panel._approve()
+    assert panel._approved is not None
+    assert window.create_board_button.isEnabled()
+    assert window._lesson_for_export().manifest()["schema"] == 2
+    assert window._source_lesson().manifest()["schema"] == 1
+
+
+def test_source_or_json_edits_invalidate_visual_approval_and_network_consent(window, monkeypatch):
+    window._scene_example()
+    panel = window.scene_picker
+    monkeypatch.setattr(
+        QMessageBox, "question", lambda *args, **kwargs: QMessageBox.StandardButton.Yes
+    )
+    panel._approve()
+    panel.consent.setChecked(True)
+    window.editor.insertPlainText(" Updated.")
+    assert panel._approved is None
+    assert not panel.consent.isChecked()
+    assert not window.create_board_button.isEnabled()
+    panel.use_plan.setChecked(False)
+    assert window.create_board_button.isEnabled()
+    assert window._lesson_for_export().manifest()["schema"] == 1
+
+
+def test_same_plan_reimport_cannot_inherit_previous_approval(window, monkeypatch):
+    window._scene_example()
+    panel = window.scene_picker
+    monkeypatch.setattr(
+        QMessageBox, "question", lambda *args, **kwargs: QMessageBox.StandardButton.Yes
+    )
+    panel._approve()
+    plan = panel._approved
+    panel.set_draft(plan)
+    assert panel._approved is None
+    assert not window.create_board_button.isEnabled()
+
+
+def test_cloud_snapshot_is_per_request_and_key_is_cleared_without_saving(window, monkeypatch):
+    window.editor.setPlainText("A short generic lesson.")
+    panel, requests = window.scene_picker, []
+    panel.requested.disconnect()
+    panel.requested.connect(requests.append)
+    panel.key.setText("test-only-NOT-A-REAL-KEY")
+    panel.adult.setChecked(True)
+    panel.consent.setChecked(True)
+    panel._request()
+    assert len(requests) == 1
+    assert requests[0].consent and requests[0].adult
+    assert requests[0].source == window._source_lesson().manifest()
+    assert not panel.key.text() and not panel.consent.isChecked()
+    assert "test-only" not in repr(requests[0])
+    from dataclasses import asdict
+
+    assert "test-only" not in repr(asdict(window.preferences))
+
+
+def test_cloud_request_needs_consent_and_adult_before_emitting(window, monkeypatch):
+    warnings, requests = [], []
+    monkeypatch.setattr(QMessageBox, "warning", lambda *args, **kwargs: warnings.append(args))
+    window.editor.setPlainText("A short generic lesson.")
+    panel = window.scene_picker
+    panel.requested.disconnect()
+    panel.requested.connect(requests.append)
+    panel.key.setText("test-only-NOT-A-REAL-KEY")
+    panel._request()
+    panel.consent.setChecked(True)
+    panel._request()
+    assert len(warnings) == 2 and requests == []
+
+
+def test_visual_result_goes_to_review_not_audio_result_handler(window):
+    from nova_voice.scene_examples import VISUAL_EXAMPLE, example_plan
+
+    window.editor.setPlainText(VISUAL_EXAMPLE)
+    window._progress_kind = "scene-plan"
+    window._task_success(example_plan(window._source_lesson().manifest()))
+    assert window.scene_picker._approved is None
+    assert window.scene_picker.use_plan.isChecked()
+    assert not window.play_button.isEnabled()
+    assert "مسودة" in window.status.text()
+
+
+def test_sacred_mode_blocks_drawings_and_auto_recitation(window, monkeypatch):
+    from nova_voice.scenes import VisualPlan, empty_plan
+
+    window.editor.setPlainText("نص مراجع كما كتبه المعلم.")
+    panel, source = window.scene_picker, window._source_lesson().manifest()
+    data = empty_plan(source)
+    data["policy"] = "sacred"
+    panel.set_draft(VisualPlan.from_data(data, source))
+    monkeypatch.setattr(
+        QMessageBox, "question", lambda *args, **kwargs: QMessageBox.StandardButton.Yes
+    )
+    panel._approve()
+    assert panel._approved is not None
+    assert not panel.audio_allowed()
+    assert window.create_board_button.isEnabled()
+    assert not window.combined_board_button.isEnabled()
+
+
+def test_sacred_authoring_policy_also_guards_audio_only_and_keyboard_paths(window, voice_files):
+    from nova_voice.voices import VoiceError
+
+    add_test_voice(window, voice_files)
+    window.editor.setPlainText("A reviewed source text.")
+    window.scene_picker.policy.setCurrentIndex(1)
+    window.scene_picker.use_plan.setChecked(False)
+    assert not window.generate_button.isEnabled()
+    assert not window.preview_button.isEnabled()
+    with pytest.raises(VoiceError):
+        window._options()
