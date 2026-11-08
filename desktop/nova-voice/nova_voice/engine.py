@@ -10,9 +10,10 @@ from pathlib import Path
 from threading import Event, Lock
 from typing import Any
 
-from .dialogue import DialogueTurn, has_voice_markers, parse_dialogue
+from .dialogue import DialogueTurn, has_voice_markers, merge_turns, parse_dialogue
+from .language import narration_text, validate_spoken_language
 from .pcm import resample_pcm16
-from .text import ScriptError, split_text
+from .text import ScriptError, split_text, validate_text
 from .voices import VoiceError, VoiceSpec, check_cancelled
 
 
@@ -75,6 +76,8 @@ def validate_dialogue_cast(
                 "الصوتان يستخدمان النموذج والمتحدث نفسيهما. اختر نموذجًا آخر للصوت الثاني، "
                 "أو متحدثًا مختلفًا داخل نموذج متعدد المتحدثين."
             )
+    for turn in turns:
+        validate_spoken_language(turn.text, cast[turn.speaker].voice.language_family, turn.speaker)
 
 
 class SpeechEngine:
@@ -86,7 +89,11 @@ class SpeechEngine:
 
     def _load(self, spec: VoiceSpec) -> Any:
         current = VoiceSpec.from_path(spec.model_path, spec.config_path)
-        if (current.sample_rate, current.num_speakers) != (spec.sample_rate, spec.num_speakers):
+        if (current.sample_rate, current.num_speakers, current.language_family) != (
+            spec.sample_rate,
+            spec.num_speakers,
+            spec.language_family,
+        ):
             raise VoiceError("تغيّرت إعدادات النموذج. اضغط «تحديث» ثم اختر الصوت مجددًا.")
         key = (
             str(spec.model_path),
@@ -131,7 +138,10 @@ class SpeechEngine:
             raise ScriptError(
                 "السكريبت يحتوي وسوم أصوات. اختر «حوار بين صوتين» حتى لا تُقرأ الوسوم."
             )
+        text = validate_text(text)
         options.validate(voice)
+        validate_spoken_language(text, voice.language_family)
+        text = narration_text(text)
         blocks = [
             _SpeechBlock(block.text, voice, options, options.pause_ms if block.paragraph_end else 0)
             for block in split_text(text)
@@ -157,6 +167,9 @@ class SpeechEngine:
         """
         turns = parse_dialogue(script)
         validate_dialogue_cast(turns, cast, options)
+        turns = merge_turns(
+            [DialogueTurn(turn.speaker, narration_text(turn.text)) for turn in turns]
+        )
         if not 0 <= turn_pause_ms <= 2000:
             raise AudioError("فاصل الردود يجب أن يكون بين 0 و2000 ملّي ثانية.")
         blocks: list[_SpeechBlock] = []

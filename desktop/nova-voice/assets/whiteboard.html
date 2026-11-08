@@ -37,6 +37,11 @@
         </div>
         <div class="board-footer"><span id="writing-status" role="status">السبورة جاهزة</span><span id="position-label">0%</span></div>
       </section>
+      <section id="character-stage" class="character-stage" aria-label="شخصيات الدرس" hidden>
+        <div id="character-role-1" class="character-card" hidden><div class="character-art"></div><p class="character-caption"></p></div>
+        <p class="character-note">أصدقاء التعلّم<br><span>حركات تشجيعية؛ ليست مزامنة شفاه أو أصواتًا جديدة</span></p>
+        <div id="character-role-2" class="character-card" hidden><div class="character-art"></div><p class="character-caption"></p></div>
+      </section>
       <section class="controls-panel" aria-label="التشغيل والسرعة">
         <div class="transport">
           <button id="wb-play" class="primary" type="button">تشغيل الخطوة</button>
@@ -48,6 +53,28 @@
         <div class="playback-options"><label><input id="wb-auto-next" type="checkbox"> الانتقال إلى الخطوة التالية تلقائيًا</label><span id="audio-badge" class="audio-badge">نسخة بلا صوت</span></div>
         <p id="wb-status" class="hint" role="status">هذه نسخة السبورة قبل توليد الصوت. أضف الصوت من الخطوة 2 داخل Nova Voice؛ الكتابة تعمل الآن دون نموذج صوتي.</p>
       </section>
+      <details id="wb-customization" class="customization-panel">
+        <summary>ألوان الجمل ومكتبة شخصيات الأطفال</summary>
+        <div class="customization-content">
+          <p class="hint">اختر لونًا لكل دور أو لكل جملة. اختر شخصية للدور الأول أو الثاني؛ الشخصيات لا تغيّر النموذج الصوتي أو لغته. التغييرات مؤقتة حتى تنزيل نسخة بالتخصيصات.</p>
+          <div class="color-tools"><label for="wb-language-layout">ترتيب اللغتين <select id="wb-language-layout"><option value="stacked">الإنجليزي فوق والعربي تحته</option><option value="columns">عمودان: English يسار / العربي يمين</option><option value="script">ترتيب السكريبت</option></select></label></div>
+          <div class="color-tools">
+            <label for="wb-color-1">لون الدور 1 <input id="wb-color-1" type="color" value="#2563eb"></label>
+            <label for="wb-color-2">لون الدور 2 <input id="wb-color-2" type="color" value="#c2410c"></label>
+            <label class="sentence-choice" for="wb-sentence">جملة من الخطوة الحالية <select id="wb-sentence"></select></label>
+            <label for="wb-sentence-color">لون الجملة <input id="wb-sentence-color" type="color" value="#2563eb"></label>
+            <button id="wb-clear-sentence-color" type="button">إعادة لون الدور للجملة</button>
+          </div>
+          <div class="library-tools">
+            <label for="wb-character-role">الشخصية للدور <select id="wb-character-role"><option value="1">الدور 1</option><option value="2">الدور 2</option></select></label>
+            <label for="wb-character-filter">المكتبة <select id="wb-character-filter"><option value="all">كل الشخصيات</option><option value="boy">الأولاد</option><option value="girl">البنات</option></select></label>
+            <label><input id="wb-character-motion" type="checkbox" checked> حركة أثناء التشغيل</label>
+          </div>
+          <div id="wb-character-library" class="character-library" aria-label="اختر شخصية كرتونية"></div>
+          <div class="customization-actions"><button id="wb-save-customized" class="primary" type="button">تنزيل نسخة بالتخصيصات</button><button id="wb-reset-appearance" type="button">إعادة التخصيصات الافتراضية</button></div>
+          <p id="wb-customization-status" class="hint" role="status">كل الألوان والشخصيات محلية ومضمّنة في HTML. الشخصيات ثابتة عند الإيقاف أو تفعيل تقليل الحركة.</p>
+        </div>
+      </details>
       <details class="transcript-panel"><summary>نص الخطوة · نسخة مقروءة</summary><div id="step-transcript"></div></details>
     </div>
   </div>
@@ -56,6 +83,9 @@
 </main>
 <script id="nova-whiteboard-data" type="application/json">@@NOVA_DATA@@</script>
 @@NOVA_AUDIO@@
+@@NOVA_APPEARANCE@@
+@@NOVA_CATALOG@@
+@@NOVA_CHARACTERS@@
 <script>@@NOVA_SCRIPT@@</script>
 </body>
 </html>

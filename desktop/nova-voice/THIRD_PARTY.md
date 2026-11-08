@@ -48,3 +48,12 @@ commercially usable and does not clone voices.
 
 `tests/fixtures/test_voice.onnx` generates silence, not speech. Its provenance and
 GPL license are documented in `tests/fixtures/README.md`.
+
+
+## Local whiteboard character artwork
+
+The six SVG children under `assets/characters/` are original vector artwork created
+for Nova Voice and are distributed under this app's GPL-3.0-or-later license.
+They do not use licensed cartoon franchises, remote images, generated video, or
+an additional model. Their decorative CSS motion does not represent lip sync or
+voice identity. No third-party character/image dependency is introduced.

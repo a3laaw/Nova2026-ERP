@@ -12,7 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-ARCHIVE_NAME = "NovaVoice-Source-v0.4.0.rar"
+ARCHIVE_NAME = "NovaVoice-Source-v0.5.0.rar"
 
 
 def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
@@ -26,13 +26,19 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         "/RUN-FIRST-AR.html": (delivery / "RUN-FIRST-AR.html", html, False),
         "/SHA256SUMS.txt": (delivery / "SHA256SUMS.txt", "text/plain; charset=utf-8", False),
         "/preview": (source / "examples" / "greetings-whiteboard.html", html, False),
+        "/preview-kids": (source / "examples" / "greetings-kids.html", html, False),
+        "/desktop/nova-voice/examples/greetings-kids.html": (
+            source / "examples" / "greetings-kids.html",
+            html,
+            False,
+        ),
         "/desktop/nova-voice/examples/greetings-whiteboard.html": (
             source / "examples" / "greetings-whiteboard.html",
             html,
             False,
         ),
     }
-    for name in ("HTML-GUIDE.md", "WHITEBOARD-GUIDE.md"):
+    for name in ("HTML-GUIDE.md", "WHITEBOARD-GUIDE.md", "KIDS-GUIDE-AR.md"):
         routes["/desktop/nova-voice/" + name] = (
             source / name,
             "text/plain; charset=utf-8",

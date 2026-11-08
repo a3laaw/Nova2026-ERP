@@ -1,8 +1,8 @@
 # الملفات الجاهزة للتسليم
 
-## النسخة الحالية — Nova Voice 0.4
+## النسخة الحالية — Nova Voice 0.5
 
-- **[تحميل حزمة RAR](nova-voice/NovaVoice-Source-v0.4.0.rar)**
+- **[تحميل حزمة RAR](nova-voice/NovaVoice-Source-v0.5.0.rar)**
 - [شرح التشغيل على Windows](nova-voice/RUN-FIRST-AR.html)
 - [واجهة التحميل والشرح](nova-voice/index.html)
 - [محتويات التسليم](nova-voice/README.md)

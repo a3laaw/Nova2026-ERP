@@ -20,7 +20,15 @@ from html.parser import HTMLParser
 from pathlib import Path
 from threading import Event
 
-from .dialogue import DialogueTurn, has_voice_markers, parse_dialogue
+from .appearance import (
+    CATALOG_ID,
+    STYLE_ID,
+    AppearanceError,
+    BoardAppearance,
+    character_catalog,
+    character_templates,
+)
+from .dialogue import DialogueTurn, has_voice_markers, merge_turns, parse_dialogue
 from .engine import (
     DialogueVoice,
     RenderOptions,
@@ -36,6 +44,7 @@ from .html_export import (
     HtmlPage,
     validate_destination,
 )
+from .language import narration_text, text_language, validate_spoken_language
 from .storage import resource_dir
 from .text import ScriptError, read_script, split_text, validate_text
 from .voices import VoiceError, check_cancelled
@@ -102,9 +111,12 @@ class BoardStep:
     rows: tuple[BoardRow, ...]
 
     def speech(self, dialogue: bool) -> str:
-        return "\n".join(
-            f"[{row.speaker}] {row.text}" if dialogue else row.text for row in self.rows
+        turns = merge_turns(
+            [DialogueTurn(row.speaker, narration_text(row.text)) for row in self.rows]
         )
+        if dialogue:
+            return "\n".join(f"[{turn.speaker}] {turn.text}" for turn in turns)
+        return " ".join(turn.text for turn in turns)
 
 
 @dataclass(frozen=True)
@@ -116,7 +128,13 @@ class Lesson:
 
     @property
     def spoken_script(self) -> str:
-        return "\n".join(step.speech(self.dialogue) for step in self.steps)
+        # Keep the saved-lesson transcript stable; display rows are not the
+        # synthesis units. BoardStep.speech coalesces them only for playback.
+        return "\n".join(
+            f"[{row.speaker}] {row.text}" if self.dialogue else row.text
+            for step in self.steps
+            for row in step.rows
+        )
 
     @property
     def characters(self) -> int:
@@ -137,12 +155,14 @@ class Lesson:
 class WhiteboardResult:
     path: Path
     lesson: Lesson
+    appearance: BoardAppearance = BoardAppearance()
 
 
 @dataclass(frozen=True)
 class WhiteboardPage:
     page: HtmlPage
     lesson: Lesson
+    appearance: BoardAppearance = BoardAppearance()
 
     @classmethod
     def load(cls, source: Path) -> "WhiteboardPage":
@@ -169,19 +189,50 @@ class WhiteboardPage:
                 raise ValueError("Invalid dialogue flag")
             if not isinstance(manifest.get("script"), str):
                 raise ValueError("Missing script")
-            lesson = parse_lesson(manifest["script"], dialogue=manifest["dialogue"])
+            try:
+                lesson = parse_lesson(manifest["script"], dialogue=manifest["dialogue"])
+            except WhiteboardError:
+                # A historical maximum-sized lesson can exceed the new page
+                # limit after pair-preserving pagination; still verify its
+                # exact old manifest rather than rejecting valid saved work.
+                lesson = parse_lesson(
+                    manifest["script"], dialogue=manifest["dialogue"], _pair_pages=False
+                )
             expected = lesson.manifest()
             if not isinstance(manifest.get("fingerprint"), str):
                 raise ValueError("Missing fingerprint")
+            if manifest != expected:
+                # Older supported files paginated strictly every six rows.
+                # Accept only their exact historical manifest, never a changed
+                # row or unchecked fingerprint. Existing HTML is not executed.
+                legacy = parse_lesson(
+                    manifest["script"], dialogue=manifest["dialogue"], _pair_pages=False
+                )
+                expected = legacy.manifest()
+                if manifest != expected:
+                    raise ValueError("Inconsistent lesson data")
+                lesson = legacy
             if not hmac.compare_digest(manifest["fingerprint"], expected["fingerprint"]):
                 raise ValueError("Changed lesson")
-            if manifest != expected:
-                raise ValueError("Inconsistent lesson data")
         except (ValueError, TypeError, KeyError, RecursionError) as error:
             raise WhiteboardError(
                 "بيانات الدرس ناقصة أو تغيّرت. أعد توليد السبورة من السكريبت في الخطوة 1."
             ) from error
-        return cls(page, lesson)
+        if len(inspector.styles) > 1:
+            raise WhiteboardError("بيانات تخصيص السبورة مكررة؛ استخدم نسخة سليمة من الملف.")
+        try:
+            appearance = (
+                BoardAppearance.from_data(
+                    json.loads(inspector.styles[0]), tuple(len(step.rows) for step in lesson.steps)
+                )
+                if inspector.styles
+                else BoardAppearance()
+            )
+        except (ValueError, TypeError, KeyError, RecursionError) as error:
+            raise WhiteboardError(
+                "ألوان السبورة أو شخصياتها غير صالحة. أعد حفظ التخصيصات."
+            ) from error
+        return cls(page, lesson, appearance)
 
 
 class _ManifestInspector(HTMLParser):
@@ -189,7 +240,8 @@ class _ManifestInspector(HTMLParser):
         super().__init__(convert_charrefs=False)
         self.manifests: list[str] = []
         self.recordings = False
-        self._collecting = False
+        self.styles: list[str] = []
+        self._collecting: str | None = None
         self._parts: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
@@ -198,10 +250,10 @@ class _ManifestInspector(HTMLParser):
         attributes = dict(attrs)
         if attributes.get("id") == RECORDINGS_ID:
             self.recordings = True
-        if attributes.get("id") == DATA_ID:
+        if attributes.get("id") in (DATA_ID, STYLE_ID):
             if attributes.get("type") != "application/json":
                 raise WhiteboardError("بيانات السبورة ليست بالصيغة المدعومة.")
-            self._collecting = True
+            self._collecting = attributes["id"]
             self._parts = []
 
     def handle_data(self, data: str) -> None:
@@ -210,8 +262,9 @@ class _ManifestInspector(HTMLParser):
 
     def handle_endtag(self, tag: str) -> None:
         if tag == "script" and self._collecting:
-            self.manifests.append("".join(self._parts))
-            self._collecting = False
+            target = self.manifests if self._collecting == DATA_ID else self.styles
+            target.append("".join(self._parts))
+            self._collecting = None
 
 
 def _fingerprint(payload: dict) -> str:
@@ -229,7 +282,7 @@ def _heading(value: str) -> str:
     return value
 
 
-def parse_lesson(script: str, *, dialogue: bool = False) -> Lesson:
+def parse_lesson(script: str, *, dialogue: bool = False, _pair_pages: bool = True) -> Lesson:
     """# title, ## step; otherwise blank-line-separated paragraphs become steps.
 
     In dialogue mode [1]/[2] tags assign voices on separate lines or inline;
@@ -310,9 +363,22 @@ def parse_lesson(script: str, *, dialogue: bool = False) -> Lesson:
         if not rows:
             raise WhiteboardError("إحدى خطوات الدرس بلا كلمات. أضف محتواها ثم حاول مجددًا.")
         name = name or f"الخطوة {len(steps) + 1}"
-        for offset in range(0, len(rows), ROWS_PER_STEP):
-            page_title = name if not offset else f"{name} · متابعة {offset // ROWS_PER_STEP + 1}"
-            steps.append(BoardStep(page_title, rows[offset : offset + ROWS_PER_STEP]))
+        offset = page_number = 0
+        while offset < len(rows):
+            end = min(offset + ROWS_PER_STEP, len(rows))
+            # Keep an adjacent English phrase and its Arabic counterpart on the
+            # same page when they fit. This does not invent or translate pairs.
+            if (
+                _pair_pages
+                and end < len(rows)
+                and end - offset > 1
+                and text_language(rows[end - 1].text) == "en"
+                and text_language(rows[end].text) == "ar"
+            ):
+                end -= 1
+            page_title = name if not page_number else f"{name} · متابعة {page_number + 1}"
+            steps.append(BoardStep(page_title, rows[offset:end]))
+            offset, page_number = end, page_number + 1
             if len(steps) > MAX_STEPS:
                 raise WhiteboardError(f"الدرس أطول من {MAX_STEPS} خطوة. قسّم السكريبت إلى دروس.")
     return Lesson(script, title, dialogue, tuple(steps))
@@ -326,11 +392,18 @@ def _safe_json(value: object) -> str:
     )
 
 
-def whiteboard_html(lesson: Lesson) -> str:
+def whiteboard_html(lesson: Lesson, appearance: BoardAppearance | None = None) -> str:
+    appearance = (appearance or BoardAppearance()).validated(
+        tuple(len(step.rows) for step in lesson.steps)
+    )
     assets = resource_dir() / "assets"
     template = (assets / "whiteboard.html").read_text(encoding="utf-8")
     css = (assets / "whiteboard.css").read_text(encoding="utf-8")
-    controller = (assets / "whiteboard.js").read_text(encoding="utf-8")
+    controller = (
+        (assets / "whiteboard-appearance.js").read_text(encoding="utf-8")
+        + "\n"
+        + (assets / "whiteboard.js").read_text(encoding="utf-8")
+    )
     if "</script" in controller.lower() or "</style" in css.lower():
         raise WhiteboardError("ملفات قالب السبورة غير صالحة. استخدم حزمة Nova Voice كاملة.")
     accessible = "".join(
@@ -341,6 +414,10 @@ def whiteboard_html(lesson: Lesson) -> str:
         + "</section>"
         for step in lesson.steps
     )
+    try:
+        characters = character_templates(assets)
+    except (AppearanceError, OSError, ValueError) as error:
+        raise WhiteboardError("مكتبة الشخصيات ناقصة أو غير صالحة. استخدم الحزمة كاملة.") from error
     values = {
         "TITLE": escape(lesson.title),
         "CSS": css,
@@ -348,6 +425,13 @@ def whiteboard_html(lesson: Lesson) -> str:
         "DATA": _safe_json(lesson.manifest()),
         "FALLBACK": accessible,
         "AUDIO": AUDIO_MARKER,
+        "CHARACTERS": characters,
+        "APPEARANCE": f'<script id="{STYLE_ID}" type="application/json">'
+        + _safe_json(appearance.to_data())
+        + "</script>",
+        "CATALOG": f'<script id="{CATALOG_ID}" type="application/json">'
+        + _safe_json(character_catalog())
+        + "</script>",
     }
     tokens = re.findall(r"@@NOVA_([A-Z_]+)@@", template)
     if set(tokens) != set(values) or any(
@@ -386,15 +470,20 @@ def save_whiteboard(
     destination: Path,
     cancel: Event | None = None,
     progress: Callable[[int], None] | None = None,
+    *,
+    appearance: BoardAppearance | None = None,
 ) -> WhiteboardResult:
     cancel = cancel if cancel is not None else Event()
     progress = progress or (lambda _: None)
     check_cancelled(cancel)
-    content = whiteboard_html(lesson).encode("utf-8")
+    appearance = (appearance or BoardAppearance()).validated(
+        tuple(len(step.rows) for step in lesson.steps)
+    )
+    content = whiteboard_html(lesson, appearance).encode("utf-8")
     progress(50)
     path = _atomic_write(destination, lambda output: output.write(content), cancel)
     progress(100)
-    return WhiteboardResult(path, lesson)
+    return WhiteboardResult(path, lesson, appearance)
 
 
 def validate_lesson_cast(
@@ -410,6 +499,8 @@ def validate_lesson_cast(
         if 1 not in cast:
             raise VoiceError("اختر نموذج الراوي قبل توليد صوت السبورة.")
         replace(options, speaker_id=cast[1].speaker_id).validate(cast[1].voice)
+        for step in lesson.steps:
+            validate_spoken_language(step.speech(False), cast[1].voice.language_family)
 
 
 def render_whiteboard_audio(

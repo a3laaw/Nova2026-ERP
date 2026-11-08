@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 )
 
 from . import __version__
+from .appearance_picker import AppearancePicker
 from .controls import button, card, clock, combo, label
 from .dialogue import (
     BILINGUAL_EXAMPLE,
@@ -177,6 +178,7 @@ class MainWindow(QMainWindow):
             "setup",
             True,
         )
+        self.dialogue_hint.setTextFormat(Qt.TextFormat.RichText)
         editor_layout.addWidget(self.dialogue_hint)
         self.editor = QPlainTextEdit()
         self.editor.setAccessibleName("نص السكريبت")
@@ -322,6 +324,9 @@ class MainWindow(QMainWindow):
         board_audio_actions.addWidget(self.board_audio_button)
         board_audio_actions.addStretch()
         board_layout.addLayout(board_audio_actions)
+        self.appearance_picker = AppearancePicker()
+        self.appearance_picker.sentences_requested.connect(self._refresh_appearance_sentences)
+        board_layout.addWidget(self.appearance_picker)
         root.addWidget(board_card)
 
         html_card, html_layout = card()
@@ -529,6 +534,7 @@ class MainWindow(QMainWindow):
 
     def _update_text_stats(self) -> None:
         text = self.editor.toPlainText()
+        self.appearance_picker.invalidate_rows()
         self.text_stats.setText(
             f"{len(text):,} / {MAX_CHARACTERS:,} حرف   ·   {len(text.split()):,} كلمة"
         )
@@ -569,6 +575,7 @@ class MainWindow(QMainWindow):
         for widget in (
             self.primary_voice,
             self.choose_html_button,
+            self.appearance_picker,
             self.choose_board_button,
             self.board_example_button,
             self.secondary_voice,
@@ -705,6 +712,16 @@ class MainWindow(QMainWindow):
                 return None
         return path
 
+    def _refresh_appearance_sentences(self) -> None:
+        if self.worker:
+            return
+        try:
+            lesson = parse_lesson(self.editor.toPlainText(), dialogue=self.dialogue_mode())
+        except ScriptError as error:
+            QMessageBox.warning(self, "راجع السكريبت قبل اختيار ألوان الجمل", str(error))
+            return
+        self.appearance_picker.set_rows(lesson)
+
     def generate_whiteboard(self) -> None:
         if self.worker:
             return
@@ -723,9 +740,13 @@ class MainWindow(QMainWindow):
         if path is None:
             return
         self.preferences.output_dir = str(path.parent)
+        appearance = self.appearance_picker.snapshot(lesson)
         self._release_player()
         self._start_task(
-            lambda cancel, progress: save_whiteboard(lesson, path, cancel, progress), "whiteboard"
+            lambda cancel, progress: save_whiteboard(
+                lesson, path, cancel, progress, appearance=appearance
+            ),
+            "whiteboard",
         )
 
     def _choose_whiteboard(self) -> None:
@@ -745,6 +766,7 @@ class MainWindow(QMainWindow):
         self._board_lesson = board.lesson
         self._board_open_file = board.page.source
         self.mode_combo.setCurrentIndex(1 if board.lesson.dialogue else 0)
+        self.appearance_picker.restore(board.appearance, board.lesson)
         self._update_buttons()
 
     def generate_whiteboard_audio(self) -> None:
@@ -958,6 +980,7 @@ class MainWindow(QMainWindow):
             self.status.setText("تمت إضافة النموذج. اكتب السكريبت لتجربة الصوت.")
             return
         if isinstance(result, WhiteboardResult):
+            self.appearance_picker.restore(result.appearance, result.lesson)
             self._board_source = result.path
             self._board_lesson = result.lesson
             self._board_open_file = result.path

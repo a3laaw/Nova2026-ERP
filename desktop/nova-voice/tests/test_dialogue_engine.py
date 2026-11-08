@@ -60,7 +60,7 @@ def test_each_voice_is_loaded_once_not_on_every_reply(tmp_path, bilingual_cast, 
 
     monkeypatch.setattr(PiperVoice, "load", load)
     engine = SpeechEngine()
-    script = "\n".join(["[1] Hello.", "[2] Reply."] * 6)
+    script = "\n".join(["[1] مرحبًا.", "[2] Reply."] * 6)
     engine.render_dialogue(script, bilingual_cast, tmp_path / "first.wav", RenderOptions())
     engine.render_dialogue(script, bilingual_cast, tmp_path / "second.wav", RenderOptions())
     assert len(loads) == 2

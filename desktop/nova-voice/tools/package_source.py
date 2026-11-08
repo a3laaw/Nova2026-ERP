@@ -21,6 +21,7 @@ FILES = (
     "RUN-FIRST-AR.html",
     "HTML-GUIDE.md",
     "WHITEBOARD-GUIDE.md",
+    "KIDS-GUIDE-AR.md",
     "LICENSE",
     "THIRD_PARTY.md",
     "Setup-Windows.bat",

@@ -3,6 +3,7 @@
   const $ = id => document.getElementById(id);
   const lesson = JSON.parse($("nova-whiteboard-data").textContent);
   const NS = "http://www.w3.org/2000/svg";
+  const appearance = window.novaWhiteboardAppearance;
   const svg = $("whiteboard"), rowsGroup = $("wb-rows"), defs = $("wb-defs"), pen = $("wb-pen");
   const audio = $("wb-audio"), playButton = $("wb-play"), rateInput = $("wb-rate");
   const reducedMotion = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -73,6 +74,8 @@
       pen.setAttribute("transform", `translate(${x} ${y})`);
       pen.setAttribute("opacity", "1");
     } else pen.setAttribute("opacity", "0");
+    const activeLine = active ? active.line : lines.find(line => elapsed < line.start + line.weight) || lines[lines.length - 1];
+    if (appearance && activeLine) appearance.setActiveSpeaker(activeLine.speaker, isPlaying() && fraction < 1);
     $("board-placeholder").hidden = fraction > 0;
     $("position-label").textContent = `${Math.round(fraction * 100)}%`;
     $("writing-status").textContent = fraction >= 1 ? "اكتملت الخطوة" : fraction > 0 ? "نكتب ونتعلّم…" : "السبورة جاهزة";
@@ -114,6 +117,14 @@
     return result;
   }
 
+  function directionOf(text) {
+    // Punctuation, including the Arabic comma, is not a language signal.
+    const letters = Array.from(text).filter(char => /\p{Letter}/u.test(char));
+    const arabic = letters.filter(char => /\p{Script=Arabic}/u.test(char)).length;
+    const latin = letters.filter(char => /\p{Script=Latin}/u.test(char)).length;
+    return arabic > latin || (arabic > 0 && arabic === latin && /\p{Script=Arabic}/u.test(letters[0])) ? "rtl" : "ltr";
+  }
+
   function layoutStep() {
     canvasWidth = window.innerWidth <= 720 ? 720 : 1200;
     rowsGroup.replaceChildren();
@@ -122,70 +133,115 @@
     totalWeight = 0;
     let y = 80;
     const step = lesson.steps[current];
+    const selected = appearance && appearance.layout ? appearance.layout() : "script";
+    const columns = selected === "columns" && canvasWidth > 720;
     const transcript = $("step-transcript");
     transcript.replaceChildren();
-    for (const row of step.rows) {
-      const rtl = /[\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff]/.test(row.text);
-      const color = row.speaker === 2 ? "#C2410C" : "#2563EB";
-      const measure = make("text");
-      measure.setAttribute("font-size", "34");
-      measure.setAttribute("font-family", rtl ? "'Segoe UI',Tahoma,Arial,sans-serif" : "'Segoe Print','Comic Sans MS','Segoe UI',sans-serif");
-      measure.setAttribute("font-weight", "600");
-      measure.setAttribute("opacity", "0");
-      rowsGroup.append(measure);
-      const wrapped = wrap(row.text, measure, canvasWidth - 210);
-      const font = measure.getAttribute("font-family");
-      measure.remove();
-      const rowStart = y;
-      for (const content of wrapped) {
-        const text = make("text");
-        text.textContent = content;
-        text.setAttribute("x", rtl ? String(canvasWidth - 100) : "100");
-        text.setAttribute("y", String(y));
-        text.setAttribute("font-size", "34");
-        text.setAttribute("font-family", font);
-        text.setAttribute("font-weight", "600");
-        text.setAttribute("direction", rtl ? "rtl" : "ltr");
-        // For RTL, 'start' is the RIGHT edge of an RTL text run.
-        text.setAttribute("text-anchor", "start");
-        text.setAttribute("fill", color);
-        rowsGroup.append(text);
-        let box;
-        try { box = text.getBBox(); } catch (_) { /* SVG geometry can be unavailable. */ }
-        if (!box || !Number.isFinite(box.width) || box.width <= 0) {
-          const width = Array.from(content).length * 18;
-          box = { x: rtl ? canvasWidth - 100 - width : 100, y: y - 34, width, height: 44 };
-        }
-        const clip = make("clipPath"), rect = make("rect");
-        clip.id = `wb-clip-${version}-${lines.length}`;
-        rect.setAttribute("y", String(box.y - 6));
-        rect.setAttribute("height", String(box.height + 12));
-        rect.setAttribute("width", "0");
-        clip.append(rect);
-        defs.append(clip);
-        text.setAttribute("clip-path", `url(#${clip.id})`);
-        const weight = Math.max(500, Array.from(content).length * 65);
-        lines.push({ rect, box, rtl, start: totalWeight, weight });
-        totalWeight += weight;
-        y += 54;
+    transcript.dataset.layout = columns ? "columns" : selected === "script" ? "script" : "stacked";
+    const blocks = [];
+    const entries = step.rows.map((row, index) => ({ row, index, rtl: directionOf(row.text) === "rtl" }));
+    for (let index = 0; index < entries.length; index++) {
+      const entry = entries[index];
+      // Adjacent English -> Arabic entries are presentation pairs, not an AI
+      // translation or permission to reorder unrelated utterances.
+      if (selected !== "script" && !entry.rtl && entries[index + 1] && entries[index + 1].rtl) {
+        blocks.push([entry, entries[++index]]);
+      } else blocks.push([entry]);
+    }
+    for (const [blockIndex, block] of blocks.entries()) {
+      const group = make("g");
+      group.classList.add(block.length === 2 ? "bilingual-pair" : "board-entry");
+      group.dataset.layout = columns && block.length === 2 ? "columns" : "stacked";
+      group.dataset.pair = String(blockIndex);
+      rowsGroup.append(group);
+      const start = y;
+      let bottom = y;
+      let background = null;
+      if (block.length === 2) {
+        background = make("rect");
+        for (const [key, value] of Object.entries({ x: 35, y: y - 48, width: canvasWidth - 70, rx: 20, fill: "#F8FAFC", stroke: "#E2E8F0" })) background.setAttribute(key, String(value));
+        group.append(background);
       }
-      const bullet = make("circle");
-      bullet.setAttribute("cx", rtl ? String(canvasWidth - 58) : "58");
-      bullet.setAttribute("cy", String(rowStart - 12));
-      bullet.setAttribute("r", "7");
-      bullet.setAttribute("fill", color);
-      rowsGroup.append(bullet);
-      y += 28;
-      const paragraph = document.createElement("p");
-      paragraph.className = "transcript-line";
-      paragraph.dir = "auto";
-      paragraph.dataset.speaker = String(row.speaker);
-      paragraph.textContent = row.text;
-      transcript.append(paragraph);
+      for (const { row, index: rowIndex, rtl } of block) {
+        let rowY = columns && block.length === 2 ? start : bottom;
+        const color = appearance ? appearance.colorFor(current, rowIndex, row.speaker) : row.speaker === 2 ? "#C2410C" : "#2563EB";
+        const measure = make("text");
+        measure.setAttribute("font-size", "34");
+        measure.setAttribute("font-family", rtl ? "'Segoe UI',Tahoma,Arial,sans-serif" : "'Segoe Print','Comic Sans MS','Segoe UI',sans-serif");
+        measure.setAttribute("font-weight", "600");
+        measure.setAttribute("opacity", "0");
+        rowsGroup.append(measure);
+        const wrapped = wrap(row.text, measure, columns && block.length === 2 ? (canvasWidth - 280) / 2 : canvasWidth - 210);
+        const font = measure.getAttribute("font-family");
+        measure.remove();
+        const rowStart = rowY;
+        for (const content of wrapped) {
+          const text = make("text");
+          text.textContent = content;
+          text.dataset.row = String(rowIndex);
+          text.dataset.language = rtl ? "ar" : "en";
+          text.setAttribute("x", rtl ? String(canvasWidth - 100) : "100");
+          text.setAttribute("y", String(rowY));
+          text.setAttribute("font-size", "34");
+          text.setAttribute("font-family", font);
+          text.setAttribute("font-weight", "600");
+          text.setAttribute("direction", rtl ? "rtl" : "ltr");
+          text.setAttribute("unicode-bidi", "plaintext");
+          text.setAttribute("text-anchor", "start");
+          text.setAttribute("fill", color);
+          group.append(text);
+          let box;
+          try { box = text.getBBox(); } catch (_) { /* Geometry may be unavailable. */ }
+          if (!box || !Number.isFinite(box.width) || box.width <= 0) {
+            const width = Array.from(content).length * 18;
+            box = { x: rtl ? canvasWidth - 100 - width : 100, y: rowY - 34, width, height: 44 };
+          }
+          const clip = make("clipPath"), rect = make("rect");
+          clip.id = `wb-clip-${version}-${lines.length}`;
+          rect.setAttribute("y", String(box.y - 6));
+          rect.setAttribute("height", String(box.height + 12));
+          rect.setAttribute("width", "0");
+          clip.append(rect);
+          defs.append(clip);
+          text.setAttribute("clip-path", `url(#${clip.id})`);
+          const weight = Math.max(500, Array.from(content).length * 65);
+          lines.push({ rect, box, rtl, speaker: row.speaker, start: totalWeight, weight });
+          totalWeight += weight;
+          rowY += 54;
+        }
+        const bullet = make("circle");
+        bullet.setAttribute("cx", rtl ? String(canvasWidth - 58) : "58");
+        bullet.setAttribute("cy", String(rowStart - 12));
+        bullet.setAttribute("r", "7");
+        bullet.setAttribute("fill", color);
+        group.append(bullet);
+        bottom = Math.max(bottom, rowY + 28);
+        const paragraph = document.createElement("p");
+        paragraph.className = "transcript-line";
+        paragraph.dir = rtl ? "rtl" : "ltr";
+        paragraph.dataset.speaker = String(row.speaker);
+        paragraph.dataset.pair = String(blockIndex);
+        paragraph.dataset.unpaired = String(block.length === 1);
+        paragraph.style.textAlign = rtl ? "right" : "left";
+        paragraph.style.borderInlineStartColor = color;
+        paragraph.style.color = color;
+        paragraph.textContent = row.text;
+        transcript.append(paragraph);
+      }
+      if (background) background.setAttribute("height", String(bottom - start + 30));
+      y = bottom + (background ? 16 : 0);
     }
     totalWeight = Math.max(1, totalWeight);
     svg.setAttribute("viewBox", `0 0 ${canvasWidth} ${Math.max(430, y + 25)}`);
   }
+
+  window.addEventListener("nova-whiteboard:appearance", () => {
+    const fraction = progress();
+    layoutStep();
+    if (!hasAudio) virtualTime = fraction * totalWeight;
+    renderProgress(fraction);
+    refreshButton();
+  });
 
   function finishStep() {
     if (completed) return;
@@ -292,6 +348,7 @@
   $("lesson-title").textContent = lesson.title;
   $("step-count").textContent = `${lesson.steps.length} خطوات`;
   const list = $("lesson-outline");
+  list.replaceChildren();
   lesson.steps.forEach((step, index) => {
     const item = document.createElement("li"), button = document.createElement("button");
     button.className = "outline-step";

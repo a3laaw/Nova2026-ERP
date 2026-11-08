@@ -30,7 +30,8 @@ def site(tmp_path):
     (output / "RUN-FIRST-AR.html").write_text("<h1>Guide</h1>")
     (output / "SHA256SUMS.txt").write_text("test checksum")
     (source / "examples" / "greetings-whiteboard.html").write_text("<h1>Board preview</h1>")
-    for name in ("HTML-GUIDE.md", "WHITEBOARD-GUIDE.md"):
+    (source / "examples" / "greetings-kids.html").write_text("<h1>Kids preview</h1>")
+    for name in ("HTML-GUIDE.md", "WHITEBOARD-GUIDE.md", "KIDS-GUIDE-AR.md"):
         (source / name).write_text("Public guide")
     (tmp_path / ".git").mkdir()
     (tmp_path / ".git" / "config").write_text("not public")
@@ -68,6 +69,9 @@ def test_one_site_serves_download_page_guide_and_the_board_preview(site):
         ("/RUN-FIRST-AR.html", b"Guide"),
         ("/desktop/nova-voice/examples/greetings-whiteboard.html", b"Board preview"),
         ("/desktop/nova-voice/WHITEBOARD-GUIDE.md", b"Public guide"),
+        ("/preview-kids", b"Kids preview"),
+        ("/desktop/nova-voice/examples/greetings-kids.html", b"Kids preview"),
+        ("/desktop/nova-voice/KIDS-GUIDE-AR.md", b"Public guide"),
     ):
         with urlopen(base + path, timeout=3) as response:
             assert response.status == 200

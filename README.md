@@ -9,7 +9,7 @@
 | [deliverables/archive](deliverables/archive/README.md) | النسخ السابقة، منفصلة عن التسليم الحالي |
 | `src/` و`docs/` وملفات Next.js | مشروع ERP الأصلي؛ لم يُنقل أو يُغيّر هيكله |
 
-**الملف المطلوب:** [NovaVoice-Source-v0.4.0.rar](deliverables/nova-voice/NovaVoice-Source-v0.4.0.rar)
+**الملف المطلوب:** [NovaVoice-Source-v0.5.0.rar](deliverables/nova-voice/NovaVoice-Source-v0.5.0.rar)
 **شرح التشغيل:** [RUN-FIRST-AR.html](deliverables/nova-voice/RUN-FIRST-AR.html)
 
 الحزمة الحالية مصدر وملفات تشغيل، وليست EXE جاهزًا. ملف RAR موجود داخل المستودع

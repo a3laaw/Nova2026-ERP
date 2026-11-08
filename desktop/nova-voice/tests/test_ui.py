@@ -362,3 +362,46 @@ def test_tagging_invalid_closing_marker_warns_without_changing_the_editor(window
     assert window.editor.toPlainText() == "[/1] Hello."
     assert messages
     assert window.worker is None
+
+
+def test_native_character_and_sentence_color_choices_round_trip_into_html(
+    window, tmp_path, monkeypatch
+):
+    from PySide6.QtGui import QColor
+    from PySide6.QtWidgets import QColorDialog, QFileDialog
+
+    from nova_voice.whiteboard import WhiteboardPage
+
+    window.editor.setPlainText("# Kids\n## Step\nHello children.")
+    picker = window.appearance_picker
+    picker.first_character.setCurrentIndex(picker.first_character.findData("adam"))
+    picker.second_character.setCurrentIndex(picker.second_character.findData("nour"))
+    picker.layout_combo.setCurrentIndex(picker.layout_combo.findData("columns"))
+    window._refresh_appearance_sentences()
+    monkeypatch.setattr(QColorDialog, "getColor", lambda *a, **k: QColor("#475569"))
+    picker._choose_sentence_color()
+    output = tmp_path / "kids.html"
+    monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *a, **k: (str(output), ""))
+    window.generate_whiteboard()
+    worker = window.worker
+    assert worker is not None
+    assert QSignalSpy(worker.finished).wait(30000)
+    QApplication.processEvents()
+    loaded = WhiteboardPage.load(output)
+    assert loaded.appearance.first_character == "adam"
+    assert loaded.appearance.second_character == "nour"
+    assert loaded.appearance.layout == "columns"
+    assert loaded.appearance.row_colors[0].color == "#475569"
+    assert loaded.lesson.spoken_script == "Hello children."
+
+
+def test_editing_script_invalidates_row_overrides_but_keeps_character_choices(window):
+    window.editor.setPlainText("## Step\nHello.")
+    picker = window.appearance_picker
+    picker.first_character.setCurrentIndex(picker.first_character.findData("salma"))
+    window._refresh_appearance_sentences()
+    picker._row_colors[(0, 0)] = "#475569"
+    window.editor.setPlainText("## Step\nDifferent words.")
+    assert picker._row_colors == {}
+    assert picker.first_character.currentData() == "salma"
+    assert not picker.sentence_color_button.isEnabled()

@@ -2,6 +2,7 @@
 
 import re
 from dataclasses import dataclass
+from itertools import groupby
 
 from .text import ScriptError, preview_text, validate_text
 
@@ -43,6 +44,13 @@ def parse_dialogue(script: str) -> list[DialogueTurn]:
     or whiteboard generation; we never guess a voice or discard spoken words.
     """
     script = validate_text(script)
+    # A numbered exercise prefix immediately before an explicit opening marker
+    # belongs to that same role. Do not guess ownership of arbitrary prose.
+    script = re.sub(
+        r"(?m)^([ \t]*)([0-9٠-٩]+[.)])[ \t]+(\[[12١٢ABab]\])[ \t]*",
+        r"\1\3 \2 ",
+        script,
+    )
     turns: list[DialogueTurn] = []
     speaker: int | None = None
     parts: list[str] = []
@@ -137,3 +145,11 @@ def tag_line(line: str, speaker: int) -> str:
         f"[{speaker if index == 0 else turn.speaker}] {turn.text}"
         for index, turn in enumerate(turns)
     )
+
+
+def merge_turns(turns: list[DialogueTurn]) -> list[DialogueTurn]:
+    """A repeated role marker is not a new person or an artificial reply gap."""
+    return [
+        DialogueTurn(speaker, " ".join(turn.text for turn in group))
+        for speaker, group in groupby(turns, key=lambda turn: turn.speaker)
+    ]
