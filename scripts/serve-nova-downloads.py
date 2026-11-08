@@ -24,7 +24,11 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         "/index.html": (delivery / "index.html", html, False),
         "/" + ARCHIVE_NAME: (delivery / ARCHIVE_NAME, "application/vnd.rar", True),
         "/RUN-FIRST-AR.html": (delivery / "RUN-FIRST-AR.html", html, False),
-        "/SHA256SUMS.txt": (delivery / "SHA256SUMS.txt", "text/plain; charset=utf-8", False),
+        "/SHA256SUMS.txt": (
+            delivery / "SHA256SUMS.txt",
+            "text/plain; charset=utf-8",
+            False,
+        ),
         "/preview": (source / "examples" / "greetings-whiteboard.html", html, False),
         "/preview-kids": (source / "examples" / "greetings-kids.html", html, False),
         "/desktop/nova-voice/examples/greetings-kids.html": (
@@ -38,7 +42,12 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
             False,
         ),
     }
-    for name in ("HTML-GUIDE.md", "WHITEBOARD-GUIDE.md", "KIDS-GUIDE-AR.md"):
+    for name in (
+        "HTML-GUIDE.md",
+        "WHITEBOARD-GUIDE.md",
+        "KIDS-GUIDE-AR.md",
+        "EGYPTIAN-VOICES-AR.md",
+    ):
         routes["/desktop/nova-voice/" + name] = (
             source / name,
             "text/plain; charset=utf-8",
@@ -68,7 +77,10 @@ class DeliveryHandler(BaseHTTPRequestHandler):
             if send_body:
                 self.wfile.write(body)
             return
-        if path in ("/", "/index.html") and not self.routes["/" + ARCHIVE_NAME][0].is_file():
+        if (
+            path in ("/", "/index.html")
+            and not self.routes["/" + ARCHIVE_NAME][0].is_file()
+        ):
             body = "ملف RAR غير موجود حاليًا. أعد إنشاء حزمة التسليم قبل نشر رابط التحميل.".encode()
             self._headers(503, "text/plain; charset=utf-8", len(body))
             if send_body:
@@ -89,14 +101,18 @@ class DeliveryHandler(BaseHTTPRequestHandler):
                 while data := source.read(64 * 1024):
                     self.wfile.write(data)
 
-    def _headers(self, status: int, mime: str, size: int, *, attachment: bool = False) -> None:
+    def _headers(
+        self, status: int, mime: str, size: int, *, attachment: bool = False
+    ) -> None:
         self.send_response(status)
         self.send_header("Content-Type", mime)
         self.send_header("Content-Length", str(size))
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         if attachment:
-            self.send_header("Content-Disposition", f'attachment; filename="{ARCHIVE_NAME}"')
+            self.send_header(
+                "Content-Disposition", f'attachment; filename="{ARCHIVE_NAME}"'
+            )
         self.end_headers()
 
 
@@ -107,7 +123,9 @@ def main() -> None:
     repository = Path(__file__).resolve().parents[1]
     archive = repository / "deliverables" / "nova-voice" / ARCHIVE_NAME
     if not archive.is_file():
-        parser.error("RAR is missing: run desktop/nova-voice/tools/package_source.py first")
+        parser.error(
+            "RAR is missing: run desktop/nova-voice/tools/package_source.py first"
+        )
     server = ThreadingHTTPServer(
         ("0.0.0.0", args.port),
         partial(DeliveryHandler, repository=repository),

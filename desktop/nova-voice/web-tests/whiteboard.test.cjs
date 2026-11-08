@@ -630,3 +630,72 @@ test("layout changes during narration preserve the audio position and playback s
     assert.equal(app.frames, 1);
   } finally { app.close(); }
 });
+
+
+test("organized lesson has unique IDs, local section shortcuts and a keyboard skip target", () => {
+  const app = mount();
+  try {
+    const ids = Array.from(app.document.querySelectorAll("[id]"), node => node.id);
+    assert.equal(ids.length, new Set(ids).size);
+    assert.equal(app.document.querySelector(".skip-link").getAttribute("href"), "#wb-play");
+    const shortcuts = app.document.querySelectorAll(".lesson-shortcuts a");
+    assert.equal(shortcuts.length, 3);
+    for (const link of shortcuts) assert.ok(app.get(link.hash.slice(1)));
+    assert.equal(app.networkCalls, 0);
+  } finally { app.close(); }
+});
+
+test("transport comes before children, while the native outline can be collapsed independently", () => {
+  const app = mount();
+  try {
+    const controls = app.document.querySelector(".controls-panel");
+    const stage = app.get("character-stage");
+    assert.ok(controls.compareDocumentPosition(stage) & app.window.Node.DOCUMENT_POSITION_FOLLOWING);
+    const outline = app.get("lesson-outline").closest("details");
+    assert.equal(outline.open, true);
+    outline.open = false;
+    app.get("wb-next").click();
+    assert.equal(app.get("scene-title").textContent, "Second step");
+    assert.equal(outline.open, false);
+    assert.equal(app.playCalls, 0);
+  } finally { app.close(); }
+});
+
+test("optional playback settings never hide transport, seek audio or the speed slider", () => {
+  const app = mount("audio.html");
+  try {
+    const settings = app.get("wb-auto-next").closest("details");
+    assert.equal(settings.open, false);
+    for (const control of [app.get("wb-play"), app.get("wb-rate"), app.audio, app.get("wb-status")]) {
+      assert.equal(settings.contains(control), false);
+    }
+    app.position(0.4);
+    settings.open = true;
+    settings.open = false;
+    assert.equal(app.audio.currentTime, 0.4);
+    assert.equal(app.audio.hidden, false);
+    assert.equal(app.get("wb-auto-next").checked, false);
+    assert.equal(app.playCalls, 0);
+  } finally { app.close(); }
+});
+
+test("appearance remains available in three named groups without changing the saved lesson", () => {
+  const app = mount("pairs.html");
+  try {
+    const original = app.get("nova-whiteboard-data").textContent;
+    const tools = app.get("wb-customization");
+    assert.equal(tools.open, false);
+    const groups = tools.querySelectorAll("fieldset.settings-group");
+    assert.equal(groups.length, 3);
+    assert.ok(groups[0].contains(app.get("wb-language-layout")));
+    assert.ok(groups[1].contains(app.get("wb-sentence-color")));
+    assert.ok(groups[2].contains(app.get("wb-character-library")));
+    assert.ok(Array.from(groups).every(group => group.querySelector("legend").textContent.trim()));
+    tools.open = true;
+    app.get("wb-color-1").value = "#475569";
+    app.get("wb-color-1").dispatchEvent(new app.window.Event("input"));
+    tools.open = false;
+    assert.equal(app.get("nova-whiteboard-data").textContent, original);
+    assert.equal(app.playCalls, 0);
+  } finally { app.close(); }
+});

@@ -30,7 +30,7 @@ from PySide6.QtWidgets import (
 from . import __version__
 from .appearance import AppearanceError
 from .appearance_picker import AppearancePicker
-from .controls import button, card, clock, combo, label
+from .controls import Disclosure, button, card, clock, combo, label
 from .dialogue import (
     BILINGUAL_EXAMPLE,
     has_voice_markers,
@@ -128,13 +128,18 @@ class MainWindow(QMainWindow):
         root.setContentsMargins(28, 24, 28, 24)
         root.setSpacing(18)
         scroll.setWidget(canvas)
-        self.setCentralWidget(scroll)
+        host = QWidget()
+        outer = QVBoxLayout(host)
+        outer.setContentsMargins(16, 0, 16, 12)
+        outer.setSpacing(10)
+        outer.addWidget(scroll, 1)
+        self.setCentralWidget(host)
 
         heading = QHBoxLayout()
         titles = QVBoxLayout()
         titles.setSpacing(5)
         titles.addWidget(label("Nova Voice", "title"))
-        titles.addWidget(label("من سكريبت مكتوب إلى صوت وسبورة تفاعلية.", "muted"))
+        titles.addWidget(label("اكتب النص، اختر الأصوات، ثم أنشئ درسك في ملف واحد.", "muted"))
         heading.addLayout(titles)
         heading.addStretch()
         heading.addWidget(label("محلي بالكامل · دون إنترنت", "privacy"))
@@ -143,11 +148,18 @@ class MainWindow(QMainWindow):
         heading.addWidget(about)
         root.addLayout(heading)
 
+        self.workspace_tabs = QTabWidget()
+        self.workspace_tabs.setAccessibleName("أقسام إعداد الدرس والتصدير")
+        self.workspace_tabs.setDocumentMode(True)
+        root.addWidget(self.workspace_tabs)
+        input_page = QWidget()
+        input_layout = QVBoxLayout(input_page)
+        input_layout.setContentsMargins(0, 16, 0, 0)
         columns = QHBoxLayout()
         columns.setSpacing(18)
         editor_card, editor_layout = card()
         editor_header = QHBoxLayout()
-        editor_header.addWidget(label("السكريبت", "section"))
+        editor_header.addWidget(label("1 · اكتب نص الدرس", "section"))
         editor_header.addStretch()
         self.import_text_button = button("استيراد TXT")
         self.import_text_button.clicked.connect(self._import_text)
@@ -156,6 +168,9 @@ class MainWindow(QMainWindow):
         editor_header.addWidget(self.import_text_button)
         editor_header.addWidget(self.clear_button)
         editor_layout.addLayout(editor_header)
+        self.board_example_button = button("مثال سكريبت سبورة")
+        self.board_example_button.clicked.connect(self._board_example)
+        editor_layout.addWidget(self.board_example_button)
         self.dialogue_toolbar = QWidget()
         turn_actions = QHBoxLayout(self.dialogue_toolbar)
         turn_actions.setContentsMargins(0, 0, 0, 0)
@@ -210,7 +225,7 @@ class MainWindow(QMainWindow):
         settings_card, settings = card()
         settings_card.setMinimumWidth(310)
         settings_card.setMaximumWidth(410)
-        settings.addWidget(label("إعدادات الصوت", "section"))
+        settings.addWidget(label("2 · اختر الأصوات", "section"))
         self.mode_combo = combo()
         self.mode_combo.addItem("راوٍ واحد", "single")
         self.mode_combo.addItem("حوار بين صوتين", "dialogue")
@@ -240,13 +255,15 @@ class MainWindow(QMainWindow):
             True,
         )
         settings.addWidget(self.setup_hint)
+        self.voice_tuning = Disclosure("إعدادات إضافية · سرعة القراءة والفواصل")
+        tuning = self.voice_tuning.content_layout
         speed_heading = QHBoxLayout()
         speed_heading.addWidget(label("سرعة القراءة", "muted"))
         speed_heading.addStretch()
         self.speed_label = label("1.00×")
         self.speed_label.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         speed_heading.addWidget(self.speed_label)
-        settings.addLayout(speed_heading)
+        tuning.addLayout(speed_heading)
         self.speed_slider = QSlider(Qt.Orientation.Horizontal)
         self.speed_slider.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         self.speed_slider.setRange(60, 160)
@@ -256,13 +273,13 @@ class MainWindow(QMainWindow):
         self.speed_slider.valueChanged.connect(
             lambda value: self.speed_label.setText(f"{value / 100:.2f}×")
         )
-        settings.addWidget(self.speed_slider)
-        settings.addWidget(label("فاصل الفقرات · ملّي ثانية", "muted"))
+        tuning.addWidget(self.speed_slider)
+        tuning.addWidget(label("فاصل الفقرات · ملّي ثانية", "muted"))
         self.pause_spin = QSpinBox()
         self.pause_spin.setRange(0, 1500)
         self.pause_spin.setSingleStep(50)
         self.pause_spin.setAccessibleName("الفاصل بين الفقرات بالملّي ثانية")
-        settings.addWidget(self.pause_spin)
+        tuning.addWidget(self.pause_spin)
         self.turn_pause_widget = QWidget()
         turn_pause_layout = QVBoxLayout(self.turn_pause_widget)
         turn_pause_layout.setContentsMargins(0, 0, 0, 0)
@@ -272,29 +289,50 @@ class MainWindow(QMainWindow):
         self.turn_pause_spin.setSingleStep(50)
         self.turn_pause_spin.setAccessibleName("الفاصل بين جملة الشخص ورد الشخص الآخر")
         turn_pause_layout.addWidget(self.turn_pause_spin)
-        settings.addWidget(self.turn_pause_widget)
+        tuning.addWidget(self.turn_pause_widget)
         settings.addWidget(label("صيغة الحفظ", "muted"))
         self.format_combo = combo()
         self.format_combo.addItem("MP3 · ملف مضغوط (192 kbps)", "mp3")
         self.format_combo.addItem("WAV · بدون ضغط", "wav")
         self.format_combo.setAccessibleName("صيغة الملف الصوتي")
         settings.addWidget(self.format_combo)
+        settings.addWidget(self.voice_tuning)
         settings.addStretch()
         self.guide_button = button("دليل الإعداد والأصوات")
         self.guide_button.clicked.connect(self._open_guide)
         settings.addWidget(self.guide_button)
         columns.addWidget(settings_card, 4)
-        root.addLayout(columns, 1)
+        input_layout.addLayout(columns, 1)
+        self.workspace_tabs.addTab(input_page, "النص والأصوات")
+
+        appearance_card, appearance_layout = card()
+        appearance_layout.addWidget(label("3 · خصّص سبورتك", "section"))
+        appearance_layout.addWidget(
+            label(
+                "خطوة اختيارية: اختر ترتيب اللغتين والألوان والأطفال، ثم استخدم زر التوليد أدناه. "
+                "التخصيص للعرض فقط ولا يغيّر الصوت أو لغته.",
+                "muted",
+                True,
+            )
+        )
+        self.appearance_picker = AppearancePicker()
+        self.appearance_picker.sentences_requested.connect(self._refresh_appearance_sentences)
+        appearance_layout.addWidget(self.appearance_picker)
+        appearance_layout.addStretch()
+        self.workspace_tabs.addTab(appearance_card, "ألوان وشخصيات")
+
+        export_card, export_layout = card()
+        export_layout.setContentsMargins(18, 12, 18, 12)
+        export_layout.setSpacing(8)
+        export_actions = QHBoxLayout()
 
         board_card, board_layout = card()
-        board_layout.addWidget(label("من السكريبت إلى سبورة وصوت · زر واحد أو خطوتان", "section"))
+        board_layout.addWidget(label("سبورة محفوظة · المسار ذو الخطوتين", "section"))
         board_layout.addWidget(
             label(
-                "1. اكتب السكريبت أعلاه: # لعنوان الدرس و## لكل خطوة، أو افصل الفقرات بسطر فارغ. "
-                "تُنشأ سبورة بالقلم بلا حاجة إلى نموذج صوتي. "
-                "2. اختر الأصوات وأضفها من النص المحفوظ داخل السبورة، دون إعادة إدخاله. "
-                "أو اختر الأصوات واضغط «توليد السبورة بالنص والصوت معًا» لحفظ ملف HTML واحد مباشرة. "
-                "للغتين استخدم [1]/[2] واختر وضع الحوار.",
+                "للمراجعة قبل النطق: أنشئ نسخة صامتة من المحرر بالخطوة 1، ثم اختر الأصوات "
+                "من تبويب «النص والأصوات» وأضفها إلى النص المحفوظ في HTML بالخطوة 2. "
+                "للحفظ المباشر من المحرر استخدم الزر الموحّد أدناه.",
                 "muted",
                 True,
             )
@@ -305,17 +343,14 @@ class MainWindow(QMainWindow):
             "لا تحتاج إنشاء سبورة محفوظة أولًا."
         )
         self.combined_board_button.clicked.connect(self.generate_whiteboard_with_audio)
-        board_layout.addWidget(self.combined_board_button)
+        export_actions.addWidget(self.combined_board_button, 1)
         board_actions = QHBoxLayout()
-        self.board_example_button = button("مثال سكريبت سبورة")
-        self.board_example_button.clicked.connect(self._board_example)
-        self.create_board_button = button("1. توليد السبورة HTML", "primary")
+        self.create_board_button = button("1. توليد السبورة HTML")
         self.create_board_button.clicked.connect(self.generate_whiteboard)
         self.open_board_button = button("فتح السبورة")
         self.open_board_button.clicked.connect(self._open_whiteboard)
-        board_actions.addWidget(self.board_example_button)
         board_actions.addWidget(self.create_board_button)
-        board_actions.addWidget(self.open_board_button)
+        export_actions.addWidget(self.open_board_button)
         board_actions.addStretch()
         board_layout.addLayout(board_actions)
         self.board_source_label = label(
@@ -328,17 +363,18 @@ class MainWindow(QMainWindow):
         board_audio_actions = QHBoxLayout()
         self.choose_board_button = button("اختيار سبورة محفوظة")
         self.choose_board_button.clicked.connect(self._choose_whiteboard)
-        self.board_audio_button = button("2. توليد صوت السبورة", "primary")
+        self.board_audio_button = button("2. توليد صوت السبورة")
         self.board_audio_button.clicked.connect(self.generate_whiteboard_audio)
         board_audio_actions.addWidget(self.choose_board_button)
         board_audio_actions.addWidget(self.board_audio_button)
         board_audio_actions.addStretch()
         board_layout.addLayout(board_audio_actions)
-        self.appearance_picker = AppearancePicker()
-        self.appearance_picker.sentences_requested.connect(self._refresh_appearance_sentences)
-        board_layout.addWidget(self.appearance_picker)
-        root.addWidget(board_card)
+        board_layout.addStretch()
+        self.workspace_tabs.addTab(board_card, "سبورة محفوظة")
 
+        other_page = QWidget()
+        other_layout = QVBoxLayout(other_page)
+        other_layout.setContentsMargins(0, 16, 0, 0)
         html_card, html_layout = card()
         html_layout.addWidget(label("أضف الصوت إلى ملف HTML", "section"))
         html_layout.addWidget(
@@ -362,10 +398,19 @@ class MainWindow(QMainWindow):
         html_actions.addWidget(self.choose_html_button)
         html_actions.addWidget(self.html_source_label, 1)
         html_actions.addWidget(self.clear_html_button)
-        html_actions.addWidget(self.html_export_button)
         html_layout.addLayout(html_actions)
-        root.addWidget(html_card)
-
+        html_layout.addWidget(self.html_export_button)
+        other_layout.addWidget(html_card)
+        audio_card, audio_layout = card()
+        audio_layout.addWidget(label("تصدير صوت فقط · MP3 أو WAV", "section"))
+        audio_layout.addWidget(
+            label(
+                "يستخدم النص والأصوات من التبويب الأول. لهذه الأزرار استخدم سكريبتًا صوتيًا "
+                "دون عناوين # و## الخاصة بالسبورة. Ctrl+Enter لحفظ الصوت فقط.",
+                "muted",
+                True,
+            )
+        )
         actions = QHBoxLayout()
         self.generate_button = button("توليد وحفظ الصوت", "primary")
         self.generate_button.setToolTip("Ctrl+Enter")
@@ -377,16 +422,21 @@ class MainWindow(QMainWindow):
         self.cancel_button.hide()
         actions.addWidget(self.generate_button, 2)
         actions.addWidget(self.preview_button)
-        actions.addWidget(self.cancel_button)
-        root.addLayout(actions)
+        audio_layout.addLayout(actions)
+        other_layout.addWidget(audio_card)
+        other_layout.addStretch()
+        self.workspace_tabs.addTab(other_page, "صوت فقط / HTML")
+        export_actions.addWidget(self.cancel_button)
+        export_layout.addLayout(export_actions)
         self.progress = QProgressBar()
         self.progress.hide()
-        root.addWidget(self.progress)
+        export_layout.addWidget(self.progress)
         self.status = label("اكتب سكريبتًا لإنشاء سبورة، أو أضف نموذجًا لتوليد الصوت.", "muted", True)
         self.status.setAccessibleName("حالة العملية")
-        root.addWidget(self.status)
+        export_layout.addWidget(self.status)
 
-        player_card, player_layout = card()
+        self.result_section = Disclosure("النتيجة والاستماع · افتح لعرض الملف وأدواته")
+        player_layout = self.result_section.content_layout
         player_header = QHBoxLayout()
         self.player_title = label("الاستماع إلى النتيجة", "section")
         player_header.addWidget(self.player_title)
@@ -417,8 +467,10 @@ class MainWindow(QMainWindow):
         player_layout.addLayout(transport)
         self.result_path = label("لا توجد نتيجة بعد. جرّب معاينة قصيرة أولًا.", "muted", True)
         self.result_path.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.result_path.setMaximumHeight(44)
         player_layout.addWidget(self.result_path)
-        root.addWidget(player_card)
+        export_layout.addWidget(self.result_section)
+        outer.addWidget(export_card)
 
     def _build_player(self) -> None:
         self.audio_output = QAudioOutput(self)
@@ -552,6 +604,7 @@ class MainWindow(QMainWindow):
 
     def _update_buttons(self) -> None:
         busy = self.worker is not None
+        self.workspace_tabs.setEnabled(not busy)
         text = self.editor.toPlainText()
         required = {1}
         if self.dialogue_mode():
@@ -1070,6 +1123,9 @@ class MainWindow(QMainWindow):
         if self._progress_kind == "import":
             self.status.setText("تمت إضافة النموذج. اكتب السكريبت لتجربة الصوت.")
             return
+        if isinstance(result, (WhiteboardResult, HtmlAudioResult, RenderResult)):
+            self.result_section.set_expanded(True)
+            self.result_path.setToolTip(str(result.path))
         if isinstance(result, WhiteboardResult):
             self.appearance_picker.restore(result.appearance, result.lesson)
             self._board_source = result.path

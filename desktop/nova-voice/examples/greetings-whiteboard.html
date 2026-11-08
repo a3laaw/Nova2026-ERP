@@ -69,7 +69,7 @@ h1{font-size:clamp(21px,2.4vw,33px);line-height:1.5;margin:0;font-weight:750;ove
 .transcript-line{padding:12px 16px;background:#F8FAFC;border-radius:14px;margin:8px 0;white-space:pre-wrap;overflow-wrap:anywhere;border-inline-start:3px solid var(--info)}
 .transcript-line[data-speaker='2']{border-inline-start-color:var(--secondary)}
 .page-footer{font-size:12px;line-height:1.9;color:var(--muted);text-align:center;margin-top:24px}
-@media(max-width:1000px){.lesson-layout{grid-template-columns:210px minmax(0,1fr);gap:16px}.outline-panel{padding:18px 10px}.local-badge{display:none}.board-heading{padding:18px 20px}.controls-panel{padding:18px}.speed-row .quiet{display:none}}
+@media(max-width:1000px){.lesson-layout{grid-template-columns:210px minmax(0,1fr);gap:16px}.outline-panel{padding:18px 10px}.local-badge{display:none}.board-heading{padding:18px 20px}.controls-panel{padding:18px}}
 @media(max-width:720px){body{padding:16px 12px}.lesson-heading{gap:12px;margin-bottom:18px}.brand-mark{width:46px;height:46px;border-radius:16px}.brand-mark svg{width:24px;height:24px}.subtitle{font-size:11px}.lesson-layout{display:flex;flex-direction:column;gap:14px}.outline-panel{position:static;width:100%;padding:14px;border-radius:24px}.outline-heading{padding-bottom:10px}.outline-heading h2{font-size:13px}#lesson-outline{display:flex;gap:8px;max-height:160px;overflow:auto}#lesson-outline li{flex-shrink:0;max-width:230px}#lesson-outline li+li{margin:0}.outline-step{font-size:12px;padding:8px;line-height:1.6}.outline-text{max-width:160px}.outline-note{display:none}.lesson-main{width:100%}.board-panel,.controls-panel,.transcript-panel{border-radius:24px}.board-paper,#whiteboard{min-height:210px}.board-heading{padding:16px}.pen-badge{width:36px;height:36px;font-size:26px;border-radius:12px}.transport{gap:8px}button{font-size:12px;padding:8px 12px}button.primary{padding:10px 18px}.step-buttons{margin-inline-start:0}.speed-row{gap:10px}.speed-row label{width:100%}.board-footer{padding:12px 16px}.page-footer{font-size:11px}}
 @media(prefers-reduced-motion:reduce){button{transition:none}}
 @media print{body{background:#FFF;padding:0}.brand-mark,.outline-panel,.controls-panel,.board-panel,.page-footer,.subtitle{display:none}.lesson-layout{display:block}.transcript-panel{border:0;padding:0}.transcript-panel>div{display:block}.transcript-panel summary{display:none}.lesson-heading{margin-bottom:10px}.transcript-line{break-inside:avoid}}
@@ -115,24 +115,62 @@ h1{font-size:clamp(21px,2.4vw,33px);line-height:1.5;margin:0;font-weight:750;ove
 #step-transcript .transcript-line[dir=rtl]{direction:rtl;text-align:right;unicode-bidi:plaintext}
 #step-transcript .transcript-line[dir=ltr]{direction:ltr;text-align:left;unicode-bidi:plaintext}
 @media(max-width:720px){#step-transcript[data-layout=columns]{display:block}}
+
+/* Organized, native disclosures. Runtime IDs, SVG geometry and clocks unchanged. */
+.skip-link{position:absolute;top:8px;inset-inline-start:16px;z-index:10;padding:10px 16px;background:#FFF;color:var(--info);border:2px solid var(--info);border-radius:12px;transform:translateY(-180%)}
+.skip-link:focus{transform:none}
+.lesson-heading{flex-wrap:wrap;row-gap:12px;margin-bottom:22px}
+.lesson-shortcuts{display:flex;gap:6px;flex-wrap:wrap;margin-inline-start:auto}
+.lesson-shortcuts a{display:inline-flex;align-items:center;min-height:40px;padding:6px 12px;border:1px solid var(--line);border-radius:12px;background:#FFF;color:var(--body);font-size:12px;text-decoration:none}
+.lesson-shortcuts a:hover{background:#FFF7E0;border-color:var(--primary)}
+.lesson-shortcuts a:focus-visible{outline:3px solid var(--info);outline-offset:3px}
+.lesson-heading .local-badge{margin-inline-start:0}
+.outline-heading{font-size:14px;font-weight:700;cursor:pointer;list-style:none}
+.outline-heading::-webkit-details-marker{display:none}
+.outline-heading:after{content:'';width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin-inline:4px;flex-shrink:0}
+.outline-disclosure:not([open]) .outline-heading:after{transform:rotate(135deg)}
+.pen-badge svg{width:26px;height:26px}
+.outline-disclosure:not([open]) .outline-heading{padding-bottom:0}
+.controls-heading{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:14px}
+.controls-heading h2{font-size:14px;line-height:1.8;margin:0}
+.playback-settings{border-top:1px solid #F1F5F9;margin-top:16px;padding-top:12px}
+.playback-settings summary{font-size:12px;color:var(--body);cursor:pointer;line-height:1.8}
+.playback-settings .playback-options{margin-top:12px}
+.settings-group{border:1px solid var(--line);border-radius:18px;padding:16px;margin:18px 0 0;min-width:0;background:#F8FAFC}
+.settings-group legend{font-size:13px;font-weight:700;color:var(--ink);padding:0 8px}
+.settings-group .color-tools,.settings-group .library-tools{margin-top:0;padding-top:0;border:0}
+.settings-group .color-tools label{align-items:center}
+.settings-group .sentence-choice{min-width:0;flex-basis:100%}
+.settings-group .sentence-choice select{max-width:none;min-width:0;flex:1}
+.settings-group .character-library{grid-template-columns:repeat(auto-fit,minmax(88px,1fr))}
+.lesson-main>details>summary{min-height:24px;line-height:1.8}
+@media(max-width:1000px){.lesson-shortcuts{margin-inline-start:0}.lesson-heading .local-badge{display:none}}
+@media(max-width:720px){.lesson-shortcuts{width:100%}.lesson-shortcuts a{flex:1;justify-content:center}.controls-heading h2{font-size:13px}.settings-group{padding:12px;margin-top:14px}.settings-group .character-library{grid-template-columns:repeat(3,minmax(0,1fr))}.color-tools select{min-width:0;width:100%}.settings-group .color-tools label{width:100%}.controls-panel .transport>button{flex:1}.step-buttons{width:100%}.step-buttons button{flex:1}.controls-panel .transport button{min-height:40px}.controls-panel .transport .primary{min-height:48px}}
+@media print{.skip-link,.lesson-shortcuts{display:none!important}}
 </style>
 </head>
 <body>
+<a class="skip-link" href="#wb-play">تخطَّ إلى تشغيل الخطوة</a>
 <main class="lesson-shell">
   <header class="lesson-heading">
     <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="m7 23 2-8L22 2l8 8-13 13-8 2Z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/><path d="m18 6 8 8M9 15l8 8M4 30h23" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></div>
     <div><p class="eyebrow">NOVA · تعلّم خطوة بخطوة</p><h1 id="lesson-title" dir="auto">التحيات والتعارف</h1><p class="subtitle">سبورة تفاعلية · كتابة بالقلم · نص الدرس محفوظ داخل هذا الملف</p></div>
+    <nav class="lesson-shortcuts" aria-label="أقسام صفحة الدرس">
+      <a href="#board-paper">السبورة</a><a href="#wb-customization">ألوان وأطفال</a><a href="#wb-transcript">النص المقروء</a>
+    </nav>
     <span class="local-badge">محلي · دون خدمات خارجية</span>
   </header>
   <div class="lesson-layout">
     <aside class="outline-panel" aria-label="خطوات الدرس">
-      <div class="outline-heading"><h2>رحلة الدرس</h2><span id="step-count"></span></div>
-      <ol id="lesson-outline"></ol>
-      <p class="outline-note">اختر خطوة، أو استخدم التالي والسابق. لا يبدأ الصوت تلقائيًا عند فتح الملف.</p>
+      <details class="outline-disclosure" open>
+        <summary class="outline-heading"><span>خطوات الدرس</span><span id="step-count"></span></summary>
+        <ol id="lesson-outline"></ol>
+        <p class="outline-note">اختر خطوة، أو استخدم التالي والسابق. يمكنك طي القائمة لتوسيع مساحة الدرس. لا يبدأ الصوت تلقائيًا.</p>
+      </details>
     </aside>
     <div class="lesson-main">
       <section class="board-panel" aria-labelledby="scene-title">
-        <div class="board-heading"><div><p id="scene-number" class="eyebrow"></p><h2 id="scene-title" dir="auto"></h2></div><span class="pen-badge" aria-hidden="true">✎</span></div>
+        <div class="board-heading"><div><p id="scene-number" class="eyebrow"></p><h2 id="scene-title" dir="auto"></h2></div><span class="pen-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m4 17 1-4L16 2l6 6-11 11-4 1Z M13 5l6 6 M3 23h18"/></svg></span></div>
         <div class="board-paper" id="board-paper">
           <svg id="whiteboard" viewBox="0 0 1200 540" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="محتوى الخطوة مكتوب على السبورة؛ توجد نسخة نصية أسفلها">
             <defs id="wb-defs"></defs><g id="wb-rows"></g>
@@ -147,27 +185,35 @@ h1{font-size:clamp(21px,2.4vw,33px);line-height:1.5;margin:0;font-weight:750;ove
         </div>
         <div class="board-footer"><span id="writing-status" role="status">السبورة جاهزة</span><span id="position-label">0%</span></div>
       </section>
+      <section class="controls-panel" aria-labelledby="playback-heading">
+        <div class="controls-heading"><h2 id="playback-heading">شاهد، اسمع، وتعلّم</h2><span id="audio-badge" class="audio-badge">نسخة بلا صوت</span></div>
+        <div class="transport">
+          <button id="wb-play" class="primary" type="button">تشغيل الخطوة</button>
+          <button id="wb-restart" type="button">إعادة الخطوة</button>
+          <div class="step-buttons"><button id="wb-previous" type="button">السابقة</button><button id="wb-next" type="button">التالية</button></div>
+        </div>
+        <div class="speed-row"><label for="wb-rate">سرعة الصوت والكتابة</label><input id="wb-rate" type="range" min="0.5" max="2" step="0.05" value="1"><output id="wb-rate-label" for="wb-rate">1.00×</output><button id="wb-reset-rate" class="quiet" type="button">السرعة العادية</button></div>
+        <audio id="wb-audio" controls preload="metadata" aria-label="صوت الخطوة الحالية" hidden></audio>
+        <details class="playback-settings">
+          <summary>خيارات التشغيل ومعلومات الصوت</summary>
+          <div class="playback-options"><label><input id="wb-auto-next" type="checkbox"> الانتقال إلى الخطوة التالية تلقائيًا</label></div>
+          <p class="hint">للتقديم والترجيع استخدم شريط الصوت عند وجود تسجيل. السرعة تربط الصوت بالكتابة.</p>
+        </details>
+        <p id="wb-status" class="hint" role="status">هذه نسخة السبورة قبل توليد الصوت. أضف الصوت من الخطوة 2 داخل Nova Voice؛ الكتابة تعمل الآن دون نموذج صوتي.</p>
+      </section>
       <section id="character-stage" class="character-stage" aria-label="شخصيات الدرس" hidden>
         <div id="character-role-1" class="character-card" hidden><div class="character-art"></div><p class="character-caption"></p></div>
         <p class="character-note">أصدقاء التعلّم<br><span>حركات تشجيعية؛ ليست مزامنة شفاه أو أصواتًا جديدة</span></p>
         <div id="character-role-2" class="character-card" hidden><div class="character-art"></div><p class="character-caption"></p></div>
       </section>
-      <section class="controls-panel" aria-label="التشغيل والسرعة">
-        <div class="transport">
-          <button id="wb-play" class="primary" type="button">تشغيل الخطوة</button>
-          <button id="wb-restart" type="button">إعادة الخطوة</button>
-          <div class="step-buttons"><button id="wb-previous" type="button">السابقة</button><button id="wb-next" type="button">التالية ←</button></div>
-        </div>
-        <div class="speed-row"><label for="wb-rate">سرعة الصوت والكتابة</label><input id="wb-rate" type="range" min="0.5" max="2" step="0.05" value="1"><output id="wb-rate-label" for="wb-rate">1.00×</output><button id="wb-reset-rate" class="quiet" type="button">السرعة العادية</button></div>
-        <audio id="wb-audio" controls preload="metadata" aria-label="صوت الخطوة الحالية" hidden></audio>
-        <div class="playback-options"><label><input id="wb-auto-next" type="checkbox"> الانتقال إلى الخطوة التالية تلقائيًا</label><span id="audio-badge" class="audio-badge">نسخة بلا صوت</span></div>
-        <p id="wb-status" class="hint" role="status">هذه نسخة السبورة قبل توليد الصوت. أضف الصوت من الخطوة 2 داخل Nova Voice؛ الكتابة تعمل الآن دون نموذج صوتي.</p>
-      </section>
       <details id="wb-customization" class="customization-panel">
         <summary>ألوان الجمل ومكتبة شخصيات الأطفال</summary>
         <div class="customization-content">
           <p class="hint">اختر لونًا لكل دور أو لكل جملة. اختر شخصية للدور الأول أو الثاني؛ الشخصيات لا تغيّر النموذج الصوتي أو لغته. التغييرات مؤقتة حتى تنزيل نسخة بالتخصيصات.</p>
+          <fieldset class="settings-group"><legend>1 · ترتيب اللغتين</legend>
           <div class="color-tools"><label for="wb-language-layout">ترتيب اللغتين <select id="wb-language-layout"><option value="stacked">الإنجليزي فوق والعربي تحته</option><option value="columns">عمودان: English يسار / العربي يمين</option><option value="script">ترتيب السكريبت</option></select></label></div>
+          </fieldset>
+          <fieldset class="settings-group"><legend>2 · ألوان الأدوار والجمل</legend>
           <div class="color-tools">
             <label for="wb-color-1">لون الدور 1 <input id="wb-color-1" type="color" value="#2563eb"></label>
             <label for="wb-color-2">لون الدور 2 <input id="wb-color-2" type="color" value="#c2410c"></label>
@@ -175,17 +221,20 @@ h1{font-size:clamp(21px,2.4vw,33px);line-height:1.5;margin:0;font-weight:750;ove
             <label for="wb-sentence-color">لون الجملة <input id="wb-sentence-color" type="color" value="#2563eb"></label>
             <button id="wb-clear-sentence-color" type="button">إعادة لون الدور للجملة</button>
           </div>
+          </fieldset>
+          <fieldset class="settings-group"><legend>3 · أصدقاء التعلّم</legend>
           <div class="library-tools">
             <label for="wb-character-role">الشخصية للدور <select id="wb-character-role"><option value="1">الدور 1</option><option value="2">الدور 2</option></select></label>
             <label for="wb-character-filter">المكتبة <select id="wb-character-filter"><option value="all">كل الشخصيات</option><option value="boy">الأولاد</option><option value="girl">البنات</option></select></label>
             <label><input id="wb-character-motion" type="checkbox" checked> حركة أثناء التشغيل</label>
           </div>
           <div id="wb-character-library" class="character-library" aria-label="اختر شخصية كرتونية"></div>
+          </fieldset>
           <div class="customization-actions"><button id="wb-save-customized" class="primary" type="button">تنزيل نسخة بالتخصيصات</button><button id="wb-reset-appearance" type="button">إعادة التخصيصات الافتراضية</button></div>
           <p id="wb-customization-status" class="hint" role="status">كل الألوان والشخصيات محلية ومضمّنة في HTML. الشخصيات ثابتة عند الإيقاف أو تفعيل تقليل الحركة.</p>
         </div>
       </details>
-      <details class="transcript-panel"><summary>نص الخطوة · نسخة مقروءة</summary><div id="step-transcript"></div></details>
+      <details id="wb-transcript" class="transcript-panel"><summary>نص الخطوة · نسخة مقروءة</summary><div id="step-transcript"></div></details>
     </div>
   </div>
   <footer class="page-footer">العناوين للتنظيم ولا تُقرأ صوتيًا. عند وجود خريطة التوقيت: حدود فعلية لكل سطر وتقدير للكتابة داخله، وليس محاذاة كلمة بكلمة. دونها يعمل التقدير السابق.</footer>

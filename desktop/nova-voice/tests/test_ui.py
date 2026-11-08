@@ -564,13 +564,84 @@ def test_combined_job_can_be_cancelled_and_reenables_both_generation_paths(windo
 
     window._start_task(wait_for_cancel, "whiteboard-combined")
     worker = window.worker
+    finished = QSignalSpy(worker.finished)
     assert not window.combined_board_button.isEnabled()
     assert not window.create_board_button.isEnabled()
     window.generate_whiteboard_with_audio()  # A second click cannot replace the running worker.
     assert window.worker is worker
     window._cancel()
-    assert QSignalSpy(worker.finished).wait(30000)
+    assert finished.count() > 0 or finished.wait(30000)
     QApplication.processEvents()
     assert window.worker is None
     assert window.combined_board_button.isEnabled() and window.create_board_button.isEnabled()
     assert "الإلغاء" in window.status.text()
+
+
+def test_organized_workspace_keeps_main_generation_and_cancellation_outside_tabs(window):
+    assert [window.workspace_tabs.tabText(i) for i in range(4)] == [
+        "النص والأصوات",
+        "ألوان وشخصيات",
+        "سبورة محفوظة",
+        "صوت فقط / HTML",
+    ]
+    assert window.workspace_tabs.widget(0).isAncestorOf(window.editor)
+    assert window.workspace_tabs.widget(0).isAncestorOf(window.mode_combo)
+    assert window.workspace_tabs.widget(0).isAncestorOf(window.format_combo)
+    assert window.workspace_tabs.widget(0).isAncestorOf(window.primary_voice)
+    assert window.workspace_tabs.widget(0).isAncestorOf(window.secondary_voice)
+    assert window.workspace_tabs.widget(1).isAncestorOf(window.appearance_picker)
+    assert window.workspace_tabs.widget(2).isAncestorOf(window.create_board_button)
+    assert window.workspace_tabs.widget(2).isAncestorOf(window.board_audio_button)
+    assert window.workspace_tabs.widget(3).isAncestorOf(window.generate_button)
+    assert window.workspace_tabs.widget(3).isAncestorOf(window.html_export_button)
+    assert not window.workspace_tabs.isAncestorOf(window.combined_board_button)
+    assert not window.workspace_tabs.isAncestorOf(window.cancel_button)
+    assert not window.workspace_tabs.isAncestorOf(window.result_section)
+
+
+def test_native_disclosures_keep_settings_and_editor_state_when_tabs_change(window):
+    assert window.voice_tuning.content.isHidden()
+    assert window.appearance_picker.sentence_section.content.isHidden()
+    assert window.result_section.content.isHidden()
+    window.voice_tuning.set_expanded(True)
+    window.speed_slider.setValue(115)
+    window.pause_spin.setValue(250)
+    window.voice_tuning.set_expanded(False)
+    window.editor.setPlainText("# Keep me\nHello.")
+    for index in (1, 2, 3, 0):
+        window.workspace_tabs.setCurrentIndex(index)
+    assert window.editor.toPlainText() == "# Keep me\nHello."
+    assert window.speed_slider.value() == 115 and window.pause_spin.value() == 250
+    window.voice_tuning.set_expanded(True)
+    assert not window.voice_tuning.content.isHidden()
+
+
+def test_job_does_not_disable_the_shared_cancel_or_result_disclosure(window):
+    def wait_for_cancel(cancel, progress):
+        cancel.wait(30)
+        raise Cancelled()
+
+    window._start_task(wait_for_cancel, "whiteboard-combined")
+    worker = window.worker
+    finished = QSignalSpy(worker.finished)
+    assert not window.workspace_tabs.isEnabled()
+    assert window.cancel_button.isEnabled() and not window.cancel_button.isHidden()
+    assert window.result_section.isEnabled()
+    window._cancel()
+    assert finished.count() > 0 or finished.wait(30000)
+    QApplication.processEvents()
+    assert window.workspace_tabs.isEnabled()
+
+
+def test_success_expands_shared_result_without_moving_or_changing_the_editor(window, tmp_path):
+    from nova_voice.whiteboard import parse_lesson, save_whiteboard
+
+    window.editor.setPlainText("My current editor text.")
+    window.workspace_tabs.setCurrentIndex(2)
+    result = save_whiteboard(parse_lesson("# Result\nHello."), tmp_path / "result.html")
+    window._task_success(result)
+    assert not window.result_section.content.isHidden()
+    assert window.workspace_tabs.currentIndex() == 2
+    assert window.editor.toPlainText() == "My current editor text."
+    assert window.result_path.toolTip() == str(result.path)
+    assert window.open_html_button.isEnabled()

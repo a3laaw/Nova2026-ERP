@@ -65,3 +65,13 @@ exporter and reopens it offline, checking embedded audio, row boundaries and
 seeking. The combined path reuses the saved-lesson exporter; it does not introduce
 a second browser controller. Native Qt button tests are separate Python tests
 and require the system Qt dependencies (not provided by jsdom).
+
+
+## Organized layout
+
+Four further DOM cases check unique IDs and local shortcuts, transport before the
+children, independent native outline disclosures, visible transport/audio/rate
+and live status outside optional playback settings, and three named appearance
+groups without changes to lesson JSON. No controller or clock implementation is
+replaced. See `UI-ORGANIZATION-AR.md` for the separate Linux Chromium responsive
+and offline embedded-WAV smoke checks and unrun native Windows/Qt checks.

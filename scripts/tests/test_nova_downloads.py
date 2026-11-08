@@ -29,9 +29,16 @@ def site(tmp_path):
     (output / "index.html").write_text("<h1>Download centre</h1>")
     (output / "RUN-FIRST-AR.html").write_text("<h1>Guide</h1>")
     (output / "SHA256SUMS.txt").write_text("test checksum")
-    (source / "examples" / "greetings-whiteboard.html").write_text("<h1>Board preview</h1>")
+    (source / "examples" / "greetings-whiteboard.html").write_text(
+        "<h1>Board preview</h1>"
+    )
     (source / "examples" / "greetings-kids.html").write_text("<h1>Kids preview</h1>")
-    for name in ("HTML-GUIDE.md", "WHITEBOARD-GUIDE.md", "KIDS-GUIDE-AR.md"):
+    for name in (
+        "HTML-GUIDE.md",
+        "WHITEBOARD-GUIDE.md",
+        "KIDS-GUIDE-AR.md",
+        "EGYPTIAN-VOICES-AR.md",
+    ):
         (source / name).write_text("Public guide")
     (tmp_path / ".git").mkdir()
     (tmp_path / ".git" / "config").write_text("not public")
@@ -54,7 +61,10 @@ def test_download_is_a_real_attachment_and_head_matches_its_bytes(site):
     with urlopen(url, timeout=3) as response:
         assert response.status == 200
         assert response.headers["Content-Type"] == "application/vnd.rar"
-        assert response.headers["Content-Disposition"] == f'attachment; filename="{archive.name}"'
+        assert (
+            response.headers["Content-Disposition"]
+            == f'attachment; filename="{archive.name}"'
+        )
         assert response.headers["Cache-Control"] == "no-store"
         assert response.read() == archive.read_bytes()
     with urlopen(Request(url, method="HEAD"), timeout=3) as response:
@@ -80,7 +90,12 @@ def test_one_site_serves_download_page_guide_and_the_board_preview(site):
 
 @pytest.mark.parametrize(
     "path",
-    ["/.git/config", "/..%2f..%2f.git/config", "/deliverables/", "/desktop/nova-voice/run.py"],
+    [
+        "/.git/config",
+        "/..%2f..%2f.git/config",
+        "/deliverables/",
+        "/desktop/nova-voice/run.py",
+    ],
 )
 def test_server_never_exposes_repository_files_or_directory_lists(site, path):
     base, _ = site
@@ -108,3 +123,13 @@ def test_health_confirms_the_exact_available_filename(site):
     base, archive = site
     with urlopen(base + "/healthz", timeout=3) as response:
         assert json.loads(response.read()) == {"ready": True, "archive": archive.name}
+
+
+def test_egyptian_voice_report_is_explicitly_public_not_the_rest_of_the_source(site):
+    base, _ = site
+    with urlopen(
+        base + "/desktop/nova-voice/EGYPTIAN-VOICES-AR.md", timeout=3
+    ) as response:
+        assert response.status == 200
+        assert response.headers["Content-Type"] == "text/plain; charset=utf-8"
+        assert response.read() == b"Public guide"

@@ -23,6 +23,8 @@ FILES = (
     "WHITEBOARD-GUIDE.md",
     "CHANGELOG.md",
     "TIMING-VERIFICATION-AR.md",
+    "UI-ORGANIZATION-AR.md",
+    "EGYPTIAN-VOICES-AR.md",
     "KIDS-GUIDE-AR.md",
     "LICENSE",
     "THIRD_PARTY.md",

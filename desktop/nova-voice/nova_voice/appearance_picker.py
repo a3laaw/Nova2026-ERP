@@ -5,7 +5,7 @@ from PySide6.QtGui import QColor, QIcon
 from PySide6.QtWidgets import QCheckBox, QColorDialog, QHBoxLayout, QVBoxLayout, QWidget
 
 from .appearance import CHARACTERS, BoardAppearance, RowColor, color_value
-from .controls import button, combo, label
+from .controls import Disclosure, button, combo, label
 from .storage import resource_dir
 
 
@@ -27,6 +27,7 @@ class AppearancePicker(QWidget):
         self.layout_combo.addItem("الإنجليزي فوق والعربي تحته", "stacked")
         self.layout_combo.addItem("عمودان: English يسار / العربي يمين", "columns")
         self.layout_combo.addItem("ترتيب السكريبت دون تجميع", "script")
+        layout.addWidget(label("ترتيب العربية وEnglish", "muted"))
         layout.addWidget(self.layout_combo)
         self.first_color_button = button("")
         self.second_color_button = button("")
@@ -54,6 +55,8 @@ class AppearancePicker(QWidget):
         self.animate = QCheckBox("تحريك الشخصيات أثناء التشغيل فقط")
         self.animate.setChecked(True)
         layout.addWidget(self.animate)
+        self.sentence_section = Disclosure("تخصيص متقدم · لون جملة بعينها")
+        sentence_layout = self.sentence_section.content_layout
         row_actions = QHBoxLayout()
         self.refresh_sentences = button("تحديث قائمة الجمل")
         self.refresh_sentences.clicked.connect(self.sentences_requested.emit)
@@ -66,9 +69,12 @@ class AppearancePicker(QWidget):
         self.clear_sentence_button.clicked.connect(self._clear_sentence_color)
         row_actions.addWidget(self.refresh_sentences)
         row_actions.addWidget(self.sentence_combo, 1)
-        row_actions.addWidget(self.sentence_color_button)
-        row_actions.addWidget(self.clear_sentence_button)
-        layout.addLayout(row_actions)
+        sentence_layout.addLayout(row_actions)
+        color_actions = QHBoxLayout()
+        color_actions.addWidget(self.sentence_color_button)
+        color_actions.addWidget(self.clear_sentence_button)
+        sentence_layout.addLayout(color_actions)
+        layout.addWidget(self.sentence_section)
         self.hint = label(
             "جهّز السكريبت ثم حدّث قائمة الجمل. التخصيص يظهر بالتوليد الموحّد أو بعد إعادة الخطوة 1. "
             "يمكن أيضًا تعديل الألوان والشخصيات وحفظ نسخة من داخل HTML. "

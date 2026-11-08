@@ -43,3 +43,28 @@ def combo() -> QComboBox:
 def clock(milliseconds: int) -> str:
     seconds = max(0, milliseconds // 1000)
     return f"{seconds // 60:02d}:{seconds % 60:02d}"
+
+
+class Disclosure(QFrame):
+    """Keyboard-accessible native disclosure; hiding never resets its controls."""
+
+    def __init__(self, title: str, parent=None):
+        super().__init__(parent)
+        self.setObjectName("disclosure")
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(10)
+        self.toggle_button = button(title, "disclosure-toggle")
+        self.toggle_button.setCheckable(True)
+        self.toggle_button.setAccessibleName(title)
+        layout.addWidget(self.toggle_button)
+        self.content = QFrame()
+        self.content_layout = QVBoxLayout(self.content)
+        self.content_layout.setContentsMargins(4, 6, 4, 4)
+        self.content_layout.setSpacing(12)
+        layout.addWidget(self.content)
+        self.content.hide()
+        self.toggle_button.toggled.connect(self.content.setVisible)
+
+    def set_expanded(self, expanded: bool) -> None:
+        self.toggle_button.setChecked(expanded)
