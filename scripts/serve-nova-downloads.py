@@ -13,7 +13,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-ARCHIVE_NAME = "NovaVoice-Source-v0.9.0.dev1.rar"
+ARCHIVE_NAME = "NovaVoice-Source-v0.10.0.dev1.rar"
 PDF_NAME = "NovaVoice-Motion-A4-v0.9.0.dev1.pdf"
 VIDEO_NAME = "NovaVoice-Motion-H264-v0.9.0.dev1.mp4"
 WEBM_NAME = "NovaVoice-Motion-v0.9.0.dev1.webm"
@@ -28,6 +28,11 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         "/index.html": (delivery / "index.html", html, False),
         "/" + ARCHIVE_NAME: (delivery / ARCHIVE_NAME, "application/vnd.rar", True),
         "/RUN-FIRST-AR.html": (delivery / "RUN-FIRST-AR.html", html, False),
+        "/inference": (delivery / "INFERENCE-GUIDE-AR.html", html, False),
+        "/INFERENCE-GUIDE-AR.html": (delivery / "INFERENCE-GUIDE-AR.html", html, False),
+        "/desktop/nova-voice/INFERENCE-GUIDE-AR.html": (
+            source / "INFERENCE-GUIDE-AR.html", html, False
+        ),
         "/SHA256SUMS.txt": (
             delivery / "SHA256SUMS.txt",
             "text/plain; charset=utf-8",
@@ -91,6 +96,7 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         "FULL-LESSON-AR.md",
         "LESSON-OUTPUT-AR.md",
         "VIDEO-MOTION-AR.md",
+        "INFERENCE-GUIDE-AR.md",
     ):
         routes["/desktop/nova-voice/" + name] = (
             source / name,
@@ -110,6 +116,7 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         "FULL-LESSON-AR.md",
         "LESSON-OUTPUT-AR.md",
         "VIDEO-MOTION-AR.md",
+        "INFERENCE-GUIDE-AR.md",
     ):
         routes["/" + name] = routes["/desktop/nova-voice/" + name]
     for name, mime in (
@@ -134,6 +141,7 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         routes["/examples/" + name] = route
         routes["/desktop/nova-voice/examples/" + name] = route
     for legacy in (
+        "NovaVoice-Source-v0.9.0.dev1.rar",
         "NovaVoice-Source-v0.8.0.dev1.rar",
         "NovaVoice-Source-v0.7.0.dev1.rar",
         "NovaVoice-Source-v0.6.0.rar",

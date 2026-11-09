@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>استدلال — دليل كل إمكانات Nova Voice</title>
+<style>/*INFERENCE_CSS*/</style>
+</head>
+<body>
+<a class="skip" href="#workspace">انتقل إلى الدليل</a>
+<header class="topbar">
+  <div class="brand"><span class="brand-mark" aria-hidden="true">N</span><span><strong>Nova Voice</strong><small>من محتوى موثوق، إلى درس تراجعه</small></span></div>
+  <div class="top-notes"><span class="pill">دليل محلي · دون إرسال</span><a href="RUN-FIRST-AR.html">دليل التشغيل</a></div>
+</header>
+<main>
+  <section class="hero" aria-labelledby="page-title">
+    <div><p class="eyebrow">دليل الطلبات والاستخدام</p><h1 id="page-title">استدلال<span class="dot">.</span></h1>
+    <p class="lead">كل ما يمكنك عمله في البرنامج،<br> وماذا تطلب للوصول إليه.</p>
+    <p class="hero-description">ابدأ بمحتوى الوزارة الذي راجعته. اختر القدرة، واعرف شكل النص المتوافق، ثم جهّز طلبك أو اتبع الإعدادات المحلية. ليس مجرد دليل للحركات الست، ولا قائمة قوالب مواد.</p>
+    <div class="stats"><span><b id="total-count">—</b> قدرة ومسار</span><span><b>8</b> أقسام</span><span>المادة والصف بالنص الحر</span></div></div>
+    <ol class="journey"><li><span>01</span><div><strong>جهّز المصدر</strong><p>انسخ النص من PDF خارج البرنامج، وراجع الأرقام والمعادلات والرسوم الناقصة.</p></div></li><li><span>02</span><div><strong>اختر ما تريد</strong><p>سكريبت، حوار، رسم، حركة، تخصيص أو تصدير. لكل قدرة مسارها.</p></div></li><li><span>03</span><div><strong>راجع، ثم استخدم</strong><p>الطلب لا يغيّر الأصوات ولا يعتمد الرسوم ولا يبدأ الطباعة أو الفيديو.</p></div></li></ol>
+  </section>
+  <div class="notice"><strong>قبل أن تلصق محتوى PDF</strong><p>هذه الصفحة لا تقرأ ملفات الوزارة ولا تستدعي نموذجًا. ألصق نصًا مستخرجًا ومراجعًا فقط، بلا بيانات طلاب أو مفاتيح. لا إرسال ولا حفظ تلقائي؛ النسخ والتنزيل بأزرارك أنت.</p></div>
+  <noscript><div class="notice">فعّل JavaScript المحلي لتصفّح الفهرس وبناء الطلب. لا يحتاج إنترنت. ويمكنك قراءة INFERENCE-GUIDE-AR.md داخل الحزمة.</div></noscript>
+  <div id="workspace" class="workspace">
+    <aside class="catalog card" aria-labelledby="catalog-title">
+      <div class="section-head"><span class="step">1</span><h2 id="catalog-title">ماذا تريد أن تعمل؟</h2></div>
+      <label for="search">ابحث عن أي قدرة</label><input id="search" type="search" placeholder="مثل: حوار، PDF، دوران، path…" autocomplete="off" spellcheck="false">
+      <div class="type-filter" role="group" aria-label="نوع الاستخدام"><button type="button" data-mode="all" aria-pressed="true">الكل</button><button type="button" data-mode="prompt" aria-pressed="false">يحتاج طلبًا</button><button type="button" data-mode="local" aria-pressed="false">إعداد محلي</button></div>
+      <p class="field-caption">القسم</p><div id="categories" class="categories" role="group" aria-label="أقسام القدرات"></div>
+      <p id="match-count" class="muted" aria-live="polite"></p><div id="capabilities" class="capabilities" aria-label="القدرات المطابقة"></div>
+      <p class="catalog-foot">التصنيف حسب الاستخدام، لا حسب قوالب دروس ثابتة. ابحث بالعربية أو باسم النوع التقني.</p>
+    </aside>
+    <div class="workspace-content">
+      <p id="empty-results" class="card" hidden>لا توجد نتائج. جرّب كلمة أقصر، أو اختر «كل الأقسام» و«الكل».</p>
+      <article id="capability-detail" class="card detail" aria-labelledby="capability-title">
+        <div class="detail-top"><span id="capability-mode" class="pill"></span><span class="source-badge">مبني على إمكانات المصدر</span></div>
+        <h2 id="capability-title"></h2><p id="capability-summary" class="summary"></p>
+        <div class="destination"><strong>أين تستخدمه؟</strong><p id="destination"></p></div>
+        <div id="normal-detail"><h3 id="usage-title">المسار العملي</h3><ol id="usage-steps" class="usage-steps"></ol><p id="expected-result" class="expected"></p>
+        <details id="example-panel"><summary>مثال مؤلف وشكل الناتج المتوافق</summary><p class="muted">للتوضيح فقط، ليس اقتباسًا من الوزارة أو مخرج نموذج حي. ليس JSON جاهزًا للاستيراد.</p><h4>المصدر المختصر</h4><pre id="example-source" dir="auto"></pre><h4>الناتج أو الإجراء المتوقع</h4><pre id="example-output" dir="auto"></pre><div id="element-panel" hidden><h4>مثال عنصر من مخطط الرسم، لا خطة كاملة</h4><pre id="example-element" dir="ltr"></pre></div></details>
+        <details class="limits" open><summary>ما الذي لا يضمنه هذا المسار؟</summary><ul id="entry-limits"></ul></details></div>
+        <p id="sacred-detail" class="protected" hidden></p>
+      </article>
+      <section id="builder" class="card builder" aria-labelledby="builder-title">
+        <div class="section-head"><span class="step">2</span><h2 id="builder-title">جهّز طلبك</h2></div>
+        <div class="policy-row"><label for="policy">سياسة المحتوى · اختيار يدوي</label><select id="policy"><option value="general">محتوى عام · يحتاج مراجعة</option><option value="sacred">نصوص مقدسة · مراجعة محلية فقط</option></select></div>
+        <p id="builder-hint" class="muted"></p>
+        <div id="content-fields">
+          <div class="fields"><div><label for="subject">المادة <small>اختياري · 80 حرفًا</small></label><input id="subject" type="text" placeholder="علوم، هندسة، جغرافيا…" autocomplete="off"></div><div><label for="grade">الصف أو العمر <small>اختياري · 80 حرفًا</small></label><input id="grade" type="text" placeholder="مثل: الأول الإعدادي" autocomplete="off"></div><div><label for="lesson-title">عنوان الدرس <small>اختياري · 120 حرفًا</small></label><input id="lesson-title" type="text" placeholder="عنوان يناسب المصدر" autocomplete="off"></div></div>
+          <div class="source-heading"><label for="source">النص المصدر بعد مراجعته</label><span id="source-count" class="muted" dir="ltr">0 / 12000</span></div>
+          <textarea id="source" rows="6" dir="auto" placeholder="ألصق الجزء المطلوب من محتوى الوزارة هنا. إذا كانت صورة أو معادلة غير واضحة، صف موضعها ولا تخمّنها." autocomplete="off" spellcheck="false"></textarea>
+          <div class="source-actions"><p class="muted">حتى 12000 حرف في دفعة الدليل. قسّم الطويل؛ لا نقصّه تلقائيًا.</p><button id="load-example" type="button">استخدم المثال المؤلف للتجربة</button></div>
+          <details class="notes-panel"><summary>متطلبات إضافية للشرح · اختياري</summary><label for="notes">توضيحاتك <small>حتى 2000 حرف، بلا أسرار أو معلومات شخصية</small></label><textarea id="notes" rows="3" dir="auto" placeholder="مثل: حافظ على المصطلحات كما وردت، وافصل الأسئلة عن الإجابات." autocomplete="off"></textarea><p class="muted">ليست أوامر لتغيير إعدادات الصوت أو التصدير. لا تُدرج بيانات طلاب.</p></details>
+        </div>
+        <div class="build-actions"><button id="build" class="primary" type="button">بناء الطلب</button><button id="copy" type="button" disabled>نسخ الطلب</button><button id="download" type="button" disabled>تنزيل TXT</button></div>
+        <p id="status" class="status" role="status" aria-live="polite">اختر القدرة وألصق المصدر ثم اضغط «بناء الطلب». لا استدلال حي هنا.</p>
+        <label id="output-label" for="output">الطلب الجاهز للنسخ</label><textarea id="output" class="output" readonly rows="10" dir="auto" placeholder="لن يُنشأ شيء قبل ضغطك على الزر. تغيير الحقول يلغي النص المبني حتى تعيد بناءه." spellcheck="false"></textarea>
+        <p class="muted">النسخ إلى خدمة خارجية قرار مستقل منك وشروطها مسؤوليتك. اختيار لون أو صوت أو إخراج ملف يتم من البرنامج، لا من هذا الطلب.</p>
+      </section>
+      <section id="drawing-section" class="card drawing" hidden aria-labelledby="drawing-title"><div class="section-head"><span class="step">3</span><h2 id="drawing-title">متطلبات الرسم · منفصلة عن النطق</h2></div><p>بعد تجهيز السكريبت: من البرنامج افتح «مشاهد ذكية» وانسخ توجيهه المرتبط بالمصدر. ألحق به هذه المتطلبات، ثم راجع رد JSON هناك. <strong>لا تلصقها في الكلام المنطوق، ولا تخمّن البصمات.</strong></p><details><summary>اعرض ملحق متطلبات الرسم</summary><label for="drawing-output">ملحق للتوجيه الأصلي، لا خطة جاهزة</label><textarea id="drawing-output" readonly rows="9" dir="auto" spellcheck="false"></textarea></details><button id="copy-drawing" type="button">نسخ متطلبات الرسم</button><p id="drawing-status" class="muted" role="status" aria-live="polite"></p></section>
+    </div>
+  </div>
+  <section class="boundaries card" aria-labelledby="limits-title"><div><p class="eyebrow">وضوح قبل الوعود</p><h2 id="limits-title">الحدود جزء من الدليل</h2><p>تنفيذ إعداد أو قبول صيغة لا يثبت صحة المحتوى أو جودة النطق. راجع الدرس واختبر ملفًا قصيرًا على جهازك.</p></div><ul id="unsupported"></ul><details><summary>كيف رُبط الدليل بإمكانات البرنامج؟</summary><p>فهرس مشترك بين هذا الملف والتبويب الأصلي. الأمثلة مؤلفة، وتُختبر صيغ السكريبت وعناصر الرسم مقابل المحللات المحلية. ملفات المرجع:</p><ul id="source-files" class="source-files" dir="ltr"></ul><p>الفهرس لا يستدعي هذه الملفات عبر الشبكة. لا PDF/OCR أو خدمة جديدة أو تخزين حقول.</p></details></section>
+</main>
+<footer><strong>استدلال · Nova Voice</strong><span>نسخة HTML مستقلة · لا حاجة لخادم أو حساب لفتح الدليل</span><a href="INFERENCE-GUIDE-AR.md">شرح الدليل والحدود</a></footer>
+<script id="inference-data" type="application/json">INFERENCE_CATALOG_JSON</script>
+<script>/*INFERENCE_JS*/</script>
+</body>
+</html>

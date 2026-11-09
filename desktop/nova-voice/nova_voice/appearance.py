@@ -8,6 +8,7 @@ from xml.etree import ElementTree
 
 STYLE_ID = "nova-whiteboard-appearance"
 CATALOG_ID = "nova-character-catalog"
+LAYOUTS = ("stacked", "columns", "script")
 CHARACTERS = (
     ("adam", "آدم", "boy"),
     ("omar", "عمر", "boy"),
@@ -61,7 +62,7 @@ class BoardAppearance:
             raise AppearanceError("بيانات ألوان السبورة والشخصيات ناقصة أو غير مدعومة.")
         if type(data["version"]) is not int or data["version"] != 1:
             raise AppearanceError("إصدار تخصيص السبورة غير مدعوم.")
-        if data["layout"] not in ("stacked", "columns", "script"):
+        if data["layout"] not in LAYOUTS:
             raise AppearanceError("اختر ترتيبًا مدعومًا للغتين: تحت بعض أو عمودان أو ترتيب السكريبت.")
         for name in ("first_character", "second_character"):
             if not isinstance(data[name], str) or data[name] not in CHARACTER_IDS:

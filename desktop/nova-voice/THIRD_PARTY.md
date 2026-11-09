@@ -88,3 +88,13 @@ Review the license/build options of your chosen FFmpeg and its codecs (including
 libx264) before use/redistribution; this source handoff does not redistribute them.
 Conversion is offline and optional. Development-only FFmpeg/Playwright/PDF tooling
 is not a runtime dependency or proof of native Windows/device/real-voice behavior.
+
+
+## 0.10.0.dev1 offline capability guide
+
+The Arabic capability catalog, prompt builder, native tab, HTML, CSS and JavaScript
+are authored in this project and use its license. No Ministry PDF text, curriculum
+assets, live-model output, external fonts/icons, OCR engine, provider SDK or new
+runtime dependency is bundled. Examples are authored demonstrations, not source
+quotations or evidence of live inference. The standalone guide makes no network
+requests or automatic storage; copying to another service is a separate user act.

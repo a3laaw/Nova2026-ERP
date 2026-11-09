@@ -25,6 +25,8 @@ FILES = (
     "FULL-LESSON-AR.md",
     "LESSON-OUTPUT-AR.md",
     "VIDEO-MOTION-AR.md",
+    "INFERENCE-GUIDE-AR.md",
+    "INFERENCE-GUIDE-AR.html",
     "CHANGELOG.md",
     "TIMING-VERIFICATION-AR.md",
     "UI-ORGANIZATION-AR.md",

@@ -26,6 +26,8 @@ MAX_STEP_ELEMENTS = 60
 WIDTH, HEIGHT = 1000, 420
 ICONS = ("apple", "ball", "block", "leaf", "star", "sun", "cloud", "drop", "book", "person")
 POLICIES = ("general", "sacred")
+MOTION_TYPES = ("draw", "move", "pulse", "none", "path", "rotate")
+EASING_TYPES = ("linear", "smooth")
 KINDS = (
     "rect",
     "circle",
@@ -139,9 +141,7 @@ def validate_element(item: dict, rows: int) -> None:
         motion = item["motion"]
         _require(isinstance(motion, dict))
         mode = motion.get("type")
-        _require(
-            mode in ("draw", "move", "pulse", "none", "path", "rotate"), "نوع حركة الرسم غير مدعوم."
-        )
+        _require(mode in MOTION_TYPES, "نوع حركة الرسم غير مدعوم.")
         if mode in ("move", "path", "rotate"):
             fields = (
                 {"dx", "dy"}
@@ -151,7 +151,7 @@ def validate_element(item: dict, rows: int) -> None:
                 else {"degrees", "cx", "cy"}
             )
             _keys(motion, {"type", "ease"} | fields, {"type"} | fields)
-            _require(motion.get("ease", "linear") in ("linear", "smooth"))
+            _require(motion.get("ease", "linear") in EASING_TYPES)
         if mode == "move":
             _require(_integer(motion["dx"], -300, 300) and _integer(motion["dy"], -180, 180))
         elif mode == "path":

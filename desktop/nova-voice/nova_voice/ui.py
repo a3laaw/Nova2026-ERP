@@ -54,6 +54,7 @@ from .html_export import (
     render_html,
     validate_destination,
 )
+from .inference_picker import InferencePicker
 from .lesson_draft import LessonDraft
 from .lesson_picker import LessonPicker, LessonRequest
 from .lesson_planner import request_lesson
@@ -459,6 +460,9 @@ class MainWindow(QMainWindow):
         self.video_picker.requested.connect(self._convert_video)
         video_layout.addWidget(self.video_picker)
         self.workspace_tabs.addTab(video_card, "MP4 متوافق")
+        self.inference_picker = InferencePicker(lambda: self.scene_picker.policy.currentData())
+        self.scene_picker.policy.currentIndexChanged.connect(self.inference_picker.refresh_policy)
+        self.workspace_tabs.addTab(self.inference_picker, "استدلال")
         export_actions.addWidget(self.cancel_button)
         export_layout.addLayout(export_actions)
         self.progress = QProgressBar()
