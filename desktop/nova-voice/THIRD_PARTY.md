@@ -98,3 +98,13 @@ assets, live-model output, external fonts/icons, OCR engine, provider SDK or new
 runtime dependency is bundled. Examples are authored demonstrations, not source
 quotations or evidence of live inference. The standalone guide makes no network
 requests or automatic storage; copying to another service is a separate user act.
+
+## Owned composition renderer (0.11)
+
+`whiteboard-graph.js`, `scene_graph.py` and the composition demo are original Nova
+Voice procedural code/artwork under this app's GPL-3.0-or-later license. No new
+third-party library, LLM/3D weights, external animation, image or texture is added.
+The SVG projection is an illustrative 2.5D surface, not GIS data or a scientific
+model. Cloud planner/provider terms above remain separate; a renderer is not a
+natural-language inference service. Developer Chromium/Playwright/FFmpeg tools,
+reports and diagnostic media are not bundled with the application/source handoff.

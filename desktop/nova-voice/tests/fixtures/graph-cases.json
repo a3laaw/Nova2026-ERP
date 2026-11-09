@@ -1,0 +1,5396 @@
+{
+  "rows": 3,
+  "valid": [
+    {
+      "id": "curve-0",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "curve",
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                100,
+                -120
+              ],
+              [
+                200,
+                0
+              ]
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "curve-1",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "curve",
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                -180
+              ],
+              [
+                300,
+                -180
+              ],
+              [
+                300,
+                0
+              ]
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "curve-2",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "curve",
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                1,
+                1
+              ]
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "curve-smooth",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "curve",
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                100,
+                100
+              ],
+              [
+                200,
+                0
+              ]
+            ],
+            "ease": "smooth"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sequence-dx",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "dx": 0
+              },
+              {
+                "at": 1000,
+                "dx": 200
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "sequence-dy",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "dy": -180
+              },
+              {
+                "at": 1000,
+                "dy": 180
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "sequence-angle",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "angle": -720
+              },
+              {
+                "at": 1000,
+                "angle": 720
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "sequence-scale",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "scale": 25
+              },
+              {
+                "at": 1000,
+                "scale": 200
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "sequence-opacity",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "opacity": 0
+              },
+              {
+                "at": 1000,
+                "opacity": 100
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "sequence-fill",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "fill": "#112233"
+              },
+              {
+                "at": 1000,
+                "fill": "#F1E2D3"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "sequence-full-pose",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "dx": 0,
+                "dy": 0,
+                "angle": 0,
+                "scale": 100,
+                "opacity": 100,
+                "fill": "#FFB000"
+              },
+              {
+                "at": 1000,
+                "dx": 300,
+                "dy": -180,
+                "angle": 720,
+                "scale": 200,
+                "opacity": 25,
+                "fill": "#2563EB"
+              }
+            ],
+            "span": 3,
+            "ease": "smooth"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sequence-repeated",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "angle": -30
+              },
+              {
+                "at": 250,
+                "angle": 30
+              },
+              {
+                "at": 500,
+                "angle": -30
+              },
+              {
+                "at": 750,
+                "angle": 30
+              },
+              {
+                "at": 1000,
+                "angle": -30
+              }
+            ],
+            "repeat": 2,
+            "span": 2,
+            "cx": 0,
+            "cy": 0,
+            "ease": "smooth"
+          }
+        }
+      ]
+    },
+    {
+      "id": "repeat-whole-turn",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "angle": 0
+              },
+              {
+                "at": 1000,
+                "angle": -720
+              }
+            ],
+            "repeat": 6
+          }
+        }
+      ]
+    },
+    {
+      "id": "eight-frames",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "scale": 100
+              },
+              {
+                "at": 100,
+                "scale": 110
+              },
+              {
+                "at": 200,
+                "scale": 120
+              },
+              {
+                "at": 300,
+                "scale": 130
+              },
+              {
+                "at": 400,
+                "scale": 140
+              },
+              {
+                "at": 500,
+                "scale": 150
+              },
+              {
+                "at": 600,
+                "scale": 160
+              },
+              {
+                "at": 1000,
+                "scale": 200
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "gradient-linear",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "gradient": {
+            "color": "#FFB000",
+            "axis": "horizontal"
+          }
+        }
+      ]
+    },
+    {
+      "id": "gradient-radial",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "gradient": {
+            "color": "#FFB000",
+            "axis": "radial"
+          }
+        }
+      ]
+    },
+    {
+      "id": "named-group",
+      "elements": [
+        {
+          "kind": "group",
+          "row": 0,
+          "x": 200,
+          "y": 30,
+          "name": "أجزاء تعليمية",
+          "children": [
+            {
+              "kind": "rect",
+              "row": 0,
+              "x": 0,
+              "y": 0,
+              "w": 25,
+              "h": 90,
+              "fill": "#FFB000",
+              "motion": {
+                "type": "sequence",
+                "frames": [
+                  {
+                    "at": 0,
+                    "angle": -30
+                  },
+                  {
+                    "at": 250,
+                    "angle": 30
+                  },
+                  {
+                    "at": 500,
+                    "angle": -30
+                  },
+                  {
+                    "at": 750,
+                    "angle": 30
+                  },
+                  {
+                    "at": 1000,
+                    "angle": -30
+                  }
+                ],
+                "repeat": 2,
+                "span": 2,
+                "cx": 0,
+                "cy": 0,
+                "ease": "smooth"
+              }
+            },
+            {
+              "kind": "text",
+              "row": 1,
+              "x": 50,
+              "y": 100,
+              "text": "اسم جزء"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nested-joints",
+      "elements": [
+        {
+          "kind": "group",
+          "row": 0,
+          "x": 200,
+          "y": 30,
+          "name": "أجزاء تعليمية",
+          "children": [
+            {
+              "kind": "group",
+              "row": 0,
+              "x": 100,
+              "y": 20,
+              "name": "مفصل محلي",
+              "children": [
+                {
+                  "kind": "rect",
+                  "row": 0,
+                  "x": 0,
+                  "y": 0,
+                  "w": 25,
+                  "h": 90,
+                  "fill": "#FFB000",
+                  "motion": {
+                    "type": "sequence",
+                    "frames": [
+                      {
+                        "at": 0,
+                        "angle": -30
+                      },
+                      {
+                        "at": 250,
+                        "angle": 30
+                      },
+                      {
+                        "at": 500,
+                        "angle": -30
+                      },
+                      {
+                        "at": 750,
+                        "angle": 30
+                      },
+                      {
+                        "at": 1000,
+                        "angle": -30
+                      }
+                    ],
+                    "repeat": 2,
+                    "span": 2,
+                    "cx": 0,
+                    "cy": 0,
+                    "ease": "smooth"
+                  }
+                },
+                {
+                  "kind": "text",
+                  "row": 1,
+                  "x": 50,
+                  "y": 100,
+                  "text": "اسم جزء"
+                }
+              ],
+              "motion": {
+                "type": "sequence",
+                "frames": [
+                  {
+                    "at": 0,
+                    "angle": -30
+                  },
+                  {
+                    "at": 250,
+                    "angle": 30
+                  },
+                  {
+                    "at": 500,
+                    "angle": -30
+                  },
+                  {
+                    "at": 750,
+                    "angle": 30
+                  },
+                  {
+                    "at": 1000,
+                    "angle": -30
+                  }
+                ],
+                "repeat": 2,
+                "span": 2,
+                "cx": 0,
+                "cy": 0,
+                "ease": "smooth"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "inherited-lifetime",
+      "elements": [
+        {
+          "kind": "group",
+          "row": 0,
+          "x": 200,
+          "y": 30,
+          "name": "أجزاء تعليمية",
+          "children": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB",
+              "motion": {
+                "type": "sequence",
+                "frames": [
+                  {
+                    "at": 0,
+                    "angle": -30
+                  },
+                  {
+                    "at": 250,
+                    "angle": 30
+                  },
+                  {
+                    "at": 500,
+                    "angle": -30
+                  },
+                  {
+                    "at": 750,
+                    "angle": 30
+                  },
+                  {
+                    "at": 1000,
+                    "angle": -30
+                  }
+                ],
+                "repeat": 2,
+                "span": 2,
+                "cx": 0,
+                "cy": 0,
+                "ease": "smooth"
+              }
+            }
+          ],
+          "until": 2
+        }
+      ]
+    },
+    {
+      "id": "late-global-cue",
+      "elements": [
+        {
+          "kind": "group",
+          "row": 1,
+          "x": 200,
+          "y": 30,
+          "name": "أجزاء تعليمية",
+          "children": [
+            {
+              "kind": "circle",
+              "row": 1,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB",
+              "until": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sector",
+      "elements": [
+        {
+          "kind": "sector",
+          "row": 0,
+          "x": 300,
+          "y": 210,
+          "r": 140,
+          "start": -90,
+          "sweep": 120,
+          "fill": "#FFB000"
+        }
+      ]
+    },
+    {
+      "id": "full-ring",
+      "elements": [
+        {
+          "kind": "sector",
+          "row": 0,
+          "x": 300,
+          "y": 210,
+          "r": 140,
+          "start": 360,
+          "sweep": 360,
+          "fill": "#FFB000",
+          "inner": 100,
+          "gradient": {
+            "color": "#FF5722",
+            "axis": "vertical"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sector-small",
+      "elements": [
+        {
+          "kind": "sector",
+          "row": 0,
+          "x": 300,
+          "y": 210,
+          "r": 1,
+          "start": -90,
+          "sweep": 1,
+          "fill": "#FFB000",
+          "inner": 0
+        }
+      ]
+    },
+    {
+      "id": "sphere",
+      "elements": [
+        {
+          "kind": "sphere",
+          "row": 0,
+          "x": 500,
+          "y": 200,
+          "r": 150
+        }
+      ]
+    },
+    {
+      "id": "sphere-spin",
+      "elements": [
+        {
+          "kind": "sphere",
+          "row": 0,
+          "x": 500,
+          "y": 200,
+          "r": 150,
+          "longitude": -180,
+          "tilt": 45,
+          "grid": false,
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "spin": 0
+              },
+              {
+                "at": 1000,
+                "spin": 360
+              }
+            ],
+            "repeat": 3,
+            "span": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "sphere-patch-gradient",
+      "elements": [
+        {
+          "kind": "sphere",
+          "row": 0,
+          "x": 500,
+          "y": 200,
+          "r": 150,
+          "patches": [
+            {
+              "points": [
+                [
+                  -30,
+                  -20
+                ],
+                [
+                  30,
+                  -20
+                ],
+                [
+                  30,
+                  20
+                ],
+                [
+                  -30,
+                  20
+                ]
+              ],
+              "fill": "#FFB000"
+            }
+          ],
+          "fill": "#2563EB",
+          "gradient": {
+            "color": "#64748B",
+            "axis": "radial"
+          }
+        }
+      ]
+    },
+    {
+      "id": "three-spheres",
+      "elements": [
+        {
+          "kind": "sphere",
+          "row": 0,
+          "x": 100,
+          "y": 200,
+          "r": 40
+        },
+        {
+          "kind": "sphere",
+          "row": 0,
+          "x": 300,
+          "y": 200,
+          "r": 40
+        },
+        {
+          "kind": "sphere",
+          "row": 0,
+          "x": 500,
+          "y": 200,
+          "r": 40
+        }
+      ]
+    },
+    {
+      "id": "literal-safe-label",
+      "elements": [
+        {
+          "kind": "text",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "text": "<script>not code</script> 😀",
+          "name": "اسم 😀"
+        }
+      ]
+    },
+    {
+      "id": "legacy-in-tree",
+      "elements": [
+        {
+          "kind": "group",
+          "row": 0,
+          "x": 200,
+          "y": 30,
+          "name": "أجزاء تعليمية",
+          "children": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB",
+              "motion": {
+                "type": "rotate",
+                "degrees": 90,
+                "cx": 0,
+                "cy": 0
+              }
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB",
+              "motion": {
+                "type": "draw"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sixty-nodes",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 0,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 10,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 20,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 30,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 40,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 50,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 60,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 70,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 80,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 90,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 110,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 120,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 130,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 140,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 150,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 160,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 170,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 180,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 190,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 200,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 210,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 220,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 230,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 240,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 250,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 260,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 270,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 280,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 290,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 300,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 310,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 320,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 330,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 340,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 350,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 360,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 370,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 380,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 390,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 400,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 410,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 420,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 430,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 440,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 450,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 460,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 470,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 480,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 490,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 500,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 510,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 520,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 530,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 540,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 550,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 560,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 570,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 580,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        },
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 590,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        }
+      ]
+    }
+  ],
+  "invalid": [
+    {
+      "id": "unknown-kind",
+      "elements": [
+        {
+          "kind": "animal",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB"
+        }
+      ]
+    },
+    {
+      "id": "external-shape",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "href": "https://example.invalid/a.svg"
+        }
+      ]
+    },
+    {
+      "id": "event-key",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "onclick": "alert(1)"
+        }
+      ]
+    },
+    {
+      "id": "bad-name-3",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "name": null
+        }
+      ]
+    },
+    {
+      "id": "bad-name-4",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "name": ""
+        }
+      ]
+    },
+    {
+      "id": "bad-name-5",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "name": []
+        }
+      ]
+    },
+    {
+      "id": "bad-name-6",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "name": [
+            "a"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bad-name-7",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "name": "ننننننننننننننننننننننننننننننننننننننننننننننننننننننننننننننننننننننننننننننننن"
+        }
+      ]
+    },
+    {
+      "id": "gradient-8",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "gradient": null
+        }
+      ]
+    },
+    {
+      "id": "gradient-9",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "gradient": {}
+        }
+      ]
+    },
+    {
+      "id": "gradient-10",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "gradient": {
+            "color": "url(x)",
+            "axis": "radial"
+          }
+        }
+      ]
+    },
+    {
+      "id": "gradient-11",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "gradient": {
+            "color": "#FFB000",
+            "axis": "diagonal"
+          }
+        }
+      ]
+    },
+    {
+      "id": "gradient-12",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "gradient": {
+            "color": "#FFB000",
+            "axis": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "gradient-13",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "gradient": {
+            "color": "#FFB000",
+            "axis": "radial",
+            "href": "x"
+          }
+        }
+      ]
+    },
+    {
+      "id": "gradient-no-base",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "none",
+          "gradient": {
+            "color": "#FFB000",
+            "axis": "radial"
+          }
+        }
+      ]
+    },
+    {
+      "id": "gradient-group",
+      "elements": [
+        {
+          "kind": "group",
+          "row": 0,
+          "x": 200,
+          "y": 30,
+          "name": "أجزاء تعليمية",
+          "children": [
+            {
+              "kind": "rect",
+              "row": 0,
+              "x": 0,
+              "y": 0,
+              "w": 25,
+              "h": 90,
+              "fill": "#FFB000",
+              "motion": {
+                "type": "sequence",
+                "frames": [
+                  {
+                    "at": 0,
+                    "angle": -30
+                  },
+                  {
+                    "at": 250,
+                    "angle": 30
+                  },
+                  {
+                    "at": 500,
+                    "angle": -30
+                  },
+                  {
+                    "at": 750,
+                    "angle": 30
+                  },
+                  {
+                    "at": 1000,
+                    "angle": -30
+                  }
+                ],
+                "repeat": 2,
+                "span": 2,
+                "cx": 0,
+                "cy": 0,
+                "ease": "smooth"
+              }
+            },
+            {
+              "kind": "text",
+              "row": 1,
+              "x": 50,
+              "y": 100,
+              "text": "اسم جزء"
+            }
+          ],
+          "fill": "#FFFFFF",
+          "gradient": {
+            "color": "#FFB000",
+            "axis": "radial"
+          }
+        }
+      ]
+    },
+    {
+      "id": "curve-16",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "curve",
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                10,
+                0
+              ]
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "curve-17",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "curve",
+            "points": [
+              [
+                1,
+                0
+              ],
+              [
+                10,
+                10
+              ],
+              [
+                20,
+                0
+              ]
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "curve-18",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "curve",
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                0
+              ]
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "curve-19",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "curve",
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                301,
+                0
+              ],
+              [
+                20,
+                0
+              ]
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "curve-20",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "curve",
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                0,
+                181
+              ],
+              [
+                20,
+                0
+              ]
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "curve-21",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "curve",
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                true,
+                0
+              ],
+              [
+                20,
+                0
+              ]
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "curve-22",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "curve",
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                1.2,
+                0
+              ],
+              [
+                20,
+                0
+              ]
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "curve-23",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "curve",
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                10,
+                0
+              ],
+              [
+                20,
+                0
+              ],
+              [
+                30,
+                0
+              ],
+              [
+                40,
+                0
+              ]
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "curve-ease-null",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "curve",
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                1,
+                1
+              ],
+              [
+                2,
+                0
+              ]
+            ],
+            "ease": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "curve-raw-path",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "curve",
+            "d": "M0 0Q1 1 2 0"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sequence-26",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [],
+            "repeat": 2,
+            "span": 2,
+            "cx": 0,
+            "cy": 0,
+            "ease": "smooth"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sequence-27",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "angle": 0
+              }
+            ],
+            "repeat": 2,
+            "span": 2,
+            "cx": 0,
+            "cy": 0,
+            "ease": "smooth"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sequence-28",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 1,
+                "angle": 0
+              },
+              {
+                "at": 1000,
+                "angle": 10
+              }
+            ],
+            "repeat": 2,
+            "span": 2,
+            "cx": 0,
+            "cy": 0,
+            "ease": "smooth"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sequence-29",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "angle": 0
+              },
+              {
+                "at": 999,
+                "angle": 10
+              }
+            ],
+            "repeat": 2,
+            "span": 2,
+            "cx": 0,
+            "cy": 0,
+            "ease": "smooth"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sequence-30",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0
+              },
+              {
+                "at": 1000
+              }
+            ],
+            "repeat": 2,
+            "span": 2,
+            "cx": 0,
+            "cy": 0,
+            "ease": "smooth"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sequence-31",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "dx": 0
+              },
+              {
+                "at": 1000,
+                "dy": 10
+              }
+            ],
+            "repeat": 2,
+            "span": 2,
+            "cx": 0,
+            "cy": 0,
+            "ease": "smooth"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sequence-32",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "angle": 0
+              },
+              {
+                "at": 0,
+                "angle": 10
+              },
+              {
+                "at": 1000,
+                "angle": 0
+              }
+            ],
+            "repeat": 2,
+            "span": 2,
+            "cx": 0,
+            "cy": 0,
+            "ease": "smooth"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sequence-33",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "angle": -30
+              },
+              {
+                "at": 250,
+                "angle": 30
+              },
+              {
+                "at": 500,
+                "angle": -30
+              },
+              {
+                "at": 750,
+                "angle": 30
+              },
+              {
+                "at": 1000,
+                "angle": -30
+              }
+            ],
+            "repeat": 0,
+            "span": 2,
+            "cx": 0,
+            "cy": 0,
+            "ease": "smooth"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sequence-34",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "angle": -30
+              },
+              {
+                "at": 250,
+                "angle": 30
+              },
+              {
+                "at": 500,
+                "angle": -30
+              },
+              {
+                "at": 750,
+                "angle": 30
+              },
+              {
+                "at": 1000,
+                "angle": -30
+              }
+            ],
+            "repeat": 7,
+            "span": 2,
+            "cx": 0,
+            "cy": 0,
+            "ease": "smooth"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sequence-35",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "angle": -30
+              },
+              {
+                "at": 250,
+                "angle": 30
+              },
+              {
+                "at": 500,
+                "angle": -30
+              },
+              {
+                "at": 750,
+                "angle": 30
+              },
+              {
+                "at": 1000,
+                "angle": -30
+              }
+            ],
+            "repeat": true,
+            "span": 2,
+            "cx": 0,
+            "cy": 0,
+            "ease": "smooth"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sequence-36",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "angle": -30
+              },
+              {
+                "at": 250,
+                "angle": 30
+              },
+              {
+                "at": 500,
+                "angle": -30
+              },
+              {
+                "at": 750,
+                "angle": 30
+              },
+              {
+                "at": 1000,
+                "angle": -30
+              }
+            ],
+            "repeat": null,
+            "span": 2,
+            "cx": 0,
+            "cy": 0,
+            "ease": "smooth"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sequence-37",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "angle": -30
+              },
+              {
+                "at": 250,
+                "angle": 30
+              },
+              {
+                "at": 500,
+                "angle": -30
+              },
+              {
+                "at": 750,
+                "angle": 30
+              },
+              {
+                "at": 1000,
+                "angle": -30
+              }
+            ],
+            "repeat": 2,
+            "span": 4,
+            "cx": 0,
+            "cy": 0,
+            "ease": "smooth"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sequence-38",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "angle": -30
+              },
+              {
+                "at": 250,
+                "angle": 30
+              },
+              {
+                "at": 500,
+                "angle": -30
+              },
+              {
+                "at": 750,
+                "angle": 30
+              },
+              {
+                "at": 1000,
+                "angle": -30
+              }
+            ],
+            "repeat": 2,
+            "span": null,
+            "cx": 0,
+            "cy": 0,
+            "ease": "smooth"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sequence-39",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "angle": -30
+              },
+              {
+                "at": 250,
+                "angle": 30
+              },
+              {
+                "at": 500,
+                "angle": -30
+              },
+              {
+                "at": 750,
+                "angle": 30
+              },
+              {
+                "at": 1000,
+                "angle": -30
+              }
+            ],
+            "repeat": 2,
+            "span": 2,
+            "cx": -1,
+            "cy": 0,
+            "ease": "smooth"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sequence-40",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "angle": -30
+              },
+              {
+                "at": 250,
+                "angle": 30
+              },
+              {
+                "at": 500,
+                "angle": -30
+              },
+              {
+                "at": 750,
+                "angle": 30
+              },
+              {
+                "at": 1000,
+                "angle": -30
+              }
+            ],
+            "repeat": 2,
+            "span": 2,
+            "cx": 0,
+            "cy": 421,
+            "ease": "smooth"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sequence-41",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "angle": -30
+              },
+              {
+                "at": 250,
+                "angle": 30
+              },
+              {
+                "at": 500,
+                "angle": -30
+              },
+              {
+                "at": 750,
+                "angle": 30
+              },
+              {
+                "at": 1000,
+                "angle": -30
+              }
+            ],
+            "repeat": 2,
+            "span": 2,
+            "cx": 0,
+            "cy": 0,
+            "ease": "bounce"
+          }
+        }
+      ]
+    },
+    {
+      "id": "sequence-42",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "angle": -30
+              },
+              {
+                "at": 250,
+                "angle": 30
+              },
+              {
+                "at": 500,
+                "angle": -30
+              },
+              {
+                "at": 750,
+                "angle": 30
+              },
+              {
+                "at": 1000,
+                "angle": -30
+              }
+            ],
+            "repeat": 2,
+            "span": 2,
+            "cx": 0,
+            "cy": 0,
+            "ease": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "sequence-43",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "angle": -30
+              },
+              {
+                "at": 250,
+                "angle": 30
+              },
+              {
+                "at": 500,
+                "angle": -30
+              },
+              {
+                "at": 750,
+                "angle": 30
+              },
+              {
+                "at": 1000,
+                "angle": -30
+              }
+            ],
+            "repeat": 2,
+            "span": 2,
+            "cx": 0,
+            "cy": 0,
+            "ease": "smooth",
+            "seconds": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "frame-dx",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "dx": 301
+              },
+              {
+                "at": 1000,
+                "dx": 301
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "frame-dy",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "dy": -181
+              },
+              {
+                "at": 1000,
+                "dy": -181
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "frame-angle",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "angle": 721
+              },
+              {
+                "at": 1000,
+                "angle": 721
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "frame-scale",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "scale": 24
+              },
+              {
+                "at": 1000,
+                "scale": 24
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "frame-opacity",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "opacity": 101
+              },
+              {
+                "at": 1000,
+                "opacity": 101
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "frame-fill",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "fill": "red"
+              },
+              {
+                "at": 1000,
+                "fill": "red"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "frame-spin",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "spin": 1
+              },
+              {
+                "at": 1000,
+                "spin": 1
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "frame-unknown",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "unknown": 2
+              },
+              {
+                "at": 1000,
+                "unknown": 2
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "color-repeat",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "repeat": 2,
+            "frames": [
+              {
+                "at": 0,
+                "fill": "#2563EB"
+              },
+              {
+                "at": 1000,
+                "fill": "#2563EB"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "opacity-repeat",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "repeat": 2,
+            "frames": [
+              {
+                "at": 0,
+                "opacity": 100
+              },
+              {
+                "at": 1000,
+                "opacity": 100
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "repeat-jump",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "repeat": 2,
+            "frames": [
+              {
+                "at": 0,
+                "dx": 0
+              },
+              {
+                "at": 1000,
+                "dx": 20
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "repeat-angle-jump",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "motion": {
+            "type": "sequence",
+            "repeat": 2,
+            "frames": [
+              {
+                "at": 0,
+                "angle": 0
+              },
+              {
+                "at": 1000,
+                "angle": 90
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "fill-missing-base",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "none",
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "fill": "#2563EB"
+              },
+              {
+                "at": 1000,
+                "fill": "#FFB000"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "fill-on-gradient",
+      "elements": [
+        {
+          "kind": "circle",
+          "row": 0,
+          "x": 100,
+          "y": 100,
+          "r": 20,
+          "fill": "#2563EB",
+          "gradient": {
+            "color": "#FFB000",
+            "axis": "radial"
+          },
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "fill": "#2563EB"
+              },
+              {
+                "at": 1000,
+                "fill": "#FFB000"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "group-no-name",
+      "elements": [
+        {
+          "kind": "group",
+          "row": 0,
+          "x": 200,
+          "y": 30,
+          "name": "",
+          "children": [
+            {
+              "kind": "rect",
+              "row": 0,
+              "x": 0,
+              "y": 0,
+              "w": 25,
+              "h": 90,
+              "fill": "#FFB000",
+              "motion": {
+                "type": "sequence",
+                "frames": [
+                  {
+                    "at": 0,
+                    "angle": -30
+                  },
+                  {
+                    "at": 250,
+                    "angle": 30
+                  },
+                  {
+                    "at": 500,
+                    "angle": -30
+                  },
+                  {
+                    "at": 750,
+                    "angle": 30
+                  },
+                  {
+                    "at": 1000,
+                    "angle": -30
+                  }
+                ],
+                "repeat": 2,
+                "span": 2,
+                "cx": 0,
+                "cy": 0,
+                "ease": "smooth"
+              }
+            },
+            {
+              "kind": "text",
+              "row": 1,
+              "x": 50,
+              "y": 100,
+              "text": "اسم جزء"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "group-empty",
+      "elements": [
+        {
+          "kind": "group",
+          "row": 0,
+          "x": 200,
+          "y": 30,
+          "name": "أجزاء تعليمية",
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "group-too-many-children",
+      "elements": [
+        {
+          "kind": "group",
+          "row": 0,
+          "x": 200,
+          "y": 30,
+          "name": "أجزاء تعليمية",
+          "children": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "group-raw-children",
+      "elements": [
+        {
+          "kind": "group",
+          "row": 0,
+          "x": 200,
+          "y": 30,
+          "name": "أجزاء تعليمية",
+          "children": "<svg/>"
+        }
+      ]
+    },
+    {
+      "id": "child-before-parent",
+      "elements": [
+        {
+          "kind": "group",
+          "row": 1,
+          "x": 200,
+          "y": 30,
+          "name": "أجزاء تعليمية",
+          "children": [
+            {
+              "kind": "rect",
+              "row": 0,
+              "x": 0,
+              "y": 0,
+              "w": 25,
+              "h": 90,
+              "fill": "#FFB000",
+              "motion": {
+                "type": "sequence",
+                "frames": [
+                  {
+                    "at": 0,
+                    "angle": -30
+                  },
+                  {
+                    "at": 250,
+                    "angle": 30
+                  },
+                  {
+                    "at": 500,
+                    "angle": -30
+                  },
+                  {
+                    "at": 750,
+                    "angle": 30
+                  },
+                  {
+                    "at": 1000,
+                    "angle": -30
+                  }
+                ],
+                "repeat": 2,
+                "span": 2,
+                "cx": 0,
+                "cy": 0,
+                "ease": "smooth"
+              }
+            },
+            {
+              "kind": "text",
+              "row": 1,
+              "x": 50,
+              "y": 100,
+              "text": "اسم جزء"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "child-outlives-parent",
+      "elements": [
+        {
+          "kind": "group",
+          "row": 0,
+          "x": 200,
+          "y": 30,
+          "name": "أجزاء تعليمية",
+          "children": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB",
+              "until": 2
+            }
+          ],
+          "until": 1
+        }
+      ]
+    },
+    {
+      "id": "child-cue-after-parent",
+      "elements": [
+        {
+          "kind": "group",
+          "row": 0,
+          "x": 200,
+          "y": 30,
+          "name": "أجزاء تعليمية",
+          "children": [
+            {
+              "kind": "circle",
+              "row": 1,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            }
+          ],
+          "until": 1
+        }
+      ]
+    },
+    {
+      "id": "child-sequence-cutoff",
+      "elements": [
+        {
+          "kind": "group",
+          "row": 0,
+          "x": 200,
+          "y": 30,
+          "name": "أجزاء تعليمية",
+          "children": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB",
+              "motion": {
+                "type": "sequence",
+                "frames": [
+                  {
+                    "at": 0,
+                    "angle": -30
+                  },
+                  {
+                    "at": 250,
+                    "angle": 30
+                  },
+                  {
+                    "at": 500,
+                    "angle": -30
+                  },
+                  {
+                    "at": 750,
+                    "angle": 30
+                  },
+                  {
+                    "at": 1000,
+                    "angle": -30
+                  }
+                ],
+                "repeat": 2,
+                "span": 2,
+                "cx": 0,
+                "cy": 0,
+                "ease": "smooth"
+              }
+            }
+          ],
+          "until": 1
+        }
+      ]
+    },
+    {
+      "id": "excess-depth",
+      "elements": [
+        {
+          "kind": "group",
+          "row": 0,
+          "x": 200,
+          "y": 30,
+          "name": "أجزاء تعليمية",
+          "children": [
+            {
+              "kind": "group",
+              "row": 0,
+              "x": 200,
+              "y": 30,
+              "name": "أجزاء تعليمية",
+              "children": [
+                {
+                  "kind": "group",
+                  "row": 0,
+                  "x": 200,
+                  "y": 30,
+                  "name": "أجزاء تعليمية",
+                  "children": [
+                    {
+                      "kind": "group",
+                      "row": 0,
+                      "x": 200,
+                      "y": 30,
+                      "name": "أجزاء تعليمية",
+                      "children": [
+                        {
+                          "kind": "circle",
+                          "row": 0,
+                          "x": 100,
+                          "y": 100,
+                          "r": 20,
+                          "fill": "#2563EB"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "excess-nodes",
+      "elements": [
+        {
+          "kind": "group",
+          "row": 0,
+          "x": 200,
+          "y": 30,
+          "name": "أجزاء تعليمية",
+          "children": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            }
+          ]
+        },
+        {
+          "kind": "group",
+          "row": 0,
+          "x": 200,
+          "y": 30,
+          "name": "أجزاء تعليمية",
+          "children": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            }
+          ]
+        },
+        {
+          "kind": "group",
+          "row": 0,
+          "x": 200,
+          "y": 30,
+          "name": "أجزاء تعليمية",
+          "children": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 100,
+              "y": 100,
+              "r": 20,
+              "fill": "#2563EB"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "excess-spheres",
+      "elements": [
+        {
+          "kind": "group",
+          "row": 0,
+          "x": 200,
+          "y": 30,
+          "name": "أجزاء تعليمية",
+          "children": [
+            {
+              "kind": "sphere",
+              "row": 0,
+              "x": 500,
+              "y": 200,
+              "r": 150
+            },
+            {
+              "kind": "sphere",
+              "row": 0,
+              "x": 500,
+              "y": 200,
+              "r": 150
+            },
+            {
+              "kind": "sphere",
+              "row": 0,
+              "x": 500,
+              "y": 200,
+              "r": 150
+            },
+            {
+              "kind": "sphere",
+              "row": 0,
+              "x": 500,
+              "y": 200,
+              "r": 150
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sector-r",
+      "elements": [
+        {
+          "kind": "sector",
+          "row": 0,
+          "x": 300,
+          "y": 210,
+          "r": 201,
+          "start": -90,
+          "sweep": 120,
+          "fill": "#FFB000"
+        }
+      ]
+    },
+    {
+      "id": "sector-inner",
+      "elements": [
+        {
+          "kind": "sector",
+          "row": 0,
+          "x": 300,
+          "y": 210,
+          "r": 140,
+          "start": -90,
+          "sweep": 120,
+          "fill": "#FFB000",
+          "inner": 140
+        }
+      ]
+    },
+    {
+      "id": "sector-start",
+      "elements": [
+        {
+          "kind": "sector",
+          "row": 0,
+          "x": 300,
+          "y": 210,
+          "r": 140,
+          "start": 361,
+          "sweep": 120,
+          "fill": "#FFB000"
+        }
+      ]
+    },
+    {
+      "id": "sector-sweep",
+      "elements": [
+        {
+          "kind": "sector",
+          "row": 0,
+          "x": 300,
+          "y": 210,
+          "r": 140,
+          "start": -90,
+          "sweep": 0,
+          "fill": "#FFB000"
+        }
+      ]
+    },
+    {
+      "id": "sphere-r",
+      "elements": [
+        {
+          "kind": "sphere",
+          "row": 0,
+          "x": 500,
+          "y": 200,
+          "r": 19
+        }
+      ]
+    },
+    {
+      "id": "sphere-longitude",
+      "elements": [
+        {
+          "kind": "sphere",
+          "row": 0,
+          "x": 500,
+          "y": 200,
+          "r": 150,
+          "longitude": 181
+        }
+      ]
+    },
+    {
+      "id": "sphere-tilt",
+      "elements": [
+        {
+          "kind": "sphere",
+          "row": 0,
+          "x": 500,
+          "y": 200,
+          "r": 150,
+          "tilt": -46
+        }
+      ]
+    },
+    {
+      "id": "sphere-grid",
+      "elements": [
+        {
+          "kind": "sphere",
+          "row": 0,
+          "x": 500,
+          "y": 200,
+          "r": 150,
+          "grid": 1
+        }
+      ]
+    },
+    {
+      "id": "sphere-patches",
+      "elements": [
+        {
+          "kind": "sphere",
+          "row": 0,
+          "x": 500,
+          "y": 200,
+          "r": 150,
+          "patches": null
+        }
+      ]
+    },
+    {
+      "id": "sphere-patch-url",
+      "elements": [
+        {
+          "kind": "sphere",
+          "row": 0,
+          "x": 500,
+          "y": 200,
+          "r": 150,
+          "patches": [
+            {
+              "points": [
+                [
+                  -30,
+                  -20
+                ],
+                [
+                  30,
+                  -20
+                ],
+                [
+                  30,
+                  20
+                ],
+                [
+                  -30,
+                  20
+                ]
+              ],
+              "fill": "#FFB000",
+              "image": "x"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sphere-wide-patch",
+      "elements": [
+        {
+          "kind": "sphere",
+          "row": 0,
+          "x": 500,
+          "y": 200,
+          "r": 150,
+          "patches": [
+            {
+              "points": [
+                [
+                  -120,
+                  0
+                ],
+                [
+                  1,
+                  0
+                ],
+                [
+                  1,
+                  20
+                ]
+              ],
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sphere-latitude",
+      "elements": [
+        {
+          "kind": "sphere",
+          "row": 0,
+          "x": 500,
+          "y": 200,
+          "r": 150,
+          "patches": [
+            {
+              "points": [
+                [
+                  0,
+                  86
+                ],
+                [
+                  30,
+                  10
+                ],
+                [
+                  0,
+                  0
+                ]
+              ],
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sphere-duplicate-points",
+      "elements": [
+        {
+          "kind": "sphere",
+          "row": 0,
+          "x": 500,
+          "y": 200,
+          "r": 150,
+          "patches": [
+            {
+              "points": [
+                [
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  1
+                ],
+                [
+                  0,
+                  0
+                ]
+              ],
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sphere-too-many-patches",
+      "elements": [
+        {
+          "kind": "sphere",
+          "row": 0,
+          "x": 500,
+          "y": 200,
+          "r": 150,
+          "patches": [
+            {
+              "points": [
+                [
+                  -30,
+                  -20
+                ],
+                [
+                  30,
+                  -20
+                ],
+                [
+                  30,
+                  20
+                ],
+                [
+                  -30,
+                  20
+                ]
+              ],
+              "fill": "#FFB000"
+            },
+            {
+              "points": [
+                [
+                  -30,
+                  -20
+                ],
+                [
+                  30,
+                  -20
+                ],
+                [
+                  30,
+                  20
+                ],
+                [
+                  -30,
+                  20
+                ]
+              ],
+              "fill": "#FFB000"
+            },
+            {
+              "points": [
+                [
+                  -30,
+                  -20
+                ],
+                [
+                  30,
+                  -20
+                ],
+                [
+                  30,
+                  20
+                ],
+                [
+                  -30,
+                  20
+                ]
+              ],
+              "fill": "#FFB000"
+            },
+            {
+              "points": [
+                [
+                  -30,
+                  -20
+                ],
+                [
+                  30,
+                  -20
+                ],
+                [
+                  30,
+                  20
+                ],
+                [
+                  -30,
+                  20
+                ]
+              ],
+              "fill": "#FFB000"
+            },
+            {
+              "points": [
+                [
+                  -30,
+                  -20
+                ],
+                [
+                  30,
+                  -20
+                ],
+                [
+                  30,
+                  20
+                ],
+                [
+                  -30,
+                  20
+                ]
+              ],
+              "fill": "#FFB000"
+            },
+            {
+              "points": [
+                [
+                  -30,
+                  -20
+                ],
+                [
+                  30,
+                  -20
+                ],
+                [
+                  30,
+                  20
+                ],
+                [
+                  -30,
+                  20
+                ]
+              ],
+              "fill": "#FFB000"
+            },
+            {
+              "points": [
+                [
+                  -30,
+                  -20
+                ],
+                [
+                  30,
+                  -20
+                ],
+                [
+                  30,
+                  20
+                ],
+                [
+                  -30,
+                  20
+                ]
+              ],
+              "fill": "#FFB000"
+            },
+            {
+              "points": [
+                [
+                  -30,
+                  -20
+                ],
+                [
+                  30,
+                  -20
+                ],
+                [
+                  30,
+                  20
+                ],
+                [
+                  -30,
+                  20
+                ]
+              ],
+              "fill": "#FFB000"
+            },
+            {
+              "points": [
+                [
+                  -30,
+                  -20
+                ],
+                [
+                  30,
+                  -20
+                ],
+                [
+                  30,
+                  20
+                ],
+                [
+                  -30,
+                  20
+                ]
+              ],
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "math": {
+    "curves": [
+      {
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            100,
+            -100
+          ],
+          [
+            200,
+            0
+          ]
+        ],
+        "fraction": -1,
+        "expected": [
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            100,
+            -100
+          ],
+          [
+            200,
+            0
+          ]
+        ],
+        "fraction": 0,
+        "expected": [
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            100,
+            -100
+          ],
+          [
+            200,
+            0
+          ]
+        ],
+        "fraction": 0.125,
+        "expected": [
+          25.0,
+          -21.875
+        ]
+      },
+      {
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            100,
+            -100
+          ],
+          [
+            200,
+            0
+          ]
+        ],
+        "fraction": 0.5,
+        "expected": [
+          100.0,
+          -50.0
+        ]
+      },
+      {
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            100,
+            -100
+          ],
+          [
+            200,
+            0
+          ]
+        ],
+        "fraction": 0.875,
+        "expected": [
+          175.0,
+          -21.875
+        ]
+      },
+      {
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            100,
+            -100
+          ],
+          [
+            200,
+            0
+          ]
+        ],
+        "fraction": 1,
+        "expected": [
+          200.0,
+          0.0
+        ]
+      },
+      {
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            100,
+            -100
+          ],
+          [
+            200,
+            0
+          ]
+        ],
+        "fraction": 2,
+        "expected": [
+          200.0,
+          0.0
+        ]
+      },
+      {
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            100,
+            100
+          ],
+          [
+            200,
+            -100
+          ],
+          [
+            300,
+            0
+          ]
+        ],
+        "fraction": -1,
+        "expected": [
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            100,
+            100
+          ],
+          [
+            200,
+            -100
+          ],
+          [
+            300,
+            0
+          ]
+        ],
+        "fraction": 0,
+        "expected": [
+          0.0,
+          0.0
+        ]
+      },
+      {
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            100,
+            100
+          ],
+          [
+            200,
+            -100
+          ],
+          [
+            300,
+            0
+          ]
+        ],
+        "fraction": 0.125,
+        "expected": [
+          37.5,
+          24.609375
+        ]
+      },
+      {
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            100,
+            100
+          ],
+          [
+            200,
+            -100
+          ],
+          [
+            300,
+            0
+          ]
+        ],
+        "fraction": 0.5,
+        "expected": [
+          150.0,
+          0.0
+        ]
+      },
+      {
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            100,
+            100
+          ],
+          [
+            200,
+            -100
+          ],
+          [
+            300,
+            0
+          ]
+        ],
+        "fraction": 0.875,
+        "expected": [
+          262.5,
+          -24.609375
+        ]
+      },
+      {
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            100,
+            100
+          ],
+          [
+            200,
+            -100
+          ],
+          [
+            300,
+            0
+          ]
+        ],
+        "fraction": 1,
+        "expected": [
+          300.0,
+          0.0
+        ]
+      },
+      {
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            100,
+            100
+          ],
+          [
+            200,
+            -100
+          ],
+          [
+            300,
+            0
+          ]
+        ],
+        "fraction": 2,
+        "expected": [
+          300.0,
+          0.0
+        ]
+      }
+    ],
+    "sequences": [
+      {
+        "motion": {
+          "type": "sequence",
+          "frames": [
+            {
+              "at": 0,
+              "angle": -30
+            },
+            {
+              "at": 250,
+              "angle": 30
+            },
+            {
+              "at": 500,
+              "angle": -30
+            },
+            {
+              "at": 750,
+              "angle": 30
+            },
+            {
+              "at": 1000,
+              "angle": -30
+            }
+          ],
+          "repeat": 2,
+          "span": 2,
+          "cx": 0,
+          "cy": 0,
+          "ease": "smooth"
+        },
+        "fraction": 0,
+        "expected": {
+          "dx": 0,
+          "dy": 0,
+          "angle": -30,
+          "scale": 100,
+          "opacity": 100,
+          "spin": 0
+        }
+      },
+      {
+        "motion": {
+          "type": "sequence",
+          "frames": [
+            {
+              "at": 0,
+              "angle": -30
+            },
+            {
+              "at": 250,
+              "angle": 30
+            },
+            {
+              "at": 500,
+              "angle": -30
+            },
+            {
+              "at": 750,
+              "angle": 30
+            },
+            {
+              "at": 1000,
+              "angle": -30
+            }
+          ],
+          "repeat": 2,
+          "span": 2,
+          "cx": 0,
+          "cy": 0,
+          "ease": "smooth"
+        },
+        "fraction": 0.0625,
+        "expected": {
+          "dx": 0,
+          "dy": 0,
+          "angle": 0.0,
+          "scale": 100,
+          "opacity": 100,
+          "spin": 0
+        }
+      },
+      {
+        "motion": {
+          "type": "sequence",
+          "frames": [
+            {
+              "at": 0,
+              "angle": -30
+            },
+            {
+              "at": 250,
+              "angle": 30
+            },
+            {
+              "at": 500,
+              "angle": -30
+            },
+            {
+              "at": 750,
+              "angle": 30
+            },
+            {
+              "at": 1000,
+              "angle": -30
+            }
+          ],
+          "repeat": 2,
+          "span": 2,
+          "cx": 0,
+          "cy": 0,
+          "ease": "smooth"
+        },
+        "fraction": 0.125,
+        "expected": {
+          "dx": 0,
+          "dy": 0,
+          "angle": 30,
+          "scale": 100,
+          "opacity": 100,
+          "spin": 0
+        }
+      },
+      {
+        "motion": {
+          "type": "sequence",
+          "frames": [
+            {
+              "at": 0,
+              "angle": -30
+            },
+            {
+              "at": 250,
+              "angle": 30
+            },
+            {
+              "at": 500,
+              "angle": -30
+            },
+            {
+              "at": 750,
+              "angle": 30
+            },
+            {
+              "at": 1000,
+              "angle": -30
+            }
+          ],
+          "repeat": 2,
+          "span": 2,
+          "cx": 0,
+          "cy": 0,
+          "ease": "smooth"
+        },
+        "fraction": 0.25,
+        "expected": {
+          "dx": 0,
+          "dy": 0,
+          "angle": -30,
+          "scale": 100,
+          "opacity": 100,
+          "spin": 0
+        }
+      },
+      {
+        "motion": {
+          "type": "sequence",
+          "frames": [
+            {
+              "at": 0,
+              "angle": -30
+            },
+            {
+              "at": 250,
+              "angle": 30
+            },
+            {
+              "at": 500,
+              "angle": -30
+            },
+            {
+              "at": 750,
+              "angle": 30
+            },
+            {
+              "at": 1000,
+              "angle": -30
+            }
+          ],
+          "repeat": 2,
+          "span": 2,
+          "cx": 0,
+          "cy": 0,
+          "ease": "smooth"
+        },
+        "fraction": 0.5,
+        "expected": {
+          "dx": 0,
+          "dy": 0,
+          "angle": -30,
+          "scale": 100,
+          "opacity": 100,
+          "spin": 0
+        }
+      },
+      {
+        "motion": {
+          "type": "sequence",
+          "frames": [
+            {
+              "at": 0,
+              "angle": -30
+            },
+            {
+              "at": 250,
+              "angle": 30
+            },
+            {
+              "at": 500,
+              "angle": -30
+            },
+            {
+              "at": 750,
+              "angle": 30
+            },
+            {
+              "at": 1000,
+              "angle": -30
+            }
+          ],
+          "repeat": 2,
+          "span": 2,
+          "cx": 0,
+          "cy": 0,
+          "ease": "smooth"
+        },
+        "fraction": 0.75,
+        "expected": {
+          "dx": 0,
+          "dy": 0,
+          "angle": -30,
+          "scale": 100,
+          "opacity": 100,
+          "spin": 0
+        }
+      },
+      {
+        "motion": {
+          "type": "sequence",
+          "frames": [
+            {
+              "at": 0,
+              "angle": -30
+            },
+            {
+              "at": 250,
+              "angle": 30
+            },
+            {
+              "at": 500,
+              "angle": -30
+            },
+            {
+              "at": 750,
+              "angle": 30
+            },
+            {
+              "at": 1000,
+              "angle": -30
+            }
+          ],
+          "repeat": 2,
+          "span": 2,
+          "cx": 0,
+          "cy": 0,
+          "ease": "smooth"
+        },
+        "fraction": 1,
+        "expected": {
+          "dx": 0,
+          "dy": 0,
+          "angle": -30,
+          "scale": 100,
+          "opacity": 100,
+          "spin": 0
+        }
+      },
+      {
+        "motion": {
+          "type": "sequence",
+          "frames": [
+            {
+              "at": 0,
+              "fill": "#112233",
+              "opacity": 0
+            },
+            {
+              "at": 1000,
+              "fill": "#F1E2D3",
+              "opacity": 100
+            }
+          ]
+        },
+        "fraction": 0,
+        "expected": {
+          "dx": 0,
+          "dy": 0,
+          "angle": 0,
+          "scale": 100,
+          "opacity": 0,
+          "spin": 0,
+          "fill": "#112233"
+        }
+      },
+      {
+        "motion": {
+          "type": "sequence",
+          "frames": [
+            {
+              "at": 0,
+              "fill": "#112233",
+              "opacity": 0
+            },
+            {
+              "at": 1000,
+              "fill": "#F1E2D3",
+              "opacity": 100
+            }
+          ]
+        },
+        "fraction": 0.0625,
+        "expected": {
+          "dx": 0,
+          "dy": 0,
+          "angle": 0,
+          "scale": 100,
+          "opacity": 6.25,
+          "spin": 0,
+          "fill": "#1F2E3D"
+        }
+      },
+      {
+        "motion": {
+          "type": "sequence",
+          "frames": [
+            {
+              "at": 0,
+              "fill": "#112233",
+              "opacity": 0
+            },
+            {
+              "at": 1000,
+              "fill": "#F1E2D3",
+              "opacity": 100
+            }
+          ]
+        },
+        "fraction": 0.125,
+        "expected": {
+          "dx": 0,
+          "dy": 0,
+          "angle": 0,
+          "scale": 100,
+          "opacity": 12.5,
+          "spin": 0,
+          "fill": "#2D3A47"
+        }
+      },
+      {
+        "motion": {
+          "type": "sequence",
+          "frames": [
+            {
+              "at": 0,
+              "fill": "#112233",
+              "opacity": 0
+            },
+            {
+              "at": 1000,
+              "fill": "#F1E2D3",
+              "opacity": 100
+            }
+          ]
+        },
+        "fraction": 0.25,
+        "expected": {
+          "dx": 0,
+          "dy": 0,
+          "angle": 0,
+          "scale": 100,
+          "opacity": 25.0,
+          "spin": 0,
+          "fill": "#49525B"
+        }
+      },
+      {
+        "motion": {
+          "type": "sequence",
+          "frames": [
+            {
+              "at": 0,
+              "fill": "#112233",
+              "opacity": 0
+            },
+            {
+              "at": 1000,
+              "fill": "#F1E2D3",
+              "opacity": 100
+            }
+          ]
+        },
+        "fraction": 0.5,
+        "expected": {
+          "dx": 0,
+          "dy": 0,
+          "angle": 0,
+          "scale": 100,
+          "opacity": 50.0,
+          "spin": 0,
+          "fill": "#818283"
+        }
+      },
+      {
+        "motion": {
+          "type": "sequence",
+          "frames": [
+            {
+              "at": 0,
+              "fill": "#112233",
+              "opacity": 0
+            },
+            {
+              "at": 1000,
+              "fill": "#F1E2D3",
+              "opacity": 100
+            }
+          ]
+        },
+        "fraction": 0.75,
+        "expected": {
+          "dx": 0,
+          "dy": 0,
+          "angle": 0,
+          "scale": 100,
+          "opacity": 75.0,
+          "spin": 0,
+          "fill": "#B9B2AB"
+        }
+      },
+      {
+        "motion": {
+          "type": "sequence",
+          "frames": [
+            {
+              "at": 0,
+              "fill": "#112233",
+              "opacity": 0
+            },
+            {
+              "at": 1000,
+              "fill": "#F1E2D3",
+              "opacity": 100
+            }
+          ]
+        },
+        "fraction": 1,
+        "expected": {
+          "dx": 0,
+          "dy": 0,
+          "angle": 0,
+          "scale": 100,
+          "opacity": 100,
+          "spin": 0,
+          "fill": "#F1E2D3"
+        }
+      }
+    ],
+    "spheres": [
+      {
+        "longitude": 0,
+        "latitude": 0,
+        "spin": 0,
+        "tilt": 0,
+        "expected": [
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "longitude": 0,
+        "latitude": 0,
+        "spin": 90,
+        "tilt": 0,
+        "expected": [
+          1.0,
+          0.0,
+          6.123233995736766e-17
+        ]
+      },
+      {
+        "longitude": 0,
+        "latitude": 0,
+        "spin": 180,
+        "tilt": 0,
+        "expected": [
+          1.2246467991473532e-16,
+          0.0,
+          -1.0
+        ]
+      },
+      {
+        "longitude": -30,
+        "latitude": 20,
+        "spin": 60,
+        "tilt": 23,
+        "expected": [
+          0.5661337256611378,
+          -0.13124762283341673,
+          0.8137976813493738
+        ]
+      },
+      {
+        "longitude": 120,
+        "latitude": -45,
+        "spin": 720,
+        "tilt": -45,
+        "expected": [
+          0.9330127018922192,
+          0.06698729810778081,
+          -0.3535533905932742
+        ]
+      }
+    ]
+  }
+}

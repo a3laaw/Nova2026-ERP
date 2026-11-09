@@ -58,8 +58,10 @@ class ScenePicker(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(
             label(
-                "الصق أي سكريبت أولًا. يقترح النموذج تركيب الرسوم من أشكال ومسارات وتسميات، "
-                "دون اختيار قالب درس. هذه نسخة تجريبية: راجع المعنى والحساب واللغة والمواضع. "
+                "الصق السكريبت أولًا؛ منه يقترح النموذج الأجزاء والأفعال وتوقيت الشرح، "
+                "لا تختار حيوانًا أو شكلًا أو حركة من كتالوج. يمكنه تركيب أجزاء بمفاصل "
+                "وتتابعات حركة وتمثيل كروي مبسط 2.5D. المعاينة صامتة قبل اعتمادك. "
+                "هذا ليس فهمًا مضمونًا أو محرك 3D عامًا؛ راجع المعنى والحساب واللغة والمواضع. "
                 "لا توجد خرائط موثقة أو تلاوة/تجويد معتمدان.",
                 "muted",
                 True,
@@ -127,14 +129,24 @@ class ScenePicker(QWidget):
         self.request_button.clicked.connect(self._request)
         cloud.content_layout.addWidget(self.request_button)
         layout.addWidget(cloud)
-        layout.addWidget(label("الخطة · مسودة قابلة للتعديل، وليست SVG أو كودًا", "section"))
+        advanced = Disclosure("بيانات الخطة المتقدمة · تعديل اختياري، لا يلزم تركيب الأجزاء يدويًا")
+        self.advanced_section = advanced
+        advanced.content_layout.addWidget(
+            label(
+                "مسودة JSON آمنة، وليست SVG أو كودًا. "
+                "المراجعة والمعاينة بالأسفل تكفيان لاعتماد المقترح.",
+                "muted",
+                True,
+            )
+        )
         self.plan_edit = QPlainTextEdit()
         self.plan_edit.setAccessibleName("JSON خطة المشاهد المقترحة")
         self.plan_edit.setPlaceholderText("استورد خطة، أو انسخ توجيهًا، أو اطلب اقتراحًا مجانيًا…")
         self.plan_edit.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         self.plan_edit.setMinimumHeight(190)
         self.plan_edit.setMaximumHeight(320)
-        layout.addWidget(self.plan_edit)
+        advanced.content_layout.addWidget(self.plan_edit)
+        layout.addWidget(advanced)
         reviews = QHBoxLayout()
         self.review_button = button("تحقق واعرض الفروقات")
         self.review_button.clicked.connect(self._review)

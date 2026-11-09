@@ -113,7 +113,7 @@ def test_catalog_covers_all_named_native_action_buttons_and_has_no_stale_names()
 
 
 def test_catalog_is_free_form_complete_and_references_real_owned_sources():
-    assert len(ENTRIES) == 67
+    assert len(ENTRIES) == 73
     assert len(CATALOG["categories"]) == 8
     assert len({entry["id"] for entry in ENTRIES}) == len(ENTRIES)
     assert {entry["category"] for entry in ENTRIES} == {c["id"] for c in CATALOG["categories"]}
@@ -239,7 +239,10 @@ def test_unknown_identifiers_policy_and_nonvisual_requests_fail_closed():
 
 
 def test_search_supports_arabic_diacritics_aliases_multiple_terms_and_empty_results():
-    assert search_catalog(CATALOG, "دَوَران")[0]["id"] == "motion-rotate"
+    assert {entry["id"] for entry in search_catalog(CATALOG, "دَوَران")} >= {
+        "motion-rotate",
+        "shape-sphere",
+    }
     assert {entry["id"] for entry in search_catalog(CATALOG, "motion path")} == {
         "motion-path",
         "motion-ease",

@@ -9,9 +9,10 @@
     path: ["d"], text: ["text", "size", "align", "direction"],
     icons: ["icon", "count", "columns", "size"],
     right_triangle: ["a", "b", "w", "h", "unit"], calculation: ["a", "b", "op", "size"],
+    group: ["children"], sector: ["r", "inner", "start", "sweep"], sphere: ["r", "longitude", "tilt", "grid", "patches"],
   };
   const icons = ["apple", "ball", "block", "leaf", "star", "sun", "cloud", "drop", "book", "person"];
-  const common = ["kind", "row", "until", "x", "y", "fill", "stroke", "line_width", "dx", "dy", "motion"];
+  const common = ["kind", "row", "until", "x", "y", "fill", "stroke", "line_width", "dx", "dy", "motion", "name", "gradient"];
   const integer = (v, a, b) => Number.isSafeInteger(v) && v >= a && v <= b;
   const text = (v, n, empty = false) => typeof v === "string" && (empty || !!v.trim()) && Array.from(v).length <= n && !/[\u0000-\u0008\u000b-\u001f]/.test(v) && !Array.from(v).some(c => c.length === 1 && c.charCodeAt(0) >= 0xd800 && c.charCodeAt(0) <= 0xdfff);
   const check = condition => { if (!condition) throw new Error("Invalid visual plan"); };
@@ -19,7 +20,8 @@
     check(value && typeof value === "object" && !Array.isArray(value));
     check(Object.keys(value).every(key => allowed.includes(key)) && required.every(key => Object.prototype.hasOwnProperty.call(value, key)));
   }
-  function validateElement(e, rows) {
+  function validateElement(e, rows, depth = 0, budget = { nodes: 0, spheres: 0 }) {
+    check(depth <= 3 && ++budget.nodes <= 60);
     check(e && typeof e.kind === "string" && Object.prototype.hasOwnProperty.call(kinds, e.kind));
     keys(e, common.concat(kinds[e.kind]), ["kind", "row", "x", "y"]);
     check(Object.values(e).every(value => value !== null));
@@ -28,22 +30,25 @@
     for (const key of ["dx", "dy"]) check(integer(e[key] ?? 0, -1000, 1000));
     if (Object.prototype.hasOwnProperty.call(e, "motion")) {
       const m = e.motion;
-      check(m && typeof m === "object" && !Array.isArray(m) && ["draw", "move", "pulse", "none", "path", "rotate"].includes(m.type));
-      if (["move", "path", "rotate"].includes(m.type)) {
-        const fields = m.type === "move" ? ["dx", "dy"] : m.type === "path" ? ["points"] : ["degrees", "cx", "cy"];
-        keys(m, ["type", "ease", ...fields], ["type", ...fields]);
-        check(["linear", "smooth"].includes(m.ease ?? "linear") && m.ease !== null);
-      } else keys(m, m.type === "pulse" ? ["type", "cycles"] : ["type"]);
-      if (m.type === "move") check(integer(m.dx, -300, 300) && integer(m.dy, -180, 180));
-      if (m.type === "pulse") check(integer(m.cycles, 1, 4));
-      if (m.type === "path") {
-        check(Array.isArray(m.points) && m.points.length >= 2 && m.points.length <= 12);
-        m.points.forEach((p, i) => {
-          check(Array.isArray(p) && p.length === 2 && integer(p[0], -300, 300) && integer(p[1], -180, 180));
-          check(i === 0 ? p[0] === 0 && p[1] === 0 : p[0] !== m.points[i - 1][0] || p[1] !== m.points[i - 1][1]);
-        });
+      check(m && typeof m === "object" && !Array.isArray(m) && ["draw", "move", "pulse", "none", "path", "rotate", "curve", "sequence"].includes(m.type));
+      if (["curve", "sequence"].includes(m.type)) window.novaSceneGraph.validateMotion(e, rows);
+      else {
+        if (["move", "path", "rotate"].includes(m.type)) {
+          const fields = m.type === "move" ? ["dx", "dy"] : m.type === "path" ? ["points"] : ["degrees", "cx", "cy"];
+          keys(m, ["type", "ease", ...fields], ["type", ...fields]);
+          check(["linear", "smooth"].includes(m.ease ?? "linear") && m.ease !== null);
+        } else keys(m, m.type === "pulse" ? ["type", "cycles"] : ["type"]);
+        if (m.type === "move") check(integer(m.dx, -300, 300) && integer(m.dy, -180, 180));
+        if (m.type === "pulse") check(integer(m.cycles, 1, 4));
+        if (m.type === "path") {
+          check(Array.isArray(m.points) && m.points.length >= 2 && m.points.length <= 12);
+          m.points.forEach((p, i) => {
+            check(Array.isArray(p) && p.length === 2 && integer(p[0], -300, 300) && integer(p[1], -180, 180));
+            check(i === 0 ? p[0] === 0 && p[1] === 0 : p[0] !== m.points[i - 1][0] || p[1] !== m.points[i - 1][1]);
+          });
+        }
+        if (m.type === "rotate") check(integer(m.degrees, -360, 360) && m.degrees !== 0 && integer(m.cx, 0, 1000) && integer(m.cy, 0, 420));
       }
-      if (m.type === "rotate") check(integer(m.degrees, -360, 360) && m.degrees !== 0 && integer(m.cx, 0, 1000) && integer(m.cy, 0, 420));
     }
     for (const key of ["fill", "stroke"]) check(typeof (e[key] ?? "none") === "string" && /^(none|#[0-9a-fA-F]{6})$/.test(e[key] ?? "none"));
     check(integer(e.line_width ?? 3, 1, 12));
@@ -73,7 +78,13 @@
       case "calculation":
         n("a", -1000, 1000); n("b", -1000, 1000); n("size", 16, 60, 36);
         check(["+", "-", "*", "/"].includes(e.op) && !(e.op === "/" && e.b === 0)); break;
+      case "group":
+        check(window.novaSceneGraph.name(e.name) && Array.isArray(e.children) && e.children.length >= 1 && e.children.length <= 20);
+        e.children.forEach(child => { validateElement(child, e.until ?? rows, depth + 1, budget); check(child.row >= e.row && child.row < (e.until ?? rows)); }); break;
+      case "sector": window.novaSceneGraph.validateGeometry(e); break;
+      case "sphere": window.novaSceneGraph.validateGeometry(e); check(++budget.spheres <= 3); break;
     }
+    window.novaSceneGraph.validateStyle(e);
   }
   function read(lesson) {
     if (lesson.schema === 1 && !Object.prototype.hasOwnProperty.call(lesson, "visuals")) return null;
@@ -101,7 +112,8 @@
         seen.add(row.index); spoken += Array.from(row.speech).length - Array.from(lesson.steps[index].rows[row.index].text).length;
       });
       check(Array.isArray(step.elements) && step.elements.length <= 60);
-      step.elements.forEach(e => validateElement(e, lesson.steps[index].rows.length)); count += step.elements.length;
+      const budget = { nodes: 0, spheres: 0 };
+      step.elements.forEach(e => validateElement(e, lesson.steps[index].rows.length, 0, budget)); count += budget.nodes;
       if (p.policy === "sacred") check(step.elements.length === 0 && step.rows.length === 0 && step.description === lesson.steps[index].title);
     });
     check(count <= 600 && spoken > 0 && spoken <= 100000);
@@ -158,7 +170,7 @@
     const top = (b < 0 ? -a : a) / g, bottom = Math.abs(b) / g;
     return bottom === 1 ? String(top) : `${top}/${bottom}`;
   }
-  function draw(group, e) {
+  function draw(group, e, defs) {
     const style = { fill: e.fill ?? "none", stroke: e.stroke ?? "#2563EB", "stroke-width": e.line_width ?? 3, "stroke-linejoin": "round", "stroke-linecap": "round" };
     const xy = { x: e.x, y: e.y };
     switch (e.kind) {
@@ -194,6 +206,8 @@
         label(group, e.x + w / 2, e.y + h + 40, `${e.a} ${e.unit ?? ""}`, 40);
         label(group, Math.max(20, e.x - 80), e.y + h / 2, `${e.b} ${e.unit ?? ""}`, 40); break;
       }
+      case "sector": group.append(node("path", { ...style, d: window.novaSceneGraph.sectorPath(e) })); break;
+      case "sphere": return window.novaSceneGraph.sphere(group, e, defs);
       case "calculation": {
         const op = { "+": "+", "-": "−", "*": "×", "/": "÷" }[e.op];
         const result = calculation(e.a, e.b, e.op);
@@ -215,60 +229,85 @@
     return points[points.length - 1];
   }
   function mount(parent, step, width, top, version) {
+    const graph = window.novaSceneGraph;
     const frame = node("svg", { x: 35, y: top, width: width - 70, height: (width - 70) * 420 / 1000, viewBox: "0 0 1000 420", overflow: "hidden", "data-visual-scene": String(version), "aria-hidden": "true", "pointer-events": "none" });
     frame.append(node("rect", { x: 0, y: 0, width: 1000, height: 420, rx: 18, fill: "#F8FAFC", stroke: "#E2E8F0", "stroke-width": 2 }));
-    const groups = step.elements.map((e, i) => {
-      const g = node("g", { opacity: 0, "data-scene-element": i }); draw(g, e); frame.append(g);
-      // Normalized pathLength works for every permitted geometric SVG shape.
-      // No generated CSS/SMIL, timers, getTotalLength, IDs or animation code.
-      const strokes = Array.from(g.querySelectorAll("path,line,polyline,polygon,rect,circle,ellipse"));
-      const fills = strokes.map(shape => ({ shape, fill: shape.getAttribute("fill") || "none" }));
-      return { e, g, strokes, fills, children: Array.from(g.children) };
-    });
-    parent.append(frame);
+    const defs = node("defs");
+    function build(e, id) {
+      const g = node("g", { opacity: 0, "data-scene-element": id });
+      if (e.name) g.setAttribute("data-scene-name", e.name);
+      let parts = [], surface = null;
+      if (e.kind === "group") {
+        parts = e.children.map((child, i) => build(child, id + "." + i));
+        parts.forEach(part => g.append(part.g));
+      } else surface = draw(g, e, defs);
+      const strokes = e.kind === "group" ? [] : Array.from(g.querySelectorAll("path,line,polyline,polygon,rect,circle,ellipse"));
+      const paints = surface ? surface.paints : e.kind === "group" ? [] : Array.from(g.querySelectorAll("path,rect,circle,ellipse,polygon,text")).filter(shape => e.fill && shape.getAttribute("fill") === e.fill);
+      graph.decorate(e, paints, defs);
+      return { e, g, parts, surface, strokes, paints, visible: false,
+        fills: strokes.map(shape => ({ shape, fill: shape.getAttribute("fill") || "none" })), children: e.kind === "group" ? [] : Array.from(g.children).map(child => ({ child, opacity: Number(child.getAttribute("opacity") ?? 1) })) };
+    }
+    const groups = step.elements.map((e, i) => build(e, String(i)));
+    if (defs.childNodes.length) frame.prepend(defs);
+    groups.forEach(part => frame.append(part.g)); parent.append(frame);
+    function content(part) { return part.visible && (part.parts.length ? part.parts.some(content) : part.g.childNodes.length > 0); }
     return {
       bottom: top + (width - 70) * 420 / 1000 + 55,
-      hasVisibleContent: () => groups.some(({ g }) => g.childNodes.length > 0 && g.getAttribute("opacity") === "1"),
+      hasVisibleContent: () => groups.some(content),
       update(bounds, now, reduced, still = false, pose = null) {
-        groups.forEach(({ e, g, strokes, fills, children }) => {
+        const printRow = still && pose !== null ? bounds.findIndex(b => now >= b.start && now < b.end) : -1;
+        const virtualNow = printRow >= 0 ? bounds[printRow].start + Math.max(0, Math.min(1, pose)) * (bounds[printRow].end - bounds[printRow].start) : now;
+        function updatePart(view, parentVisible = true) {
+          const { e, g, strokes, fills, children, parts, surface, paints } = view;
           const start = bounds[e.row].start, end = bounds[e.row].end;
           const until = e.until ?? bounds.length;
-          const visible = now >= start && (until === bounds.length || now < bounds[until].start);
+          const visible = parentVisible && now >= start && (until === bounds.length || now < bounds[until].start);
           const rowPart = Math.max(0, Math.min(1, (now - start) / Math.max(0.000001, end - start)));
-          const mode = e.motion ? e.motion.type : "draw";
+          const mode = e.motion ? e.motion.type : ["group", "sphere"].includes(e.kind) ? "none" : "draw";
           const staticElement = reduced || still || mode === "none";
           const part = staticElement ? 1 : Math.min(1, rowPart / 0.6);
           let movePart = still ? (pose !== null && now >= start && now < end ? Math.max(0, Math.min(1, pose)) : 1) : rowPart;
           if (e.motion && e.motion.ease === "smooth") movePart = movePart * movePart * (3 - 2 * movePart);
           const offset = mode === "path" && !reduced ? pathPosition(e.motion.points, movePart)
-            : mode === "move" && !reduced ? [e.motion.dx * movePart, e.motion.dy * movePart] : [0, 0];
+            : mode === "curve" && !reduced ? graph.curvePosition(e.motion.points, movePart)
+              : mode === "move" && !reduced ? [e.motion.dx * movePart, e.motion.dy * movePart] : [0, 0];
           const x = (staticElement ? 0 : (e.dx ?? 0) * (1 - part)) + offset[0];
           const y = (staticElement ? 0 : (e.dy ?? 0) * (1 - part)) + offset[1];
-          const rotation = mode === "rotate" && !reduced
-            ? ` rotate(${e.motion.degrees * movePart} ${e.motion.cx} ${e.motion.cy})` : "";
-          g.setAttribute("opacity", visible ? "1" : "0");
-          g.setAttribute("transform", `translate(${x} ${y})${rotation}`);
-          g.dataset.activeCue = String(visible && now < end);
+          const rotation = mode === "rotate" && !reduced ? ` rotate(${e.motion.degrees * movePart} ${e.motion.cx} ${e.motion.cy})` : "";
+          let transform = `translate(${x} ${y})${rotation}`, alpha = 1, spin = 0;
+          if (mode === "sequence") {
+            const m = e.motion, finish = bounds[e.row + (m.span ?? 1) - 1].end;
+            const p = Math.max(0, Math.min(1, (virtualNow - start) / Math.max(0.000001, finish - start)));
+            const state = reduced ? { dx: 0, dy: 0, angle: 0, scale: 100, opacity: 100, spin: 0 } : graph.sequenceState(m, p);
+            const cx = m.cx ?? (e.kind === "group" ? 0 : e.x), cy = m.cy ?? (e.kind === "group" ? 0 : e.y);
+            transform = `translate(${graph.number(x + state.dx)} ${graph.number(y + state.dy)}) translate(${cx} ${cy}) rotate(${graph.number(state.angle)}) scale(${graph.number(state.scale / 100)}) translate(${-cx} ${-cy})`;
+            alpha = state.opacity / 100; spin = state.spin;
+            if (state.fill) paints.forEach(shape => shape.setAttribute("fill", state.fill));
+            else if (reduced && e.fill) paints.forEach(shape => shape.setAttribute("fill", e.fill));
+          }
+          if (e.kind === "group") transform = `translate(${e.x} ${e.y}) ` + transform;
+          if (e.kind === "group" && mode === "pulse" && !reduced && !still && rowPart > 0 && rowPart < 1) alpha *= 0.78 + 0.22 * (0.5 + 0.5 * Math.cos(rowPart * Math.PI * 2 * e.motion.cycles));
+          g.setAttribute("opacity", visible ? String(alpha) : "0");
+          g.setAttribute("transform", transform); view.visible = visible && alpha > 0;
+          g.dataset.activeCue = String(visible && now < (mode === "sequence" ? bounds[e.row + (e.motion.span ?? 1) - 1].end : end));
           const tracing = mode === "draw" && !reduced && !still && e.kind !== "icons";
           strokes.forEach(shape => {
-            if (tracing) {
-              shape.setAttribute("pathLength", "100");
-              shape.setAttribute("stroke-dasharray", "100 100");
-              shape.setAttribute("stroke-dashoffset", String(100 * (1 - part)));
-            } else {
-              shape.removeAttribute("pathLength"); shape.removeAttribute("stroke-dasharray"); shape.removeAttribute("stroke-dashoffset");
-            }
+            if (tracing) { shape.setAttribute("pathLength", "100"); shape.setAttribute("stroke-dasharray", "100 100"); shape.setAttribute("stroke-dashoffset", String(100 * (1 - part))); }
+            else { shape.removeAttribute("pathLength"); shape.removeAttribute("stroke-dasharray"); shape.removeAttribute("stroke-dashoffset"); }
           });
           fills.forEach(({ shape, fill }) => shape.setAttribute("fill-opacity", tracing && fill !== "none" ? String(Math.max(0, Math.min(1, (part - 0.65) / 0.35))) : "1"));
-          children.forEach((child, index) => {
+          children.forEach(({ child, opacity }, index) => {
             const staggered = mode === "draw" && e.kind === "icons" && !reduced && !still;
             const pulse = mode === "pulse" && !reduced && !still && rowPart > 0 && rowPart < 1;
-            child.setAttribute("opacity", staggered && index >= Math.ceil(part * children.length) ? "0"
-              : pulse ? String(0.78 + 0.22 * (0.5 + 0.5 * Math.cos(rowPart * Math.PI * 2 * e.motion.cycles))) : "1");
+            child.setAttribute("opacity", staggered && index >= Math.ceil(part * children.length) ? "0" : pulse ? String(opacity * (0.78 + 0.22 * (0.5 + 0.5 * Math.cos(rowPart * Math.PI * 2 * e.motion.cycles)))) : String(opacity));
           });
-        });
+          if (surface && view.visible) surface.update(spin);
+          parts.forEach(child => updatePart(child, view.visible));
+        }
+        groups.forEach(part => updatePart(part));
       },
     };
   }
-  window.novaWhiteboardScenes = { read, rowText, mount, calculation };
+  window.novaWhiteboardScenes = { read, rowText, mount, calculation, validateElement,
+    printInfo: (elements, row, rows, bounds) => window.novaSceneGraph.printInfo(elements, row, rows, bounds) };
 })();

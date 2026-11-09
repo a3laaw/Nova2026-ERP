@@ -192,7 +192,7 @@
         const article = html("article", "print-step"); article.dataset.printStep = String(index);
         article.append(html("h2", "", `${index + 1} · ${step.title}`));
         if (plan) article.append(html("p", "print-description", plan.steps[index].description));
-        const bounds = step.rows.map((_, row) => ({ start: row, end: row + 1 }));
+        const bounds = clock(index);
         let previous = "";
         step.rows.forEach((_, row) => {
           const cue = html("section", "print-cue"); cue.dataset.printRow = String(row);
@@ -200,22 +200,24 @@
           const paragraph = html("p", "print-speech", spoken); paragraph.style.color = rowColor(index, row); cue.append(paragraph);
           if (spoken !== shown) cue.append(html("p", "print-display", "على السبورة: " + shown));
           const elements = plan ? plan.steps[index].elements : [];
-          const visible = elements.map((e, i) => e.row <= row && (e.until ?? step.rows.length) > row ? i : -1).filter(i => i >= 0);
-          const key = visible.join(",");
-          if (visible.length && key !== previous) {
-            const sequence = visible.some(i => elements[i].row === row && ["path", "rotate"].includes(elements[i].motion?.type));
-            // A route/rotation cannot be explained by its endpoint alone. Print
-            // start/middle/end as separate readable figures, never a live SVG.
-            for (const pose of sequence ? [0, 0.5, 1] : [1]) {
+          const info = scenes.printInfo(elements, row, step.rows.length, bounds);
+          if (info.visible && info.key !== previous) {
+            // Bounded representative stills, not every frame or a live SVG.
+            // Nested cues and repeated/multi-row sequences use the same clock
+            // as playback/video, including measured recording timings.
+            for (const pose of info.poses) {
               const figure = html("figure");
               const svg = node("svg", { viewBox: "0 0 1070 420", xmlns: NS, role: "img", "aria-label": plan.steps[index].description });
               const view = scenes.mount(svg, plan.steps[index], 1070, 0, `print-${index}-${row}-${pose}`);
-              view.update(bounds, row + 0.999999, false, true, pose);
-              const phase = sequence ? ["بداية الحركة", "منتصف الحركة", "نهاية الحركة"][pose * 2] : "لقطة ثابتة";
+              const end = bounds[row].end - (bounds[row].end - bounds[row].start) * 0.000001;
+              view.update(bounds, end, false, true, pose);
+              const phase = info.poses.length === 1 ? "لقطة ثابتة" : !info.advanced && info.poses.length === 3
+                ? ["بداية الحركة", "منتصف الحركة", "نهاية الحركة"][pose * 2]
+                : `مرحلة الحركة · ${Math.round(pose * 1000) / 10}% من السطر`;
               figure.append(svg, html("figcaption", "", `الرسم في السطر ${row + 1} · ${phase}`)); cue.append(figure);
             }
           }
-          previous = key;
+          previous = info.key;
           article.append(cue);
         });
         root.append(article);

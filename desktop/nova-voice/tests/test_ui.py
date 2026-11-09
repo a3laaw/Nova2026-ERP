@@ -788,3 +788,55 @@ def test_sacred_authoring_policy_also_guards_audio_only_and_keyboard_paths(windo
     assert not window.preview_button.isEnabled()
     with pytest.raises(VoiceError):
         window._options()
+
+
+def test_composition_is_reviewed_without_requiring_expert_json_or_part_selection(
+    window, monkeypatch
+):
+    from pathlib import Path
+
+    from nova_voice.scenes import VisualPlan
+
+    root = Path(__file__).resolve().parents[1] / "examples"
+    window.editor.setPlainText((root / "composition-demo-script.txt").read_text())
+    source = window._source_lesson()
+    panel = window.scene_picker
+    plan = VisualPlan.load(root / "composition-demo.json", source.manifest())
+    panel.set_draft(plan)
+    assert panel.advanced_section.content.isHidden()
+    assert panel.plan_edit.toPlainText() and "مفصل سفلي" in panel.review.toPlainText()
+    assert panel._approved is None and not window.create_board_button.isEnabled()
+    assert window.worker is None and window.player.source().isEmpty()
+    monkeypatch.setattr(
+        QMessageBox, "question", lambda *args, **kwargs: QMessageBox.StandardButton.Yes
+    )
+    panel._approve()  # No manual JSON edit, actor selector or library picker.
+    assert panel._approved == plan
+    assert window.create_board_button.isEnabled()
+    assert window._lesson_for_export().visuals == plan
+    assert window._source_lesson() == source
+
+
+def test_composition_preview_stays_silent_and_never_adopts_or_requests_narration(
+    window, monkeypatch
+):
+    from pathlib import Path
+
+    from nova_voice.scenes import VisualPlan
+    from nova_voice.whiteboard import WhiteboardPage
+
+    root = Path(__file__).resolve().parents[1] / "examples"
+    window.editor.setPlainText((root / "composition-demo-script.txt").read_text())
+    source = window._source_lesson()
+    panel, opened = window.scene_picker, []
+    panel.set_draft(VisualPlan.load(root / "composition-demo.json", source.manifest()))
+    monkeypatch.setattr(
+        "nova_voice.scene_picker.QDesktopServices.openUrl", lambda url: opened.append(url) or True
+    )
+    panel._preview()
+    assert len(opened) == 1
+    page = WhiteboardPage.load(Path(opened[0].toLocalFile()))
+    assert page.lesson.visuals is not None
+    assert '<script id="nova-whiteboard-recordings"' not in page.page.content
+    assert panel._approved is None and window.worker is None
+    assert window.player.source().isEmpty() and window._source_lesson() == source

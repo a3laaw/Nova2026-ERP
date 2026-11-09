@@ -801,6 +801,233 @@ h1{font-size:clamp(21px,2.4vw,33px);line-height:1.5;margin:0;font-weight:750;ove
 
 "use strict";
 (() => {
+  // Reusable parts, not actor/animal/cell templates. Pure row-clock poses only;
+  // no script interpretation, generated code, network, assets or animation loop.
+  const NS = "http://www.w3.org/2000/svg";
+  const check = value => { if (!value) throw new Error("Invalid scene graph"); };
+  const int = (v, lo, hi) => Number.isSafeInteger(v) && v >= lo && v <= hi;
+  const color = value => typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value);
+  const keys = (value, allowed, required = allowed) => {
+    check(value && typeof value === "object" && !Array.isArray(value));
+    check(Object.keys(value).every(k => allowed.includes(k)) && required.every(k => Object.hasOwn(value, k)));
+  };
+  const name = value => typeof value === "string" && !!value.trim() && Array.from(value).length <= 80 && !/[\u0000-\u0008\u000b-\u001f]/.test(value) && !Array.from(value).some(c => c.length === 1 && c.charCodeAt(0) >= 0xd800 && c.charCodeAt(0) <= 0xdfff);
+  const clamp = v => Math.max(0, Math.min(1, v));
+  const number = v => String(Math.abs(v) < 0.00005 ? 0 : Math.round(v * 10000) / 10000);
+  const defaults = { dx: 0, dy: 0, angle: 0, scale: 100, opacity: 100, spin: 0 };
+  const props = ["dx", "dy", "angle", "scale", "opacity", "fill", "spin"];
+  const node = (tag, attrs = {}) => {
+    const el = document.createElementNS(NS, tag);
+    Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, String(v)));
+    return el;
+  };
+  let serial = 0;
+  function validateStyle(e) {
+    if (Object.hasOwn(e, "name")) check(name(e.name));
+    if (Object.hasOwn(e, "gradient")) {
+      keys(e.gradient, ["color", "axis"]);
+      check(!["group", "icons", "calculation"].includes(e.kind) && color(e.fill) && color(e.gradient.color));
+      check(["horizontal", "vertical", "radial"].includes(e.gradient.axis));
+    }
+  }
+  function validateMotion(e, rows) {
+    const m = e.motion;
+    if (m.type === "curve") {
+      keys(m, ["type", "points", "ease"], ["type", "points"]);
+      check(Array.isArray(m.points) && [3, 4].includes(m.points.length));
+      m.points.forEach(p => check(Array.isArray(p) && p.length === 2 && int(p[0], -300, 300) && int(p[1], -180, 180)));
+      check(m.points[0][0] === 0 && m.points[0][1] === 0 && m.points.slice(1).some(p => p[0] || p[1]));
+      check(["linear", "smooth"].includes(m.ease ?? "linear") && m.ease !== null);
+      return;
+    }
+    keys(m, ["type", "frames", "repeat", "span", "cx", "cy", "ease"], ["type", "frames"]);
+    const repeat = m.repeat ?? 1;
+    check(int(repeat, 1, 6) && int(m.span ?? 1, 1, (e.until ?? rows) - e.row));
+    check(int(m.cx ?? 0, 0, 1000) && int(m.cy ?? 0, 0, 420));
+    check(["linear", "smooth"].includes(m.ease ?? "linear"));
+    check(Object.values(m).every(v => v !== null));
+    check(Array.isArray(m.frames) && m.frames.length >= 2 && m.frames.length <= 8);
+    let previous = -1, fields = null;
+    m.frames.forEach(f => {
+      keys(f, ["at", ...props], ["at"]);
+      const current = Object.keys(f).filter(k => k !== "at").sort();
+      check(current.length > 0 && (fields === null || current.join() === fields.join())); fields = current;
+      check(int(f.at, 0, 1000) && f.at > previous); previous = f.at;
+      for (const [k, lo, hi] of [["dx", -300, 300], ["dy", -180, 180], ["angle", -720, 720], ["scale", 25, 200], ["opacity", 0, 100], ["spin", -720, 720]]) if (Object.hasOwn(f, k)) check(int(f[k], lo, hi));
+      if (Object.hasOwn(f, "spin")) check(e.kind === "sphere");
+      if (Object.hasOwn(f, "fill")) check(!["group", "icons", "calculation"].includes(e.kind) && !Object.hasOwn(e, "gradient") && color(e.fill) && color(f.fill));
+    });
+    check(m.frames[0].at === 0 && m.frames[m.frames.length - 1].at === 1000);
+    if (repeat > 1) {
+      check(!fields.includes("fill") && !fields.includes("opacity"));
+      fields.forEach(k => { const diff = m.frames[m.frames.length - 1][k] - m.frames[0][k]; check(["angle", "spin"].includes(k) ? diff % 360 === 0 : diff === 0); });
+    }
+  }
+  function validateGeometry(e) {
+    if (e.kind === "sector") {
+      check(int(e.r, 1, 200) && int(e.inner ?? 0, 0, e.r - 1) && int(e.start, -360, 360) && int(e.sweep, 1, 360));
+    } else if (e.kind === "sphere") {
+      check(int(e.r, 20, 180) && int(e.longitude ?? 0, -180, 180) && int(e.tilt ?? 0, -45, 45));
+      check(typeof (e.grid ?? true) === "boolean");
+      const patches = e.patches ?? []; check(Array.isArray(patches) && patches.length <= 8);
+      patches.forEach(patch => {
+        keys(patch, ["points", "fill"]); check(color(patch.fill));
+        const points = patch.points; check(Array.isArray(points) && points.length >= 3 && points.length <= 24);
+        points.forEach(p => check(Array.isArray(p) && p.length === 2 && int(p[0], -180, 180) && int(p[1], -85, 85)));
+        const span = axis => Math.max(...points.map(p => p[axis])) - Math.min(...points.map(p => p[axis]));
+        check(span(0) <= 120 && span(1) <= 120 && new Set(points.map(p => p.join())).size >= 3);
+      });
+    }
+  }
+  function curvePosition(points, fraction) {
+    let work = points.map(p => p.slice()); const t = clamp(fraction);
+    while (work.length > 1) work = work.slice(1).map((right, i) => right.map((v, axis) => work[i][axis] + (v - work[i][axis]) * t));
+    return work[0];
+  }
+  function sequenceState(m, fraction) {
+    const repeated = clamp(fraction) * (m.repeat ?? 1), local = fraction >= 1 ? 1 : repeated - Math.floor(repeated), at = local * 1000;
+    let [a, b] = m.frames.slice(-2);
+    for (let i = 1; i < m.frames.length; i++) if (at <= m.frames[i].at) { a = m.frames[i - 1]; b = m.frames[i]; break; }
+    let t = clamp((at - a.at) / (b.at - a.at)); if (m.ease === "smooth") t = t * t * (3 - 2 * t);
+    const state = { ...defaults };
+    Object.keys(a).filter(k => k !== "at").forEach(k => {
+      state[k] = k === "fill" ? "#" + [1, 3, 5].map(offset => Math.round(parseInt(a[k].slice(offset, offset + 2), 16) + (parseInt(b[k].slice(offset, offset + 2), 16) - parseInt(a[k].slice(offset, offset + 2), 16)) * t).toString(16).padStart(2, "0")).join("").toUpperCase() : a[k] + (b[k] - a[k]) * t;
+    });
+    return state;
+  }
+  function spherePoint(lon, lat, spin = 0, tilt = 0) {
+    const rad = Math.PI / 180, l = (lon + spin) * rad, p = lat * rad, z = tilt * rad;
+    const x = Math.cos(p) * Math.sin(l), y = -Math.sin(p);
+    return [x * Math.cos(z) - y * Math.sin(z), x * Math.sin(z) + y * Math.cos(z), Math.cos(p) * Math.cos(l)];
+  }
+  function sectorPath(e) {
+    const point = (r, at) => [e.x + r * Math.cos(at * Math.PI / 180), e.y + r * Math.sin(at * Math.PI / 180)].map(number).join(" ");
+    const arc = (r, start, sweep, reverse = false) => {
+      let d = ""; const n = Math.ceil(sweep / 180), delta = sweep / n;
+      for (let i = 1; i <= n; i++) d += `A${r} ${r} 0 0 ${reverse ? 0 : 1} ${point(r, start + (reverse ? -1 : 1) * delta * i)}`;
+      return d;
+    };
+    let d = "M" + point(e.r, e.start) + arc(e.r, e.start, e.sweep);
+    if (e.inner) d += "L" + point(e.inner, e.start + e.sweep) + arc(e.inner, e.start + e.sweep, e.sweep, true);
+    else if (e.sweep < 360) d += `L${e.x} ${e.y}`;
+    return d + "Z";
+  }
+  function gradient(defs, from, to, axis = "radial", stops = null) {
+    const id = "nova-graph-paint-" + (++serial);
+    const g = node(axis === "radial" ? "radialGradient" : "linearGradient", axis === "radial" ? { id, cx: "32%", cy: "28%", r: "80%" } : { id, x1: "0%", y1: "0%", x2: axis === "horizontal" ? "100%" : "0%", y2: axis === "vertical" ? "100%" : "0%" });
+    for (const [offset, fill, opacity] of stops || [["0%", from, 1], ["100%", to, 1]]) g.append(node("stop", { offset, "stop-color": fill, "stop-opacity": opacity }));
+    defs.append(g); return `url(#${id})`;
+  }
+  function decorate(e, paints, defs) {
+    if (e.gradient) { const fill = gradient(defs, e.fill, e.gradient.color, e.gradient.axis); paints.forEach(shape => shape.setAttribute("fill", fill)); }
+  }
+  const normal = v => { const n = Math.hypot(...v); return v.map(value => value / n); };
+  function sphere(parent, e, defs) {
+    const base = node("circle", { cx: e.x, cy: e.y, r: e.r, fill: e.fill ?? "#2563EB", "data-sphere-base": "true" }); parent.append(base);
+    const patches = (e.patches ?? []).map(patch => {
+      const samples = [];
+      patch.points.forEach((p, i) => {
+        const a = spherePoint(...p), b = spherePoint(...patch.points[(i + 1) % patch.points.length]);
+        const angle = Math.acos(Math.max(-1, Math.min(1, a.reduce((sum, value, axis) => sum + value * b[axis], 0))));
+        const count = Math.max(1, Math.ceil(angle / (Math.PI / 36)));
+        for (let k = 0; k < count; k++) samples.push(normal(a.map((v, axis) => v + (b[axis] - v) * k / count)));
+      });
+      const path = node("path", { fill: patch.fill, stroke: "none", "data-sphere-patch": "true" }); parent.append(path); return { samples, path };
+    });
+    const lines = [];
+    if (e.grid ?? true) {
+      for (const lat of [-60, -30, 0, 30, 60]) lines.push(Array.from({ length: 61 }, (_, i) => spherePoint(-180 + i * 6, lat)));
+      for (let lon = -150; lon <= 180; lon += 30) lines.push(Array.from({ length: 31 }, (_, i) => spherePoint(lon, -90 + i * 6)));
+    }
+    const grid = node("path", { fill: "none", stroke: "#FFFFFF", "stroke-width": 1, opacity: 0.38, "data-sphere-grid": "true" }); parent.append(grid);
+    const shine = gradient(defs, "#FFFFFF", "#334155", "radial", [["0%", "#FFFFFF", 0.30], ["48%", "#FFFFFF", 0], ["100%", "#334155", 0.45]]);
+    parent.append(node("circle", { cx: e.x, cy: e.y, r: e.r, fill: shine, stroke: e.stroke ?? "#2563EB", "stroke-width": e.line_width ?? 3 }));
+    let previous = null;
+    function update(spin) {
+      if (spin === previous) return; previous = spin;
+      const turn = ((e.longitude ?? 0) + spin) * Math.PI / 180, tilt = (e.tilt ?? 0) * Math.PI / 180;
+      const rotate = p => {
+        const x = p[0] * Math.cos(turn) + p[2] * Math.sin(turn), y = p[1], z = -p[0] * Math.sin(turn) + p[2] * Math.cos(turn);
+        return [x * Math.cos(tilt) - y * Math.sin(tilt), x * Math.sin(tilt) + y * Math.cos(tilt), z];
+      };
+      const xy = p => [e.x + p[0] * e.r, e.y + p[1] * e.r];
+      const point = p => xy(p).map(number).join(" ");
+      for (const { samples, path } of patches) {
+        const transformed = samples.map(rotate), visible = [];
+        let last = transformed[transformed.length - 1];
+        for (const current of transformed) {
+          const a = last[2] >= 0, b = current[2] >= 0;
+          if (a !== b) {
+            const t = last[2] / (last[2] - current[2]), edge = normal(last.map((v, i) => v + (current[i] - v) * t));
+            visible.push({ p: edge, rim: b });
+          }
+          if (b) visible.push({ p: current, rim: false });
+          last = current;
+        }
+        let d = "";
+        if (visible.length >= 3) {
+          d = "M" + point(visible[0].p);
+          for (let i = 1; i <= visible.length; i++) {
+            const a = visible[(i - 1) % visible.length], b = visible[i % visible.length];
+            if (b.rim) {
+              const from = Math.atan2(a.p[1], a.p[0]), to = Math.atan2(b.p[1], b.p[0]);
+              const delta = Math.atan2(Math.sin(to - from), Math.cos(to - from));
+              d += `A${e.r} ${e.r} 0 0 ${delta >= 0 ? 1 : 0} ${point(b.p)}`;
+            } else d += "L" + point(b.p);
+          }
+          d += "Z";
+        }
+        path.setAttribute("d", d);
+      }
+      grid.setAttribute("d", lines.map(line => {
+        let d = "", continuing = false;
+        line.map(rotate).forEach(p => { if (p[2] >= -0.00000001) { d += (continuing ? "L" : "M") + point(p); continuing = true; } else continuing = false; });
+        return d;
+      }).join(""));
+      parent.dataset.surfaceSpin = number(spin);
+    }
+    update(0); return { update, paints: [base] };
+  }
+  function printInfo(elements, row, rows, bounds = null) {
+    bounds = bounds || Array.from({ length: rows }, (_, i) => ({ start: i, end: i + 1 }));
+    const visible = [], motions = []; let composed = false;
+    function visit(items, path = "", parentVisible = true) {
+      items.forEach((e, i) => {
+        const id = path + i, shown = parentVisible && e.row <= row && (e.until ?? rows) > row;
+        if (!shown) return;
+        if (e.kind === "group") { composed = true; visit(e.children, id + ".", shown); }
+        else visible.push(id);
+        if (["group", "sphere", "sector"].includes(e.kind)) composed = true;
+        const m = e.motion;
+        if (m && (m.type === "sequence" ? row < e.row + (m.span ?? 1) : row === e.row)) motions.push({ e, m });
+      });
+    }
+    visit(elements);
+    const advanced = motions.some(({ m }) => ["sequence", "curve"].includes(m.type));
+    const moving = advanced || motions.some(({ m }) => ["path", "rotate"].includes(m.type));
+    const poses = new Set(moving ? advanced ? [0, 0.25, 0.5, 0.75, 1] : [0, 0.5, 1] : [1]);
+    for (const { e, m } of motions) if (m.type === "sequence") {
+      const start = bounds[e.row].start, finish = bounds[e.row + (m.span ?? 1) - 1].end;
+      const rowStart = bounds[row].start, rowLength = bounds[row].end - rowStart;
+      const cycleLength = (finish - start) / (m.repeat ?? 1);
+      // Include one representative cycle, even when uniform quarter-row
+      // samples would alias a repeated gait to an apparently stationary pose.
+      const cycle = Math.min((m.repeat ?? 1) - 1, Math.ceil((rowStart - start) / cycleLength));
+      const times = m.frames.map(f => f.at / 1000);
+      const sample = times.concat(times.slice(1).map((v, i) => (v + times[i]) / 2));
+      for (const loop of new Set([Math.max(0, cycle - 1), Math.max(0, cycle)])) for (const v of sample) {
+        const at = (start + (loop + v) * cycleLength - rowStart) / rowLength;
+        if (at >= 0 && at <= 1) poses.add(at);
+      }
+    }
+    let selected = [...poses].sort((a, b) => a - b);
+    if (selected.length > 8) selected = Array.from({ length: 8 }, (_, i) => selected[Math.floor(i * (selected.length - 1) / 7)]);
+    return { visible: visible.length, key: visible.join(",") + ((composed || advanced) && moving ? "@" + row : ""), poses: selected, advanced };
+  }
+  window.novaSceneGraph = { validateStyle, validateMotion, validateGeometry, name, number, curvePosition, sequenceState, spherePoint, sectorPath, decorate, sphere, printInfo };
+})();
+"use strict";
+(() => {
   // Declarative primitives only. No innerHTML, generated code, external URLs,
   // images, SMIL, animation timers or document-wide element IDs from the plan.
   const NS = "http://www.w3.org/2000/svg";
@@ -810,9 +1037,10 @@ h1{font-size:clamp(21px,2.4vw,33px);line-height:1.5;margin:0;font-weight:750;ove
     path: ["d"], text: ["text", "size", "align", "direction"],
     icons: ["icon", "count", "columns", "size"],
     right_triangle: ["a", "b", "w", "h", "unit"], calculation: ["a", "b", "op", "size"],
+    group: ["children"], sector: ["r", "inner", "start", "sweep"], sphere: ["r", "longitude", "tilt", "grid", "patches"],
   };
   const icons = ["apple", "ball", "block", "leaf", "star", "sun", "cloud", "drop", "book", "person"];
-  const common = ["kind", "row", "until", "x", "y", "fill", "stroke", "line_width", "dx", "dy", "motion"];
+  const common = ["kind", "row", "until", "x", "y", "fill", "stroke", "line_width", "dx", "dy", "motion", "name", "gradient"];
   const integer = (v, a, b) => Number.isSafeInteger(v) && v >= a && v <= b;
   const text = (v, n, empty = false) => typeof v === "string" && (empty || !!v.trim()) && Array.from(v).length <= n && !/[\u0000-\u0008\u000b-\u001f]/.test(v) && !Array.from(v).some(c => c.length === 1 && c.charCodeAt(0) >= 0xd800 && c.charCodeAt(0) <= 0xdfff);
   const check = condition => { if (!condition) throw new Error("Invalid visual plan"); };
@@ -820,7 +1048,8 @@ h1{font-size:clamp(21px,2.4vw,33px);line-height:1.5;margin:0;font-weight:750;ove
     check(value && typeof value === "object" && !Array.isArray(value));
     check(Object.keys(value).every(key => allowed.includes(key)) && required.every(key => Object.prototype.hasOwnProperty.call(value, key)));
   }
-  function validateElement(e, rows) {
+  function validateElement(e, rows, depth = 0, budget = { nodes: 0, spheres: 0 }) {
+    check(depth <= 3 && ++budget.nodes <= 60);
     check(e && typeof e.kind === "string" && Object.prototype.hasOwnProperty.call(kinds, e.kind));
     keys(e, common.concat(kinds[e.kind]), ["kind", "row", "x", "y"]);
     check(Object.values(e).every(value => value !== null));
@@ -829,22 +1058,25 @@ h1{font-size:clamp(21px,2.4vw,33px);line-height:1.5;margin:0;font-weight:750;ove
     for (const key of ["dx", "dy"]) check(integer(e[key] ?? 0, -1000, 1000));
     if (Object.prototype.hasOwnProperty.call(e, "motion")) {
       const m = e.motion;
-      check(m && typeof m === "object" && !Array.isArray(m) && ["draw", "move", "pulse", "none", "path", "rotate"].includes(m.type));
-      if (["move", "path", "rotate"].includes(m.type)) {
-        const fields = m.type === "move" ? ["dx", "dy"] : m.type === "path" ? ["points"] : ["degrees", "cx", "cy"];
-        keys(m, ["type", "ease", ...fields], ["type", ...fields]);
-        check(["linear", "smooth"].includes(m.ease ?? "linear") && m.ease !== null);
-      } else keys(m, m.type === "pulse" ? ["type", "cycles"] : ["type"]);
-      if (m.type === "move") check(integer(m.dx, -300, 300) && integer(m.dy, -180, 180));
-      if (m.type === "pulse") check(integer(m.cycles, 1, 4));
-      if (m.type === "path") {
-        check(Array.isArray(m.points) && m.points.length >= 2 && m.points.length <= 12);
-        m.points.forEach((p, i) => {
-          check(Array.isArray(p) && p.length === 2 && integer(p[0], -300, 300) && integer(p[1], -180, 180));
-          check(i === 0 ? p[0] === 0 && p[1] === 0 : p[0] !== m.points[i - 1][0] || p[1] !== m.points[i - 1][1]);
-        });
+      check(m && typeof m === "object" && !Array.isArray(m) && ["draw", "move", "pulse", "none", "path", "rotate", "curve", "sequence"].includes(m.type));
+      if (["curve", "sequence"].includes(m.type)) window.novaSceneGraph.validateMotion(e, rows);
+      else {
+        if (["move", "path", "rotate"].includes(m.type)) {
+          const fields = m.type === "move" ? ["dx", "dy"] : m.type === "path" ? ["points"] : ["degrees", "cx", "cy"];
+          keys(m, ["type", "ease", ...fields], ["type", ...fields]);
+          check(["linear", "smooth"].includes(m.ease ?? "linear") && m.ease !== null);
+        } else keys(m, m.type === "pulse" ? ["type", "cycles"] : ["type"]);
+        if (m.type === "move") check(integer(m.dx, -300, 300) && integer(m.dy, -180, 180));
+        if (m.type === "pulse") check(integer(m.cycles, 1, 4));
+        if (m.type === "path") {
+          check(Array.isArray(m.points) && m.points.length >= 2 && m.points.length <= 12);
+          m.points.forEach((p, i) => {
+            check(Array.isArray(p) && p.length === 2 && integer(p[0], -300, 300) && integer(p[1], -180, 180));
+            check(i === 0 ? p[0] === 0 && p[1] === 0 : p[0] !== m.points[i - 1][0] || p[1] !== m.points[i - 1][1]);
+          });
+        }
+        if (m.type === "rotate") check(integer(m.degrees, -360, 360) && m.degrees !== 0 && integer(m.cx, 0, 1000) && integer(m.cy, 0, 420));
       }
-      if (m.type === "rotate") check(integer(m.degrees, -360, 360) && m.degrees !== 0 && integer(m.cx, 0, 1000) && integer(m.cy, 0, 420));
     }
     for (const key of ["fill", "stroke"]) check(typeof (e[key] ?? "none") === "string" && /^(none|#[0-9a-fA-F]{6})$/.test(e[key] ?? "none"));
     check(integer(e.line_width ?? 3, 1, 12));
@@ -874,7 +1106,13 @@ h1{font-size:clamp(21px,2.4vw,33px);line-height:1.5;margin:0;font-weight:750;ove
       case "calculation":
         n("a", -1000, 1000); n("b", -1000, 1000); n("size", 16, 60, 36);
         check(["+", "-", "*", "/"].includes(e.op) && !(e.op === "/" && e.b === 0)); break;
+      case "group":
+        check(window.novaSceneGraph.name(e.name) && Array.isArray(e.children) && e.children.length >= 1 && e.children.length <= 20);
+        e.children.forEach(child => { validateElement(child, e.until ?? rows, depth + 1, budget); check(child.row >= e.row && child.row < (e.until ?? rows)); }); break;
+      case "sector": window.novaSceneGraph.validateGeometry(e); break;
+      case "sphere": window.novaSceneGraph.validateGeometry(e); check(++budget.spheres <= 3); break;
     }
+    window.novaSceneGraph.validateStyle(e);
   }
   function read(lesson) {
     if (lesson.schema === 1 && !Object.prototype.hasOwnProperty.call(lesson, "visuals")) return null;
@@ -902,7 +1140,8 @@ h1{font-size:clamp(21px,2.4vw,33px);line-height:1.5;margin:0;font-weight:750;ove
         seen.add(row.index); spoken += Array.from(row.speech).length - Array.from(lesson.steps[index].rows[row.index].text).length;
       });
       check(Array.isArray(step.elements) && step.elements.length <= 60);
-      step.elements.forEach(e => validateElement(e, lesson.steps[index].rows.length)); count += step.elements.length;
+      const budget = { nodes: 0, spheres: 0 };
+      step.elements.forEach(e => validateElement(e, lesson.steps[index].rows.length, 0, budget)); count += budget.nodes;
       if (p.policy === "sacred") check(step.elements.length === 0 && step.rows.length === 0 && step.description === lesson.steps[index].title);
     });
     check(count <= 600 && spoken > 0 && spoken <= 100000);
@@ -959,7 +1198,7 @@ h1{font-size:clamp(21px,2.4vw,33px);line-height:1.5;margin:0;font-weight:750;ove
     const top = (b < 0 ? -a : a) / g, bottom = Math.abs(b) / g;
     return bottom === 1 ? String(top) : `${top}/${bottom}`;
   }
-  function draw(group, e) {
+  function draw(group, e, defs) {
     const style = { fill: e.fill ?? "none", stroke: e.stroke ?? "#2563EB", "stroke-width": e.line_width ?? 3, "stroke-linejoin": "round", "stroke-linecap": "round" };
     const xy = { x: e.x, y: e.y };
     switch (e.kind) {
@@ -995,6 +1234,8 @@ h1{font-size:clamp(21px,2.4vw,33px);line-height:1.5;margin:0;font-weight:750;ove
         label(group, e.x + w / 2, e.y + h + 40, `${e.a} ${e.unit ?? ""}`, 40);
         label(group, Math.max(20, e.x - 80), e.y + h / 2, `${e.b} ${e.unit ?? ""}`, 40); break;
       }
+      case "sector": group.append(node("path", { ...style, d: window.novaSceneGraph.sectorPath(e) })); break;
+      case "sphere": return window.novaSceneGraph.sphere(group, e, defs);
       case "calculation": {
         const op = { "+": "+", "-": "−", "*": "×", "/": "÷" }[e.op];
         const result = calculation(e.a, e.b, e.op);
@@ -1016,62 +1257,87 @@ h1{font-size:clamp(21px,2.4vw,33px);line-height:1.5;margin:0;font-weight:750;ove
     return points[points.length - 1];
   }
   function mount(parent, step, width, top, version) {
+    const graph = window.novaSceneGraph;
     const frame = node("svg", { x: 35, y: top, width: width - 70, height: (width - 70) * 420 / 1000, viewBox: "0 0 1000 420", overflow: "hidden", "data-visual-scene": String(version), "aria-hidden": "true", "pointer-events": "none" });
     frame.append(node("rect", { x: 0, y: 0, width: 1000, height: 420, rx: 18, fill: "#F8FAFC", stroke: "#E2E8F0", "stroke-width": 2 }));
-    const groups = step.elements.map((e, i) => {
-      const g = node("g", { opacity: 0, "data-scene-element": i }); draw(g, e); frame.append(g);
-      // Normalized pathLength works for every permitted geometric SVG shape.
-      // No generated CSS/SMIL, timers, getTotalLength, IDs or animation code.
-      const strokes = Array.from(g.querySelectorAll("path,line,polyline,polygon,rect,circle,ellipse"));
-      const fills = strokes.map(shape => ({ shape, fill: shape.getAttribute("fill") || "none" }));
-      return { e, g, strokes, fills, children: Array.from(g.children) };
-    });
-    parent.append(frame);
+    const defs = node("defs");
+    function build(e, id) {
+      const g = node("g", { opacity: 0, "data-scene-element": id });
+      if (e.name) g.setAttribute("data-scene-name", e.name);
+      let parts = [], surface = null;
+      if (e.kind === "group") {
+        parts = e.children.map((child, i) => build(child, id + "." + i));
+        parts.forEach(part => g.append(part.g));
+      } else surface = draw(g, e, defs);
+      const strokes = e.kind === "group" ? [] : Array.from(g.querySelectorAll("path,line,polyline,polygon,rect,circle,ellipse"));
+      const paints = surface ? surface.paints : e.kind === "group" ? [] : Array.from(g.querySelectorAll("path,rect,circle,ellipse,polygon,text")).filter(shape => e.fill && shape.getAttribute("fill") === e.fill);
+      graph.decorate(e, paints, defs);
+      return { e, g, parts, surface, strokes, paints, visible: false,
+        fills: strokes.map(shape => ({ shape, fill: shape.getAttribute("fill") || "none" })), children: e.kind === "group" ? [] : Array.from(g.children).map(child => ({ child, opacity: Number(child.getAttribute("opacity") ?? 1) })) };
+    }
+    const groups = step.elements.map((e, i) => build(e, String(i)));
+    if (defs.childNodes.length) frame.prepend(defs);
+    groups.forEach(part => frame.append(part.g)); parent.append(frame);
+    function content(part) { return part.visible && (part.parts.length ? part.parts.some(content) : part.g.childNodes.length > 0); }
     return {
       bottom: top + (width - 70) * 420 / 1000 + 55,
-      hasVisibleContent: () => groups.some(({ g }) => g.childNodes.length > 0 && g.getAttribute("opacity") === "1"),
+      hasVisibleContent: () => groups.some(content),
       update(bounds, now, reduced, still = false, pose = null) {
-        groups.forEach(({ e, g, strokes, fills, children }) => {
+        const printRow = still && pose !== null ? bounds.findIndex(b => now >= b.start && now < b.end) : -1;
+        const virtualNow = printRow >= 0 ? bounds[printRow].start + Math.max(0, Math.min(1, pose)) * (bounds[printRow].end - bounds[printRow].start) : now;
+        function updatePart(view, parentVisible = true) {
+          const { e, g, strokes, fills, children, parts, surface, paints } = view;
           const start = bounds[e.row].start, end = bounds[e.row].end;
           const until = e.until ?? bounds.length;
-          const visible = now >= start && (until === bounds.length || now < bounds[until].start);
+          const visible = parentVisible && now >= start && (until === bounds.length || now < bounds[until].start);
           const rowPart = Math.max(0, Math.min(1, (now - start) / Math.max(0.000001, end - start)));
-          const mode = e.motion ? e.motion.type : "draw";
+          const mode = e.motion ? e.motion.type : ["group", "sphere"].includes(e.kind) ? "none" : "draw";
           const staticElement = reduced || still || mode === "none";
           const part = staticElement ? 1 : Math.min(1, rowPart / 0.6);
           let movePart = still ? (pose !== null && now >= start && now < end ? Math.max(0, Math.min(1, pose)) : 1) : rowPart;
           if (e.motion && e.motion.ease === "smooth") movePart = movePart * movePart * (3 - 2 * movePart);
           const offset = mode === "path" && !reduced ? pathPosition(e.motion.points, movePart)
-            : mode === "move" && !reduced ? [e.motion.dx * movePart, e.motion.dy * movePart] : [0, 0];
+            : mode === "curve" && !reduced ? graph.curvePosition(e.motion.points, movePart)
+              : mode === "move" && !reduced ? [e.motion.dx * movePart, e.motion.dy * movePart] : [0, 0];
           const x = (staticElement ? 0 : (e.dx ?? 0) * (1 - part)) + offset[0];
           const y = (staticElement ? 0 : (e.dy ?? 0) * (1 - part)) + offset[1];
-          const rotation = mode === "rotate" && !reduced
-            ? ` rotate(${e.motion.degrees * movePart} ${e.motion.cx} ${e.motion.cy})` : "";
-          g.setAttribute("opacity", visible ? "1" : "0");
-          g.setAttribute("transform", `translate(${x} ${y})${rotation}`);
-          g.dataset.activeCue = String(visible && now < end);
+          const rotation = mode === "rotate" && !reduced ? ` rotate(${e.motion.degrees * movePart} ${e.motion.cx} ${e.motion.cy})` : "";
+          let transform = `translate(${x} ${y})${rotation}`, alpha = 1, spin = 0;
+          if (mode === "sequence") {
+            const m = e.motion, finish = bounds[e.row + (m.span ?? 1) - 1].end;
+            const p = Math.max(0, Math.min(1, (virtualNow - start) / Math.max(0.000001, finish - start)));
+            const state = reduced ? { dx: 0, dy: 0, angle: 0, scale: 100, opacity: 100, spin: 0 } : graph.sequenceState(m, p);
+            const cx = m.cx ?? (e.kind === "group" ? 0 : e.x), cy = m.cy ?? (e.kind === "group" ? 0 : e.y);
+            transform = `translate(${graph.number(x + state.dx)} ${graph.number(y + state.dy)}) translate(${cx} ${cy}) rotate(${graph.number(state.angle)}) scale(${graph.number(state.scale / 100)}) translate(${-cx} ${-cy})`;
+            alpha = state.opacity / 100; spin = state.spin;
+            if (state.fill) paints.forEach(shape => shape.setAttribute("fill", state.fill));
+            else if (reduced && e.fill) paints.forEach(shape => shape.setAttribute("fill", e.fill));
+          }
+          if (e.kind === "group") transform = `translate(${e.x} ${e.y}) ` + transform;
+          if (e.kind === "group" && mode === "pulse" && !reduced && !still && rowPart > 0 && rowPart < 1) alpha *= 0.78 + 0.22 * (0.5 + 0.5 * Math.cos(rowPart * Math.PI * 2 * e.motion.cycles));
+          g.setAttribute("opacity", visible ? String(alpha) : "0");
+          g.setAttribute("transform", transform); view.visible = visible && alpha > 0;
+          g.dataset.activeCue = String(visible && now < (mode === "sequence" ? bounds[e.row + (e.motion.span ?? 1) - 1].end : end));
           const tracing = mode === "draw" && !reduced && !still && e.kind !== "icons";
           strokes.forEach(shape => {
-            if (tracing) {
-              shape.setAttribute("pathLength", "100");
-              shape.setAttribute("stroke-dasharray", "100 100");
-              shape.setAttribute("stroke-dashoffset", String(100 * (1 - part)));
-            } else {
-              shape.removeAttribute("pathLength"); shape.removeAttribute("stroke-dasharray"); shape.removeAttribute("stroke-dashoffset");
-            }
+            if (tracing) { shape.setAttribute("pathLength", "100"); shape.setAttribute("stroke-dasharray", "100 100"); shape.setAttribute("stroke-dashoffset", String(100 * (1 - part))); }
+            else { shape.removeAttribute("pathLength"); shape.removeAttribute("stroke-dasharray"); shape.removeAttribute("stroke-dashoffset"); }
           });
           fills.forEach(({ shape, fill }) => shape.setAttribute("fill-opacity", tracing && fill !== "none" ? String(Math.max(0, Math.min(1, (part - 0.65) / 0.35))) : "1"));
-          children.forEach((child, index) => {
+          children.forEach(({ child, opacity }, index) => {
             const staggered = mode === "draw" && e.kind === "icons" && !reduced && !still;
             const pulse = mode === "pulse" && !reduced && !still && rowPart > 0 && rowPart < 1;
-            child.setAttribute("opacity", staggered && index >= Math.ceil(part * children.length) ? "0"
-              : pulse ? String(0.78 + 0.22 * (0.5 + 0.5 * Math.cos(rowPart * Math.PI * 2 * e.motion.cycles))) : "1");
+            child.setAttribute("opacity", staggered && index >= Math.ceil(part * children.length) ? "0" : pulse ? String(opacity * (0.78 + 0.22 * (0.5 + 0.5 * Math.cos(rowPart * Math.PI * 2 * e.motion.cycles)))) : String(opacity));
           });
-        });
+          if (surface && view.visible) surface.update(spin);
+          parts.forEach(child => updatePart(child, view.visible));
+        }
+        groups.forEach(part => updatePart(part));
       },
     };
   }
-  window.novaWhiteboardScenes = { read, rowText, mount, calculation };
+  window.novaWhiteboardScenes = { read, rowText, mount, calculation, validateElement,
+    printInfo: (elements, row, rows, bounds) => window.novaSceneGraph.printInfo(elements, row, rows, bounds) };
 })();
 
 "use strict";
@@ -1268,7 +1534,7 @@ h1{font-size:clamp(21px,2.4vw,33px);line-height:1.5;margin:0;font-weight:750;ove
         const article = html("article", "print-step"); article.dataset.printStep = String(index);
         article.append(html("h2", "", `${index + 1} · ${step.title}`));
         if (plan) article.append(html("p", "print-description", plan.steps[index].description));
-        const bounds = step.rows.map((_, row) => ({ start: row, end: row + 1 }));
+        const bounds = clock(index);
         let previous = "";
         step.rows.forEach((_, row) => {
           const cue = html("section", "print-cue"); cue.dataset.printRow = String(row);
@@ -1276,22 +1542,24 @@ h1{font-size:clamp(21px,2.4vw,33px);line-height:1.5;margin:0;font-weight:750;ove
           const paragraph = html("p", "print-speech", spoken); paragraph.style.color = rowColor(index, row); cue.append(paragraph);
           if (spoken !== shown) cue.append(html("p", "print-display", "على السبورة: " + shown));
           const elements = plan ? plan.steps[index].elements : [];
-          const visible = elements.map((e, i) => e.row <= row && (e.until ?? step.rows.length) > row ? i : -1).filter(i => i >= 0);
-          const key = visible.join(",");
-          if (visible.length && key !== previous) {
-            const sequence = visible.some(i => elements[i].row === row && ["path", "rotate"].includes(elements[i].motion?.type));
-            // A route/rotation cannot be explained by its endpoint alone. Print
-            // start/middle/end as separate readable figures, never a live SVG.
-            for (const pose of sequence ? [0, 0.5, 1] : [1]) {
+          const info = scenes.printInfo(elements, row, step.rows.length, bounds);
+          if (info.visible && info.key !== previous) {
+            // Bounded representative stills, not every frame or a live SVG.
+            // Nested cues and repeated/multi-row sequences use the same clock
+            // as playback/video, including measured recording timings.
+            for (const pose of info.poses) {
               const figure = html("figure");
               const svg = node("svg", { viewBox: "0 0 1070 420", xmlns: NS, role: "img", "aria-label": plan.steps[index].description });
               const view = scenes.mount(svg, plan.steps[index], 1070, 0, `print-${index}-${row}-${pose}`);
-              view.update(bounds, row + 0.999999, false, true, pose);
-              const phase = sequence ? ["بداية الحركة", "منتصف الحركة", "نهاية الحركة"][pose * 2] : "لقطة ثابتة";
+              const end = bounds[row].end - (bounds[row].end - bounds[row].start) * 0.000001;
+              view.update(bounds, end, false, true, pose);
+              const phase = info.poses.length === 1 ? "لقطة ثابتة" : !info.advanced && info.poses.length === 3
+                ? ["بداية الحركة", "منتصف الحركة", "نهاية الحركة"][pose * 2]
+                : `مرحلة الحركة · ${Math.round(pose * 1000) / 10}% من السطر`;
               figure.append(svg, html("figcaption", "", `الرسم في السطر ${row + 1} · ${phase}`)); cue.append(figure);
             }
           }
-          previous = key;
+          previous = info.key;
           article.append(cue);
         });
         root.append(article);

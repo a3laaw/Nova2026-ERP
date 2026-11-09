@@ -26,7 +26,7 @@ MAX_STEP_ELEMENTS = 60
 WIDTH, HEIGHT = 1000, 420
 ICONS = ("apple", "ball", "block", "leaf", "star", "sun", "cloud", "drop", "book", "person")
 POLICIES = ("general", "sacred")
-MOTION_TYPES = ("draw", "move", "pulse", "none", "path", "rotate")
+MOTION_TYPES = ("draw", "move", "pulse", "none", "path", "rotate", "curve", "sequence")
 EASING_TYPES = ("linear", "smooth")
 KINDS = (
     "rect",
@@ -41,8 +41,25 @@ KINDS = (
     "icons",
     "right_triangle",
     "calculation",
+    "group",
+    "sector",
+    "sphere",
 )
-COMMON = {"kind", "row", "until", "x", "y", "fill", "stroke", "line_width", "dx", "dy", "motion"}
+COMMON = {
+    "kind",
+    "row",
+    "until",
+    "x",
+    "y",
+    "fill",
+    "stroke",
+    "line_width",
+    "dx",
+    "dy",
+    "motion",
+    "name",
+    "gradient",
+}
 EXTRA = {
     "rect": {"w", "h", "radius"},
     "circle": {"r"},
@@ -56,6 +73,9 @@ EXTRA = {
     "icons": {"icon", "count", "columns", "size"},
     "right_triangle": {"a", "b", "w", "h", "unit"},
     "calculation": {"a", "b", "op", "size"},
+    "group": {"children"},
+    "sector": {"r", "inner", "start", "sweep"},
+    "sphere": {"r", "longitude", "tilt", "grid", "patches"},
 }
 COLOR = re.compile(r"#[0-9a-fA-F]{6}\Z")
 PATH = re.compile(r"[MmLlHhVvCcSsQqTtAaZz0-9eE+.,\s-]+\Z")
@@ -127,7 +147,22 @@ def load_plan_json(text: str) -> dict:
         raise SceneError("تعذّر قراءة JSON الخطة. لا تُلصق كود HTML/SVG أو شرحًا خارجه.") from error
 
 
-def validate_element(item: dict, rows: int) -> None:
+def validate_element(item: dict, rows: int, *, _depth: int = 0, _budget=None) -> None:
+    from .scene_graph import (
+        MAX_CHILDREN,
+        MAX_DEPTH,
+        MAX_SPHERES,
+        validate_geometry,
+        validate_motion,
+        validate_style,
+    )
+
+    budget = _budget if _budget is not None else [0, 0]
+    budget[0] += 1
+    _require(
+        _depth <= MAX_DEPTH and budget[0] <= MAX_STEP_ELEMENTS,
+        "المشهد المركّب يتجاوز عمق الأجزاء أو حد 60 عقدة في الخطوة.",
+    )
     _require(isinstance(item, dict) and isinstance(item.get("kind"), str))
     kind = item["kind"]
     _require(kind in KINDS, "نوع رسم غير مدعوم؛ لا يُسمح بتنفيذ كود أو استيراد روابط.")
@@ -142,37 +177,40 @@ def validate_element(item: dict, rows: int) -> None:
         _require(isinstance(motion, dict))
         mode = motion.get("type")
         _require(mode in MOTION_TYPES, "نوع حركة الرسم غير مدعوم.")
-        if mode in ("move", "path", "rotate"):
-            fields = (
-                {"dx", "dy"}
-                if mode == "move"
-                else {"points"}
-                if mode == "path"
-                else {"degrees", "cx", "cy"}
-            )
-            _keys(motion, {"type", "ease"} | fields, {"type"} | fields)
-            _require(motion.get("ease", "linear") in EASING_TYPES)
-        if mode == "move":
-            _require(_integer(motion["dx"], -300, 300) and _integer(motion["dy"], -180, 180))
-        elif mode == "path":
-            points = motion["points"]
-            _require(isinstance(points, list) and 2 <= len(points) <= 12)
-            for index, point in enumerate(points):
-                _require(
-                    isinstance(point, list)
-                    and len(point) == 2
-                    and _integer(point[0], -300, 300)
-                    and _integer(point[1], -180, 180)
-                )
-                _require(point == [0, 0] if index == 0 else point != points[index - 1])
-        elif mode == "rotate":
-            _require(_integer(motion["degrees"], -360, 360) and motion["degrees"] != 0)
-            _require(_integer(motion["cx"], 0, WIDTH) and _integer(motion["cy"], 0, HEIGHT))
-        elif mode == "pulse":
-            _keys(motion, {"type", "cycles"})
-            _require(_integer(motion["cycles"], 1, 4))
+        if mode in ("curve", "sequence"):
+            validate_motion(item, rows)
         else:
-            _keys(motion, {"type"})
+            if mode in ("move", "path", "rotate"):
+                fields = (
+                    {"dx", "dy"}
+                    if mode == "move"
+                    else {"points"}
+                    if mode == "path"
+                    else {"degrees", "cx", "cy"}
+                )
+                _keys(motion, {"type", "ease"} | fields, {"type"} | fields)
+                _require(motion.get("ease", "linear") in EASING_TYPES)
+            if mode == "move":
+                _require(_integer(motion["dx"], -300, 300) and _integer(motion["dy"], -180, 180))
+            elif mode == "path":
+                points = motion["points"]
+                _require(isinstance(points, list) and 2 <= len(points) <= 12)
+                for index, point in enumerate(points):
+                    _require(
+                        isinstance(point, list)
+                        and len(point) == 2
+                        and _integer(point[0], -300, 300)
+                        and _integer(point[1], -180, 180)
+                    )
+                    _require(point == [0, 0] if index == 0 else point != points[index - 1])
+            elif mode == "rotate":
+                _require(_integer(motion["degrees"], -360, 360) and motion["degrees"] != 0)
+                _require(_integer(motion["cx"], 0, WIDTH) and _integer(motion["cy"], 0, HEIGHT))
+            elif mode == "pulse":
+                _keys(motion, {"type", "cycles"})
+                _require(_integer(motion["cycles"], 1, 4))
+            else:
+                _keys(motion, {"type"})
     for key in ("fill", "stroke"):
         color = item.get(key, "none")
         _require(isinstance(color, str) and (color == "none" or bool(COLOR.fullmatch(color))))
@@ -236,6 +274,20 @@ def validate_element(item: dict, rows: int) -> None:
         integer("size", 16, 60, 36)
         _require(item.get("op") in ("+", "-", "*", "/"))
         _require(item["op"] != "/" or item["b"] != 0, "لا قسمة على صفر.")
+
+    validate_style(item)
+    if kind == "group":
+        children = item.get("children")
+        _require(isinstance(children, list) and 1 <= len(children) <= MAX_CHILDREN)
+        _require(_text(item.get("name"), 80), "سمّ المجموعة بوصف أجزائها للمراجعة، لا قالب درس.")
+        for child in children:
+            validate_element(child, item.get("until", rows), _depth=_depth + 1, _budget=budget)
+            _require(item["row"] <= child["row"] < item.get("until", rows))
+    elif kind in ("sector", "sphere"):
+        validate_geometry(item)
+        if kind == "sphere":
+            budget[1] += 1
+            _require(budget[1] <= MAX_SPHERES, "حد الأجسام الكروية في الخطوة ثلاثة.")
 
 
 def calculation_result(a: int, b: int, op: str) -> str:
@@ -352,9 +404,9 @@ class VisualPlan:
             _require(
                 isinstance(step["elements"], list) and len(step["elements"]) <= MAX_STEP_ELEMENTS
             )
-            for item in step["elements"]:
-                validate_element(item, len(rows))
-            elements += len(step["elements"])
+            from .scene_graph import validate_elements
+
+            elements += validate_elements(step["elements"], len(rows))
             if data["policy"] == "sacred":
                 _require(
                     step["description"] == source["steps"][index]["title"],
@@ -450,17 +502,37 @@ def review_text(plan: VisualPlan, source: dict) -> str:
                 "العرض: " + plan.row_text(index, row_index, row["text"]),
                 "النطق: " + plan.row_text(index, row_index, row["text"], speech=True),
             ]
-        for item in step["elements"]:
-            suffix = ""
+        from .scene_graph import walk_parts
+
+        for path, item in walk_parts(step["elements"]):
+            suffix = " · " + item["name"] if "name" in item else ""
+            motion = item.get("motion", {})
+            if motion:
+                suffix += " · حركة " + motion["type"]
+                if motion["type"] == "sequence":
+                    suffix += f" ({len(motion['frames'])} مفاتيح، {motion.get('repeat', 1)} دورات)"
+                    finish = item["row"] + motion.get("span", 1)
+                    suffix += f" · يستمر حتى نهاية السطر {finish}"
+                    suffix += " · خصائص: " + ", ".join(sorted(motion["frames"][0].keys() - {"at"}))
+            if "gradient" in item:
+                suffix += " · تدرج لوني"
+            if item["kind"] == "sphere":
+                suffix += " · إسقاط كروي توضيحي 2.5D، لا خريطة معتمدة"
             if item["kind"] == "icons":
-                suffix = f" · {item['count']} × {item['icon']}"
+                suffix += f" · {item['count']} × {item['icon']}"
             elif item["kind"] == "text":
-                suffix = " · " + item["text"]
+                suffix += " · " + item["text"]
             elif item["kind"] == "calculation":
-                suffix = f" · {item['a']} {item['op']} {item['b']} = " + calculation_result(
+                suffix += f" · {item['a']} {item['op']} {item['b']} = " + calculation_result(
                     item["a"], item["b"], item["op"]
                 )
             elif item["kind"] == "right_triangle":
-                suffix = f" · ضلعان {item['a']} و{item['b']} {item.get('unit', '')}؛ قائم ومقياسي"
-            lines.append(f"رسم {item['kind']} · يبدأ مع السطر {item['row'] + 1}{suffix}")
+                suffix += f" · ضلعان {item['a']} و{item['b']} {item.get('unit', '')}؛ قائم ومقياسي"
+            if item["kind"] == "group":
+                suffix += f" · {len(item['children'])} أجزاء مباشرة بإحداثيات محلية"
+            part = ".".join(map(str, path))
+            lines.append(
+                f"{'  ' * (len(path) - 1)}جزء {part} · رسم {item['kind']}"
+                f" · يبدأ مع السطر {item['row'] + 1}{suffix}"
+            )
     return "\n".join(lines)

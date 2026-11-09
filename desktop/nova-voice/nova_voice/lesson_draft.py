@@ -15,13 +15,13 @@ from pathlib import Path
 from .dialogue import has_voice_markers
 from .language import narration_text
 from .lesson_brief import LessonBrief, require, valid_text
+from .scene_graph import validate_elements, walk_elements
 from .scenes import (
     MAX_PLAN_BYTES,
     VisualPlan,
     empty_plan,
     load_plan_json,
     review_text,
-    validate_element,
 )
 from .text import ScriptError
 from .timing import data_fingerprint
@@ -106,9 +106,7 @@ class LessonDraft:
                 isinstance(step["elements"], list) and 1 <= len(step["elements"]) <= 60,
                 "كل مرحلة شرح تحتاج رسمًا وصفيًا واحدًا على الأقل.",
             )
-            for element in step["elements"]:
-                validate_element(element, len(step["rows"]))
-            elements += len(step["elements"])
+            elements += validate_elements(step["elements"], len(step["rows"]))
             illustrated += bool(step["elements"])
             rows += len(step["rows"])
         require(
@@ -249,6 +247,9 @@ class LessonDraft:
             source.manifest() == expected,
             "النص/وضع الراوي تغيّر عن المسودة؛ راجعها مجددًا أو افصل الارتباط صراحة.",
         )
+        # Count/traverse only validated bounded trees, even if an API caller
+        # constructed the frozen wrapper directly instead of using from_json.
+        plan = VisualPlan.from_data(plan.to_data(), expected)
         data = plan.to_data()
         origin = compiled.visuals.to_data()["origin"]
         brief = self.brief.to_data()
@@ -267,7 +268,7 @@ class LessonDraft:
                 data["steps"][index]["elements"]
                 for index in range(1, 1 + len(self.to_data()["draft"]["steps"]))
             )
-            and sum(len(step["elements"]) for step in data["steps"]) <= 180,
+            and sum(1 for step in data["steps"] for _ in walk_elements(step["elements"])) <= 180,
             "أبقِ رسمًا في كل مرحلة شرح للدرس الكامل، حتى 180 عنصرًا إجمالًا.",
         )
         data.update(schema=2, origin=origin)

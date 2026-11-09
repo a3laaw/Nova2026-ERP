@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nova-voice-desktop"
-version = "0.10.0.dev1"
-description = "Reviewed illustrated lessons and a comprehensive offline Arabic capability and prompt guide."
+version = "0.11.0.dev1"
+description = "Script-driven reviewed scene composition, articulated row-clock motion and offline lesson outputs."
 requires-python = ">=3.11,<3.14"
 license = "GPL-3.0-or-later"
 dependencies = [

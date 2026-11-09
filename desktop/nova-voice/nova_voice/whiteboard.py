@@ -489,6 +489,7 @@ def whiteboard_html(lesson: Lesson, appearance: BoardAppearance | None = None) -
         + "\n"
         + (assets / "whiteboard-timing.js").read_text(encoding="utf-8")
         + "\n"
+        + (assets / "whiteboard-graph.js").read_text(encoding="utf-8")
         + (assets / "whiteboard-scenes.js").read_text(encoding="utf-8")
         + "\n"
         + (assets / "whiteboard-output.js").read_text(encoding="utf-8")

@@ -33,7 +33,12 @@ steps:2..8 freely designed explanation stages, each with EXACT keys:
   description: accessible description of the illustration<=400,
   rows:1..6 objects {display:single line<=180, speech:single voiced line<=180},
   elements:1..60 declarative drawing elements using the rules below.
-Use at least FOUR explanation rows in total, at most180 elements in all.
+The BRIEF drives scene divisions, objects, meaningful parts and actions, not a
+teacher selecting a subject/animal/action template. Compose reusable joints/parts
+when an action needs articulation. Describe simplifications, never imply an
+explanatory reveal is biological formation or an illustrative sphere is GIS.
+Use at least FOUR explanation rows in total, at most180 TOTAL nodes in all,
+including every nested group and part.
 Each row is an independent narration cue; use row=0,1,... within its step to
 build the diagram gradually. Keep display concise and speech natural and factual.
 No voice tags, headings, newlines or silent/punctuation-only narration in rows.

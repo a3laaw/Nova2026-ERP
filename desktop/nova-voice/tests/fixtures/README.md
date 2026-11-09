@@ -12,3 +12,11 @@ The upstream reproducible generator is
 [generate_test_voice.py](https://github.com/OHF-Voice/piper1-gpl/blob/v1.8.0/tests/generate_test_voice.py).
 Arabic tests reuse this synthetic graph with the Arabic eSpeak configuration and the
 diacritizer bundled in Piper. They do not assess naturalness or intelligibility.
+
+## Authored composition vectors
+
+`graph-cases.json` contains owned valid/invalid declarative scene trees and pure
+Bezier/keyframe/orthographic math vectors shared with the DOM tests. They are
+synthetic validation evidence, not model replies, geographic data, biological
+formation sequences or proof of semantic generalization. No code or URLs from
+invalid vectors are executed. See `COMPOSITION-MOTION-AR.md` for the contract.

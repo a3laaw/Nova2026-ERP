@@ -94,7 +94,7 @@ test('search conformance includes Arabic diacritics, English names and combined 
   for (const vector of vectors.searches) assert.deepEqual(Array.from(w.NovaInference.search(vector.query, vector.category, vector.mode), (e) => e.id), vector.expected);
 });
 
-test('all 67 detail cards render owned steps, destinations, limits and compatible examples', async (t) => {
+test('all 73 detail cards render owned steps, destinations, limits and compatible examples', async (t) => {
   const { w, d, calls } = await page(t);
   for (const entry of catalog.entries) {
     choose(w, entry.id);

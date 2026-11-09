@@ -13,7 +13,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-ARCHIVE_NAME = "NovaVoice-Source-v0.10.0.dev1.rar"
+ARCHIVE_NAME = "NovaVoice-Source-v0.11.0.dev1.rar"
+GUIDE_NAME = "INFERENCE-GUIDE-v0.11.0.dev1-AR.html"
 PDF_NAME = "NovaVoice-Motion-A4-v0.9.0.dev1.pdf"
 VIDEO_NAME = "NovaVoice-Motion-H264-v0.9.0.dev1.mp4"
 WEBM_NAME = "NovaVoice-Motion-v0.9.0.dev1.webm"
@@ -28,7 +29,8 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         "/index.html": (delivery / "index.html", html, False),
         "/" + ARCHIVE_NAME: (delivery / ARCHIVE_NAME, "application/vnd.rar", True),
         "/RUN-FIRST-AR.html": (delivery / "RUN-FIRST-AR.html", html, False),
-        "/inference": (delivery / "INFERENCE-GUIDE-AR.html", html, False),
+        "/inference": (delivery / GUIDE_NAME, html, False),
+        "/" + GUIDE_NAME: (delivery / GUIDE_NAME, html, False),
         "/INFERENCE-GUIDE-AR.html": (delivery / "INFERENCE-GUIDE-AR.html", html, False),
         "/desktop/nova-voice/INFERENCE-GUIDE-AR.html": (
             source / "INFERENCE-GUIDE-AR.html", html, False
@@ -54,6 +56,7 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         "/" + PDF_NAME: (delivery / PDF_NAME, "application/pdf", False),
         "/" + VIDEO_NAME: (delivery / VIDEO_NAME, "video/mp4", False),
         "/" + WEBM_NAME: (delivery / WEBM_NAME, "video/webm", False),
+        "/preview-composition": (source / "examples" / "composition-demo.html", html, False),
         "/preview-motion": (
             source / "examples" / "advanced-motion-demo.html",
             html,
@@ -97,6 +100,7 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         "LESSON-OUTPUT-AR.md",
         "VIDEO-MOTION-AR.md",
         "INFERENCE-GUIDE-AR.md",
+        "COMPOSITION-MOTION-AR.md",
     ):
         routes["/desktop/nova-voice/" + name] = (
             source / name,
@@ -117,6 +121,7 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         "LESSON-OUTPUT-AR.md",
         "VIDEO-MOTION-AR.md",
         "INFERENCE-GUIDE-AR.md",
+        "COMPOSITION-MOTION-AR.md",
     ):
         routes["/" + name] = routes["/desktop/nova-voice/" + name]
     for name, mime in (
@@ -136,11 +141,15 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         ("animated-lesson-demo.json", "application/json; charset=utf-8"),
         ("advanced-motion-demo.html", html),
         ("advanced-motion-demo.json", "application/json; charset=utf-8"),
+        ("composition-demo.html", html),
+        ("composition-demo.json", "application/json; charset=utf-8"),
+        ("composition-demo-script.txt", "text/plain; charset=utf-8"),
     ):
         route = (source / "examples" / name, mime, False)
         routes["/examples/" + name] = route
         routes["/desktop/nova-voice/examples/" + name] = route
     for legacy in (
+        "NovaVoice-Source-v0.10.0.dev1.rar",
         "NovaVoice-Source-v0.9.0.dev1.rar",
         "NovaVoice-Source-v0.8.0.dev1.rar",
         "NovaVoice-Source-v0.7.0.dev1.rar",

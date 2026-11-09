@@ -1,0 +1,1035 @@
+{
+  "grade": "بحسب شرح المعلم، بما فيه الإعدادي",
+  "notes": [
+    "هذا المثال مؤلف يدويًا لاختبار المشغل، وليس استجابة نموذج أو دليل فهم سكريبت جديد.",
+    "الأجزاء والمفاصل أدوات داخلية عامة؛ لا توجد قائمة تطلب من المعلم اختيار الحيوان أو الحركة.",
+    "الإسقاط الكروي 2.5D مبسط لا محرك 3D أو خريطة معتمدة. الكشف التدريجي ترتيب شرح فقط.",
+    "الحركة محكومة بتوقيت جمل المصدر. الطباعة تختار حتى ثماني لقطات ممثلة في الجملة؛ راجع وضوحها."
+  ],
+  "policy": "general",
+  "schema": 1,
+  "source_fingerprint": "1778d93efa32c3a9f80a1e4b989a1540ee8a8f0571e2ccc00b039952951408c8",
+  "steps": [
+    {
+      "description": "تتحرك المجموعة بينما تتغير زوايا أربعة أطراف ومفاصلها. هذا رسم مؤلف، لا توليد حي أو محاكاة مشي دقيقة.",
+      "elements": [
+        {
+          "kind": "line",
+          "row": 0,
+          "stroke": "#94A3B8",
+          "x": 60,
+          "x2": 930,
+          "y": 338,
+          "y2": 338
+        },
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "fill": "#FFB000",
+                  "h": 55,
+                  "kind": "rect",
+                  "radius": 7,
+                  "row": 0,
+                  "w": 19,
+                  "x": 0,
+                  "y": 0
+                },
+                {
+                  "fill": "#FF5722",
+                  "kind": "circle",
+                  "r": 8,
+                  "row": 0,
+                  "x": 7,
+                  "y": 2
+                },
+                {
+                  "children": [
+                    {
+                      "fill": "#FFB000",
+                      "h": 40,
+                      "kind": "rect",
+                      "radius": 5,
+                      "row": 0,
+                      "w": 14,
+                      "x": 0,
+                      "y": 0
+                    },
+                    {
+                      "fill": "#FF5722",
+                      "kind": "ellipse",
+                      "row": 0,
+                      "rx": 23,
+                      "ry": 9,
+                      "x": 15,
+                      "y": 43
+                    }
+                  ],
+                  "kind": "group",
+                  "motion": {
+                    "cx": 0,
+                    "cy": 0,
+                    "ease": "smooth",
+                    "frames": [
+                      {
+                        "angle": 15,
+                        "at": 0
+                      },
+                      {
+                        "angle": 0,
+                        "at": 250
+                      },
+                      {
+                        "angle": 15,
+                        "at": 500
+                      },
+                      {
+                        "angle": 0,
+                        "at": 750
+                      },
+                      {
+                        "angle": 15,
+                        "at": 1000
+                      }
+                    ],
+                    "repeat": 2,
+                    "span": 2,
+                    "type": "sequence"
+                  },
+                  "name": "مفصل سفلي 1",
+                  "row": 0,
+                  "x": 4,
+                  "y": 45
+                }
+              ],
+              "kind": "group",
+              "motion": {
+                "cx": 0,
+                "cy": 0,
+                "ease": "smooth",
+                "frames": [
+                  {
+                    "angle": -22,
+                    "at": 0
+                  },
+                  {
+                    "angle": 22,
+                    "at": 250
+                  },
+                  {
+                    "angle": -22,
+                    "at": 500
+                  },
+                  {
+                    "angle": 22,
+                    "at": 750
+                  },
+                  {
+                    "angle": -22,
+                    "at": 1000
+                  }
+                ],
+                "repeat": 2,
+                "span": 2,
+                "type": "sequence"
+              },
+              "name": "طرف 1",
+              "row": 0,
+              "x": 70,
+              "y": 145
+            },
+            {
+              "children": [
+                {
+                  "fill": "#FFB000",
+                  "h": 55,
+                  "kind": "rect",
+                  "radius": 7,
+                  "row": 0,
+                  "w": 19,
+                  "x": 0,
+                  "y": 0
+                },
+                {
+                  "fill": "#FF5722",
+                  "kind": "circle",
+                  "r": 8,
+                  "row": 0,
+                  "x": 7,
+                  "y": 2
+                },
+                {
+                  "children": [
+                    {
+                      "fill": "#FFB000",
+                      "h": 40,
+                      "kind": "rect",
+                      "radius": 5,
+                      "row": 0,
+                      "w": 14,
+                      "x": 0,
+                      "y": 0
+                    },
+                    {
+                      "fill": "#FF5722",
+                      "kind": "ellipse",
+                      "row": 0,
+                      "rx": 23,
+                      "ry": 9,
+                      "x": 15,
+                      "y": 43
+                    }
+                  ],
+                  "kind": "group",
+                  "motion": {
+                    "cx": 0,
+                    "cy": 0,
+                    "ease": "smooth",
+                    "frames": [
+                      {
+                        "angle": 0,
+                        "at": 0
+                      },
+                      {
+                        "angle": 15,
+                        "at": 250
+                      },
+                      {
+                        "angle": 0,
+                        "at": 500
+                      },
+                      {
+                        "angle": 15,
+                        "at": 750
+                      },
+                      {
+                        "angle": 0,
+                        "at": 1000
+                      }
+                    ],
+                    "repeat": 2,
+                    "span": 2,
+                    "type": "sequence"
+                  },
+                  "name": "مفصل سفلي 2",
+                  "row": 0,
+                  "x": 4,
+                  "y": 45
+                }
+              ],
+              "kind": "group",
+              "motion": {
+                "cx": 0,
+                "cy": 0,
+                "ease": "smooth",
+                "frames": [
+                  {
+                    "angle": 22,
+                    "at": 0
+                  },
+                  {
+                    "angle": -22,
+                    "at": 250
+                  },
+                  {
+                    "angle": 22,
+                    "at": 500
+                  },
+                  {
+                    "angle": -22,
+                    "at": 750
+                  },
+                  {
+                    "angle": 22,
+                    "at": 1000
+                  }
+                ],
+                "repeat": 2,
+                "span": 2,
+                "type": "sequence"
+              },
+              "name": "طرف 2",
+              "row": 0,
+              "x": 120,
+              "y": 145
+            },
+            {
+              "children": [
+                {
+                  "fill": "#FFB000",
+                  "h": 55,
+                  "kind": "rect",
+                  "radius": 7,
+                  "row": 0,
+                  "w": 19,
+                  "x": 0,
+                  "y": 0
+                },
+                {
+                  "fill": "#FF5722",
+                  "kind": "circle",
+                  "r": 8,
+                  "row": 0,
+                  "x": 7,
+                  "y": 2
+                },
+                {
+                  "children": [
+                    {
+                      "fill": "#FFB000",
+                      "h": 40,
+                      "kind": "rect",
+                      "radius": 5,
+                      "row": 0,
+                      "w": 14,
+                      "x": 0,
+                      "y": 0
+                    },
+                    {
+                      "fill": "#FF5722",
+                      "kind": "ellipse",
+                      "row": 0,
+                      "rx": 23,
+                      "ry": 9,
+                      "x": 15,
+                      "y": 43
+                    }
+                  ],
+                  "kind": "group",
+                  "motion": {
+                    "cx": 0,
+                    "cy": 0,
+                    "ease": "smooth",
+                    "frames": [
+                      {
+                        "angle": 0,
+                        "at": 0
+                      },
+                      {
+                        "angle": 15,
+                        "at": 250
+                      },
+                      {
+                        "angle": 0,
+                        "at": 500
+                      },
+                      {
+                        "angle": 15,
+                        "at": 750
+                      },
+                      {
+                        "angle": 0,
+                        "at": 1000
+                      }
+                    ],
+                    "repeat": 2,
+                    "span": 2,
+                    "type": "sequence"
+                  },
+                  "name": "مفصل سفلي 3",
+                  "row": 0,
+                  "x": 4,
+                  "y": 45
+                }
+              ],
+              "kind": "group",
+              "motion": {
+                "cx": 0,
+                "cy": 0,
+                "ease": "smooth",
+                "frames": [
+                  {
+                    "angle": 22,
+                    "at": 0
+                  },
+                  {
+                    "angle": -22,
+                    "at": 250
+                  },
+                  {
+                    "angle": 22,
+                    "at": 500
+                  },
+                  {
+                    "angle": -22,
+                    "at": 750
+                  },
+                  {
+                    "angle": 22,
+                    "at": 1000
+                  }
+                ],
+                "repeat": 2,
+                "span": 2,
+                "type": "sequence"
+              },
+              "name": "طرف 3",
+              "row": 0,
+              "x": 205,
+              "y": 145
+            },
+            {
+              "children": [
+                {
+                  "fill": "#FFB000",
+                  "h": 55,
+                  "kind": "rect",
+                  "radius": 7,
+                  "row": 0,
+                  "w": 19,
+                  "x": 0,
+                  "y": 0
+                },
+                {
+                  "fill": "#FF5722",
+                  "kind": "circle",
+                  "r": 8,
+                  "row": 0,
+                  "x": 7,
+                  "y": 2
+                },
+                {
+                  "children": [
+                    {
+                      "fill": "#FFB000",
+                      "h": 40,
+                      "kind": "rect",
+                      "radius": 5,
+                      "row": 0,
+                      "w": 14,
+                      "x": 0,
+                      "y": 0
+                    },
+                    {
+                      "fill": "#FF5722",
+                      "kind": "ellipse",
+                      "row": 0,
+                      "rx": 23,
+                      "ry": 9,
+                      "x": 15,
+                      "y": 43
+                    }
+                  ],
+                  "kind": "group",
+                  "motion": {
+                    "cx": 0,
+                    "cy": 0,
+                    "ease": "smooth",
+                    "frames": [
+                      {
+                        "angle": 15,
+                        "at": 0
+                      },
+                      {
+                        "angle": 0,
+                        "at": 250
+                      },
+                      {
+                        "angle": 15,
+                        "at": 500
+                      },
+                      {
+                        "angle": 0,
+                        "at": 750
+                      },
+                      {
+                        "angle": 15,
+                        "at": 1000
+                      }
+                    ],
+                    "repeat": 2,
+                    "span": 2,
+                    "type": "sequence"
+                  },
+                  "name": "مفصل سفلي 4",
+                  "row": 0,
+                  "x": 4,
+                  "y": 45
+                }
+              ],
+              "kind": "group",
+              "motion": {
+                "cx": 0,
+                "cy": 0,
+                "ease": "smooth",
+                "frames": [
+                  {
+                    "angle": -22,
+                    "at": 0
+                  },
+                  {
+                    "angle": 22,
+                    "at": 250
+                  },
+                  {
+                    "angle": -22,
+                    "at": 500
+                  },
+                  {
+                    "angle": 22,
+                    "at": 750
+                  },
+                  {
+                    "angle": -22,
+                    "at": 1000
+                  }
+                ],
+                "repeat": 2,
+                "span": 2,
+                "type": "sequence"
+              },
+              "name": "طرف 4",
+              "row": 0,
+              "x": 245,
+              "y": 145
+            },
+            {
+              "fill": "#FFB000",
+              "gradient": {
+                "axis": "vertical",
+                "color": "#FF5722"
+              },
+              "kind": "ellipse",
+              "row": 0,
+              "rx": 114,
+              "ry": 58,
+              "x": 150,
+              "y": 115
+            },
+            {
+              "fill": "#FFB000",
+              "h": 60,
+              "kind": "rect",
+              "radius": 15,
+              "row": 0,
+              "w": 40,
+              "x": 225,
+              "y": 65
+            },
+            {
+              "children": [
+                {
+                  "fill": "#FFB000",
+                  "kind": "circle",
+                  "r": 42,
+                  "row": 0,
+                  "x": 42,
+                  "y": 42
+                },
+                {
+                  "fill": "#FF5722",
+                  "kind": "polygon",
+                  "points": [
+                    [
+                      12,
+                      18
+                    ],
+                    [
+                      5,
+                      0
+                    ],
+                    [
+                      37,
+                      8
+                    ]
+                  ],
+                  "row": 0,
+                  "x": 0,
+                  "y": 0
+                },
+                {
+                  "fill": "#FCE4EC",
+                  "kind": "ellipse",
+                  "row": 0,
+                  "rx": 33,
+                  "ry": 21,
+                  "x": 73,
+                  "y": 53
+                },
+                {
+                  "fill": "#334155",
+                  "kind": "circle",
+                  "r": 5,
+                  "row": 0,
+                  "x": 52,
+                  "y": 32
+                },
+                {
+                  "fill": "#334155",
+                  "kind": "circle",
+                  "r": 7,
+                  "row": 0,
+                  "x": 100,
+                  "y": 50
+                }
+              ],
+              "kind": "group",
+              "name": "الرأس",
+              "row": 0,
+              "x": 245,
+              "y": 25
+            },
+            {
+              "children": [
+                {
+                  "d": "M0 0Q10 25 50 15",
+                  "kind": "path",
+                  "line_width": 12,
+                  "row": 0,
+                  "stroke": "#FF5722",
+                  "x": 0,
+                  "y": 0
+                }
+              ],
+              "kind": "group",
+              "motion": {
+                "cx": 0,
+                "cy": 0,
+                "ease": "smooth",
+                "frames": [
+                  {
+                    "angle": 15,
+                    "at": 0
+                  },
+                  {
+                    "angle": -15,
+                    "at": 250
+                  },
+                  {
+                    "angle": 15,
+                    "at": 500
+                  },
+                  {
+                    "angle": -15,
+                    "at": 750
+                  },
+                  {
+                    "angle": 15,
+                    "at": 1000
+                  }
+                ],
+                "repeat": 2,
+                "span": 2,
+                "type": "sequence"
+              },
+              "name": "طرف خلفي",
+              "row": 0,
+              "x": 30,
+              "y": 105
+            }
+          ],
+          "kind": "group",
+          "motion": {
+            "frames": [
+              {
+                "at": 0,
+                "dx": 0
+              },
+              {
+                "at": 1000,
+                "dx": 170
+              }
+            ],
+            "span": 2,
+            "type": "sequence"
+          },
+          "name": "جسم ذو أطراف مترابطة",
+          "row": 0,
+          "x": 180,
+          "y": 60
+        },
+        {
+          "fill": "#334155",
+          "kind": "text",
+          "motion": {
+            "type": "none"
+          },
+          "row": 0,
+          "size": 24,
+          "text": "مفاصل مستقلة + انتقال الجسم",
+          "x": 500,
+          "y": 385
+        },
+        {
+          "fill": "#334155",
+          "kind": "text",
+          "motion": {
+            "type": "none"
+          },
+          "row": 1,
+          "size": 24,
+          "text": "كل جزء يتبع توقيت الجمل نفسه",
+          "x": 500,
+          "y": 35
+        }
+      ],
+      "index": 0,
+      "rows": []
+    },
+    {
+      "description": "كرة مظللة بخطوط شبكة وبقع عامة؛ يتغير السطح المرئي وتُحجب الجهة الخلفية. 2.5D لا خريطة جغرافية.",
+      "elements": [
+        {
+          "fill": "#2563EB",
+          "kind": "sphere",
+          "longitude": -30,
+          "motion": {
+            "ease": "linear",
+            "frames": [
+              {
+                "at": 0,
+                "spin": 0
+              },
+              {
+                "at": 1000,
+                "spin": 360
+              }
+            ],
+            "span": 2,
+            "type": "sequence"
+          },
+          "patches": [
+            {
+              "fill": "#FFB000",
+              "points": [
+                [
+                  -45,
+                  -35
+                ],
+                [
+                  -5,
+                  -20
+                ],
+                [
+                  10,
+                  10
+                ],
+                [
+                  -20,
+                  40
+                ],
+                [
+                  -55,
+                  5
+                ]
+              ]
+            },
+            {
+              "fill": "#FF5722",
+              "points": [
+                [
+                  35,
+                  -15
+                ],
+                [
+                  80,
+                  -20
+                ],
+                [
+                  95,
+                  20
+                ],
+                [
+                  45,
+                  35
+                ]
+              ]
+            }
+          ],
+          "r": 148,
+          "row": 0,
+          "tilt": 23,
+          "x": 400,
+          "y": 210
+        },
+        {
+          "kind": "line",
+          "line_width": 2,
+          "row": 0,
+          "stroke": "#64748B",
+          "x": 475,
+          "x2": 325,
+          "y": 32,
+          "y2": 388
+        },
+        {
+          "fill": "#334155",
+          "kind": "text",
+          "motion": {
+            "type": "none"
+          },
+          "row": 0,
+          "size": 24,
+          "text": "محور توضيحي",
+          "x": 675,
+          "y": 80
+        },
+        {
+          "fill": "#334155",
+          "kind": "text",
+          "motion": {
+            "type": "none"
+          },
+          "row": 0,
+          "size": 24,
+          "text": "سطح منحني، لا قرص مسطح",
+          "x": 755,
+          "y": 175
+        },
+        {
+          "fill": "#334155",
+          "kind": "text",
+          "motion": {
+            "type": "none"
+          },
+          "row": 1,
+          "size": 24,
+          "text": "ليست قارات أو حدودًا",
+          "x": 755,
+          "y": 225
+        },
+        {
+          "fill": "#334155",
+          "kind": "text",
+          "motion": {
+            "type": "none"
+          },
+          "row": 0,
+          "size": 24,
+          "text": "إسقاط كروي مبسط 2.5D",
+          "x": 500,
+          "y": 405
+        }
+      ],
+      "index": 1,
+      "rows": []
+    },
+    {
+      "description": "كشف ثلاث طبقات من رسم تعليمي مؤلف في جمل متتابعة داخل مجموعة واحدة؛ لا يمثل تكوّن خلية أو حدثًا بيولوجيًا.",
+      "elements": [
+        {
+          "children": [
+            {
+              "fill": "#FCE4EC",
+              "gradient": {
+                "axis": "radial",
+                "color": "#FFE082"
+              },
+              "kind": "ellipse",
+              "row": 0,
+              "rx": 260,
+              "ry": 145,
+              "x": 300,
+              "y": 170
+            },
+            {
+              "fill": "#FFB000",
+              "kind": "circle",
+              "motion": {
+                "frames": [
+                  {
+                    "at": 0,
+                    "opacity": 30,
+                    "scale": 65
+                  },
+                  {
+                    "at": 1000,
+                    "opacity": 100,
+                    "scale": 100
+                  }
+                ],
+                "type": "sequence"
+              },
+              "r": 55,
+              "row": 1,
+              "x": 295,
+              "y": 170
+            },
+            {
+              "fill": "#2563EB",
+              "kind": "ellipse",
+              "row": 2,
+              "rx": 40,
+              "ry": 22,
+              "x": 160,
+              "y": 125
+            },
+            {
+              "fill": "#FF5722",
+              "kind": "ellipse",
+              "row": 2,
+              "rx": 50,
+              "ry": 22,
+              "x": 435,
+              "y": 210
+            },
+            {
+              "fill": "#334155",
+              "kind": "text",
+              "motion": {
+                "type": "none"
+              },
+              "row": 0,
+              "size": 24,
+              "text": "الحد الخارجي",
+              "x": 640,
+              "y": 105
+            },
+            {
+              "fill": "#334155",
+              "kind": "text",
+              "motion": {
+                "type": "none"
+              },
+              "row": 1,
+              "size": 24,
+              "text": "جزء داخلي",
+              "x": 640,
+              "y": 175
+            },
+            {
+              "fill": "#334155",
+              "kind": "text",
+              "motion": {
+                "type": "none"
+              },
+              "row": 2,
+              "size": 24,
+              "text": "بقية الأجزاء",
+              "x": 640,
+              "y": 245
+            }
+          ],
+          "kind": "group",
+          "name": "رسم بأجزاء تظهر مع الشرح",
+          "row": 0,
+          "x": 100,
+          "y": 30
+        },
+        {
+          "fill": "#334155",
+          "kind": "text",
+          "motion": {
+            "type": "none"
+          },
+          "row": 0,
+          "size": 24,
+          "text": "ترتيب شرح، وليس تكوّنًا حيويًا",
+          "x": 500,
+          "y": 405
+        }
+      ],
+      "index": 2,
+      "rows": []
+    },
+    {
+      "description": "مسار بيزيه تربيعي مع علامة متحركة وقطاع 90 درجة. مثال توضيحي للعرض، لا محاكاة سرعة أو استدلال حي.",
+      "elements": [
+        {
+          "d": "M100 280Q250 160 400 280",
+          "kind": "path",
+          "line_width": 3,
+          "motion": {
+            "type": "none"
+          },
+          "row": 0,
+          "stroke": "#94A3B8",
+          "x": 0,
+          "y": 0
+        },
+        {
+          "fill": "#2563EB",
+          "kind": "circle",
+          "motion": {
+            "ease": "smooth",
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                150,
+                -120
+              ],
+              [
+                300,
+                0
+              ]
+            ],
+            "type": "curve"
+          },
+          "r": 20,
+          "row": 0,
+          "x": 100,
+          "y": 280
+        },
+        {
+          "fill": "#FFB000",
+          "gradient": {
+            "axis": "radial",
+            "color": "#FF5722"
+          },
+          "inner": 60,
+          "kind": "sector",
+          "r": 140,
+          "row": 0,
+          "start": -90,
+          "sweep": 90,
+          "x": 720,
+          "y": 220
+        },
+        {
+          "fill": "#334155",
+          "kind": "text",
+          "motion": {
+            "type": "none"
+          },
+          "row": 0,
+          "size": 24,
+          "text": "ربع دائرة: 90°",
+          "x": 720,
+          "y": 390
+        },
+        {
+          "fill": "#334155",
+          "kind": "text",
+          "motion": {
+            "type": "none"
+          },
+          "row": 0,
+          "size": 24,
+          "text": "مسار مقوس",
+          "x": 250,
+          "y": 340
+        },
+        {
+          "fill": "#2563EB",
+          "kind": "circle",
+          "motion": {
+            "frames": [
+              {
+                "at": 0,
+                "fill": "#2563EB",
+                "scale": 75
+              },
+              {
+                "at": 1000,
+                "fill": "#FF5722",
+                "scale": 100
+              }
+            ],
+            "type": "sequence"
+          },
+          "r": 35,
+          "row": 1,
+          "x": 500,
+          "y": 210
+        }
+      ],
+      "index": 3,
+      "rows": []
+    }
+  ],
+  "subject": "تجارب تركيب رسومية متعددة"
+}
