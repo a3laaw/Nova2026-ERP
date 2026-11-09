@@ -1,3 +1,5 @@
+d2c84f3034f9fcdbcb402df0af728506a0ca786c7a7fa96a1827070e53db7913  NovaVoice-Source-v0.12.0.dev1.rar
+dfdb53fc02e2748296af04fc66ff38c471808f67c19e7fd6505148de5bf5ef44  INFERENCE-GUIDE-v0.12.0.dev1-AR.html
 42ef80bd5e011b4549737e3c9a2f4a91519f4ccf39627057895e1e9c11e3bd62  NovaVoice-Source-v0.11.0.dev1.rar
 fe91c937c80ba65d5da95688a8a9c55dbcee3f75d3ec8d0b660688154bd07a81  INFERENCE-GUIDE-v0.11.0.dev1-AR.html
 b2e41aaaf620b624af4b9ebe5fff4cd8fe7654a60a78feec51c32de059eb753c  NovaVoice-Source-v0.10.0.dev1.rar

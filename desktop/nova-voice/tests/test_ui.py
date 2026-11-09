@@ -840,3 +840,95 @@ def test_composition_preview_stays_silent_and_never_adopts_or_requests_narration
     assert '<script id="nova-whiteboard-recordings"' not in page.page.content
     assert panel._approved is None and window.worker is None
     assert window.player.source().isEmpty() and window._source_lesson() == source
+
+
+def secondary_draft(window):
+    from pathlib import Path
+
+    from nova_voice.scenes import VisualPlan
+
+    root = Path(__file__).resolve().parents[1] / "examples"
+    window.editor.setPlainText((root / "secondary-source-script.txt").read_text())
+    panel = window.scene_picker
+    panel.set_draft(
+        VisualPlan.load(root / "secondary-source-demo.json", window._source_lesson().manifest())
+    )
+    return panel
+
+
+def test_secondary_assets_are_script_selected_and_local_preparation_does_not_consent_to_download(
+    window, monkeypatch
+):
+    panel = secondary_draft(window)
+    requests = []
+    panel.assets_requested.disconnect()
+    panel.assets_requested.connect(requests.append)
+    monkeypatch.setattr(
+        QMessageBox, "question", lambda *args, **kwargs: pytest.fail("implicit permission")
+    )
+    panel._prepare_assets(False)
+    assert len(requests) == 1 and requests[0].allow_download is False
+    assert requests[0].source == window._source_lesson().manifest()
+    assert requests[0].revision == panel.revision
+    assert panel._approved is None and window.worker is None and window.player.source().isEmpty()
+    assert (
+        not panel.allow_assets.isChecked()
+    )  # Imports never opt into subsequent network proposals.
+
+
+def test_secondary_download_requires_its_own_new_explicit_confirmation(window, monkeypatch):
+    panel = secondary_draft(window)
+    requests, notices = [], []
+    panel.assets_requested.disconnect()
+    panel.assets_requested.connect(requests.append)
+    monkeypatch.setattr(
+        QMessageBox, "question", lambda *args, **kwargs: QMessageBox.StandardButton.No
+    )
+    panel._prepare_assets(True)
+    assert not requests
+
+    def allow(*args, **kwargs):
+        notices.append(args[2])
+        return QMessageBox.StandardButton.Yes
+
+    monkeypatch.setattr(QMessageBox, "question", allow)
+    panel._prepare_assets(True)
+    assert len(requests) == 1 and requests[0].allow_download is True
+    assert "CC BY 3.0" in notices[0] and "api.github.com" in notices[0]
+    assert "gi-magnifying-glass" in notices[0] and "Icons made by Lorc" in notices[0]
+
+
+def test_prepared_assets_are_new_silent_drafts_and_stale_work_is_never_adopted(window):
+    from threading import Event
+
+    from nova_voice.secondary_assets import prepare_plan
+
+    panel = secondary_draft(window)
+    requests = []
+    panel.assets_requested.disconnect()
+    panel.assets_requested.connect(requests.append)
+    panel._prepare_assets(False)
+    request = requests[0]
+    result = prepare_plan(
+        request.plan,
+        request.source,
+        Event(),
+        lambda _: None,
+        directory=window.data_dir / "secondary-assets-v1",
+    )
+    panel._approved = request.plan
+    panel.apply_assets(result, request)
+    assert panel._approved is None
+    assert window.player.source().isEmpty() and window.worker is None
+    with pytest.raises(Exception, match="تغيّرت"):
+        panel.apply_assets(result, request)
+
+
+def test_secondary_native_fallback_removes_resources_only_and_keeps_source_and_voices(window):
+    panel = secondary_draft(window)
+    original, cast = window._source_lesson(), window._cast()
+    panel._local_assets()
+    current = panel._current()[1]
+    assert "resources" not in current.to_data()
+    assert "asset_id" in current.payload_json and panel._approved is None
+    assert window._source_lesson() == original and window._cast() == cast

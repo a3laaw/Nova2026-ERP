@@ -25,7 +25,7 @@
     if (Object.hasOwn(e, "name")) check(name(e.name));
     if (Object.hasOwn(e, "gradient")) {
       keys(e.gradient, ["color", "axis"]);
-      check(!["group", "icons", "calculation"].includes(e.kind) && color(e.fill) && color(e.gradient.color));
+      check(!["group", "icons", "calculation", "asset"].includes(e.kind) && color(e.fill) && color(e.gradient.color));
       check(["horizontal", "vertical", "radial"].includes(e.gradient.axis));
     }
   }
@@ -54,7 +54,7 @@
       check(int(f.at, 0, 1000) && f.at > previous); previous = f.at;
       for (const [k, lo, hi] of [["dx", -300, 300], ["dy", -180, 180], ["angle", -720, 720], ["scale", 25, 200], ["opacity", 0, 100], ["spin", -720, 720]]) if (Object.hasOwn(f, k)) check(int(f[k], lo, hi));
       if (Object.hasOwn(f, "spin")) check(e.kind === "sphere");
-      if (Object.hasOwn(f, "fill")) check(!["group", "icons", "calculation"].includes(e.kind) && !Object.hasOwn(e, "gradient") && color(e.fill) && color(f.fill));
+      if (Object.hasOwn(f, "fill")) check(!["group", "icons", "calculation", "asset"].includes(e.kind) && !Object.hasOwn(e, "gradient") && color(e.fill) && color(f.fill));
     });
     check(m.frames[0].at === 0 && m.frames[m.frames.length - 1].at === 1000);
     if (repeat > 1) {

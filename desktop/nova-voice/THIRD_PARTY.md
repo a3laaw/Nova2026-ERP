@@ -108,3 +108,66 @@ The SVG projection is an illustrative 2.5D surface, not GIS data or a scientific
 model. Cloud planner/provider terms above remain separate; a renderer is not a
 natural-language inference service. Developer Chromium/Playwright/FFmpeg tools,
 reports and diagnostic media are not bundled with the application/source handoff.
+
+
+## Optional Game-icons artwork (0.12 source preview)
+
+This is an **asset collection, not an installed rendering engine**. Konva, Three,
+Pixi, Lottie and Spine are NOT dependencies or runtime downloads of this change.
+The existing local renderer remains the default. The optional language planner
+may select vetted IDs from the script; the teacher does not pick subject/animal
+artwork from a catalogue. No unrestricted image search is implemented.
+
+The 16 audited SVG files below are from `game-icons/icons`, pinned commit
+`82d948812bfe3f269ef8f731dcdb07b08160edc4` (2026-04-23). Upstream's notice identifies
+these authors' work as **Creative Commons Attribution 3.0 (CC BY 3.0)**, not MIT
+or the app's GPL. The CC0 exceptions in upstream's general notice are not the
+contributors selected here. Keep attribution, original source, licence link and
+modification notices with reused artwork, independently of the code licence.
+
+Licence: https://creativecommons.org/licenses/by/3.0/
+Upstream notice (also retained verbatim after a source header in
+`assets/licenses/game-icons-notice.txt`):
+https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/license.txt
+
+| Audited file / original source | Attribution |
+| --- | --- |
+| [skoll/atom.svg](https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/skoll/atom.svg) | Icons made by Skoll |
+| [lorc/butterfly.svg](https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/lorc/butterfly.svg) | Icons made by Lorc |
+| [lorc/compass.svg](https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/lorc/compass.svg) | Icons made by Lorc |
+| [caro-asercion/fox.svg](https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/caro-asercion/fox.svg) | Icons made by Caro Asercion |
+| [lorc/gears.svg](https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/lorc/gears.svg) | Icons made by Lorc |
+| [lorc/hourglass.svg](https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/lorc/hourglass.svg) | Icons made by Lorc |
+| [lorc/magnet.svg](https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/lorc/magnet.svg) | Icons made by Lorc |
+| [lorc/magnifying-glass.svg](https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/lorc/magnifying-glass.svg) | Icons made by Lorc |
+| [lord-berandas/microscope.svg](https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/lord-berandas/microscope.svg) | Icons made by Lord Berandas |
+| [lorc/mountains.svg](https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/lorc/mountains.svg) | Icons made by Lorc |
+| [lorc/open-book.svg](https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/lorc/open-book.svg) | Icons made by Lorc |
+| [lorc/scales.svg](https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/lorc/scales.svg) | Icons made by Lorc |
+| [lorc/sprout.svg](https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/lorc/sprout.svg) | Icons made by Lorc |
+| [delapouite/telescope.svg](https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/delapouite/telescope.svg) | Icons made by Delapouite |
+| [lorc/test-tubes.svg](https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/lorc/test-tubes.svg) | Icons made by Lorc |
+| [sbed/water-drop.svg](https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/sbed/water-drop.svg) | Icons made by Sbed |
+
+For rendered derivatives, **background removed; foreground recolored and uniformly
+scaled by Nova Voice**. Only the pinned numeric foreground paths are used; upstream
+markup/scripts/styles are never embedded or executed. Static silhouettes are not
+articulated actors or scientifically verified diagrams. The catalogue records raw
+file SHA-256/size, Git blob ID and canonical normalized drawing fingerprint.
+
+The two prepared resources in `examples/secondary-source-demo.{json,html}` retain
+complete per-resource attribution. The original SVGs in
+`tests/fixtures/secondary-raw/` are unmodified audit fixtures, not a runtime cache
+or automatically selected/downloaded artwork. Their above source/author/licence
+notices apply to redistribution too. Local fallbacks are newly authored original
+geometry, not copied/stripped external art. A missing or failed resource never
+triggers a paid service or an unknown source.
+
+Prepared plan JSON and offline HTML retain immutable credit metadata; print output
+retains a credit section, and Canvas video adds a seven-second silent credit card
+for each actually embedded resource in the exported scope. Keep these cards when
+redistributing/converting the video. Clearing the local cache does not erase the
+credits or artwork already embedded in exported files. The optional public GitHub
+GET has separate per-request consent and sends no lesson, audio or API key; no
+GitHub authentication is needed. Review [SECONDARY-SOURCES-AR.md](SECONDARY-SOURCES-AR.md)
+for the bounded importer, fallback, cache and privacy details.

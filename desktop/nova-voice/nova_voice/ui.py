@@ -59,9 +59,10 @@ from .lesson_draft import LessonDraft
 from .lesson_picker import LessonPicker, LessonRequest
 from .lesson_planner import request_lesson
 from .scene_examples import VISUAL_EXAMPLE, example_plan
-from .scene_picker import PlannerRequest, ScenePicker
+from .scene_picker import AssetRequest, PlannerRequest, ScenePicker
 from .scene_planner import request_plan
 from .scenes import SceneError, VisualPlan
+from .secondary_assets import AssetPreparation, prepare_plan
 from .storage import (
     application_dir,
     load_preferences,
@@ -101,6 +102,7 @@ class MainWindow(QMainWindow):
         self._closing = False
         self._adopted_draft: LessonDraft | None = None
         self._adopted_revision = -1
+        self._asset_request: AssetRequest | None = None
         self._result_file: Path | None = None
         self._html_source: Path | None = None
         self._html_result_file: Path | None = None
@@ -317,10 +319,15 @@ class MainWindow(QMainWindow):
         columns.addWidget(settings_card, 4)
         input_layout.addLayout(columns, 1)
         self.scene_section = Disclosure("مشاهد ذكية · اختياري: سكريبت ← مسودة ← مراجعة ← اعتماد")
-        self.scene_picker = ScenePicker(self._source_lesson, plan_adapter=self._bind_story_plan)
+        self.scene_picker = ScenePicker(
+            self._source_lesson,
+            plan_adapter=self._bind_story_plan,
+            asset_cache=self.data_dir / "secondary-assets-v1",
+        )
         self.scene_picker.changed.connect(self._update_buttons)
         self.scene_picker.requested.connect(self._request_scenes)
         self.scene_picker.example_requested.connect(self._scene_example)
+        self.scene_picker.assets_requested.connect(self._request_assets)
         self.scene_section.content_layout.addWidget(self.scene_picker)
         self.lesson_section = Disclosure("من وصف قصير إلى درس كامل مرسوم · مسودة ومراجعة أولًا")
         self.lesson_picker = LessonPicker(lambda: self.scene_picker.policy.currentData())
@@ -913,6 +920,7 @@ class MainWindow(QMainWindow):
                 progress,
                 consent=request.consent,
                 adult=request.adult,
+                secondary_assets=request.secondary_assets,
             ),
             "lesson-draft",
         )
@@ -995,8 +1003,25 @@ class MainWindow(QMainWindow):
                 subject=request.subject,
                 grade=request.grade,
                 policy=request.policy,
+                secondary_assets=request.secondary_assets,
             ),
             "scene-plan",
+        )
+
+    def _request_assets(self, request: AssetRequest) -> None:
+        if self.worker:
+            return
+        self._asset_request = request
+        self._start_task(
+            lambda cancel, progress: prepare_plan(
+                request.plan,
+                request.source,
+                cancel,
+                progress,
+                allow_download=request.allow_download,
+                directory=self.data_dir / "secondary-assets-v1",
+            ),
+            "scene-assets",
         )
 
     def _scene_example(self) -> None:
@@ -1368,6 +1393,7 @@ class MainWindow(QMainWindow):
             "import": "جارٍ استيراد النموذج…",
             "video-convert": "جارٍ التحويل المحلي إلى H.264/AAC؛ لا رفع ملفات أو تغيير للأصل…",
             "scene-plan": "جارٍ طلب اقتراح مجاني واحد بإذنك؛ لا رسم أو نطق قبل المراجعة…",
+            "scene-assets": "جارٍ تجهيز الموارد المسموح بها وفحصها؛ لا اعتماد أو نطق أو تصدير…",
             "lesson-draft": "جارٍ اقتراح درس كامل ورسوم بطلب مجاني واحد؛ لا اعتماد أو نطق تلقائي…",
             "html": "جارٍ تجهيز الصفحة وتوليد الصوت محليًا…",
             "whiteboard": "جارٍ تحويل السكريبت إلى سبورة HTML محليًا…",
@@ -1406,6 +1432,8 @@ class MainWindow(QMainWindow):
                     self.status.setText(f"جارٍ {stage} محليًا… {value}%")
                 elif self._progress_kind in ("scene-plan", "lesson-draft"):
                     self.status.setText("وصل رد المزود؛ جارٍ التحقق المحلي من خطة المشاهد…")
+                elif self._progress_kind == "scene-assets":
+                    self.status.setText(f"جارٍ فحص وتجهيز موارد الخطة الاختيارية… {value}%")
                 elif self._progress_kind == "video-convert":
                     self.status.setText("جارٍ فحص حاوية MP4 وفك الفيديو كاملًا قبل نشر الملف…")
                 elif self._progress_kind == "whiteboard":
@@ -1418,7 +1446,7 @@ class MainWindow(QMainWindow):
                     )
 
     def _task_success(self, result: Any) -> None:
-        if self._closing:
+        if self._closing or (self.worker and self.worker.cancel_event.is_set()):
             return
         if self._progress_kind == "import":
             self.status.setText("تمت إضافة النموذج. اكتب السكريبت لتجربة الصوت.")
@@ -1428,6 +1456,19 @@ class MainWindow(QMainWindow):
             self.status.setText(
                 "حُفظ MP4 بترميز H.264 وصوت AAC إن وُجد، وفُك الخرج كاملًا. جرّبه على جهازك."
             )
+            return
+        if isinstance(result, AssetPreparation):
+            try:
+                if self._asset_request is None:
+                    raise SceneError("لا يوجد طلب موارد حالي لهذه النتيجة.")
+                self.scene_picker.apply_assets(result, self._asset_request)
+                self.scene_section.set_expanded(True)
+                self.status.setText(
+                    "جُهّزت الخطة مع بيان الموارد والبدائل. راجع المعاينة الصامتة والنسبة "
+                    "واعتمد من جديد؛ لم يبدأ صوت أو تصدير."
+                )
+            except ScriptError as error:
+                QMessageBox.warning(self, "راجع الخطة الحالية", str(error))
             return
         if isinstance(result, LessonDraft):
             try:
@@ -1530,9 +1571,14 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "تعذّر إتمام العملية", message)
 
     def _task_cancelled(self) -> None:
-        self.status.setText("تم الإلغاء. لم يتم استبدال أي ملف سابق أو الصفحة الأصلية.")
+        self.status.setText(
+            "أُلغي تجهيز الموارد دون تغيير الخطة. قد تبقى موارد مكتملة ومدققة في الذاكرة المحلية."
+            if self._progress_kind == "scene-assets"
+            else "تم الإلغاء. لم يتم استبدال أي ملف سابق أو الصفحة الأصلية."
+        )
 
     def _task_finished(self) -> None:
+        self._asset_request = None
         worker = self.worker
         self.worker = None
         if worker:

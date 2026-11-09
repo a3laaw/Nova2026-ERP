@@ -44,6 +44,7 @@ KINDS = (
     "group",
     "sector",
     "sphere",
+    "asset",
 )
 COMMON = {
     "kind",
@@ -76,6 +77,7 @@ EXTRA = {
     "group": {"children"},
     "sector": {"r", "inner", "start", "sweep"},
     "sphere": {"r", "longitude", "tilt", "grid", "patches"},
+    "asset": {"asset_id", "w", "h", "fallback"},
 }
 COLOR = re.compile(r"#[0-9a-fA-F]{6}\Z")
 PATH = re.compile(r"[MmLlHhVvCcSsQqTtAaZz0-9eE+.,\s-]+\Z")
@@ -283,6 +285,12 @@ def validate_element(item: dict, rows: int, *, _depth: int = 0, _budget=None) ->
         for child in children:
             validate_element(child, item.get("until", rows), _depth=_depth + 1, _budget=budget)
             _require(item["row"] <= child["row"] < item.get("until", rows))
+    elif kind == "asset":
+        from .secondary_assets import validate_asset_box
+
+        validate_asset_box(item)
+        for child in item["fallback"]:
+            validate_element(child, item.get("until", rows), _depth=_depth + 1, _budget=budget)
     elif kind in ("sector", "sphere"):
         validate_geometry(item)
         if kind == "sphere":
@@ -352,7 +360,8 @@ class VisualPlan:
         _require(isinstance(data, dict))
         extended = type(data.get("schema")) is int and data["schema"] == 2
         fields = {"schema", "source_fingerprint", "subject", "grade", "policy", "notes", "steps"}
-        _keys(data, fields | ({"origin"} if extended else set()))
+        required = fields | ({"origin"} if extended else set())
+        _keys(data, required | {"resources"}, required)
         _require(type(data["schema"]) is int and data["schema"] in (1, 2))
         if extended:
             _require(data["policy"] == "general", "توسيع النصوص المقدسة غير مدعوم.")
@@ -420,6 +429,9 @@ class VisualPlan:
                     ),
                 )
         _require(elements <= MAX_ELEMENTS and 0 < spoken <= MAX_CHARACTERS)
+        from .secondary_assets import validate_plan_resources
+
+        validate_plan_resources(data)
         try:
             encoded = json.dumps(
                 data, ensure_ascii=True, sort_keys=True, separators=(",", ":"), allow_nan=False
@@ -489,6 +501,16 @@ def review_text(plan: VisualPlan, source: dict) -> str:
             )
         )
     lines.extend("تنبيه: " + note for note in data["notes"])
+    from .secondary_assets import asset_info, credits
+
+    for credit in credits(plan):
+        lines += [
+            "نسبة مورد مضمّن: " + credit["title"] + " · " + credit["attribution"],
+            credit["source"],
+            credit["license"] + " · " + credit["license_url"],
+            "التغييرات: " + credit["changes"],
+        ]
+    embedded = {r["id"] for r in data.get("resources", [])}
     for step in data["steps"]:
         index = step["index"]
         lines += [
@@ -504,6 +526,9 @@ def review_text(plan: VisualPlan, source: dict) -> str:
             ]
         from .scene_graph import walk_parts
 
+        fallback_parents = {
+            path for path, item in walk_parts(step["elements"]) if item["kind"] == "asset"
+        }
         for path, item in walk_parts(step["elements"]):
             suffix = " · " + item["name"] if "name" in item else ""
             motion = item.get("motion", {})
@@ -518,6 +543,15 @@ def review_text(plan: VisualPlan, source: dict) -> str:
                 suffix += " · تدرج لوني"
             if item["kind"] == "sphere":
                 suffix += " · إسقاط كروي توضيحي 2.5D، لا خريطة معتمدة"
+            if item["kind"] == "asset":
+                entry = asset_info(item["asset_id"])
+                suffix += " · " + item["asset_id"] + " · " + entry["label_ar"]
+                suffix += (
+                    " · مورد مضمّن مدقق"
+                    if item["asset_id"] in embedded
+                    else " · بديل محلي أصلي؛ لا تنزيل تلقائي"
+                )
+                suffix += " · صورة ظلية ثابتة لا مفاصل أو توثيق علمي"
             if item["kind"] == "icons":
                 suffix += f" · {item['count']} × {item['icon']}"
             elif item["kind"] == "text":
@@ -530,6 +564,8 @@ def review_text(plan: VisualPlan, source: dict) -> str:
                 suffix += f" · ضلعان {item['a']} و{item['b']} {item.get('unit', '')}؛ قائم ومقياسي"
             if item["kind"] == "group":
                 suffix += f" · {len(item['children'])} أجزاء مباشرة بإحداثيات محلية"
+            if path[:-1] in fallback_parents:
+                suffix += " · جزء من البديل المحلي الأصلي، لا مفاصل المورد الخارجي"
             part = ".".join(map(str, path))
             lines.append(
                 f"{'  ' * (len(path) - 1)}جزء {part} · رسم {item['kind']}"

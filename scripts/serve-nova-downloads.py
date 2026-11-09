@@ -13,8 +13,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-ARCHIVE_NAME = "NovaVoice-Source-v0.11.0.dev1.rar"
-GUIDE_NAME = "INFERENCE-GUIDE-v0.11.0.dev1-AR.html"
+ARCHIVE_NAME = "NovaVoice-Source-v0.12.0.dev1.rar"
+GUIDE_NAME = "INFERENCE-GUIDE-v0.12.0.dev1-AR.html"
 PDF_NAME = "NovaVoice-Motion-A4-v0.9.0.dev1.pdf"
 VIDEO_NAME = "NovaVoice-Motion-H264-v0.9.0.dev1.mp4"
 WEBM_NAME = "NovaVoice-Motion-v0.9.0.dev1.webm"
@@ -33,7 +33,9 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         "/" + GUIDE_NAME: (delivery / GUIDE_NAME, html, False),
         "/INFERENCE-GUIDE-AR.html": (delivery / "INFERENCE-GUIDE-AR.html", html, False),
         "/desktop/nova-voice/INFERENCE-GUIDE-AR.html": (
-            source / "INFERENCE-GUIDE-AR.html", html, False
+            source / "INFERENCE-GUIDE-AR.html",
+            html,
+            False,
         ),
         "/SHA256SUMS.txt": (
             delivery / "SHA256SUMS.txt",
@@ -56,7 +58,27 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         "/" + PDF_NAME: (delivery / PDF_NAME, "application/pdf", False),
         "/" + VIDEO_NAME: (delivery / VIDEO_NAME, "video/mp4", False),
         "/" + WEBM_NAME: (delivery / WEBM_NAME, "video/webm", False),
-        "/preview-composition": (source / "examples" / "composition-demo.html", html, False),
+        "/preview-secondary": (
+            source / "examples" / "secondary-source-demo.html",
+            html,
+            False,
+        ),
+        "/start": (source / "RUN-FIRST-AR.html", html, False),
+        "/desktop/nova-voice/RUN-FIRST-AR.html": (
+            source / "RUN-FIRST-AR.html",
+            html,
+            False,
+        ),
+        "/INFERENCE-GUIDE-v0.11.0.dev1-AR.html": (
+            delivery / "INFERENCE-GUIDE-v0.11.0.dev1-AR.html",
+            html,
+            False,
+        ),
+        "/preview-composition": (
+            source / "examples" / "composition-demo.html",
+            html,
+            False,
+        ),
         "/preview-motion": (
             source / "examples" / "advanced-motion-demo.html",
             html,
@@ -101,6 +123,8 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         "VIDEO-MOTION-AR.md",
         "INFERENCE-GUIDE-AR.md",
         "COMPOSITION-MOTION-AR.md",
+        "SECONDARY-SOURCES-AR.md",
+        "THIRD_PARTY.md",
     ):
         routes["/desktop/nova-voice/" + name] = (
             source / name,
@@ -122,6 +146,8 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         "VIDEO-MOTION-AR.md",
         "INFERENCE-GUIDE-AR.md",
         "COMPOSITION-MOTION-AR.md",
+        "SECONDARY-SOURCES-AR.md",
+        "THIRD_PARTY.md",
     ):
         routes["/" + name] = routes["/desktop/nova-voice/" + name]
     for name, mime in (
@@ -144,11 +170,15 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         ("composition-demo.html", html),
         ("composition-demo.json", "application/json; charset=utf-8"),
         ("composition-demo-script.txt", "text/plain; charset=utf-8"),
+        ("secondary-source-demo.html", html),
+        ("secondary-source-demo.json", "application/json; charset=utf-8"),
+        ("secondary-source-script.txt", "text/plain; charset=utf-8"),
     ):
         route = (source / "examples" / name, mime, False)
         routes["/examples/" + name] = route
         routes["/desktop/nova-voice/examples/" + name] = route
     for legacy in (
+        "NovaVoice-Source-v0.11.0.dev1.rar",
         "NovaVoice-Source-v0.10.0.dev1.rar",
         "NovaVoice-Source-v0.9.0.dev1.rar",
         "NovaVoice-Source-v0.8.0.dev1.rar",

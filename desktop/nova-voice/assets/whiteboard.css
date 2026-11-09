@@ -192,3 +192,10 @@ h1{font-size:clamp(21px,2.4vw,33px);line-height:1.5;margin:0;font-weight:750;ove
   .print-cue svg{max-height:83mm}
   #wb-print-root{print-color-adjust:exact;-webkit-print-color-adjust:exact}
 }
+
+/* Static, escaped attribution is retained offline and in customized downloads. */
+.resource-credits { margin-top: 1.5rem; padding: 1.25rem; border: 2px solid #E2E8F0; border-radius: 1.5rem; background: #F8FAFC; color: #475569; overflow-wrap: anywhere; }
+.resource-credits h2 { color: #1E293B; font-size: 1rem; }
+.resource-credits article { border-top: 1px solid #E2E8F0; margin-top: 1rem; padding-top: .5rem; }
+.resource-credits p { font-size: .85rem; line-height: 1.6; }
+.print-resource-credit { break-inside: avoid; overflow-wrap: anywhere; }

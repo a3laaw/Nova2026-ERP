@@ -34,6 +34,7 @@ class LessonRequest:
     key: str = field(repr=False)
     consent: bool = False
     adult: bool = False
+    secondary_assets: bool = False
 
 
 class LessonPicker(QWidget):
@@ -80,6 +81,17 @@ class LessonPicker(QWidget):
         hints.addWidget(self.subject)
         hints.addWidget(self.grade)
         layout.addLayout(hints)
+        self.allow_assets = QCheckBox("اقتراح موارد مجانية ثانوية من الوصف · لا تنزيل تلقائي")
+        layout.addWidget(self.allow_assets)
+        layout.addWidget(
+            label(
+                "الاختيار من معنى الوصف لا من قائمة يختارها المعلم. الموارد صور ظلية مدققة "
+                "ولها بدائل أصلية. بعد مراجعة الدرس ونقله للمحرر، جهّز موارد خطة المشاهد "
+                "من القسم التالي محليًا أو بإذن تنزيل منفصل، ثم راجع واعتمد الخطة من جديد.",
+                "muted",
+                True,
+            )
+        )
         actions = QHBoxLayout()
         for name, title, handler in (
             ("import_button", "استيراد مسودة JSON", self._import),
@@ -175,6 +187,7 @@ class LessonPicker(QWidget):
         ):
             signal.connect(self.invalidate)
         self.key.textChanged.connect(self._reset_consent)
+        self.allow_assets.toggled.connect(self.invalidate)
 
     def _reset_consent(self, *_):
         self.consent.setChecked(False)
@@ -215,7 +228,9 @@ class LessonPicker(QWidget):
 
     def _copy_prompt(self):
         try:
-            QApplication.clipboard().setText(manual_prompt(self.brief()))
+            QApplication.clipboard().setText(
+                manual_prompt(self.brief(), secondary_assets=self.allow_assets.isChecked())
+            )
             self.state.setText(
                 "نُسخ التوجيه والوصف للحافظة فقط؛ لا إرسال. راجع شروط الخدمة التي تختار لصقه فيها."
             )
@@ -332,7 +347,9 @@ class LessonPicker(QWidget):
         try:
             if not self.adult.isChecked() or not self.consent.isChecked():
                 raise ScriptError("أكد أهلية حساب المُعدّ البالغ ووافق على إرسال هذا الوصف تحديدًا.")
-            request = LessonRequest(self.brief(), self.key.text(), True, True)
+            request = LessonRequest(
+                self.brief(), self.key.text(), True, True, self.allow_assets.isChecked()
+            )
             self.key.clear()
             self._reset_consent()
             self.requested.emit(request)

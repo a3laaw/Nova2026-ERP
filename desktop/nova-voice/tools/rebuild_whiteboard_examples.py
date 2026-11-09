@@ -22,6 +22,7 @@ EXAMPLES = (
     "animated-lesson-demo.html",
     "advanced-motion-demo.html",
     "composition-demo.html",
+    "secondary-source-demo.html",
 )
 
 

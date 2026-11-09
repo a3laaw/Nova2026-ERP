@@ -2,7 +2,8 @@
 
 All poses are pure functions of source-row progress. The model chooses parts and
 keyframes; neither this module nor the renderer interprets a script by keywords.
-No generated code, external assets, third-party downloads or model requests here.
+No generated code, third-party downloads or model requests here. Optional static
+asset fallbacks are included in the same depth, lifetime and node budgets.
 """
 
 import math
@@ -22,7 +23,7 @@ def validate_style(item):
     if "gradient" in item:
         gradient = item["gradient"]
         _keys(gradient, {"color", "axis"})
-        _require(item["kind"] not in ("group", "icons", "calculation"))
+        _require(item["kind"] not in ("group", "icons", "calculation", "asset"))
         _require(isinstance(item.get("fill"), str) and bool(COLOR.fullmatch(item["fill"])))
         _require(isinstance(gradient["color"], str) and bool(COLOR.fullmatch(gradient["color"])))
         _require(gradient["axis"] in ("horizontal", "vertical", "radial"))
@@ -79,7 +80,7 @@ def validate_motion(item, rows):
         if "spin" in frame:
             _require(item["kind"] == "sphere")
         if "fill" in frame:
-            _require(item["kind"] not in ("group", "icons", "calculation"))
+            _require(item["kind"] not in ("group", "icons", "calculation", "asset"))
             _require("gradient" not in item and isinstance(item.get("fill"), str))
             _require(bool(COLOR.fullmatch(item["fill"])))
             _require(isinstance(frame["fill"], str) and bool(COLOR.fullmatch(frame["fill"])))
@@ -183,8 +184,9 @@ def walk_parts(elements, parent=()):
     for index, element in enumerate(elements):
         path = (*parent, index + 1)
         yield path, element
-        if element["kind"] == "group":
-            yield from walk_parts(element["children"], path)
+        if element["kind"] in ("group", "asset"):
+            children = element["children"] if element["kind"] == "group" else element["fallback"]
+            yield from walk_parts(children, path)
 
 
 def walk_elements(elements):

@@ -9,6 +9,7 @@
     path: ["d"], text: ["text", "size", "align", "direction"],
     icons: ["icon", "count", "columns", "size"],
     right_triangle: ["a", "b", "w", "h", "unit"], calculation: ["a", "b", "op", "size"],
+    asset: ["asset_id", "w", "h", "fallback"],
     group: ["children"], sector: ["r", "inner", "start", "sweep"], sphere: ["r", "longitude", "tilt", "grid", "patches"],
   };
   const icons = ["apple", "ball", "block", "leaf", "star", "sun", "cloud", "drop", "book", "person"];
@@ -81,6 +82,9 @@
       case "group":
         check(window.novaSceneGraph.name(e.name) && Array.isArray(e.children) && e.children.length >= 1 && e.children.length <= 20);
         e.children.forEach(child => { validateElement(child, e.until ?? rows, depth + 1, budget); check(child.row >= e.row && child.row < (e.until ?? rows)); }); break;
+      case "asset":
+        window.novaSecondaryAssets.validateAsset(e);
+        e.fallback.forEach(child => validateElement(child, e.until ?? rows, depth + 1, budget)); break;
       case "sector": window.novaSceneGraph.validateGeometry(e); break;
       case "sphere": window.novaSceneGraph.validateGeometry(e); check(++budget.spheres <= 3); break;
     }
@@ -96,7 +100,8 @@
       step.rows.forEach(row => { keys(row, ["speaker", "text"]); check([1, 2].includes(row.speaker) && text(row.text, 180)); });
     });
     const p = lesson.visuals;
-    keys(p, ["schema", "source_fingerprint", "subject", "grade", "policy", "notes", "steps", ...(p.schema === 2 ? ["origin"] : [])]);
+    const planFields = ["schema", "source_fingerprint", "subject", "grade", "policy", "notes", "steps", ...(p.schema === 2 ? ["origin"] : [])];
+    keys(p, [...planFields, "resources"], planFields);
     check([1, 2].includes(p.schema) && text(p.subject, 80, true) && text(p.grade, 80, true) && ["general", "sacred"].includes(p.policy));
     check(Array.isArray(p.notes) && p.notes.length <= 12 && p.notes.every(n => text(n, 400)));
     check(Array.isArray(p.steps) && p.steps.length === lesson.steps.length && JSON.stringify(p).length <= 524288);
@@ -131,6 +136,7 @@
     }
     const payload = Object.fromEntries(Object.entries(lesson).filter(([key]) => key !== "fingerprint"));
     check(fingerprint(payload) === lesson.fingerprint);
+    window.novaSecondaryAssets.validatePlan(p);
     return p;
   }
   function rowText(plan, step, row, original, speech = false) {
@@ -170,7 +176,7 @@
     const top = (b < 0 ? -a : a) / g, bottom = Math.abs(b) / g;
     return bottom === 1 ? String(top) : `${top}/${bottom}`;
   }
-  function draw(group, e, defs) {
+  function draw(group, e, defs, step) {
     const style = { fill: e.fill ?? "none", stroke: e.stroke ?? "#2563EB", "stroke-width": e.line_width ?? 3, "stroke-linejoin": "round", "stroke-linecap": "round" };
     const xy = { x: e.x, y: e.y };
     switch (e.kind) {
@@ -207,6 +213,13 @@
         label(group, Math.max(20, e.x - 80), e.y + h / 2, `${e.b} ${e.unit ?? ""}`, 40); break;
       }
       case "sector": group.append(node("path", { ...style, d: window.novaSceneGraph.sectorPath(e) })); break;
+      case "asset": {
+        const paths = window.novaSecondaryAssets.paths(step, e.asset_id);
+        const box = node("svg", { x: e.x, y: e.y, width: e.w, height: e.h, viewBox: paths ? "0 0 512 512" : "0 0 100 100", overflow: "hidden", preserveAspectRatio: "xMidYMid meet", "data-secondary-id": e.asset_id, "data-secondary-state": paths ? "embedded" : "fallback" });
+        if (paths) paths.forEach(d => box.append(node("path", { d, fill: e.fill, stroke: "none" })));
+        else e.fallback.forEach(part => draw(box, part, defs, step));
+        group.append(box); break;
+      }
       case "sphere": return window.novaSceneGraph.sphere(group, e, defs);
       case "calculation": {
         const op = { "+": "+", "-": "−", "*": "×", "/": "÷" }[e.op];
@@ -240,7 +253,7 @@
       if (e.kind === "group") {
         parts = e.children.map((child, i) => build(child, id + "." + i));
         parts.forEach(part => g.append(part.g));
-      } else surface = draw(g, e, defs);
+      } else surface = draw(g, e, defs, step);
       const strokes = e.kind === "group" ? [] : Array.from(g.querySelectorAll("path,line,polyline,polygon,rect,circle,ellipse"));
       const paints = surface ? surface.paints : e.kind === "group" ? [] : Array.from(g.querySelectorAll("path,rect,circle,ellipse,polygon,text")).filter(shape => e.fill && shape.getAttribute("fill") === e.fill);
       graph.decorate(e, paints, defs);
@@ -263,7 +276,7 @@
           const until = e.until ?? bounds.length;
           const visible = parentVisible && now >= start && (until === bounds.length || now < bounds[until].start);
           const rowPart = Math.max(0, Math.min(1, (now - start) / Math.max(0.000001, end - start)));
-          const mode = e.motion ? e.motion.type : ["group", "sphere"].includes(e.kind) ? "none" : "draw";
+          const mode = e.motion ? e.motion.type : ["group", "sphere", "asset"].includes(e.kind) ? "none" : "draw";
           const staticElement = reduced || still || mode === "none";
           const part = staticElement ? 1 : Math.min(1, rowPart / 0.6);
           let movePart = still ? (pose !== null && now >= start && now < end ? Math.max(0, Math.min(1, pose)) : 1) : rowPart;

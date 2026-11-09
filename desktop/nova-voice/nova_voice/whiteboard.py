@@ -490,6 +490,9 @@ def whiteboard_html(lesson: Lesson, appearance: BoardAppearance | None = None) -
         + (assets / "whiteboard-timing.js").read_text(encoding="utf-8")
         + "\n"
         + (assets / "whiteboard-graph.js").read_text(encoding="utf-8")
+        + "\n"
+        + (assets / "whiteboard-resources.js").read_text(encoding="utf-8")
+        + "\n"
         + (assets / "whiteboard-scenes.js").read_text(encoding="utf-8")
         + "\n"
         + (assets / "whiteboard-output.js").read_text(encoding="utf-8")
@@ -517,12 +520,47 @@ def whiteboard_html(lesson: Lesson, appearance: BoardAppearance | None = None) -
         characters = character_templates(assets)
     except (AppearanceError, OSError, ValueError) as error:
         raise WhiteboardError("مكتبة الشخصيات ناقصة أو غير صالحة. استخدم الحزمة كاملة.") from error
+    from .secondary_assets import catalog as secondary_catalog
+    from .secondary_assets import credits
+
+    resource_credits = credits(lesson.visuals)
+    credit_html = ""
+    if resource_credits:
+        credit_html = (
+            '<section id="wb-secondary-credits" class="resource-credits" '
+            'aria-label="مصادر الرسوم الثانوية وتراخيصها">'
+            "<h2>مصادر الرسوم الثانوية · نسبة لا تُنطق</h2>"
+            "<p>صور ظلية ثابتة من Game-icons؛ ليست مفاصل أو توثيقًا علميًا. "
+            "أزيلت الخلفية وعُدّل اللون والمقياس. ستظهر النسبة في الطباعة "
+            "وبطاقات نهاية الفيديو أيضًا. الروابط لا تُفتح إلا باختيارك.</p>"
+        )
+        for credit in resource_credits:
+            credit_html += (
+                "<article>"
+                + "".join(
+                    '<p dir="ltr">' + escape(credit[key]) + "</p>"
+                    for key in (
+                        "title",
+                        "attribution",
+                        "source",
+                        "license",
+                        "license_url",
+                        "changes",
+                    )
+                )
+                + "</article>"
+            )
+        credit_html += "</section>"
     values = {
         "TITLE": escape(lesson.title),
         "CSS": css,
         "SCRIPT": controller,
         "DATA": _safe_json(lesson.manifest()),
         "FALLBACK": accessible,
+        "RESOURCE_CREDITS": credit_html,
+        "RESOURCE_CATALOG": '<script id="nova-secondary-catalog" type="application/json">'
+        + _safe_json(secondary_catalog())
+        + "</script>",
         "AUDIO": AUDIO_MARKER,
         "CHARACTERS": characters,
         "APPEARANCE": f'<script id="{STYLE_ID}" type="application/json">'

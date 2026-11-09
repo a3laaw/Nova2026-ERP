@@ -22,6 +22,15 @@ from PySide6.QtWidgets import (
 from .controls import Disclosure, button, combo, label
 from .scene_planner import manual_prompt
 from .scenes import SceneError, VisualPlan, empty_plan, review_text
+from .secondary_assets import (
+    AssetPreparation,
+    asset_info,
+    cache_directory,
+    clear_cache,
+    preparation_matches,
+    referenced_ids,
+    use_local_fallbacks,
+)
 from .text import ScriptError
 from .whiteboard import Lesson, save_whiteboard
 
@@ -35,12 +44,22 @@ class PlannerRequest:
     policy: str
     consent: bool
     adult: bool
+    secondary_assets: bool = False
+
+
+@dataclass(frozen=True)
+class AssetRequest:
+    source: dict = field(repr=False)
+    plan: VisualPlan = field(repr=False)
+    revision: int
+    allow_download: bool = False
 
 
 class ScenePicker(QWidget):
     changed = Signal()
     requested = Signal(object)
     example_requested = Signal()
+    assets_requested = Signal(object)
 
     def __init__(
         self,
@@ -48,11 +67,14 @@ class ScenePicker(QWidget):
         parent=None,
         *,
         plan_adapter: Callable[[VisualPlan, Lesson], VisualPlan] | None = None,
+        asset_cache: Path | None = None,
     ):
         super().__init__(parent)
         self._lesson_provider = lesson_provider
         self._plan_adapter = plan_adapter
         self._approved: VisualPlan | None = None
+        self.revision = 0
+        self._asset_cache = asset_cache if asset_cache is not None else cache_directory()
         self._preview_dir = tempfile.TemporaryDirectory(prefix="nova-scene-review-")
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -94,6 +116,42 @@ class ScenePicker(QWidget):
         for widget in (self.import_button, self.prompt_button, self.example_button):
             actions.addWidget(widget)
         layout.addLayout(actions)
+        resources = Disclosure("مصادر رسوم مجانية ثانوية · اختياري، لا تنزيل تلقائي")
+        resources.content_layout.addWidget(
+            label(
+                "المحرّك المحلي هو الأساس. إن فعّلت الخيار يقترح المخطّط من السكريبت معرّفات "
+                "ضمن 16 رسمًا مدققًا من Game-icons، لا تختار أنت حيوانًا من مكتبة. "
+                "هذه صور ظلية ثابتة وليست مكتبة مفاصل أو محرك 3D. "
+                "لا بحث إنترنت مفتوح أو تثبيت Konva/Three أو تشغيل كود. "
+                "التجهيز المحلي يفحص الذاكرة فقط. التنزيل يحتاج إذنًا جديدًا، ويطلب ملفات "
+                "مثبتة من GitHub دون حساب أو مفتاح أو إرسال الدرس/الصوت؛ يكشف العنوان الشبكي "
+                "ومعرّفات الموارد للمصدر. CC BY 3.0 يتطلب حفظ النسبة والمصدر والترخيص "
+                "والتغييرات في JSON وHTML والطباعة وبطاقات نهاية الفيديو. "
+                "عند الغياب أو الفشل يظهر البديل المحلي الأصلي. كل تغيير يلغي اعتماد الخطة.",
+                "muted",
+                True,
+            )
+        )
+        self.allow_assets = QCheckBox(
+            "السماح للمخطّط باقتراح موارد مجانية ثانوية · للطلبات التالية فقط"
+        )
+        resources.content_layout.addWidget(self.allow_assets)
+        self.prepare_assets_button = button("تجهيز موارد الخطة من الذاكرة المحلية")
+        self.prepare_assets_button.clicked.connect(lambda: self._prepare_assets(False))
+        self.download_assets_button = button("تنزيل موارد الخطة المقترحة بإذني")
+        self.download_assets_button.clicked.connect(lambda: self._prepare_assets(True))
+        self.local_assets_button = button("العودة إلى البدائل المحلية الأصلية")
+        self.local_assets_button.clicked.connect(self._local_assets)
+        self.clear_asset_cache_button = button("مسح ذاكرة الموارد الثانوية")
+        self.clear_asset_cache_button.clicked.connect(self._clear_asset_cache)
+        for widget in (
+            self.prepare_assets_button,
+            self.download_assets_button,
+            self.local_assets_button,
+            self.clear_asset_cache_button,
+        ):
+            resources.content_layout.addWidget(widget)
+        layout.addWidget(resources)
         cloud = Disclosure("اقتراح عبر الإنترنت · اختياري ومجاني فقط")
         self.cloud_section = cloud
         cloud.content_layout.addWidget(
@@ -179,12 +237,14 @@ class ScenePicker(QWidget):
         self.grade.textChanged.connect(self.invalidate_source)
         self.key.textChanged.connect(self._reset_consent)
         self.policy.currentIndexChanged.connect(self.invalidate_source)
+        self.allow_assets.toggled.connect(self.invalidate_source)
         self._use_changed()
 
     def _reset_consent(self, *_):
         self.consent.setChecked(False)
 
     def invalidate_source(self, *_):
+        self.revision += 1
         self._approved = None
         self._reset_consent()
         self.review.clear()
@@ -192,6 +252,7 @@ class ScenePicker(QWidget):
         self.changed.emit()
 
     def _draft_changed(self):
+        self.revision += 1
         self._approved = None
         self.review.clear()
         if self.plan_edit.toPlainText().strip():
@@ -200,6 +261,7 @@ class ScenePicker(QWidget):
         self.changed.emit()
 
     def _use_changed(self, *_):
+        self.revision += 1
         self._state()
         self.changed.emit()
 
@@ -247,6 +309,7 @@ class ScenePicker(QWidget):
         QMessageBox.warning(self, "راجع خطة المشاهد", str(error))
 
     def set_draft(self, plan: VisualPlan):
+        self.revision += 1  # Identical reimports/results must also invalidate in-flight work.
         self._approved = None
         if plan.to_data()["policy"] == "sacred":
             self.policy.setCurrentIndex(1)
@@ -277,7 +340,12 @@ class ScenePicker(QWidget):
                 plan["notes"] = ["النص كما كتبه المعلم؛ لا توثيق آلي أو تلاوة معتمدة."]
                 self.set_draft(VisualPlan.from_data(plan, source))
                 return
-            prompt = manual_prompt(source, self.subject.text(), self.grade.text())
+            prompt = manual_prompt(
+                source,
+                self.subject.text(),
+                self.grade.text(),
+                secondary_assets=self.allow_assets.isChecked(),
+            )
             QApplication.clipboard().setText(prompt)
             self.state.setText(
                 "نُسخ التوجيه والنص إلى الحافظة فقط؛ لا اتصال. لصقه في خدمة أخرى "
@@ -352,6 +420,85 @@ class ScenePicker(QWidget):
         except (OSError, ScriptError) as error:
             self._error(error)
 
+    def _prepare_assets(self, download: bool):
+        try:
+            lesson, plan = self._current()
+            data = plan.to_data()
+            if data["policy"] != "general" or self.policy.currentData() != "general":
+                raise SceneError("حماية النصوص المقدسة لا تسمح بموارد ثانوية.")
+            identifiers = referenced_ids(data["steps"])
+            if not identifiers:
+                raise SceneError("لا موارد ثانوية مقترحة في الخطة الحالية؛ الرسم المحلي كافٍ.")
+            if download:
+                notice = "\n".join(
+                    identifier
+                    + " · "
+                    + asset_info(identifier)["credit"]["attribution"]
+                    + " · CC BY 3.0"
+                    for identifier in identifiers
+                )
+                if (
+                    QMessageBox.question(
+                        self,
+                        "إذن تنزيل مستقل لهذه الموارد فقط",
+                        notice + "\n\nطلب ملفات عامة مثبتة من api.github.com، لا بحث مفتوح أو "
+                        "إرسال سكريبت/صوت/مفتاح. قد تُطبق حصة GitHub المجانية. "
+                        "تُحفظ النسبة والتغييرات، ويُستخدم البديل المحلي عند الفشل. "
+                        "الإلغاء قد ينتظر مهلة 20 ثانية؛ راجع المعاينة واعتمد من جديد بعد التجهيز. "
+                        "هل تأذن بهذه التنزيلات؟",
+                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                        QMessageBox.StandardButton.No,
+                    )
+                    != QMessageBox.StandardButton.Yes
+                ):
+                    return
+            self.assets_requested.emit(
+                AssetRequest(lesson.manifest(), plan, self.revision, download)
+            )
+        except ScriptError as error:
+            self._error(error)
+
+    def apply_assets(self, result: AssetPreparation, request: AssetRequest):
+        lesson, current = self._current()
+        if self.revision != request.revision or not preparation_matches(
+            result, current, lesson.manifest()
+        ):
+            raise SceneError(
+                "تغيّرت الخطة أو النص أو الخيارات أثناء التجهيز؛ لم تُطبّق النتيجة القديمة."
+            )
+        prepared = VisualPlan.from_data(result.plan.to_data(), lesson.manifest())
+        if self._plan_adapter is not None:
+            prepared = self._plan_adapter(prepared, lesson)
+        self.set_draft(prepared)  # Always revoke approval, even for an identical result.
+        self.review.setPlainText(result.summary() + "\n\n" + self.review.toPlainText())
+
+    def _local_assets(self):
+        try:
+            lesson, plan = self._current()
+            self.set_draft(use_local_fallbacks(plan, lesson.manifest()))
+        except ScriptError as error:
+            self._error(error)
+
+    def _clear_asset_cache(self):
+        if (
+            QMessageBox.question(
+                self,
+                "مسح ذاكرة الموارد فقط",
+                "لن تتغير الأصوات أو الخطط أو الملفات المصدّرة. "
+                "الموارد المضمّنة فيها تبقى مع نسبتها. "
+                "هل تمسح ملفات الموارد المدققة من الذاكرة المحلية؟",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            != QMessageBox.StandardButton.Yes
+        ):
+            return
+        try:
+            count = clear_cache(self._asset_cache)
+            self.state.setText(f"مُسح {count} مورد من الذاكرة؛ لم تتغير الخطة أو ملفاتك المصدّرة.")
+        except OSError as error:
+            self._error(error)
+
     def _request(self):
         try:
             if not self.consent.isChecked() or not self.adult.isChecked():
@@ -365,6 +512,7 @@ class ScenePicker(QWidget):
                 self.policy.currentData(),
                 True,
                 True,
+                self.allow_assets.isChecked(),
             )
             self.key.clear()
             self.consent.setChecked(False)

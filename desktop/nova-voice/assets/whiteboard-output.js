@@ -5,7 +5,7 @@
   const NS = "http://www.w3.org/2000/svg";
   const $ = id => document.getElementById(id);
   const clamp = n => Math.max(0, Math.min(1, n));
-  const MAX_SECONDS = 900, MAX_BYTES = 128 * 1024 * 1024, FPS = 20;
+  const MAX_SECONDS = 900, MAX_BYTES = 128 * 1024 * 1024, FPS = 20, CREDIT_SECONDS = 7;
   const node = (tag, attrs = {}, text) => {
     const el = document.createElementNS(NS, tag);
     Object.entries(attrs).forEach(([key, value]) => el.setAttribute(key, String(value)));
@@ -86,6 +86,18 @@
     }, piece)));
     parent.append(group);
     return group;
+  }
+  function creditCard(credit, index, total, measure) {
+    const svg = node("svg", { viewBox: "0 0 1280 720", width: 1280, height: 720, xmlns: NS, "data-movie-credit": credit.id });
+    svg.append(node("rect", { width: 1280, height: 720, fill: "#F8FAFC" }), node("rect", { width: 1280, height: 8, fill: "#FFB000" }));
+    textBlock(svg, `Game-icons · Secondary artwork credits · ${index + 1} / ${total}`, { top: 65, maxLines: 1, size: 24 }, measure);
+    textBlock(svg, credit.title, { top: 130, maxLines: 1, size: 36 }, measure);
+    textBlock(svg, credit.attribution, { top: 195, maxLines: 1, size: 30 }, measure);
+    textBlock(svg, credit.source, { top: 260, maxLines: 3, size: 22, minSize: 18 }, measure);
+    textBlock(svg, credit.license + " · " + credit.license_url, { top: 390, maxLines: 2, size: 24 }, measure);
+    textBlock(svg, "Changes: " + credit.changes, { top: 470, maxLines: 3, size: 24 }, measure);
+    textBlock(svg, "Static silhouette · Not articulated or scientifically certified", { top: 650, maxLines: 1, size: 20 }, measure);
+    return svg;
   }
   function frameImage(svg, context, job) {
     assertActive(job);
@@ -171,6 +183,8 @@
       : !formats.webm && !formats.mp4
         ? "المتصفح لا يدعم تصدير Canvas/MediaRecorder هنا. افتح HTML في إصدار حديث من Chrome أو Edge. الطباعة متاحة، ولا توجد خدمة مدفوعة بديلة."
         : `الصيغ التي يعلن المتصفح دعمها: ${[formats.webm ? "WebM" : "", formats.mp4 ? "MP4" : ""].filter(Boolean).join("، ")}. ${hasAudio ? "سيُستخدم الصوت المضمّن؛ راجع نطقه وحقوقه أولًا." : "هذا الملف بلا تسجيل؛ الفيديو سيكون صامتًا."} لا نغيّر امتداد WebM إلى MP4.`;
+    const allCredits = window.novaSecondaryAssets.creditsFor(plan);
+    if (allCredits.length) $("wb-video-support").textContent += " ستُضاف بطاقة نسبة صامتة لكل مورد مضمّن في نطاق الفيديو (7 ثوانٍ)، وفي الطباعة أيضًا؛ احفظها مع العمل.";
     function controls() {
       $("wb-print").disabled = $("wb-print-preview").disabled = !review.checked || !!job;
       $("wb-video").disabled = !review.checked || !!job || !videoAllowed || !formats[$("wb-video-format").value];
@@ -225,6 +239,16 @@
       if (plan && plan.notes.length) {
         const notes = html("section", "print-brief"); notes.append(html("h2", "", "ملاحظات المُعدّ وحدود الرسم"));
         plan.notes.forEach(note => notes.append(html("p", "", note))); root.append(notes);
+      }
+      if (allCredits.length) {
+        const section = html("section", "print-resource-credits");
+        section.append(html("h2", "", "مصادر الرسوم الثانوية · نسبة وتغييرات غير منطوقة"));
+        allCredits.forEach(credit => {
+          const article = html("article", "print-resource-credit"); article.dataset.resourceCredit = credit.id;
+          [credit.title, credit.attribution, credit.source, credit.license + " · " + credit.license_url, "Changes: " + credit.changes].forEach(value => article.append(html("p", "", value)));
+          section.append(article);
+        });
+        root.append(section);
       }
       if (plan && plan.origin) {
         const original = html("section", "print-brief"); original.append(html("h2", "", "الوصف الأصلي · مرجع غير منطوق"), html("p", "", plan.origin.brief.text)); root.append(original);
@@ -309,7 +333,8 @@
     async function exportVideo() {
       if (job || !review.checked || !videoAllowed || !formats[$("wb-video-format").value]) return;
       const indices = $("wb-video-scope").value === "current" ? [currentStep()] : lesson.steps.map((_, i) => i);
-      const estimated = indices.reduce((n, i) => n + (hasAudio ? recordings.durations[i] : clock(i).at(-1).end) + 0.4, 0);
+      const videoCredits = window.novaSecondaryAssets.creditsFor(plan, indices);
+      const estimated = indices.reduce((n, i) => n + (hasAudio ? recordings.durations[i] : clock(i).at(-1).end) + 0.4, 0) + videoCredits.length * CREDIT_SECONDS;
       if (document.hidden || estimated > MAX_SECONDS) { status("اترك الصفحة ظاهرة، واستخدم تصدير الخطوة الحالية أو قسّم الدرس إذا تجاوز 15 دقيقة."); return; }
       pause(); clearPreview();
       const active = { abort: new AbortController(), failure: null, source: null, context: null, stream: null, recorder: null };
@@ -371,7 +396,7 @@
           assertActive(active);
           const buffer = hasAudio ? await decode(index, active.context, active) : null;
           const seconds = buffer ? buffer.duration : clock(index).at(-1).end;
-          if (elapsed + seconds + 0.4 > MAX_SECONDS) throw new Error("مدة الصوت الفعلية تتجاوز حد 15 دقيقة؛ قسّم الدرس.");
+          if (elapsed + seconds + 0.4 + videoCredits.length * CREDIT_SECONDS > MAX_SECONDS) throw new Error("مدة الصوت الفعلية تتجاوز حد 15 دقيقة؛ قسّم الدرس.");
           const bounds = clock(index, buffer ? seconds : null), stage = movieStage(index, bounds, context, noMotion);
           stage.update(0, false); await frameImage(stage.svg, context, active);
           lastFrame = null; // Decoding/loading between steps is intentionally silent.
@@ -412,6 +437,25 @@
           }
           elapsed += seconds + 0.4;
         }
+        for (const [i, credit] of videoCredits.entries()) {
+          assertActive(active);
+          const svg = creditCard(credit, i, videoCredits.length, context);
+          const time = () => hasAudio ? active.context.currentTime : performance.now() / 1000;
+          const start = time(); lastFrame = null;
+          while (true) {
+            assertActive(active);
+            if (recorder.state !== "recording" || (hasAudio && active.context.state !== "running")) throw new Error("توقف التسجيل قبل اكتمال نسبة الموارد؛ لم يُنزّل ملف جزئي.");
+            auditFrame();
+            await frameImage(svg, context, active); auditFrame();
+            if (manualFrames) track.requestFrame();
+            const seconds = Math.min(CREDIT_SECONDS, Math.max(0, time() - start));
+            $("wb-video-progress").value = clamp((elapsed + seconds) / estimated);
+            status(`جارٍ حفظ نسبة المورد ${i + 1} من ${videoCredits.length} · اترك الصفحة ظاهرة؛ لا يُحفظ فيديو دون بطاقات النسبة.`);
+            if (seconds >= CREDIT_SECONDS) break;
+            await wait(1000 / FPS, active);
+          }
+          elapsed += CREDIT_SECONDS;
+        }
         assertActive(active);
         const recordedSeconds = (performance.now() - recordedStart) / 1000;
         recorder.stop(); await bounded(stopped, active, 10000, "لم يُنهِ المتصفح ملف الفيديو. أعد المحاولة بخطوة أقصر."); assertActive(active);
@@ -443,5 +487,5 @@
     window.addEventListener("pagehide", () => cancel());
     controls();
   }
-  window.novaWhiteboardOutput = { init, containerExtension, webmDuration };
+  window.novaWhiteboardOutput = { init, containerExtension, webmDuration, creditCard };
 })();
