@@ -39,6 +39,14 @@ def site(tmp_path):
     (source / "examples" / "visual-scenes.json").write_text('{"demo":true}')
     (source / "examples" / "visual-scenes.txt").write_text("Hand-authored demo")
     for name in (
+        "water-cycle-whiteboard.html",
+        "water-cycle-plan.json",
+        "water-cycle-script.txt",
+        "water-cycle-description.txt",
+        "SCIENCE-TEST-AR.md",
+    ):
+        (source / "examples" / name).write_text("Local science test; not live AI")
+    for name in (
         "HTML-GUIDE.md",
         "WHITEBOARD-GUIDE.md",
         "KIDS-GUIDE-AR.md",
@@ -170,3 +178,23 @@ def test_explicit_visual_demo_routes_and_guide_sibling_links(site, route, mime):
         assert response.status == 200
         assert response.headers["Content-Type"] == mime
         assert response.headers["Cache-Control"] == "no-store"
+
+
+@pytest.mark.parametrize(
+    "route,mime",
+    [
+        ("/preview-science", "text/html; charset=utf-8"),
+        (
+            "/desktop/nova-voice/examples/SCIENCE-TEST-AR.md",
+            "text/plain; charset=utf-8",
+        ),
+        ("/examples/water-cycle-plan.json", "application/json; charset=utf-8"),
+    ],
+)
+def test_science_test_routes_stay_explicit_and_do_not_publish_source_code(
+    site, route, mime
+):
+    base, _ = site
+    with urlopen(base + route, timeout=3) as r:
+        assert r.status == 200 and r.headers["Content-Type"] == mime
+        assert r.headers["Cache-Control"] == "no-store"

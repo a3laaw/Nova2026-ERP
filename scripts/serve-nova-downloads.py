@@ -32,6 +32,11 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         "/preview": (source / "examples" / "greetings-whiteboard.html", html, False),
         "/preview-kids": (source / "examples" / "greetings-kids.html", html, False),
         "/preview-scenes": (source / "examples" / "visual-scenes.html", html, False),
+        "/preview-science": (
+            source / "examples" / "water-cycle-whiteboard.html",
+            html,
+            False,
+        ),
         "/desktop/nova-voice/examples/greetings-kids.html": (
             source / "examples" / "greetings-kids.html",
             html,
@@ -74,6 +79,11 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         ("visual-scenes.json", "application/json; charset=utf-8"),
         ("visual-scenes.txt", "text/plain; charset=utf-8"),
         ("greetings-kids.html", html),
+        ("water-cycle-whiteboard.html", html),
+        ("water-cycle-plan.json", "application/json; charset=utf-8"),
+        ("water-cycle-script.txt", "text/plain; charset=utf-8"),
+        ("water-cycle-description.txt", "text/plain; charset=utf-8"),
+        ("SCIENCE-TEST-AR.md", "text/plain; charset=utf-8"),
     ):
         route = (source / "examples" / name, mime, False)
         routes["/examples/" + name] = route
