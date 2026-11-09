@@ -184,6 +184,17 @@
       copy.querySelector("#wb-pen").setAttribute("opacity", "0");
       copy.querySelector("#wb-play").disabled = false;
       copy.querySelector("#wb-restart").disabled = false;
+      // Review/output state is deliberately ephemeral, not an export credential.
+      copy.querySelector("#wb-print-root").replaceChildren();
+      copy.querySelector("#wb-print-root").removeAttribute("data-preview");
+      copy.querySelector("#wb-print-root").removeAttribute("data-ink");
+      copy.querySelector("#wb-output-review").removeAttribute("checked");
+      copy.querySelector("#wb-print-close").hidden = true;
+      copy.querySelector("#wb-video-canvas").hidden = true;
+      copy.querySelector("#wb-video-progress").hidden = true;
+      copy.querySelector("#wb-video-progress").value = 0;
+      ["wb-print", "wb-print-preview", "wb-video", "wb-video-cancel"].forEach(id => { copy.querySelector("#" + id).disabled = true; });
+      copy.querySelector("body").removeAttribute("data-nova-exporting");
       copy.querySelector("#wb-defs").replaceChildren();
       copy.querySelector("#lesson-outline").replaceChildren();
       copy.querySelector("#wb-character-library").replaceChildren();

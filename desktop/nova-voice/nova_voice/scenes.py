@@ -40,7 +40,7 @@ KINDS = (
     "right_triangle",
     "calculation",
 )
-COMMON = {"kind", "row", "until", "x", "y", "fill", "stroke", "line_width", "dx", "dy"}
+COMMON = {"kind", "row", "until", "x", "y", "fill", "stroke", "line_width", "dx", "dy", "motion"}
 EXTRA = {
     "rect": {"w", "h", "radius"},
     "circle": {"r"},
@@ -135,6 +135,19 @@ def validate_element(item: dict, rows: int) -> None:
     _require(_integer(item["x"], 0, WIDTH) and _integer(item["y"], 0, HEIGHT))
     for key in ("dx", "dy"):
         _require(_integer(item.get(key, 0), -1000, 1000))
+    if "motion" in item:
+        motion = item["motion"]
+        _require(isinstance(motion, dict))
+        mode = motion.get("type")
+        _require(mode in ("draw", "move", "pulse", "none"), "نوع حركة الرسم غير مدعوم.")
+        if mode == "move":
+            _keys(motion, {"type", "dx", "dy"})
+            _require(_integer(motion["dx"], -300, 300) and _integer(motion["dy"], -180, 180))
+        elif mode == "pulse":
+            _keys(motion, {"type", "cycles"})
+            _require(_integer(motion["cycles"], 1, 4))
+        else:
+            _keys(motion, {"type"})
     for key in ("fill", "stroke"):
         color = item.get(key, "none")
         _require(isinstance(color, str) and (color == "none" or bool(COLOR.fullmatch(color))))

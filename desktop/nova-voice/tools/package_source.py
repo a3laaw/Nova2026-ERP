@@ -23,6 +23,7 @@ FILES = (
     "WHITEBOARD-GUIDE.md",
     "SMART-SCENES-AR.md",
     "FULL-LESSON-AR.md",
+    "LESSON-OUTPUT-AR.md",
     "CHANGELOG.md",
     "TIMING-VERIFICATION-AR.md",
     "UI-ORGANIZATION-AR.md",
@@ -105,7 +106,8 @@ def package_source(root: Path, output: Path) -> int:
             for path in (root / directory).rglob("*")
             if path.is_file()
             and not {"__pycache__", "node_modules"}.intersection(path.parts)
-            and path.suffix.lower() not in (".pyc", ".mp3", ".wav", ".zip", ".rar")
+            and path.suffix.lower()
+            not in (".pyc", ".mp3", ".wav", ".mp4", ".webm", ".mkv", ".mov", ".zip", ".rar")
         )
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="nova-voice-package-", dir=output.parent) as temp:

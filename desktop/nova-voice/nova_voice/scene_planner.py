@@ -67,7 +67,13 @@ calculation: a,b (integer -1000..1000),op(+|-|*|/),size(optional16..60).
 Its result is computed locally, no division by zero. Never supply a result key.
 For lines, polygons and paths coordinates are absolute; x/y still required.
 Use row cues and until to build the explanation, not one giant final picture.
-All animation must be declarative dx/dy; no JS, timelines, URLs or embedded media.
+Optional motion object (strict keys, no code): {type:"draw"} (default, progressive
+strokes/staggered icons), {type:"none"}, {type:"move",dx:-300..300,dy:-180..180}
+(linear movement DURING its row, then hold endpoint), or {type:"pulse",cycles:1..4}
+(gentle opacity emphasis during its row). Keep the whole moving shape in bounds;
+use until for temporary objects. Do not animate a position if it changes a
+mathematical/geographic meaning. Reduced motion disables tracing/movement/pulse.
+All animation is declarative, row-clock-driven; no JS, timelines, URLs or media.
 Text will be escaped, not interpreted as markup. Keep labels readable, use Arabic
 RTL or English LTR appropriately and high-contrast orange/blue/slate colors.
 Sacred policy requires empty elements/overrides and description EXACTLY equal to

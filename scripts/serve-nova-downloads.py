@@ -7,12 +7,15 @@ It serves a fixed public allowlist, never the repository tree or directory lists
 import argparse
 import json
 import os
+import re
 from functools import partial
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-ARCHIVE_NAME = "NovaVoice-Source-v0.7.0.dev1.rar"
+ARCHIVE_NAME = "NovaVoice-Source-v0.8.0.dev1.rar"
+PDF_NAME = "NovaVoice-Lesson-A4-v0.8.0.dev1.pdf"
+VIDEO_NAME = "NovaVoice-Animated-Lesson-v0.8.0.dev1.webm"
 
 
 def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
@@ -37,6 +40,13 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
             html,
             False,
         ),
+        "/preview-output": (
+            source / "examples" / "animated-lesson-demo.html",
+            html,
+            False,
+        ),
+        "/" + PDF_NAME: (delivery / PDF_NAME, "application/pdf", False),
+        "/" + VIDEO_NAME: (delivery / VIDEO_NAME, "video/webm", False),
         "/preview-science": (
             source / "examples" / "water-cycle-whiteboard.html",
             html,
@@ -62,6 +72,7 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         "FINAL-RELEASE-AR.md",
         "SMART-SCENES-AR.md",
         "FULL-LESSON-AR.md",
+        "LESSON-OUTPUT-AR.md",
     ):
         routes["/desktop/nova-voice/" + name] = (
             source / name,
@@ -79,6 +90,7 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         "FINAL-RELEASE-AR.md",
         "SMART-SCENES-AR.md",
         "FULL-LESSON-AR.md",
+        "LESSON-OUTPUT-AR.md",
     ):
         routes["/" + name] = routes["/desktop/nova-voice/" + name]
     for name, mime in (
@@ -94,13 +106,35 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         ("complete-lesson-demo.html", html),
         ("complete-lesson-demo.json", "application/json; charset=utf-8"),
         ("complete-lesson-demo-script.txt", "text/plain; charset=utf-8"),
+        ("animated-lesson-demo.html", html),
+        ("animated-lesson-demo.json", "application/json; charset=utf-8"),
     ):
         route = (source / "examples" / name, mime, False)
         routes["/examples/" + name] = route
         routes["/desktop/nova-voice/examples/" + name] = route
-    for legacy in ("NovaVoice-Source-v0.6.0.rar", "NovaVoice-Source-v0.5.1.rar"):
+    for legacy in (
+        "NovaVoice-Source-v0.7.0.dev1.rar",
+        "NovaVoice-Source-v0.6.0.rar",
+        "NovaVoice-Source-v0.5.1.rar",
+    ):
         routes["/" + legacy] = (delivery / legacy, "application/vnd.rar", True)
     return routes
+
+
+def byte_range(value: str, size: int) -> tuple[int, int] | None:
+    """One bounded HTTP byte range, only for the allowlisted PDF/video samples."""
+    if size <= 0 or len(value) > 80:
+        return None
+    match = re.fullmatch(r"bytes=([0-9]*)-([0-9]*)", value)
+    if match is None or not any(match.groups()):
+        return None
+    first, last = match.groups()
+    if not first:
+        suffix = int(last)
+        return (max(0, size - suffix), size - 1) if suffix > 0 else None
+    start = int(first)
+    end = min(size - 1, int(last)) if last else size - 1
+    return (start, end) if start <= end and start < size else None
 
 
 class DeliveryHandler(BaseHTTPRequestHandler):
@@ -143,21 +177,52 @@ class DeliveryHandler(BaseHTTPRequestHandler):
         file_path, mime, attachment = route
         with file_path.open("rb") as source:
             size = os.fstat(source.fileno()).st_size
+            media = mime in ("video/webm", "application/pdf")
+            start, end = 0, size - 1
+            range_header = self.headers.get("Range") if media and send_body else None
+            if range_header:
+                selected = byte_range(range_header, size)
+                if selected is None:
+                    self._headers(
+                        416, mime, 0, content_range=f"bytes */{size}", ranges=True
+                    )
+                    return
+                start, end = selected
+            length = max(0, end - start + 1)
             self._headers(
-                200, mime, size, attachment=file_path.name if attachment else ""
+                206 if range_header else 200,
+                mime,
+                length,
+                attachment=file_path.name if attachment else "",
+                content_range=f"bytes {start}-{end}/{size}" if range_header else "",
+                ranges=media,
             )
             if send_body:
-                while data := source.read(64 * 1024):
+                source.seek(start)
+                remaining = length
+                while remaining and (data := source.read(min(64 * 1024, remaining))):
                     self.wfile.write(data)
+                    remaining -= len(data)
 
     def _headers(
-        self, status: int, mime: str, size: int, *, attachment: str = ""
+        self,
+        status: int,
+        mime: str,
+        size: int,
+        *,
+        attachment: str = "",
+        content_range: str = "",
+        ranges: bool = False,
     ) -> None:
         self.send_response(status)
         self.send_header("Content-Type", mime)
         self.send_header("Content-Length", str(size))
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
+        if ranges:
+            self.send_header("Accept-Ranges", "bytes")
+        if content_range:
+            self.send_header("Content-Range", content_range)
         if attachment:
             self.send_header(
                 "Content-Disposition", f'attachment; filename="{attachment}"'

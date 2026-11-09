@@ -491,6 +491,8 @@ def whiteboard_html(lesson: Lesson, appearance: BoardAppearance | None = None) -
         + "\n"
         + (assets / "whiteboard-scenes.js").read_text(encoding="utf-8")
         + "\n"
+        + (assets / "whiteboard-output.js").read_text(encoding="utf-8")
+        + "\n"
         + (assets / "whiteboard.js").read_text(encoding="utf-8")
     )
     if "</script" in controller.lower() or "</style" in css.lower():

@@ -6,7 +6,7 @@
   const sceneEngine = window.novaWhiteboardScenes;
   let visualPlan = null;
   function rejectVisualPlayback(message) {
-    ["wb-play", "wb-restart", "wb-previous", "wb-next", "wb-save-customized"].forEach(id => { $(id).disabled = true; });
+    ["wb-play", "wb-restart", "wb-previous", "wb-next", "wb-save-customized", "wb-print", "wb-print-preview", "wb-video"].forEach(id => { $(id).disabled = true; });
     $("wb-audio").hidden = true;
     $("wb-status").textContent = message;
     $("board-placeholder").textContent = "تعذّر التحقق من بيانات المشاهد";
@@ -26,7 +26,8 @@
   let reducedMotion = !!(motionQuery && motionQuery.matches);
   const eraser = $("wb-eraser");
   const ERASE_MS = 560;
-  let transition = null;
+  let transition = null, outputBusy = false;
+  const sceneMotion = $("wb-scene-motion");
   const recordingNode = $("nova-whiteboard-recordings");
   let recordings = null;
   try {
@@ -115,7 +116,7 @@
     const samples = clip ? (finished ? clip.total_samples : audio.currentTime * clip.sample_rate) : 0;
     if (sceneView) {
       const bounds = clip ? clip.lines.map(cue => ({ start: cue.start_sample, end: cue.end_sample })) : rowBounds;
-      sceneView.update(bounds, clip ? samples : elapsed, reducedMotion);
+      sceneView.update(bounds, clip ? samples : elapsed, reducedMotion || !sceneMotion.checked);
     }
     let active = null;
     for (const line of lines) {
@@ -405,7 +406,7 @@
   }
 
   async function play() {
-    if (transition) return;
+    if (transition || outputBusy) return;
     const ticket = version;
     if (completed) {
       completed = false;
@@ -489,6 +490,7 @@
   }
 
   function navigate(index, continuePlaying = false) {
+    if (outputBusy) return;
     if (!Number.isInteger(index) || index < 0 || index >= lesson.steps.length) return;
     if (transition) {
       // One bounded wipe, latest requested destination wins. No stacked delays.
@@ -615,7 +617,7 @@
   $("wb-reset-rate").addEventListener("click", () => setRate(1));
   if (hasAudio) {
     audio.addEventListener("play", () => {
-      if (transition) { audio.pause(); return; }
+      if (transition || outputBusy) { audio.pause(); return; }
       completed = false;
       startFrame();
       refreshButton();
@@ -656,15 +658,26 @@
   window.addEventListener("pagehide", () => { version++; clearErase(); pause(); });
   window.addEventListener("keydown", event => {
     const target = event.target;
-    if (event.altKey || event.ctrlKey || event.metaKey || event.repeat ||
+    if (outputBusy || event.altKey || event.ctrlKey || event.metaKey || event.repeat ||
         (target && (target.isContentEditable || target.closest("input,select,textarea,button,audio,summary")))) return;
     if (event.key === "ArrowLeft") { event.preventDefault(); navigate(navigationIndex() + 1, continueAfterNavigation()); }
     else if (event.key === "ArrowRight") { event.preventDefault(); navigate(navigationIndex() - 1, continueAfterNavigation()); }
     else if (event.key === " ") { event.preventDefault(); if (isPlaying()) pause(); else void play(); }
   });
+  sceneMotion.disabled = !visualPlan || visualPlan.policy === "sacred";
+  sceneMotion.addEventListener("change", () => renderProgress(progress(), completed));
   // No timer monkey-patching, HTML execution service, Web Speech API or network.
   svg.dataset.transition = "idle";
   svg.setAttribute("aria-busy", "false");
   navigate(0);
   if (recordingNode && !hasAudio) setStatus("بيانات الصوت غير مكتملة. أعد إنشاء نسخة بالصوت من السبورة الأصلية.");
+  if (window.novaWhiteboardOutput) window.novaWhiteboardOutput.init({
+    lesson, visualPlan, recordings, timing,
+    pause() {
+      if (transition) { const job = clearErase(); showStep(job.index, false); }
+      else pause();
+    },
+    currentStep: () => current, reducedMotion: () => reducedMotion,
+    sceneMotion: () => sceneMotion.checked, busy(value) { outputBusy = value; },
+  });
 })();

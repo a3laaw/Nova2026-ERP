@@ -69,7 +69,7 @@ async function geometry(page, width, index) {
   results.push({ case: "real SVG label bounds, non-overlap and page width", width, step: index });
 }
 (async () => {
-  let config = { args: ["--no-sandbox", "--disable-dev-shm-usage"], headless: true };
+  let config = { args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"], headless: true };
   if (process.env.NOVA_CHROMIUM) config.executablePath = process.env.NOVA_CHROMIUM;
   else {
     const local = require("@sparticuz/chromium").default;

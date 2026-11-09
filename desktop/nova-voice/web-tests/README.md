@@ -1,96 +1,66 @@
 # HTML player controller tests
 
 These isolated DOM tests use jsdom. They do not install dependencies in the ERP,
-and Node is **not** needed by the desktop application or the exported HTML.
+and Node is **not** needed by the desktop application or exported HTML.
 
 ```sh
 npm ci --ignore-scripts
 npm test
 ```
 
-Audio and Web Animations are mocked because jsdom does not decode audio or render
-animations. Tests check control wiring, native audio rate changes, restoration of
-original animation rates, opt-in pause/play linking, new animations, fallback and
-accessibility. They do **not** substitute for a real-browser listening/visual test.
-The Python suite separately verifies the actual embedded WAV/MP3 bytes and HTML
-export. `examples/animated-page.html` can be used for a manual browser test after
-installing a real voice model.
+Set `NOVA_VOICE_PYTHON` to the Python executable with access to this source if
+`python` is not the desired executable. Media/SVG geometry/encoding are mocked in
+JSDOM. The current suite has **189 passing DOM cases**, including 25 new output
+cases. These are not listening, browser-codec, native Windows, or 4 GB tests.
 
-## Whiteboard pipeline
+## Existing controller coverage
 
-`whiteboard.test.cjs` creates real silent/narrated lesson pages with the Python
-exporter, then checks SVG writing, pause/resume, step navigation, audio-clock
-seeking, half speed, opt-in progression, safe text insertion, inline dialogue tags, reduced motion,
-blocked playback, and narrow-screen reflow. Audio and SVG metrics are mocked:
-these are controller/integration tests, not a listening or screenshot review.
+- `player.test.cjs`, `exported.test.cjs`: arbitrary saved HTML audio wiring,
+  playback/rates/opt-in animation linking, safe local restoration and fallback.
+- `whiteboard.test.cjs`: writing, navigation, colors, six passive characters,
+  bilingual layout, native disclosures, eraser, downloads and offline Python
+  round trips. The fourth local shortcut leads to the new print/video section.
+- `whiteboard-timing.test.cjs`: deliberately unequal controlled PCM rows, gaps,
+  sample-clock seeking/rates, wrapping, reduced motion, dialogue roles, exact
+  canonical SHA-256 consistency and invalid-timing behavior. MP3 decoder trimming
+  is separately measured by Python/development-only miniaudio, not by JSDOM.
+- `whiteboard-scenes.test.cjs`, `whiteboard-science.test.cjs`: bounded untrusted
+  primitives, free-form authored examples (not keyword-routed templates), row
+  onsets/until/entrance, sacred policy and literal text. No live model request.
+- `whiteboard-full-lesson.test.cjs`: 20 cases for the authored ten-step complete
+  lesson: exact non-narrated brief, strict schema-2 origin/hints/hashes, row cues,
+  separate questions/answers, measured seeking and customized HTML -> Python ->
+  offline reopen. Controlled PCM is silence, not human speech.
 
-Set `NOVA_VOICE_PYTHON` to the Python executable with access to this source tree
-if `python` is not the desired executable. Node is a development-only dependency;
-exported HTML has no npm, CDN, server or Web Speech dependency.
+## Printing, animation and video contracts (0.8.0.dev1)
 
+`whiteboard-output.test.cjs` adds **25 cases**:
+- Fresh default-off review; whole-lesson printing/preview with all narration,
+  display overrides, questions and separate answers; temporary diagram states,
+  completed motion endpoints, ink mode and Ctrl+P notice before review.
+- No source/manifest mutation or playback seeking; literal text insertion;
+  invalid motion fails closed for both playback and output; saved customized HTML
+  strips print DOM and review/progress state before Python import/offline reopen.
+- Progressive SVG strokes, ordered icons, move and gentle pulse on the row sample
+  clock; deterministic reverse seek/rates; explicit `none` and reduced motion.
+- Stubbed MediaRecorder/Canvas/AudioContext: one-step/all-step export, silent mode,
+  audio-track wiring, locking/restoration, bounded cancellation during hung decode,
+  recorder errors, actual-type/container disagreement, output size cap, printing
+  during export and hidden-page cancellation. No partial download after failure.
+- Equal-length WebM duration metadata finalization without shifting any cluster.
 
-## Local appearance and child-character library
+**The fake video bytes in these tests are NOT encoded video.** Actual browser
+encoding/decoding is covered by the optional script below. The HTML requires no
+npm/CDN/server/Web Speech API or network at runtime.
 
-The whiteboard tests also cover role/sentence colors, the six passive SVG
-characters and filters, play/pause/reduced-motion behavior, and no additional
-animation frame loop or network. Browser-customized downloads are reloaded by
-Python, narrated through the local pipeline, and re-opened without duplicating
-live audio or outline nodes. Media and layout remain mocked, not real listening
-or screenshot/performance validation on Windows.
+## Optional real Chromium QA (not npm test)
 
-Bilingual layout regressions cover explicit LTR/RTL (ignoring Arabic punctuation),
-English-above-Arabic grouping, two columns, narrow-screen fallback, unchanged lesson
-manifests and audio position, original-row color targeting, and a browser-downloaded
-layout surviving Python reimport and offline narration. Geometry is simulated by
-jsdom; these tests do not replace real-browser visual or Windows listening tests.
+Install **playwright-core** and a Chromium executable separately for development;
+these scripts never download them and they are not desktop dependencies. Missing
+system libraries must be configured by the development environment. No Windows
+or native Qt claim follows from Linux Chromium passing.
 
-
-## Measured per-line timing (0.5.0)
-
-`whiteboard-timing.test.cjs` uses the actual Python streaming writer with
-controlled PCM chunks and deliberately unequal row durations. It checks Python/JS
-canonical SHA-256 (including Arabic, emoji and all 120 step keys), row onset and
-reveal, measured reply gaps, seek both ways, pause/replay, slider and native
-ratechange at 0.5x/2x, resize and within-row wrapping, reduced motion, speaker
-motion and browser-customized round trips back through Python integrity checks.
-Missing, malformed, partial or inconsistent timing falls back to the old
-whole-step weighting without console errors. MP3 tests check metadata semantics,
-**not actual browser decoder trimming**. The Python codec test separately decodes
-and correlates real MP3 files with development-only miniaudio. No real-browser,
-Windows, natural-voice or 4 GB hardware test is implied.
-
-
-The measured-timing suite also creates a page with the one-click combined
-exporter and reopens it offline, checking embedded audio, row boundaries and
-seeking. The combined path reuses the saved-lesson exporter; it does not introduce
-a second browser controller. Native Qt button tests are separate Python tests
-and require the system Qt dependencies (not provided by jsdom).
-
-
-## Organized layout
-
-Four further DOM cases check unique IDs and local shortcuts, transport before the
-children, independent native outline disclosures, visible transport/audio/rate
-and live status outside optional playback settings, and three named appearance
-groups without changes to lesson JSON. No controller or clock implementation is
-replaced. See `UI-ORGANIZATION-AR.md` for the separate Linux Chromium responsive
-and offline embedded-WAV smoke checks and unrun native Windows/Qt checks.
-
-## Complete lessons from a short brief (0.7.0.dev1 source preview)
-
-`whiteboard-full-lesson.test.cjs` uses the clearly authored complete-lesson fixture:
-10 steps, 16 rows, objectives, four staged diagrams, questions/separate answers,
-and summary. Twenty DOM cases cover schema-2 origin validation (including wrong
-brief/source/hints, missing provenance and wrong digest types), literal description
-text, row cues, questions not showing their answers in the same step, measured
-sample-clock seeking, and customized HTML -> Python -> offline reopening. Controlled
-PCM is silence. These tests never contact a model or certify scientific/voice quality.
-
-### Optional real Chromium QA (not npm test)
-
-`browser-full-lesson.cjs` uses separately installed **playwright-core** and a Chromium
-executable. It never downloads them or changes desktop runtime dependencies. For
-example, with those development tools already available:
+### Existing complete-lesson QA
 
 ```sh
 NODE_PATH=/path/to/development/node_modules \
@@ -100,18 +70,51 @@ NOVA_BROWSER_OUTPUT=/path/to/ignored/scratch \
 node browser-full-lesson.cjs
 ```
 
-If `NOVA_CHROMIUM` is omitted, it can use a separately installed
-`@sparticuz/chromium` with its local executable. Platform system libraries may
-also need to be configured. `NOVA_BROWSER_OUTPUT` is optional: without it the
-scratch folder is cleaned automatically. Do not put generated PCM/models or
-screenshots into Git. No Windows/4GB or native Qt test is implied.
+`browser-full-lesson.cjs`: **36 checks**, authored example, 360/768/1366px real
+SVG/font/layout and label bounds/non-overlap, row cues/pause/rates, separate
+questions/answers, reduced motion, actual Blob download during erasure -> Python
+-> offline reopen. Actual WAV decode/play/seek/save uses the existing 1602-byte
+ONNX test model, which generates **silence**, not natural voice. If NOVA_CHROMIUM is
+omitted the existing script can use a separately installed @sparticuz/chromium.
+GPU is disabled in executable-path mode for this headless sandbox.
 
-The script performs real SVG/font/layout checks at 360/768/1366px, including
-in-bounds/non-overlapping labels in **this fixture**, cue visibility, pause/rate,
-question/answer separation, reduced motion, actual Blob download during an eraser
-transition, Python import, and offline reopen. It also uses the existing 1602-byte
-ONNX test model to generate **silence**, checks actual WAV decode/play/pause and
-measured seek at 0.5x/1x/2x, then saves/reimports/reopens it. This is not a listening
-or live-AI quality test. The recorded development run used Playwright 1.65.0 and
-Linux Chromium 153.0.8010.0: 36 checks, zero page/console errors or external HTTP
-requests. All content in the example was authored locally, not generated by a service.
+### New print / motion / actual video QA
+
+```sh
+NODE_PATH=/path/to/development/node_modules \
+NOVA_CHROMIUM=/path/to/chromium \
+NOVA_VOICE_PYTHON=/path/to/source-environment/python \
+NOVA_BROWSER_OUTPUT=/path/to/ignored/output-scratch \
+NOVA_FFMPEG=/optional/path/to/development/ffmpeg \
+node browser-output.cjs
+```
+
+`browser-output.cjs` requires NOVA_CHROMIUM, and checks real SVG motion and pause,
+responsive output UI, ten steps/sixteen rows/eight print snapshots and the exact
+original brief, full A4 and ink PDFs, actual Blob/Python/offline reopen with fresh
+review, PCM reverse seeking, temporary drawing snapshots, actual 720p WebM and
+MP4 (only if the browser supports it) downloads, browser decode/seek/play, silent
+video, real cancellation/no partial file, native reduced motion and unreviewed
+Ctrl+P notice. It uses **440/660 Hz diagnostic tones**, never a human voice.
+
+NOVA_FFMPEG is optional: an explicitly provided local development decoder verifies
+full video decode and tone retention/alignment at row times on encoded timestamps,
+preserving gaps with `aresample=async=1:first_pts=0`. Nothing installs or invokes
+FFmpeg in the desktop app/browser exporter. MP4 from the tested browser contained
+VP9/Opus; a genuine MP4 container is **not** a guarantee of H.264/AAC/device support.
+
+Optional `NOVA_OUTPUT_DELIVERABLES=/path/to/requested/deliverables` additionally
+creates the authored complete lesson's **A4 PDF and full silent WebM sample** via
+the real browser workflow. This takes roughly the lesson's 71-second real-time
+length; do not mistake a short diagnostic clip for the full lesson. The recorded
+run with that option has **23 checks** (22 without it), Linux Chromium
+153.0.8010.0, zero page/console errors or external HTTP requests. The earlier
+complete-lesson 36-check regression also passed after this update.
+
+If NOVA_BROWSER_OUTPUT is omitted, scratch is removed automatically. Put retained
+screenshots, generated audio, PCM and diagnostic videos outside Git. The requested
+PDF/video samples are deliberate delivery outputs, not source-archive members;
+packaging excludes movie extensions as well as WAV/MP3/environments/node_modules.
+
+See [LESSON-OUTPUT-AR.md](../LESSON-OUTPUT-AR.md) for Arabic operation, format,
+resource/review/privacy and unverified native/live-model/voice limitations.

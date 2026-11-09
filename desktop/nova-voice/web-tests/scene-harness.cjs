@@ -66,6 +66,7 @@ function mount(folder, options = {}) {
       });
       prototype.play = function () { state(this).paused = false; state(this).ended = false; this.dispatchEvent(new window.Event("play")); return Promise.resolve(); };
       prototype.pause = function () { state(this).paused = true; this.dispatchEvent(new window.Event("pause")); };
+      if (options.beforeParse) options.beforeParse(window);
     },
   });
   const window = dom.window, document = window.document;

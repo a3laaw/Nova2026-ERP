@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nova-voice-desktop"
-version = "0.7.0.dev1"
-description = "Local speech and SVG lessons with optional free-only, reviewed full-lesson authoring."
+version = "0.8.0.dev1"
+description = "Local reviewed lessons with SVG motion, complete A4 printing and browser video export."
 requires-python = ">=3.11,<3.14"
 license = "GPL-3.0-or-later"
 dependencies = [

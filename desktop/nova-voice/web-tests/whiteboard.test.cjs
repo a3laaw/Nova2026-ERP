@@ -655,7 +655,8 @@ test("organized lesson has unique IDs, local section shortcuts and a keyboard sk
     assert.equal(ids.length, new Set(ids).size);
     assert.equal(app.document.querySelector(".skip-link").getAttribute("href"), "#wb-play");
     const shortcuts = app.document.querySelectorAll(".lesson-shortcuts a");
-    assert.equal(shortcuts.length, 3);
+    assert.equal(shortcuts.length, 4);
+    assert.ok(Array.from(shortcuts, link => link.hash).includes("#wb-output"));
     for (const link of shortcuts) assert.ok(app.get(link.hash.slice(1)));
     assert.equal(app.networkCalls, 0);
   } finally { app.close(); }

@@ -11,7 +11,7 @@
     right_triangle: ["a", "b", "w", "h", "unit"], calculation: ["a", "b", "op", "size"],
   };
   const icons = ["apple", "ball", "block", "leaf", "star", "sun", "cloud", "drop", "book", "person"];
-  const common = ["kind", "row", "until", "x", "y", "fill", "stroke", "line_width", "dx", "dy"];
+  const common = ["kind", "row", "until", "x", "y", "fill", "stroke", "line_width", "dx", "dy", "motion"];
   const integer = (v, a, b) => Number.isSafeInteger(v) && v >= a && v <= b;
   const text = (v, n, empty = false) => typeof v === "string" && (empty || !!v.trim()) && Array.from(v).length <= n && !/[\u0000-\u0008\u000b-\u001f]/.test(v) && !Array.from(v).some(c => c.length === 1 && c.charCodeAt(0) >= 0xd800 && c.charCodeAt(0) <= 0xdfff);
   const check = condition => { if (!condition) throw new Error("Invalid visual plan"); };
@@ -26,6 +26,13 @@
     check(integer(e.row, 0, rows - 1) && integer(e.until ?? rows, e.row + 1, rows));
     check(integer(e.x, 0, 1000) && integer(e.y, 0, 420));
     for (const key of ["dx", "dy"]) check(integer(e[key] ?? 0, -1000, 1000));
+    if (Object.prototype.hasOwnProperty.call(e, "motion")) {
+      const m = e.motion;
+      check(m && typeof m === "object" && !Array.isArray(m) && ["draw", "move", "pulse", "none"].includes(m.type));
+      keys(m, m.type === "move" ? ["type", "dx", "dy"] : m.type === "pulse" ? ["type", "cycles"] : ["type"]);
+      if (m.type === "move") check(integer(m.dx, -300, 300) && integer(m.dy, -180, 180));
+      if (m.type === "pulse") check(integer(m.cycles, 1, 4));
+    }
     for (const key of ["fill", "stroke"]) check(typeof (e[key] ?? "none") === "string" && /^(none|#[0-9a-fA-F]{6})$/.test(e[key] ?? "none"));
     check(integer(e.line_width ?? 3, 1, 12));
     const n = (key, a, b, fallback) => check(integer(e[key] ?? fallback, a, b));
@@ -187,20 +194,50 @@
     const frame = node("svg", { x: 35, y: top, width: width - 70, height: (width - 70) * 420 / 1000, viewBox: "0 0 1000 420", overflow: "hidden", "data-visual-scene": String(version), "aria-hidden": "true", "pointer-events": "none" });
     frame.append(node("rect", { x: 0, y: 0, width: 1000, height: 420, rx: 18, fill: "#F8FAFC", stroke: "#E2E8F0", "stroke-width": 2 }));
     const groups = step.elements.map((e, i) => {
-      const g = node("g", { opacity: 0, "data-scene-element": i }); draw(g, e); frame.append(g); return { e, g };
+      const g = node("g", { opacity: 0, "data-scene-element": i }); draw(g, e); frame.append(g);
+      // Normalized pathLength works for every permitted geometric SVG shape.
+      // No generated CSS/SMIL, timers, getTotalLength, IDs or animation code.
+      const strokes = Array.from(g.querySelectorAll("path,line,polyline,polygon,rect,circle,ellipse"));
+      const fills = strokes.map(shape => ({ shape, fill: shape.getAttribute("fill") || "none" }));
+      return { e, g, strokes, fills, children: Array.from(g.children) };
     });
     parent.append(frame);
     return {
       bottom: top + (width - 70) * 420 / 1000 + 55,
       hasVisibleContent: () => groups.some(({ g }) => g.childNodes.length > 0 && g.getAttribute("opacity") === "1"),
-      update(bounds, now, reduced) {
-        groups.forEach(({ e, g }) => {
+      update(bounds, now, reduced, still = false) {
+        groups.forEach(({ e, g, strokes, fills, children }) => {
           const start = bounds[e.row].start, end = bounds[e.row].end;
           const until = e.until ?? bounds.length;
           const visible = now >= start && (until === bounds.length || now < bounds[until].start);
-          const part = reduced ? 1 : Math.max(0, Math.min(1, (now - start) / Math.max(1, (end - start) * 0.6)));
+          const rowPart = Math.max(0, Math.min(1, (now - start) / Math.max(0.000001, end - start)));
+          const mode = e.motion ? e.motion.type : "draw";
+          const staticElement = reduced || still || mode === "none";
+          const part = staticElement ? 1 : Math.min(1, rowPart / 0.6);
+          const moving = mode === "move" && !reduced;
+          const movePart = still ? 1 : rowPart;
+          const x = (staticElement ? 0 : (e.dx ?? 0) * (1 - part)) + (moving ? e.motion.dx * movePart : 0);
+          const y = (staticElement ? 0 : (e.dy ?? 0) * (1 - part)) + (moving ? e.motion.dy * movePart : 0);
           g.setAttribute("opacity", visible ? "1" : "0");
-          g.setAttribute("transform", `translate(${(e.dx ?? 0) * (1 - part)} ${(e.dy ?? 0) * (1 - part)})`);
+          g.setAttribute("transform", `translate(${x} ${y})`);
+          g.dataset.activeCue = String(visible && now < end);
+          const tracing = mode === "draw" && !reduced && !still && e.kind !== "icons";
+          strokes.forEach(shape => {
+            if (tracing) {
+              shape.setAttribute("pathLength", "100");
+              shape.setAttribute("stroke-dasharray", "100 100");
+              shape.setAttribute("stroke-dashoffset", String(100 * (1 - part)));
+            } else {
+              shape.removeAttribute("pathLength"); shape.removeAttribute("stroke-dasharray"); shape.removeAttribute("stroke-dashoffset");
+            }
+          });
+          fills.forEach(({ shape, fill }) => shape.setAttribute("fill-opacity", tracing && fill !== "none" ? String(Math.max(0, Math.min(1, (part - 0.65) / 0.35))) : "1"));
+          children.forEach((child, index) => {
+            const staggered = mode === "draw" && e.kind === "icons" && !reduced && !still;
+            const pulse = mode === "pulse" && !reduced && !still && rowPart > 0 && rowPart < 1;
+            child.setAttribute("opacity", staggered && index >= Math.ceil(part * children.length) ? "0"
+              : pulse ? String(0.78 + 0.22 * (0.5 + 0.5 * Math.cos(rowPart * Math.PI * 2 * e.motion.cycles))) : "1");
+          });
         });
       },
     };

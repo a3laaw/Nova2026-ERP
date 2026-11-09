@@ -14,7 +14,7 @@
     <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="m7 23 2-8L22 2l8 8-13 13-8 2Z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/><path d="m18 6 8 8M9 15l8 8M4 30h23" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></div>
     <div><p class="eyebrow">NOVA · تعلّم خطوة بخطوة</p><h1 id="lesson-title" dir="auto">@@NOVA_TITLE@@</h1><p class="subtitle">سبورة تفاعلية · كتابة بالقلم · نص الدرس محفوظ داخل هذا الملف</p></div>
     <nav class="lesson-shortcuts" aria-label="أقسام صفحة الدرس">
-      <a href="#board-paper">السبورة</a><a href="#wb-customization">ألوان وأطفال</a><a href="#wb-transcript">النص المقروء</a>
+      <a href="#board-paper">السبورة</a><a href="#wb-customization">ألوان وأطفال</a><a href="#wb-transcript">النص المقروء</a><a href="#wb-output">طباعة وفيديو</a>
     </nav>
     <span class="local-badge">محلي · دون خدمات خارجية</span>
   </header>
@@ -61,11 +61,32 @@
         <audio id="wb-audio" controls preload="metadata" aria-label="صوت الخطوة الحالية" hidden></audio>
         <details class="playback-settings">
           <summary>خيارات التشغيل ومعلومات الصوت</summary>
-          <div class="playback-options"><label><input id="wb-auto-next" type="checkbox"> الانتقال إلى الخطوة التالية تلقائيًا</label></div>
+          <div class="playback-options"><label><input id="wb-auto-next" type="checkbox"> الانتقال إلى الخطوة التالية تلقائيًا</label><label><input id="wb-scene-motion" type="checkbox" checked> رسم تدريجي وحركة تعليمية خفيفة</label></div>
           <p class="hint">للتقديم والترجيع استخدم شريط الصوت عند وجود تسجيل. السرعة تربط الصوت بالكتابة.</p>
         </details>
         <p id="wb-status" class="hint" role="status">هذه نسخة السبورة قبل توليد الصوت. أضف الصوت من الخطوة 2 داخل Nova Voice؛ الكتابة تعمل الآن دون نموذج صوتي.</p>
       </section>
+      <details id="wb-output" class="output-panel">
+        <summary>طباعة الدرس كاملًا أو تصديره كفيديو</summary>
+        <div class="output-content">
+          <p class="hint">الطباعة تشمل كل الخطوات والشرح والرسوم المرحلية والأسئلة وإجاباتها؛ ليست صورة للخطوة المفتوحة. الفيديو يعرض الرسوم ونص النطق دون أدوات الواجهة، بالصوت المضمّن إن وُجد. لا شبكة أو تسجيل للشاشة أو الميكروفون.</p>
+          <label class="output-review"><input id="wb-output-review" type="checkbox"> راجعت نص الدرس ورسوماته وإجاباته وملاءمته وحقوق استخدام صوته قبل الطباعة أو الفيديو. هذا تأكيد مراجعة شخصي، لا شهادة صحة.</label>
+          <fieldset class="settings-group"><legend>1 · ورق A4 أو PDF</legend>
+            <label><input id="wb-print-ink" type="checkbox"> نسخة رمادية موفّرة للحبر</label>
+            <div class="output-actions"><button id="wb-print-preview" type="button" disabled>معاينة كل صفحات الدرس</button><button id="wb-print" class="primary" type="button" disabled>طباعة / حفظ PDF</button><button id="wb-print-close" type="button" hidden>إخفاء المعاينة</button></div>
+            <p class="hint">تُحفظ كل لقطة تغيّر فيها الرسم، حتى لو اختفى عنصر في آخر الخطوة. من نافذة الطباعة اختر A4 و«حفظ PDF» إن أردت ملفًا.</p>
+          </fieldset>
+          <fieldset class="settings-group"><legend>2 · فيديو محلي تجريبي</legend>
+            <div class="output-options"><label for="wb-video-scope">المحتوى <select id="wb-video-scope"><option value="all">الدرس كاملًا</option><option value="current">الخطوة الحالية فقط</option></select></label><label for="wb-video-format">الصيغة <select id="wb-video-format"><option value="webm">WebM</option><option value="mp4">MP4 — إذا دعمه المتصفح</option></select></label></div>
+            <p id="wb-video-support" class="hint"></p>
+            <p class="hint">1280×720 · نحو 20 إطارًا/ثانية حسب الجهاز · سرعة 1×. التصدير يستغرق مدة العرض تقريبًا؛ اترك الصفحة ظاهرة. تقليل الحركة وخيار الحركة أعلاه يُحترمان. حد تجريبي 15 دقيقة و128 MiB؛ لا ضمان لجهاز 4 جيجا. النسخة بلا تسجيل تعطي فيديو صامتًا، ولا تولّد صوتًا جديدًا.</p>
+            <div class="output-actions"><button id="wb-video" class="primary" type="button" disabled>تصدير الفيديو</button><button id="wb-video-cancel" type="button" disabled>إلغاء التصدير</button></div>
+            <progress id="wb-video-progress" max="1" value="0" aria-label="تقدم تصدير الفيديو" hidden></progress>
+            <canvas id="wb-video-canvas" width="1280" height="720" aria-label="معاينة الفيديو الجاري تصديره" hidden></canvas>
+          </fieldset>
+          <p id="wb-output-status" class="hint" role="status">ابدأ بمراجعة الدرس ثم فعّل تأكيد المراجعة. لا يُحفظ هذا التأكيد في HTML المنزّل.</p>
+        </div>
+      </details>
       <section id="character-stage" class="character-stage" aria-label="شخصيات الدرس" hidden>
         <div id="character-role-1" class="character-card" hidden><div class="character-art"></div><p class="character-caption"></p></div>
         <p class="character-note">أصدقاء التعلّم<br><span>حركات تشجيعية؛ ليست مزامنة شفاه أو أصواتًا جديدة</span></p>
@@ -105,6 +126,7 @@
   <footer class="page-footer">العناوين للتنظيم ولا تُقرأ صوتيًا. عند وجود خريطة التوقيت: حدود فعلية لكل سطر وتقدير للكتابة داخله، وليس محاذاة كلمة بكلمة. دونها يعمل التقدير السابق.</footer>
   <noscript><p>السبورة والصوت يحتاجان JavaScript. يمكنك قراءة الدرس هنا:</p>@@NOVA_FALLBACK@@</noscript>
 </main>
+<section id="wb-print-root" aria-label="معاينة الدرس كاملًا للطباعة"><p>راجع الدرس وفعّل تأكيد المراجعة في «طباعة وفيديو» أولًا. الطباعة تحتاج JavaScript؛ لا تطبع هذه الصفحة على أنها درس معتمد.</p></section>
 <script id="nova-whiteboard-data" type="application/json">@@NOVA_DATA@@</script>
 @@NOVA_AUDIO@@
 @@NOVA_APPEARANCE@@

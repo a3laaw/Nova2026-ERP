@@ -98,7 +98,7 @@ def test_archives_and_large_generated_directories_are_excluded(source_root):
         path = source_root / "assets" / directory
         path.mkdir()
         (path / "excluded.txt").write_text("not source")
-    for suffix in (".rar", ".zip", ".WAV", ".mp3", ".pyc"):
+    for suffix in (".rar", ".zip", ".WAV", ".mp3", ".mp4", ".WEBM", ".mkv", ".mov", ".pyc"):
         (source_root / "examples" / ("excluded" + suffix)).write_bytes(b"generated")
     target = source_root / "source.rar"
     package_source(source_root, target)
