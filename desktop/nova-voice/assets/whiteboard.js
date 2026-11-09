@@ -328,6 +328,13 @@
         const bound = { start: cursor, end: cursor + weight }; cursor += weight; return bound;
       });
       totalWeight = cursor;
+      if (visualPlan.origin) {
+        const original = document.createElement("details"), heading = document.createElement("summary"), body = document.createElement("p");
+        original.className = "visual-brief";
+        heading.textContent = "الوصف الأصلي · محفوظ ولا يُنطق";
+        body.textContent = visualPlan.origin.brief.text; body.dir = "auto";
+        original.append(heading, body); transcript.append(original);
+      }
       const description = document.createElement("p");
       description.className = "visual-description";
       description.textContent = visualPlan.steps[current].description;

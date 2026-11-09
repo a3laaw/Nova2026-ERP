@@ -22,6 +22,7 @@ FILES = (
     "HTML-GUIDE.md",
     "WHITEBOARD-GUIDE.md",
     "SMART-SCENES-AR.md",
+    "FULL-LESSON-AR.md",
     "CHANGELOG.md",
     "TIMING-VERIFICATION-AR.md",
     "UI-ORGANIZATION-AR.md",

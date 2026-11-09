@@ -14,7 +14,7 @@ from threading import Event
 from urllib.error import HTTPError
 from urllib.request import HTTPRedirectHandler, HTTPSHandler, ProxyHandler, Request, build_opener
 
-from .scenes import MAX_PLAN_BYTES, SceneError, VisualPlan, empty_plan
+from .scenes import MAX_PLAN_BYTES, SceneError, VisualPlan, _unique, empty_plan
 from .voices import Cancelled, check_cancelled
 
 ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
@@ -107,20 +107,7 @@ def _open(request: Request, *, timeout: int):
     return opener.open(request, timeout=timeout)
 
 
-def request_plan(
-    source: dict,
-    key: str,
-    cancel: Event,
-    progress: Callable[[int], None],
-    *,
-    consent: bool = False,
-    adult: bool = False,
-    subject: str = "",
-    grade: str = "",
-    policy: str = "general",
-    _transport: Callable = _open,
-) -> VisualPlan:
-    """Exactly one bounded request. Any uncertainty/error stops; never retry."""
+def _authorize(key: str, cancel: Event, *, consent: bool, adult: bool, policy: str):
     check_cancelled(cancel)
     if consent is not True or adult is not True:
         raise SceneError("يلزم إذن إرسال هذا الدرس وتأكيد أهلية حساب المعلم البالغ أولًا.")
@@ -132,14 +119,22 @@ def request_plan(
         or not re.fullmatch(r"[A-Za-z0-9_.-]+", key)
     ):
         raise SceneError("أدخل مفتاح OpenRouter في خانته داخل البرنامج، لا داخل السكريبت.")
-    if (
-        len(source.get("script", "")) > MAX_CLOUD_CHARACTERS
-        or len(source.get("steps", [])) > MAX_CLOUD_STEPS
-    ):
-        raise SceneError(
-            "للطلب المجاني الأول: قسّم الدرس إلى 12 خطوة و12000 حرف كحد أقصى، أو استورد خطة محليًا."
-        )
-    system, content = prompt_parts(source, subject, grade)
+
+
+def request_answer(
+    system: str,
+    content: str,
+    key: str,
+    cancel: Event,
+    progress: Callable[[int], None],
+    *,
+    consent: bool = False,
+    adult: bool = False,
+    policy: str = "general",
+    _transport: Callable = _open,
+) -> str:
+    """Shared free-only boundary for one explicit task, never a second repair call."""
+    _authorize(key, cancel, consent=consent, adult=adult, policy=policy)
     if key in content:
         raise SceneError("يظهر المفتاح داخل بيانات الدرس؛ أزله من النص قبل أي إرسال.")
     payload = {
@@ -218,7 +213,13 @@ def request_plan(
             "تعذّر الاتصال الآمن أو انتهت المهلة. لم تُحفظ بيانات الاتصال ولم يُجرّب بديل."
         ) from None
     try:
-        data = json.loads(b"".join(chunks).decode("utf-8"))
+        data = json.loads(
+            b"".join(chunks).decode("utf-8"),
+            object_pairs_hook=_unique,
+            parse_constant=lambda _: (_ for _ in ()).throw(
+                SceneError("استجابة المزود تحتوي أرقامًا غير منتهية؛ لم تُستخدم.")
+            ),
+        )
         if not isinstance(data, dict) or "error" in data:
             raise SceneError("أعاد المزود خطأ. لم تُعتمد أي خطة أو إعادة محاولة.")
         model = data.get("model")
@@ -241,15 +242,53 @@ def request_plan(
         answer = choices[0]["message"]["content"]
         if not isinstance(answer, str) or key in answer:
             raise SceneError("استجابة المزود غير صالحة؛ لم تُستخدم.")
-        plan = VisualPlan.from_json(answer, source)
-        if key in json.dumps(plan.to_data(), ensure_ascii=False):
-            raise SceneError("استجابة المزود غير صالحة؛ لم تُستخدم.")
     except SceneError:
         raise
     except (ValueError, KeyError, TypeError, AttributeError, RecursionError, UnicodeError):
         raise SceneError(
             "تعذّر قراءة اقتراح المزود. لم تُعتمد خطة ولم تُرسل محاولة إصلاح تلقائية."
         ) from None
+    check_cancelled(cancel)
+    return answer
+
+
+def request_plan(
+    source: dict,
+    key: str,
+    cancel: Event,
+    progress: Callable[[int], None],
+    *,
+    consent: bool = False,
+    adult: bool = False,
+    subject: str = "",
+    grade: str = "",
+    policy: str = "general",
+    _transport: Callable = _open,
+) -> VisualPlan:
+    """Exactly one bounded request. Any uncertainty/error stops; never retry."""
+    _authorize(key, cancel, consent=consent, adult=adult, policy=policy)
+    if (
+        len(source.get("script", "")) > MAX_CLOUD_CHARACTERS
+        or len(source.get("steps", [])) > MAX_CLOUD_STEPS
+    ):
+        raise SceneError(
+            "للطلب المجاني الأول: قسّم الدرس إلى 12 خطوة و12000 حرف كحد أقصى، أو استورد خطة محليًا."
+        )
+    system, content = prompt_parts(source, subject, grade)
+    answer = request_answer(
+        system,
+        content,
+        key,
+        cancel,
+        progress,
+        consent=consent,
+        adult=adult,
+        policy=policy,
+        _transport=_transport,
+    )
+    plan = VisualPlan.from_json(answer, source)
+    if key in json.dumps(plan.to_data(), ensure_ascii=False):
+        raise SceneError("استجابة المزود غير صالحة؛ لم تُستخدم.")
     check_cancelled(cancel)
     progress(100)
     return plan

@@ -54,10 +54,13 @@ from .html_export import (
     render_html,
     validate_destination,
 )
+from .lesson_draft import LessonDraft
+from .lesson_picker import LessonPicker, LessonRequest
+from .lesson_planner import request_lesson
 from .scene_examples import VISUAL_EXAMPLE, example_plan
 from .scene_picker import PlannerRequest, ScenePicker
 from .scene_planner import request_plan
-from .scenes import VisualPlan
+from .scenes import SceneError, VisualPlan
 from .storage import (
     application_dir,
     load_preferences,
@@ -93,6 +96,8 @@ class MainWindow(QMainWindow):
         self.voices: list[VoiceSpec] = []
         self.worker: TaskWorker | None = None
         self._closing = False
+        self._adopted_draft: LessonDraft | None = None
+        self._adopted_revision = -1
         self._result_file: Path | None = None
         self._html_source: Path | None = None
         self._html_result_file: Path | None = None
@@ -309,11 +314,20 @@ class MainWindow(QMainWindow):
         columns.addWidget(settings_card, 4)
         input_layout.addLayout(columns, 1)
         self.scene_section = Disclosure("مشاهد ذكية · اختياري: سكريبت ← مسودة ← مراجعة ← اعتماد")
-        self.scene_picker = ScenePicker(self._source_lesson)
+        self.scene_picker = ScenePicker(self._source_lesson, plan_adapter=self._bind_story_plan)
         self.scene_picker.changed.connect(self._update_buttons)
         self.scene_picker.requested.connect(self._request_scenes)
         self.scene_picker.example_requested.connect(self._scene_example)
         self.scene_section.content_layout.addWidget(self.scene_picker)
+        self.lesson_section = Disclosure("من وصف قصير إلى درس كامل مرسوم · مسودة ومراجعة أولًا")
+        self.lesson_picker = LessonPicker(lambda: self.scene_picker.policy.currentData())
+        self.lesson_picker.changed.connect(self._update_buttons)
+        self.lesson_picker.requested.connect(self._request_lesson)
+        self.lesson_picker.adopted.connect(self._adopt_lesson)
+        self.lesson_picker.detached.connect(self._detach_lesson)
+        self.scene_picker.policy.currentIndexChanged.connect(self.lesson_picker.invalidate)
+        self.lesson_section.content_layout.addWidget(self.lesson_picker)
+        input_layout.addWidget(self.lesson_section)
         input_layout.addWidget(self.scene_section)
         self.workspace_tabs.addTab(input_page, "النص والأصوات")
 
@@ -628,14 +642,15 @@ class MainWindow(QMainWindow):
             except ScriptError:
                 required = {1, 2}
         ready = required.issubset(self._cast()) and 0 < len(text.strip()) <= MAX_CHARACTERS
-        speech_allowed = self.scene_picker.audio_allowed()
+        story_ready = self._story_ready()
+        speech_allowed = self.scene_picker.audio_allowed() and story_ready
         self.generate_button.setEnabled(not busy and ready and speech_allowed)
         self.preview_button.setEnabled(not busy and ready and speech_allowed)
         self.html_export_button.setEnabled(
             not busy and ready and speech_allowed and self._html_source is not None
         )
         self.clear_html_button.setEnabled(not busy and self._html_source is not None)
-        scene_ready = self.scene_picker.export_ready()
+        scene_ready = self.scene_picker.export_ready() and story_ready
         self.create_board_button.setEnabled(
             not busy and scene_ready and 0 < len(text.strip()) <= MAX_CHARACTERS
         )
@@ -661,7 +676,7 @@ class MainWindow(QMainWindow):
             and self._board_lesson.visuals.to_data()["policy"] == "sacred"
         )
         self.board_audio_button.setEnabled(
-            not busy and board_ready and not sacred_board and speech_allowed
+            not busy and board_ready and not sacred_board and self.scene_picker.audio_allowed()
         )
         if self._board_source and self._board_lesson:
             changed = bool(text.strip()) and text.strip() != self._board_lesson.script
@@ -707,7 +722,12 @@ class MainWindow(QMainWindow):
         self.cancel_button.setEnabled(busy and not self._closing)
         self.progress.setVisible(busy)
 
-    def _options(self) -> RenderOptions:
+    def _options(self, *, for_editor: bool = True) -> RenderOptions:
+        if for_editor and not self._story_ready():
+            raise VoiceError(
+                "الوصف أو المسودة أو النص تغيّر، أو المشاهد لم تُعتمد؛ "
+                "راجعها مجددًا أو افصل الارتباط صراحة."
+            )
         if not self.scene_picker.audio_allowed():
             raise VoiceError("حماية النصوص المقدسة مفعّلة؛ لا نطق آلي أو تلاوة Piper في هذا الوضع.")
         return RenderOptions(
@@ -722,6 +742,8 @@ class MainWindow(QMainWindow):
         try:
             self._options()  # Also guard keyboard/shortcut paths before any save dialog.
             text = validate_text(self.editor.toPlainText())
+            if self._adopted_draft is not None:
+                text = self._lesson_for_export().spoken_script  # Brief/headings are never spoken.
             cast = self._cast()
             if self.dialogue_mode():
                 validate_dialogue_cast(parse_dialogue(text), cast, self._options())
@@ -829,13 +851,127 @@ class MainWindow(QMainWindow):
     def _source_lesson(self) -> Lesson:
         return parse_lesson(self.editor.toPlainText(), dialogue=self.dialogue_mode())
 
+    def _bind_story_plan(self, plan: VisualPlan, source: Lesson) -> VisualPlan:
+        if self._adopted_draft is None:
+            return plan
+        brief = self._adopted_draft.brief.to_data()
+        if (
+            self.lesson_picker.revision != self._adopted_revision
+            or self.scene_picker.policy.currentData() != "general"
+            or self.scene_picker.subject.text() != brief["subject"]
+            or self.scene_picker.grade.text() != brief["grade"]
+        ):
+            raise SceneError(
+                "الوصف أو المسودة أو سياسة المحتوى أو المادة/الصف تغيّرت؛ راجع الدرس أولًا."
+            )
+        return self._adopted_draft.bind_plan(plan, source)
+
+    def _story_plan(self):
+        if self._adopted_draft is None:
+            return None
+        if not self.scene_picker.use_plan.isChecked():
+            raise SceneError("الدرس الكامل يحتاج رسومه؛ أعد تضمينها أو افصل الارتباط صراحة.")
+        source = self._source_lesson()
+        plan = self.scene_picker.approved_for(source)
+        if plan is None:
+            raise SceneError("الدرس الموسع يحتاج خطة رسوم معتمدة.")
+        return self._bind_story_plan(plan, source)
+
+    def _story_ready(self) -> bool:
+        try:
+            self._story_plan()
+            return True
+        except ScriptError:
+            return False
+
     def _lesson_for_export(self) -> Lesson:
         lesson = self._source_lesson()
+        if self._adopted_draft is not None:
+            return replace(lesson, visuals=self._story_plan())
         return replace(lesson, visuals=self.scene_picker.approved_for(lesson))
+
+    def _request_lesson(self, request: LessonRequest) -> None:
+        if self.worker:
+            return
+        self._start_task(
+            lambda cancel, progress: request_lesson(
+                request.brief,
+                request.key,
+                cancel,
+                progress,
+                consent=request.consent,
+                adult=request.adult,
+            ),
+            "lesson-draft",
+        )
+
+    def _adopt_lesson(self, draft: LessonDraft) -> None:
+        if self.worker:
+            return
+        if (
+            QMessageBox.question(
+                self,
+                "نقل درس بعد مراجعتك",
+                "هل راجعت الوصف الأصلي والنص الموسع والحقائق والإجابات والرسوم؟ "
+                "سيُستبدل نص المحرر بالدرس لراوٍ واحد، دون تغيير أصواتك أو نطق تلقائي. "
+                "بعدها اعتمد خطة المشاهد من القسم التالي قبل التصدير.",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            != QMessageBox.StandardButton.Yes
+        ):
+            return
+        try:
+            if draft != self.lesson_picker.current():
+                raise SceneError("تغيّرت المسودة؛ راجع النسخة الحالية.")
+            lesson = draft.compile()
+            self.mode_combo.setCurrentIndex(0)
+            self.editor.setPlainText(lesson.script)
+            self.scene_picker.policy.setCurrentIndex(0)
+            hints = draft.brief.to_data()
+            self.scene_picker.subject.setText(hints["subject"])
+            self.scene_picker.grade.setText(hints["grade"])
+            self._adopted_draft = draft
+            self._adopted_revision = self.lesson_picker.revision
+            self.scene_picker.set_draft(lesson.visuals)
+            self.scene_section.set_expanded(True)
+            self.status.setText(
+                "نُقل الدرس الموسع مع حفظ الوصف. راجع خطة المشاهد واعتمدها؛ لم يبدأ صوت أو تصدير."
+            )
+            self._update_buttons()
+        except ScriptError as error:
+            QMessageBox.warning(self, "راجع المسودة", str(error))
+
+    def _detach_lesson(self) -> None:
+        if self.worker or self._adopted_draft is None:
+            return
+        if (
+            QMessageBox.question(
+                self,
+                "فصل الارتباط بالوصف",
+                "سيبقى النص الحالي والوصف في مسودة JSON، "
+                "لكن التصدير التقليدي لن يضمن حفظ ارتباطهما. "
+                "هل تريد فصل الارتباط والعودة للتحرير العادي؟",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            != QMessageBox.StandardButton.Yes
+        ):
+            return
+        self._adopted_draft = None
+        self._adopted_revision = -1
+        self.scene_picker.invalidate_source()
+        self._update_buttons()
 
     def _request_scenes(self, request: PlannerRequest) -> None:
         if self.worker:
             return
+        if self._adopted_draft is not None:
+            try:
+                self._bind_story_plan(self._adopted_draft.compile().visuals, self._source_lesson())
+            except ScriptError as error:
+                QMessageBox.warning(self, "راجع ارتباط الدرس قبل إعادة الرسم", str(error))
+                return
         self._start_task(
             lambda cancel, progress: request_plan(
                 request.source,
@@ -984,13 +1120,31 @@ class MainWindow(QMainWindow):
         try:
             board = WhiteboardPage.load(self._board_source)
             cast = self._cast()
-            options = self._options()
+            options = self._options(for_editor=False)
             validate_lesson_cast(board.lesson, cast, options)
         except (OSError, HtmlExportError, ScriptError, VoiceError, AudioError) as error:
             QMessageBox.warning(self, "راجع السبورة والأصوات", str(error))
             return
         current_text = self.editor.toPlainText().strip()
-        if (
+        if board.lesson.visuals and board.lesson.visuals.to_data()["schema"] == 2:
+            # A saved full-lesson page can come from a silent draft preview.
+            # Approval is never serialized: review this independent saved source,
+            # without letting an unrelated stale editor draft block its workflow.
+            if (
+                QMessageBox.question(
+                    self,
+                    "مراجعة درس موسع محفوظ قبل توليد صوته",
+                    "قد يكون هذا الملف معاينة مسودة؛ الحزمة لا تحفظ اعتمادًا بشريًا. "
+                    "هل فتحت السبورة وراجعت الوصف الأصلي والنص والحقائق والإجابات "
+                    "والرسوم وكل فرق بين العرض والنطق، وتوافق على توليد صوتها الآن؟ "
+                    "الصوت من بيانات هذا الملف المحفوظ، لا من المحرر أو مسودة أخرى.",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No,
+                )
+                != QMessageBox.StandardButton.Yes
+            ):
+                return
+        elif (
             current_text
             and current_text != board.lesson.script
             and QMessageBox.question(
@@ -1155,6 +1309,7 @@ class MainWindow(QMainWindow):
         messages = {
             "import": "جارٍ استيراد النموذج…",
             "scene-plan": "جارٍ طلب اقتراح مجاني واحد بإذنك؛ لا رسم أو نطق قبل المراجعة…",
+            "lesson-draft": "جارٍ اقتراح درس كامل ورسوم بطلب مجاني واحد؛ لا اعتماد أو نطق تلقائي…",
             "html": "جارٍ تجهيز الصفحة وتوليد الصوت محليًا…",
             "whiteboard": "جارٍ تحويل السكريبت إلى سبورة HTML محليًا…",
             "whiteboard-audio": "جارٍ توليد مقطع صوتي لكل خطوة من السبورة…",
@@ -1190,7 +1345,7 @@ class MainWindow(QMainWindow):
                 elif self._progress_kind in ("html", "whiteboard-audio"):
                     stage = "حفظ الصوت داخل HTML" if value >= 85 else "توليد صوت الصفحة"
                     self.status.setText(f"جارٍ {stage} محليًا… {value}%")
-                elif self._progress_kind == "scene-plan":
+                elif self._progress_kind in ("scene-plan", "lesson-draft"):
                     self.status.setText("وصل رد المزود؛ جارٍ التحقق المحلي من خطة المشاهد…")
                 elif self._progress_kind == "whiteboard":
                     self.status.setText(f"جارٍ إنشاء ملف السبورة… {value}%")
@@ -1207,7 +1362,23 @@ class MainWindow(QMainWindow):
         if self._progress_kind == "import":
             self.status.setText("تمت إضافة النموذج. اكتب السكريبت لتجربة الصوت.")
             return
+        if isinstance(result, LessonDraft):
+            try:
+                self.lesson_picker.set_draft(result)
+                self.lesson_section.set_expanded(True)
+                self.status.setText(
+                    "وصلت مسودة درس كامل ورسوم وأسئلة؛ راجعها. لم يتغير المحرر أو يبدأ صوت."
+                )
+            except ScriptError as error:
+                QMessageBox.warning(self, "راجع الوصف الحالي", str(error))
+            return
         if isinstance(result, VisualPlan):
+            if self._adopted_draft is not None:
+                try:
+                    result = self._bind_story_plan(result, self._source_lesson())
+                except ScriptError as error:
+                    QMessageBox.warning(self, "النص تغير عن المسودة", str(error))
+                    return
             self.scene_section.set_expanded(True)
             self.scene_picker.set_draft(result)
             self.status.setText(
@@ -1456,7 +1627,7 @@ class MainWindow(QMainWindow):
             save_preferences(self.data_dir, self.preferences)
         except OSError:
             logging.getLogger(__name__).warning("Could not save local preferences")
-        for temporary in (self.scene_picker, self._preview_directory):
+        for temporary in (self.lesson_picker, self.scene_picker, self._preview_directory):
             try:
                 temporary.cleanup()
             except OSError:

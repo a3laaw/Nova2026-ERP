@@ -66,8 +66,8 @@
       step.rows.forEach(row => { keys(row, ["speaker", "text"]); check([1, 2].includes(row.speaker) && text(row.text, 180)); });
     });
     const p = lesson.visuals;
-    keys(p, ["schema", "source_fingerprint", "subject", "grade", "policy", "notes", "steps"]);
-    check(p.schema === 1 && text(p.subject, 80, true) && text(p.grade, 80, true) && ["general", "sacred"].includes(p.policy));
+    keys(p, ["schema", "source_fingerprint", "subject", "grade", "policy", "notes", "steps", ...(p.schema === 2 ? ["origin"] : [])]);
+    check([1, 2].includes(p.schema) && text(p.subject, 80, true) && text(p.grade, 80, true) && ["general", "sacred"].includes(p.policy));
     check(Array.isArray(p.notes) && p.notes.length <= 12 && p.notes.every(n => text(n, 400)));
     check(Array.isArray(p.steps) && p.steps.length === lesson.steps.length && JSON.stringify(p).length <= 524288);
     let count = 0, spoken = lesson.steps.reduce((sum, step) => sum + step.rows.reduce((n, r) => n + Array.from(r.text).length, 0), 0);
@@ -89,6 +89,15 @@
     const fingerprint = window.novaWhiteboardTiming.fingerprint;
     const source = { schema: 1, script: lesson.script, title: lesson.title, dialogue: lesson.dialogue, steps: lesson.steps };
     check(fingerprint(source) === p.source_fingerprint);
+    if (p.schema === 2) {
+      check(p.policy === "general");
+      const origin = p.origin; keys(origin, ["kind", "brief", "draft_fingerprint", "source_fingerprint"]);
+      check(origin.kind === "expanded-lesson" && origin.source_fingerprint === p.source_fingerprint && typeof origin.draft_fingerprint === "string" && /^[0-9a-f]{64}$/.test(origin.draft_fingerprint));
+      const b = origin.brief; keys(b, ["text", "subject", "grade", "policy", "fingerprint"]);
+      check(text(b.text, 4000) && text(b.subject, 80, true) && text(b.grade, 80, true) && b.policy === "general");
+      check(b.subject === p.subject && b.grade === p.grade);
+      check(fingerprint({text:b.text, subject:b.subject, grade:b.grade, policy:b.policy}) === b.fingerprint);
+    }
     const payload = Object.fromEntries(Object.entries(lesson).filter(([key]) => key !== "fingerprint"));
     check(fingerprint(payload) === lesson.fingerprint);
     return p;

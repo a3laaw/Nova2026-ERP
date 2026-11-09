@@ -42,9 +42,16 @@ class ScenePicker(QWidget):
     requested = Signal(object)
     example_requested = Signal()
 
-    def __init__(self, lesson_provider: Callable[[], Lesson], parent=None):
+    def __init__(
+        self,
+        lesson_provider: Callable[[], Lesson],
+        parent=None,
+        *,
+        plan_adapter: Callable[[VisualPlan, Lesson], VisualPlan] | None = None,
+    ):
         super().__init__(parent)
         self._lesson_provider = lesson_provider
+        self._plan_adapter = plan_adapter
         self._approved: VisualPlan | None = None
         self._preview_dir = tempfile.TemporaryDirectory(prefix="nova-scene-review-")
         layout = QVBoxLayout(self)
@@ -156,8 +163,8 @@ class ScenePicker(QWidget):
         layout.addWidget(self.state)
         self.plan_edit.textChanged.connect(self._draft_changed)
         self.use_plan.toggled.connect(self._use_changed)
-        self.subject.textChanged.connect(self._reset_consent)
-        self.grade.textChanged.connect(self._reset_consent)
+        self.subject.textChanged.connect(self.invalidate_source)
+        self.grade.textChanged.connect(self.invalidate_source)
         self.key.textChanged.connect(self._reset_consent)
         self.policy.currentIndexChanged.connect(self.invalidate_source)
         self._use_changed()
@@ -220,6 +227,8 @@ class ScenePicker(QWidget):
         plan = VisualPlan.from_json(self.plan_edit.toPlainText(), lesson.manifest())
         if self.policy.currentData() == "sacred" and plan.to_data()["policy"] != "sacred":
             raise SceneError("وضع النصوص المقدسة يحتاج خطة policy=sacred بلا رسوم أو إعادة صياغة.")
+        if self._plan_adapter is not None:
+            plan = self._plan_adapter(plan, lesson)
         return lesson, plan
 
     def _error(self, error):

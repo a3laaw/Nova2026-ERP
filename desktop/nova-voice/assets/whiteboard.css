@@ -149,7 +149,8 @@ h1{font-size:clamp(21px,2.4vw,33px);line-height:1.5;margin:0;font-weight:750;ove
 
 /* Visual plans remain readable and carry their limitations in offline exports. */
 .visual-note{margin:0;padding:12px 20px;border-top:2px solid #E2E8F0;background:#FFF7E0;color:#475569;font-size:12px;line-height:1.8;overflow-wrap:anywhere}
-.visual-description,.visual-speech,.visual-source{grid-column:1/-1;overflow-wrap:anywhere}
+.visual-description,.visual-speech,.visual-source,.visual-brief{grid-column:1/-1;overflow-wrap:anywhere}
+.visual-brief p{white-space:pre-wrap;unicode-bidi:plaintext}
 .visual-description{padding:12px 16px;border-inline-start:3px solid #FFB000;background:#F8FAFC;border-radius:12px}
 .visual-speech{font-size:14px;color:#475569}
 .visual-source pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit}

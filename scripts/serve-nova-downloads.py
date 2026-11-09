@@ -12,7 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-ARCHIVE_NAME = "NovaVoice-Source-v0.6.0.rar"
+ARCHIVE_NAME = "NovaVoice-Source-v0.7.0.dev1.rar"
 
 
 def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
@@ -32,6 +32,11 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         "/preview": (source / "examples" / "greetings-whiteboard.html", html, False),
         "/preview-kids": (source / "examples" / "greetings-kids.html", html, False),
         "/preview-scenes": (source / "examples" / "visual-scenes.html", html, False),
+        "/preview-full-lesson": (
+            source / "examples" / "complete-lesson-demo.html",
+            html,
+            False,
+        ),
         "/preview-science": (
             source / "examples" / "water-cycle-whiteboard.html",
             html,
@@ -56,6 +61,7 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         "BRITISH-ENGLISH-AR.md",
         "FINAL-RELEASE-AR.md",
         "SMART-SCENES-AR.md",
+        "FULL-LESSON-AR.md",
     ):
         routes["/desktop/nova-voice/" + name] = (
             source / name,
@@ -72,6 +78,7 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         "BRITISH-ENGLISH-AR.md",
         "FINAL-RELEASE-AR.md",
         "SMART-SCENES-AR.md",
+        "FULL-LESSON-AR.md",
     ):
         routes["/" + name] = routes["/desktop/nova-voice/" + name]
     for name, mime in (
@@ -84,10 +91,15 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         ("water-cycle-script.txt", "text/plain; charset=utf-8"),
         ("water-cycle-description.txt", "text/plain; charset=utf-8"),
         ("SCIENCE-TEST-AR.md", "text/plain; charset=utf-8"),
+        ("complete-lesson-demo.html", html),
+        ("complete-lesson-demo.json", "application/json; charset=utf-8"),
+        ("complete-lesson-demo-script.txt", "text/plain; charset=utf-8"),
     ):
         route = (source / "examples" / name, mime, False)
         routes["/examples/" + name] = route
         routes["/desktop/nova-voice/examples/" + name] = route
+    for legacy in ("NovaVoice-Source-v0.6.0.rar", "NovaVoice-Source-v0.5.1.rar"):
+        routes["/" + legacy] = (delivery / legacy, "application/vnd.rar", True)
     return routes
 
 
@@ -131,13 +143,15 @@ class DeliveryHandler(BaseHTTPRequestHandler):
         file_path, mime, attachment = route
         with file_path.open("rb") as source:
             size = os.fstat(source.fileno()).st_size
-            self._headers(200, mime, size, attachment=attachment)
+            self._headers(
+                200, mime, size, attachment=file_path.name if attachment else ""
+            )
             if send_body:
                 while data := source.read(64 * 1024):
                     self.wfile.write(data)
 
     def _headers(
-        self, status: int, mime: str, size: int, *, attachment: bool = False
+        self, status: int, mime: str, size: int, *, attachment: str = ""
     ) -> None:
         self.send_response(status)
         self.send_header("Content-Type", mime)
@@ -146,7 +160,7 @@ class DeliveryHandler(BaseHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         if attachment:
             self.send_header(
-                "Content-Disposition", f'attachment; filename="{ARCHIVE_NAME}"'
+                "Content-Disposition", f'attachment; filename="{attachment}"'
             )
         self.end_headers()
 

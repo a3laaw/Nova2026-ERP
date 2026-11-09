@@ -16,6 +16,7 @@ from pathlib import Path
 
 from .dialogue import has_voice_markers
 from .language import narration_text
+from .lesson_brief import validate_origin
 from .text import MAX_CHARACTERS, ScriptError
 from .timing import data_fingerprint
 
@@ -101,7 +102,10 @@ def _unique(pairs):
 def load_plan_json(text: str) -> dict:
     """Strict JSON, optionally one whole fenced JSON block copied from a chat."""
     _require(
-        isinstance(text, str) and len(text.encode("utf-8")) <= MAX_PLAN_BYTES,
+        isinstance(text, str)
+        and len(text) <= MAX_PLAN_BYTES
+        and not any(0xD800 <= ord(char) <= 0xDFFF for char in text)
+        and len(text.encode("utf-8")) <= MAX_PLAN_BYTES,
         "خطة المشاهد أكبر من 512 KiB أو ليست نصًا.",
     )
     text = text.lstrip("\ufeff").strip()
@@ -255,10 +259,21 @@ class VisualPlan:
 
     @classmethod
     def from_data(cls, data: dict, source: dict) -> "VisualPlan":
-        _keys(
-            data, {"schema", "source_fingerprint", "subject", "grade", "policy", "notes", "steps"}
-        )
-        _require(type(data["schema"]) is int and data["schema"] == 1)
+        _require(isinstance(data, dict))
+        extended = type(data.get("schema")) is int and data["schema"] == 2
+        fields = {"schema", "source_fingerprint", "subject", "grade", "policy", "notes", "steps"}
+        _keys(data, fields | ({"origin"} if extended else set()))
+        _require(type(data["schema"]) is int and data["schema"] in (1, 2))
+        if extended:
+            _require(data["policy"] == "general", "توسيع النصوص المقدسة غير مدعوم.")
+            try:
+                validate_origin(data["origin"], source.get("fingerprint"))
+                _require(
+                    data["origin"]["brief"]["subject"] == data["subject"]
+                    and data["origin"]["brief"]["grade"] == data["grade"]
+                )
+            except ScriptError as error:
+                raise SceneError(str(error)) from None
         _require(
             data["source_fingerprint"] == source.get("fingerprint") and source.get("schema") == 1,
             "الخطة تخص سكريبتًا أو وضع أصوات مختلفًا. أعد التخطيط أو استخدم النص الأصلي.",
@@ -374,6 +389,15 @@ def review_text(plan: VisualPlan, source: dict) -> str:
         f"المادة: {data['subject'] or 'غير محددة'} · الصف: {data['grade'] or 'غير محدد'}",
         f"السياسة: {data['policy']} · الأصل محفوظ بلا تغيير.",
     ]
+    if data["schema"] == 2:
+        lines.extend(
+            (
+                "الوصف الأصلي محفوظ ولا يُنطق:",
+                data["origin"]["brief"]["text"],
+                "بصمة المسودة للتحقق من الاتساق فقط، لا إثبات مصدر أو صحة: "
+                + data["origin"]["draft_fingerprint"],
+            )
+        )
     lines.extend("تنبيه: " + note for note in data["notes"])
     for step in data["steps"]:
         index = step["index"]

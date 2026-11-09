@@ -527,7 +527,7 @@ def test_optional_ui_sources_compile_even_when_native_qt_cannot_be_imported():
     root = Path(__file__).parents[1] / "nova_voice"
     with warnings.catch_warnings():
         warnings.simplefilter("error", SyntaxWarning)
-        for name in ("ui.py", "scene_picker.py", "appearance_picker.py"):
+        for name in ("ui.py", "scene_picker.py", "lesson_picker.py", "appearance_picker.py"):
             compile((root / name).read_text(encoding="utf-8"), str(root / name), "exec")
 
 
