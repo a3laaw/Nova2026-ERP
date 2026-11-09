@@ -77,3 +77,14 @@ OpenRouter API uses Python's standard library; service/model/provider terms
 apply separately (https://openrouter.ai/terms, https://openrouter.ai/privacy).
 Free access, output accuracy, downstream licensing and regional/age eligibility
 are not guaranteed by this application. Exported HTML never calls that API.
+
+## Optional external video converter (0.9 source preview)
+
+The H.264/AAC converter runs an explicitly selected, trusted local FFmpeg executable.
+No executable/FFmpeg distribution, libx264, ffprobe, imageio-ffmpeg package or automatic
+installer/downloader is bundled or added to the app requirements. Qt's internal
+media libraries do not imply an available FFmpeg command-line executable.
+Review the license/build options of your chosen FFmpeg and its codecs (including
+libx264) before use/redistribution; this source handoff does not redistribute them.
+Conversion is offline and optional. Development-only FFmpeg/Playwright/PDF tooling
+is not a runtime dependency or proof of native Windows/device/real-voice behavior.

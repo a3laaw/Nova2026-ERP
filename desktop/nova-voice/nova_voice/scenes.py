@@ -139,10 +139,35 @@ def validate_element(item: dict, rows: int) -> None:
         motion = item["motion"]
         _require(isinstance(motion, dict))
         mode = motion.get("type")
-        _require(mode in ("draw", "move", "pulse", "none"), "نوع حركة الرسم غير مدعوم.")
+        _require(
+            mode in ("draw", "move", "pulse", "none", "path", "rotate"), "نوع حركة الرسم غير مدعوم."
+        )
+        if mode in ("move", "path", "rotate"):
+            fields = (
+                {"dx", "dy"}
+                if mode == "move"
+                else {"points"}
+                if mode == "path"
+                else {"degrees", "cx", "cy"}
+            )
+            _keys(motion, {"type", "ease"} | fields, {"type"} | fields)
+            _require(motion.get("ease", "linear") in ("linear", "smooth"))
         if mode == "move":
-            _keys(motion, {"type", "dx", "dy"})
             _require(_integer(motion["dx"], -300, 300) and _integer(motion["dy"], -180, 180))
+        elif mode == "path":
+            points = motion["points"]
+            _require(isinstance(points, list) and 2 <= len(points) <= 12)
+            for index, point in enumerate(points):
+                _require(
+                    isinstance(point, list)
+                    and len(point) == 2
+                    and _integer(point[0], -300, 300)
+                    and _integer(point[1], -180, 180)
+                )
+                _require(point == [0, 0] if index == 0 else point != points[index - 1])
+        elif mode == "rotate":
+            _require(_integer(motion["degrees"], -360, 360) and motion["degrees"] != 0)
+            _require(_integer(motion["cx"], 0, WIDTH) and _integer(motion["cy"], 0, HEIGHT))
         elif mode == "pulse":
             _keys(motion, {"type", "cycles"})
             _require(_integer(motion["cycles"], 1, 4))

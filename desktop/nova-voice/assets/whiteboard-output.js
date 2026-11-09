@@ -42,7 +42,7 @@
     if (typeof MediaRecorder !== "function" || typeof MediaRecorder.isTypeSupported !== "function") return null;
     const types = format === "mp4"
       ? (audio ? ["video/mp4;codecs=avc1.42E01E,mp4a.40.2", "video/mp4"] : ["video/mp4;codecs=avc1.42E01E", "video/mp4"])
-      : (audio ? ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"] : ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]);
+      : (audio ? ["video/webm;codecs=vp8,opus", "video/webm;codecs=vp9,opus", "video/webm"] : ["video/webm;codecs=vp8", "video/webm;codecs=vp9", "video/webm"]);
     return types.find(type => { try { return MediaRecorder.isTypeSupported(type); } catch (_) { return false; } }) || null;
   }
   function direction(text) {
@@ -203,13 +203,17 @@
           const visible = elements.map((e, i) => e.row <= row && (e.until ?? step.rows.length) > row ? i : -1).filter(i => i >= 0);
           const key = visible.join(",");
           if (visible.length && key !== previous) {
-            const figure = html("figure");
-            const svg = node("svg", { viewBox: "0 0 1070 420", xmlns: NS, role: "img", "aria-label": plan.steps[index].description });
-            const view = scenes.mount(svg, plan.steps[index], 1070, 0, `print-${index}-${row}`);
-            // Complete tracing/movement at this row, while retaining until and
-            // every earlier temporary state. Never print only the final frame.
-            view.update(bounds, row + 0.999999, false, true);
-            figure.append(svg, html("figcaption", "", `الرسم بعد السطر ${row + 1} · لقطة ثابتة`)); cue.append(figure);
+            const sequence = visible.some(i => elements[i].row === row && ["path", "rotate"].includes(elements[i].motion?.type));
+            // A route/rotation cannot be explained by its endpoint alone. Print
+            // start/middle/end as separate readable figures, never a live SVG.
+            for (const pose of sequence ? [0, 0.5, 1] : [1]) {
+              const figure = html("figure");
+              const svg = node("svg", { viewBox: "0 0 1070 420", xmlns: NS, role: "img", "aria-label": plan.steps[index].description });
+              const view = scenes.mount(svg, plan.steps[index], 1070, 0, `print-${index}-${row}-${pose}`);
+              view.update(bounds, row + 0.999999, false, true, pose);
+              const phase = sequence ? ["بداية الحركة", "منتصف الحركة", "نهاية الحركة"][pose * 2] : "لقطة ثابتة";
+              figure.append(svg, html("figcaption", "", `الرسم في السطر ${row + 1} · ${phase}`)); cue.append(figure);
+            }
           }
           previous = key;
           article.append(cue);
@@ -352,7 +356,14 @@
         };
         // Bound stalled/background browser work as well as estimated lesson time.
         wallTimer = setTimeout(() => cancel("تجاوز التصدير حد الوقت التجريبي؛ قسّم الدرس وحاول مجددًا."), (MAX_SECONDS + 15) * 1000);
-        let elapsed = 0;
+        let elapsed = 0, clockAnchor = null, lastFrame = null;
+        const overloaded = () => new Error("الجهاز مشغول: تأخر إطار أو اختلفت ساعة الصوت بأكثر من 350ms. أُوقف التصدير دون ملف جزئي؛ أغلق الأعمال الثقيلة وجرّب WebM أو خطوة أقصر.");
+        function auditFrame() {
+          const wall = performance.now();
+          if (lastFrame !== null && wall - lastFrame > 350) throw overloaded();
+          if (hasAudio && clockAnchor && Math.abs((wall - clockAnchor.wall) / 1000 - (active.context.currentTime - clockAnchor.audio)) > 0.35) throw overloaded();
+          lastFrame = wall;
+        }
         const noMotion = () => reducedMotion() || !sceneMotion();
         for (const index of indices) {
           assertActive(active);
@@ -361,7 +372,12 @@
           if (elapsed + seconds + 0.4 > MAX_SECONDS) throw new Error("مدة الصوت الفعلية تتجاوز حد 15 دقيقة؛ قسّم الدرس.");
           const bounds = clock(index, buffer ? seconds : null), stage = movieStage(index, bounds, context, noMotion);
           stage.update(0, false); await frameImage(stage.svg, context, active);
-          if (recorder.state === "inactive") { recorder.start(1000); recordedStart = performance.now(); }
+          lastFrame = null; // Decoding/loading between steps is intentionally silent.
+          if (recorder.state === "inactive") {
+            recorder.start(1000); recordedStart = performance.now();
+            if (hasAudio) clockAnchor = { wall: recordedStart, audio: active.context.currentTime };
+          }
+          auditFrame();
           if (manualFrames) track.requestFrame();
           const time = () => hasAudio ? active.context.currentTime : performance.now() / 1000;
           const start = time() + 0.1;
@@ -372,10 +388,12 @@
             assertActive(active);
             if (recorder.state !== "recording") throw new Error("توقف مسجل الفيديو مبكرًا؛ لم يُنزّل ملف جزئي.");
             if (hasAudio && active.context.state !== "running") throw new Error("توقف محرك الصوت أثناء التصدير؛ لم يُنزّل فيديو غير متزامن.");
+            auditFrame();
             const began = performance.now(), now = Math.max(0, time() - start);
             const finished = now >= seconds;
             stage.update(finished ? Math.max(seconds, bounds.at(-1).end) : now, finished);
             await frameImage(stage.svg, context, active);
+            auditFrame();
             if (manualFrames) track.requestFrame();
             $("wb-video-progress").value = clamp((elapsed + Math.min(seconds, now)) / estimated);
             status(`جارٍ التصدير محليًا · الخطوة ${index + 1} من ${lesson.steps.length} · ${Math.round($("wb-video-progress").value * 100)}% · اترك الصفحة ظاهرة. الإلغاء لا يحفظ ملفًا جزئيًا.`);
@@ -387,6 +405,7 @@
           while (time() < holdUntil) {
             await wait(1000 / FPS, active);
             await frameImage(stage.svg, context, active);
+            auditFrame();
             if (manualFrames) track.requestFrame();
           }
           elapsed += seconds + 0.4;

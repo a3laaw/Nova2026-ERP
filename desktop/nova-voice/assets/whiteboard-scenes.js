@@ -28,10 +28,22 @@
     for (const key of ["dx", "dy"]) check(integer(e[key] ?? 0, -1000, 1000));
     if (Object.prototype.hasOwnProperty.call(e, "motion")) {
       const m = e.motion;
-      check(m && typeof m === "object" && !Array.isArray(m) && ["draw", "move", "pulse", "none"].includes(m.type));
-      keys(m, m.type === "move" ? ["type", "dx", "dy"] : m.type === "pulse" ? ["type", "cycles"] : ["type"]);
+      check(m && typeof m === "object" && !Array.isArray(m) && ["draw", "move", "pulse", "none", "path", "rotate"].includes(m.type));
+      if (["move", "path", "rotate"].includes(m.type)) {
+        const fields = m.type === "move" ? ["dx", "dy"] : m.type === "path" ? ["points"] : ["degrees", "cx", "cy"];
+        keys(m, ["type", "ease", ...fields], ["type", ...fields]);
+        check(["linear", "smooth"].includes(m.ease ?? "linear") && m.ease !== null);
+      } else keys(m, m.type === "pulse" ? ["type", "cycles"] : ["type"]);
       if (m.type === "move") check(integer(m.dx, -300, 300) && integer(m.dy, -180, 180));
       if (m.type === "pulse") check(integer(m.cycles, 1, 4));
+      if (m.type === "path") {
+        check(Array.isArray(m.points) && m.points.length >= 2 && m.points.length <= 12);
+        m.points.forEach((p, i) => {
+          check(Array.isArray(p) && p.length === 2 && integer(p[0], -300, 300) && integer(p[1], -180, 180));
+          check(i === 0 ? p[0] === 0 && p[1] === 0 : p[0] !== m.points[i - 1][0] || p[1] !== m.points[i - 1][1]);
+        });
+      }
+      if (m.type === "rotate") check(integer(m.degrees, -360, 360) && m.degrees !== 0 && integer(m.cx, 0, 1000) && integer(m.cy, 0, 420));
     }
     for (const key of ["fill", "stroke"]) check(typeof (e[key] ?? "none") === "string" && /^(none|#[0-9a-fA-F]{6})$/.test(e[key] ?? "none"));
     check(integer(e.line_width ?? 3, 1, 12));
@@ -190,6 +202,18 @@
       }
     }
   }
+  function pathPosition(points, fraction) {
+    const lengths = points.slice(1).map((p, i) => Math.hypot(p[0] - points[i][0], p[1] - points[i][1]));
+    let distance = lengths.reduce((a, b) => a + b, 0) * fraction;
+    for (let i = 0; i < lengths.length; i++) {
+      if (distance <= lengths[i] || i === lengths.length - 1) {
+        const part = Math.max(0, Math.min(1, distance / lengths[i]));
+        return points[i].map((value, axis) => value + (points[i + 1][axis] - value) * part);
+      }
+      distance -= lengths[i];
+    }
+    return points[points.length - 1];
+  }
   function mount(parent, step, width, top, version) {
     const frame = node("svg", { x: 35, y: top, width: width - 70, height: (width - 70) * 420 / 1000, viewBox: "0 0 1000 420", overflow: "hidden", "data-visual-scene": String(version), "aria-hidden": "true", "pointer-events": "none" });
     frame.append(node("rect", { x: 0, y: 0, width: 1000, height: 420, rx: 18, fill: "#F8FAFC", stroke: "#E2E8F0", "stroke-width": 2 }));
@@ -205,7 +229,7 @@
     return {
       bottom: top + (width - 70) * 420 / 1000 + 55,
       hasVisibleContent: () => groups.some(({ g }) => g.childNodes.length > 0 && g.getAttribute("opacity") === "1"),
-      update(bounds, now, reduced, still = false) {
+      update(bounds, now, reduced, still = false, pose = null) {
         groups.forEach(({ e, g, strokes, fills, children }) => {
           const start = bounds[e.row].start, end = bounds[e.row].end;
           const until = e.until ?? bounds.length;
@@ -214,12 +238,16 @@
           const mode = e.motion ? e.motion.type : "draw";
           const staticElement = reduced || still || mode === "none";
           const part = staticElement ? 1 : Math.min(1, rowPart / 0.6);
-          const moving = mode === "move" && !reduced;
-          const movePart = still ? 1 : rowPart;
-          const x = (staticElement ? 0 : (e.dx ?? 0) * (1 - part)) + (moving ? e.motion.dx * movePart : 0);
-          const y = (staticElement ? 0 : (e.dy ?? 0) * (1 - part)) + (moving ? e.motion.dy * movePart : 0);
+          let movePart = still ? (pose !== null && now >= start && now < end ? Math.max(0, Math.min(1, pose)) : 1) : rowPart;
+          if (e.motion && e.motion.ease === "smooth") movePart = movePart * movePart * (3 - 2 * movePart);
+          const offset = mode === "path" && !reduced ? pathPosition(e.motion.points, movePart)
+            : mode === "move" && !reduced ? [e.motion.dx * movePart, e.motion.dy * movePart] : [0, 0];
+          const x = (staticElement ? 0 : (e.dx ?? 0) * (1 - part)) + offset[0];
+          const y = (staticElement ? 0 : (e.dy ?? 0) * (1 - part)) + offset[1];
+          const rotation = mode === "rotate" && !reduced
+            ? ` rotate(${e.motion.degrees * movePart} ${e.motion.cx} ${e.motion.cy})` : "";
           g.setAttribute("opacity", visible ? "1" : "0");
-          g.setAttribute("transform", `translate(${x} ${y})`);
+          g.setAttribute("transform", `translate(${x} ${y})${rotation}`);
           g.dataset.activeCue = String(visible && now < end);
           const tracing = mode === "draw" && !reduced && !still && e.kind !== "icons";
           strokes.forEach(shape => {

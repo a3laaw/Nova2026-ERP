@@ -70,9 +70,16 @@ Use row cues and until to build the explanation, not one giant final picture.
 Optional motion object (strict keys, no code): {type:"draw"} (default, progressive
 strokes/staggered icons), {type:"none"}, {type:"move",dx:-300..300,dy:-180..180}
 (linear movement DURING its row, then hold endpoint), or {type:"pulse",cycles:1..4}
-(gentle opacity emphasis during its row). Keep the whole moving shape in bounds;
+(gentle opacity emphasis during its row). Also supported:
+{type:"path",points:[[0,0],[dx,dy],...],ease:"smooth"} (2..12 relative offset points,
+first [0,0], no adjacent duplicates, each dx=-300..300,dy=-180..180; moves by path
+length during its row and holds the endpoint; no raw SVG path for motion),
+{type:"rotate",degrees:-360..360,cx:0..1000,cy:0..420} (nonzero integer degrees around
+an explicit fixed pivot during its row). move/path/rotate alone accept optional
+ease:"linear" (default) or "smooth" (smoothstep). No other keys or timings.
+Keep the whole moving shape in bounds;
 use until for temporary objects. Do not animate a position if it changes a
-mathematical/geographic meaning. Reduced motion disables tracing/movement/pulse.
+mathematical/geographic meaning. Reduced motion disables tracing/movement/rotation/pulse.
 All animation is declarative, row-clock-driven; no JS, timelines, URLs or media.
 Text will be escaped, not interpreted as markup. Keep labels readable, use Arabic
 RTL or English LTR appropriately and high-contrast orange/blue/slate colors.

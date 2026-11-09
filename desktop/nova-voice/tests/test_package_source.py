@@ -82,6 +82,7 @@ def test_zip_and_real_rar_contain_identical_source_bytes_and_windows_line_ending
     assert zipped["NovaVoice-Source/assets/binary.ico"] == bytes(range(256))
     assert zipped["NovaVoice-Source/examples/empty.txt"] == b""
     assert "NovaVoice-Source/RUN-FIRST-AR.html" in zipped
+    assert "NovaVoice-Source/VIDEO-MOTION-AR.md" in zipped
 
 
 def test_rar_preserves_utf8_names_and_contents(source_root):

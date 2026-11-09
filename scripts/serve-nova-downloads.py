@@ -13,9 +13,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-ARCHIVE_NAME = "NovaVoice-Source-v0.8.0.dev1.rar"
-PDF_NAME = "NovaVoice-Lesson-A4-v0.8.0.dev1.pdf"
-VIDEO_NAME = "NovaVoice-Animated-Lesson-v0.8.0.dev1.webm"
+ARCHIVE_NAME = "NovaVoice-Source-v0.9.0.dev1.rar"
+PDF_NAME = "NovaVoice-Motion-A4-v0.9.0.dev1.pdf"
+VIDEO_NAME = "NovaVoice-Motion-H264-v0.9.0.dev1.mp4"
+WEBM_NAME = "NovaVoice-Motion-v0.9.0.dev1.webm"
 
 
 def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
@@ -46,7 +47,23 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
             False,
         ),
         "/" + PDF_NAME: (delivery / PDF_NAME, "application/pdf", False),
-        "/" + VIDEO_NAME: (delivery / VIDEO_NAME, "video/webm", False),
+        "/" + VIDEO_NAME: (delivery / VIDEO_NAME, "video/mp4", False),
+        "/" + WEBM_NAME: (delivery / WEBM_NAME, "video/webm", False),
+        "/preview-motion": (
+            source / "examples" / "advanced-motion-demo.html",
+            html,
+            False,
+        ),
+        "/NovaVoice-Lesson-A4-v0.8.0.dev1.pdf": (
+            delivery / "NovaVoice-Lesson-A4-v0.8.0.dev1.pdf",
+            "application/pdf",
+            False,
+        ),
+        "/NovaVoice-Animated-Lesson-v0.8.0.dev1.webm": (
+            delivery / "NovaVoice-Animated-Lesson-v0.8.0.dev1.webm",
+            "video/webm",
+            False,
+        ),
         "/preview-science": (
             source / "examples" / "water-cycle-whiteboard.html",
             html,
@@ -73,6 +90,7 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         "SMART-SCENES-AR.md",
         "FULL-LESSON-AR.md",
         "LESSON-OUTPUT-AR.md",
+        "VIDEO-MOTION-AR.md",
     ):
         routes["/desktop/nova-voice/" + name] = (
             source / name,
@@ -91,6 +109,7 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         "SMART-SCENES-AR.md",
         "FULL-LESSON-AR.md",
         "LESSON-OUTPUT-AR.md",
+        "VIDEO-MOTION-AR.md",
     ):
         routes["/" + name] = routes["/desktop/nova-voice/" + name]
     for name, mime in (
@@ -108,11 +127,14 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         ("complete-lesson-demo-script.txt", "text/plain; charset=utf-8"),
         ("animated-lesson-demo.html", html),
         ("animated-lesson-demo.json", "application/json; charset=utf-8"),
+        ("advanced-motion-demo.html", html),
+        ("advanced-motion-demo.json", "application/json; charset=utf-8"),
     ):
         route = (source / "examples" / name, mime, False)
         routes["/examples/" + name] = route
         routes["/desktop/nova-voice/examples/" + name] = route
     for legacy in (
+        "NovaVoice-Source-v0.8.0.dev1.rar",
         "NovaVoice-Source-v0.7.0.dev1.rar",
         "NovaVoice-Source-v0.6.0.rar",
         "NovaVoice-Source-v0.5.1.rar",
@@ -177,7 +199,7 @@ class DeliveryHandler(BaseHTTPRequestHandler):
         file_path, mime, attachment = route
         with file_path.open("rb") as source:
             size = os.fstat(source.fileno()).st_size
-            media = mime in ("video/webm", "application/pdf")
+            media = mime in ("video/webm", "video/mp4", "application/pdf")
             start, end = 0, size - 1
             range_header = self.headers.get("Range") if media and send_body else None
             if range_header:

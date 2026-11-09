@@ -1,0 +1,488 @@
+{
+  "valid": [
+    {
+      "type": "move",
+      "dx": 50,
+      "dy": -25,
+      "ease": "smooth"
+    },
+    {
+      "type": "path",
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          100,
+          0
+        ],
+        [
+          100,
+          100
+        ]
+      ]
+    },
+    {
+      "type": "path",
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -300,
+          -180
+        ],
+        [
+          300,
+          180
+        ],
+        [
+          0,
+          0
+        ]
+      ],
+      "ease": "smooth"
+    },
+    {
+      "type": "path",
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          0
+        ]
+      ],
+      "ease": "linear"
+    },
+    {
+      "type": "rotate",
+      "degrees": 360,
+      "cx": 0,
+      "cy": 420
+    },
+    {
+      "type": "rotate",
+      "degrees": -360,
+      "cx": 1000,
+      "cy": 0,
+      "ease": "smooth"
+    }
+  ],
+  "invalid": [
+    {
+      "type": "path",
+      "points": null
+    },
+    {
+      "type": "path",
+      "points": true
+    },
+    {
+      "type": "path",
+      "points": "M0 0L1 1"
+    },
+    {
+      "type": "path",
+      "points": []
+    },
+    {
+      "type": "path",
+      "points": [
+        [
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "type": "path",
+      "points": [
+        [
+          1,
+          0
+        ],
+        [
+          2,
+          2
+        ]
+      ]
+    },
+    {
+      "type": "path",
+      "points": [
+        [
+          0,
+          false
+        ],
+        [
+          1,
+          1
+        ]
+      ]
+    },
+    {
+      "type": "path",
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "type": "path",
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          181
+        ]
+      ]
+    },
+    {
+      "type": "path",
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          -301,
+          0
+        ]
+      ]
+    },
+    {
+      "type": "path",
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1.1
+        ]
+      ]
+    },
+    {
+      "type": "path",
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1
+        ]
+      ]
+    },
+    {
+      "type": "path",
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ]
+    },
+    {
+      "type": "path",
+      "points": [
+        [
+          0,
+          0
+        ],
+        {
+          "x": 1,
+          "y": 1
+        }
+      ]
+    },
+    {
+      "type": "path",
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ]
+      ]
+    },
+    {
+      "type": "path",
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "ease": null
+    },
+    {
+      "type": "path",
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "ease": true
+    },
+    {
+      "type": "path",
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "ease": {}
+    },
+    {
+      "type": "path",
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "ease": []
+    },
+    {
+      "type": "path",
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "ease": "cubic-bezier(0,1,0,1)"
+    },
+    {
+      "type": "path",
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "ease": "spring"
+    },
+    {
+      "type": "path",
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "duration": 2
+    },
+    {
+      "type": "rotate",
+      "degrees": 0,
+      "cx": 500,
+      "cy": 200
+    },
+    {
+      "type": "rotate",
+      "degrees": 361,
+      "cx": 500,
+      "cy": 200
+    },
+    {
+      "type": "rotate",
+      "degrees": -361,
+      "cx": 500,
+      "cy": 200
+    },
+    {
+      "type": "rotate",
+      "degrees": true,
+      "cx": 500,
+      "cy": 200
+    },
+    {
+      "type": "rotate",
+      "degrees": 45.5,
+      "cx": 500,
+      "cy": 200
+    },
+    {
+      "type": "rotate",
+      "degrees": 90,
+      "cx": 1001,
+      "cy": 200
+    },
+    {
+      "type": "rotate",
+      "degrees": 90,
+      "cx": 500,
+      "cy": -1
+    },
+    {
+      "type": "rotate",
+      "degrees": 90,
+      "cx": 500
+    },
+    {
+      "type": "rotate",
+      "degrees": 90,
+      "cx": 500,
+      "cy": 200,
+      "cycles": 2
+    },
+    {
+      "type": "pulse",
+      "cycles": 2,
+      "ease": "smooth"
+    },
+    {
+      "type": "none",
+      "ease": "linear"
+    },
+    {
+      "type": "move",
+      "dx": 0,
+      "dy": 5,
+      "ease": false
+    }
+  ]
+}

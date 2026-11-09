@@ -24,6 +24,7 @@ FILES = (
     "SMART-SCENES-AR.md",
     "FULL-LESSON-AR.md",
     "LESSON-OUTPUT-AR.md",
+    "VIDEO-MOTION-AR.md",
     "CHANGELOG.md",
     "TIMING-VERIFICATION-AR.md",
     "UI-ORGANIZATION-AR.md",

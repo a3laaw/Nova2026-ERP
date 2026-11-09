@@ -10,8 +10,45 @@ npm test
 
 Set `NOVA_VOICE_PYTHON` to the Python executable with access to this source if
 `python` is not the desired executable. Media/SVG geometry/encoding are mocked in
-JSDOM. The current suite has **189 passing DOM cases**, including 25 new output
-cases. These are not listening, browser-codec, native Windows, or 4 GB tests.
+JSDOM. The current suite has **237 passing DOM cases**, including27 output and46
+route/rotation cases. These are not listening, browser-codec, native Windows, or 4 GB tests.
+
+## Current 0.9 motion/conversion checks
+
+`npm test` includes **237 DOM cases** (27 output +46 route/rotation cases).
+JSDOM simulates media: no encoder/listening/native claims. Shared strict motion
+vectors are in `tests/fixtures/motion-cases.json`; no runtime Node dependency.
+
+Optional real QA (supply your own local tools; never auto-downloaded):
+
+```sh
+NOVA_VOICE_PYTHON=/path/to/python \
+NOVA_CHROMIUM=/path/to/chromium \
+NOVA_FFMPEG=/path/to/trusted-ffmpeg \
+NOVA_BROWSER_OUTPUT=/local/qa-output \
+node browser-motion.cjs
+```
+
+Requires separately installed `playwright-core`. The 13 basic checks cover real
+SVG/controller motion at360/768/1366px,20 static phase figures/all16 rows,PDF,
+Blob→Python→offline reopen/fresh review,WAV reverse seek,actual WebM→CLI H.264
+Main3.1/AAC-LC/faststart with full decode and encoded-timestamp440/660Hz alignment,
+deliberate600ms main-thread stall cancellation and reduced motion. Tones, not speech.
+Set `NOVA_OUTPUT_DELIVERABLES` to an explicit output directory to create the full
+10-page A4 PDF and complete silent H.264 lesson sample (14 checks,~100s). The
+filenames are0.9-only and do not overwrite published0.8 samples.
+
+Python safety/metadata tests run without FFmpeg; real conversion/cancellation/limit
+cases require explicit `NOVA_FFMPEG`. Full run with it:770passed/3Qt modules skipped.
+The new Qt panel tests remain skipped here; compilation is not native evidence.
+H.264/AAC metadata and full decode are verified; no phone/Windows playback claim.
+No live AI, human voice/4GB/curriculum validation, EXE/Actions or ERP changes.
+
+A parallel stress regression initially failed tone timestamps; it is recorded in
+VIDEO-MOTION-AR.md, not counted as a pass. VP8 preference and a350ms frame/clock
+lag guard were added; serial output regression and explicit stall-abort checks
+pass. They do not prove the absence of all encoder underruns on all hardware.
+
 
 ## Existing controller coverage
 

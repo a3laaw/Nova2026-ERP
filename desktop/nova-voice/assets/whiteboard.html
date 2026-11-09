@@ -74,12 +74,13 @@
           <fieldset class="settings-group"><legend>1 · ورق A4 أو PDF</legend>
             <label><input id="wb-print-ink" type="checkbox"> نسخة رمادية موفّرة للحبر</label>
             <div class="output-actions"><button id="wb-print-preview" type="button" disabled>معاينة كل صفحات الدرس</button><button id="wb-print" class="primary" type="button" disabled>طباعة / حفظ PDF</button><button id="wb-print-close" type="button" hidden>إخفاء المعاينة</button></div>
-            <p class="hint">تُحفظ كل لقطة تغيّر فيها الرسم، حتى لو اختفى عنصر في آخر الخطوة. من نافذة الطباعة اختر A4 و«حفظ PDF» إن أردت ملفًا.</p>
+            <p class="hint">تُحفظ كل لقطة تغيّر فيها الرسم، حتى لو اختفى عنصر لاحقًا. للمسار والدوران: بداية ووسط ونهاية الحركة على الورق. من نافذة الطباعة اختر A4 و«حفظ PDF» إن أردت ملفًا.</p>
           </fieldset>
           <fieldset class="settings-group"><legend>2 · فيديو محلي تجريبي</legend>
-            <div class="output-options"><label for="wb-video-scope">المحتوى <select id="wb-video-scope"><option value="all">الدرس كاملًا</option><option value="current">الخطوة الحالية فقط</option></select></label><label for="wb-video-format">الصيغة <select id="wb-video-format"><option value="webm">WebM</option><option value="mp4">MP4 — إذا دعمه المتصفح</option></select></label></div>
+            <div class="output-options"><label for="wb-video-scope">المحتوى <select id="wb-video-scope"><option value="all">الدرس كاملًا</option><option value="current">الخطوة الحالية فقط</option></select></label><label for="wb-video-format">الصيغة <select id="wb-video-format"><option value="webm">WebM</option><option value="mp4">MP4 المتصفح — ترميزه حسب الدعم</option></select></label></div>
             <p id="wb-video-support" class="hint"></p>
-            <p class="hint">1280×720 · نحو 20 إطارًا/ثانية حسب الجهاز · سرعة 1×. التصدير يستغرق مدة العرض تقريبًا؛ اترك الصفحة ظاهرة. تقليل الحركة وخيار الحركة أعلاه يُحترمان. حد تجريبي 15 دقيقة و128 MiB؛ لا ضمان لجهاز 4 جيجا. النسخة بلا تسجيل تعطي فيديو صامتًا، ولا تولّد صوتًا جديدًا.</p>
+            <p class="hint">لـMP4 بترميز H.264/AAC: نزّل الفيديو ثم افتح تبويب «MP4 متوافق» في تطبيق Nova Voice، واختر FFmpeg محليًا موثوقًا. التحويل اختياري بلا شبكة أو تنزيل تلقائي؛ لا يكفي تغيير الامتداد.</p>
+            <p class="hint">1280×720 · نحو 20 إطارًا/ثانية حسب الجهاز · سرعة 1×. التصدير يستغرق مدة العرض تقريبًا؛ اترك الصفحة ظاهرة. عند تأخر إطار أو اختلاف ساعة الصوت بأكثر من 350ms يتوقف التصدير بدل نشر خرج مشكوك في تزامنه. تقليل الحركة وخيار الحركة أعلاه يُحترمان. حد تجريبي 15 دقيقة و128 MiB؛ لا ضمان لجهاز 4 جيجا. النسخة بلا تسجيل تعطي فيديو صامتًا، ولا تولّد صوتًا جديدًا.</p>
             <div class="output-actions"><button id="wb-video" class="primary" type="button" disabled>تصدير الفيديو</button><button id="wb-video-cancel" type="button" disabled>إلغاء التصدير</button></div>
             <progress id="wb-video-progress" max="1" value="0" aria-label="تقدم تصدير الفيديو" hidden></progress>
             <canvas id="wb-video-canvas" width="1280" height="720" aria-label="معاينة الفيديو الجاري تصديره" hidden></canvas>

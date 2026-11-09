@@ -70,6 +70,8 @@ from .storage import (
 )
 from .text import MAX_CHARACTERS, ScriptError, preview_text, read_script, validate_text
 from .theme import STYLESHEET
+from .video import VideoResult, convert_video
+from .video_picker import ConversionRequest, VideoPicker
 from .voice_picker import VoicePicker
 from .voices import VoiceError, VoiceLibrary, VoiceSpec
 from .whiteboard import (
@@ -452,6 +454,11 @@ class MainWindow(QMainWindow):
         other_layout.addWidget(audio_card)
         other_layout.addStretch()
         self.workspace_tabs.addTab(other_page, "صوت فقط / HTML")
+        video_card, video_layout = card()
+        self.video_picker = VideoPicker()
+        self.video_picker.requested.connect(self._convert_video)
+        video_layout.addWidget(self.video_picker)
+        self.workspace_tabs.addTab(video_card, "MP4 متوافق")
         export_actions.addWidget(self.cancel_button)
         export_layout.addLayout(export_actions)
         self.progress = QProgressBar()
@@ -634,6 +641,7 @@ class MainWindow(QMainWindow):
     def _update_buttons(self) -> None:
         busy = self.worker is not None
         self.workspace_tabs.setEnabled(not busy)
+        self.video_picker.set_allowed(self.scene_picker.policy.currentData() == "general")
         text = self.editor.toPlainText()
         required = {1}
         if self.dialogue_mode():
@@ -1298,6 +1306,52 @@ class MainWindow(QMainWindow):
         ):
             QMessageBox.information(self, "فتح الصفحة", "افتح ملف HTML الناتج يدويًا في متصفح حديث.")
 
+    def _convert_video(self, request: ConversionRequest) -> None:
+        if (
+            self.worker
+            or self.scene_picker.policy.currentData() != "general"
+            or self.video_picker.current() != request
+        ):
+            return
+        selected, _ = QFileDialog.getSaveFileName(
+            self,
+            "حفظ MP4 جديد · تحويل فعلي إلى H.264/AAC",
+            str(request.source.with_name(request.source.stem + "-compatible.mp4")),
+            "MP4 (*.mp4)",
+        )
+        if not selected:
+            return
+        destination = Path(selected)
+        if destination.suffix.lower() != ".mp4":
+            destination = destination.with_suffix(".mp4")
+        # QFileDialog only confirms the name displayed in it, not an appended
+        # extension. Ask explicitly if that resulting destination already exists.
+        overwrite = destination.exists()
+        if (
+            overwrite
+            and QMessageBox.question(
+                self,
+                "استبدال MP4 موجود؟",
+                "سيُستبدل الملف بعد نجاح التحويل والفحص الكامل فقط. هل تتابع؟",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            != QMessageBox.StandardButton.Yes
+        ):
+            return
+        self._start_task(
+            lambda cancel, progress: convert_video(
+                request.source,
+                destination,
+                request.ffmpeg,
+                cancel,
+                progress,
+                reviewed=True,
+                overwrite=overwrite,
+            ),
+            "video-convert",
+        )
+
     def _start_task(self, task, kind: str) -> None:
         self._progress_kind = kind
         self.worker = TaskWorker(task, self)
@@ -1308,6 +1362,7 @@ class MainWindow(QMainWindow):
         self.worker.finished.connect(self._task_finished)
         messages = {
             "import": "جارٍ استيراد النموذج…",
+            "video-convert": "جارٍ التحويل المحلي إلى H.264/AAC؛ لا رفع ملفات أو تغيير للأصل…",
             "scene-plan": "جارٍ طلب اقتراح مجاني واحد بإذنك؛ لا رسم أو نطق قبل المراجعة…",
             "lesson-draft": "جارٍ اقتراح درس كامل ورسوم بطلب مجاني واحد؛ لا اعتماد أو نطق تلقائي…",
             "html": "جارٍ تجهيز الصفحة وتوليد الصوت محليًا…",
@@ -1347,6 +1402,8 @@ class MainWindow(QMainWindow):
                     self.status.setText(f"جارٍ {stage} محليًا… {value}%")
                 elif self._progress_kind in ("scene-plan", "lesson-draft"):
                     self.status.setText("وصل رد المزود؛ جارٍ التحقق المحلي من خطة المشاهد…")
+                elif self._progress_kind == "video-convert":
+                    self.status.setText("جارٍ فحص حاوية MP4 وفك الفيديو كاملًا قبل نشر الملف…")
                 elif self._progress_kind == "whiteboard":
                     self.status.setText(f"جارٍ إنشاء ملف السبورة… {value}%")
                 else:
@@ -1361,6 +1418,12 @@ class MainWindow(QMainWindow):
             return
         if self._progress_kind == "import":
             self.status.setText("تمت إضافة النموذج. اكتب السكريبت لتجربة الصوت.")
+            return
+        if isinstance(result, VideoResult):
+            self.video_picker.set_result(result)
+            self.status.setText(
+                "حُفظ MP4 بترميز H.264 وصوت AAC إن وُجد، وفُك الخرج كاملًا. جرّبه على جهازك."
+            )
             return
         if isinstance(result, LessonDraft):
             try:

@@ -216,8 +216,8 @@ function videoAPIs(options = {}) {
   const state = { downloads: [], blobs: new Map(), tracks: [], contexts: [], recorders: [], draws: 0, decodes: 0 };
   state.install = w => {
     const realTimeout = w.setTimeout.bind(w); let now = 0, id = 0;
-    w.setTimeout = (fn, ms) => realTimeout(fn, ms <= 1000 ? 0 : ms);
-    Object.defineProperty(w.performance, "now", { value: () => { now += 250; return now; } });
+    w.setTimeout = (fn, ms) => realTimeout(() => { if (ms <= 1000) now += Math.max(1, ms); fn(); }, ms <= 1000 ? 0 : ms);
+    Object.defineProperty(w.performance, "now", { value: () => now });
     w.Blob = Blob;
     w.URL.createObjectURL = blob => { const url = "blob:output-" + ++id; state.blobs.set(url, blob); return url; };
     w.URL.revokeObjectURL = url => state.blobs.delete(url);
@@ -230,10 +230,13 @@ function videoAPIs(options = {}) {
     };
     w.HTMLCanvasElement.prototype.captureStream = () => new w.MediaStream();
     w.HTMLCanvasElement.prototype.getContext = () => ({ measureText: text => ({ width: Array.from(text).length * 9 }), drawImage() { state.draws++; } });
-    w.Image = class { set src(value) { if (value) queueMicrotask(() => { if (this.onload) this.onload(); }); } };
+    w.Image = class { set src(value) { if (value) queueMicrotask(() => {
+      if (options.stallFrame && state.draws === 2) now += 500;
+      if (this.onload) this.onload();
+    }); } };
     w.AudioContext = class {
       constructor() { this.state = "suspended"; this.time = 0; state.contexts.push(this); }
-      get currentTime() { this.time += 0.15; return this.time; }
+      get currentTime() { return now / 1000 * (options.clockDrift ? 0.1 : 1); }
       resume() { this.state = "running"; return Promise.resolve(); }
       close() { this.state = "closed"; return Promise.resolve(); }
       decodeAudioData() { state.decodes++; return options.hangDecode ? new Promise(() => {}) : Promise.resolve({ duration: 0.3, length: 2400, numberOfChannels: 1 }); }
@@ -283,6 +286,18 @@ test("narrated video decodes one embedded clip per step, records its audio track
     assert.ok(a.get("wb-output-status").textContent.includes("بالصوت المضمّن"));
   } finally { a.close(); }
 });
+
+for (const [name, options] of [["stalled frame", { stallFrame: true }], ["audio/wall clock drift", { clockDrift: true }]]) {
+  test(`${name} aborts without publishing an unchecked out-of-sync video`, async () => {
+    const fake = videoAPIs(options), a = app({ file: "audio.html", beforeParse: fake.install });
+    try {
+      approve(a); a.get("wb-video").click(); await until(() => !a.document.body.dataset.novaExporting);
+      assert.equal(fake.downloads.length, 0); assert.ok(a.get("wb-output-status").textContent.includes("الجهاز مشغول"));
+      assert.equal(fake.contexts[0].state, "closed"); assert.ok(fake.tracks.every(t => t.stopped));
+      assert.equal(a.get("wb-video").disabled, false);
+    } finally { a.close(); }
+  });
+}
 
 test("cancel during a pending audio decode is bounded, cleans resources and never downloads partial data", async () => {
   const fake = videoAPIs({ hangDecode: true }), a = app({ file: "audio.html", beforeParse: fake.install });
