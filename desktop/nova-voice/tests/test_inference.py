@@ -113,7 +113,7 @@ def test_catalog_covers_all_named_native_action_buttons_and_has_no_stale_names()
 
 
 def test_catalog_is_free_form_complete_and_references_real_owned_sources():
-    assert len(ENTRIES) == 80
+    assert len(ENTRIES) == 82
     assert len(CATALOG["categories"]) == 8
     assert len({entry["id"] for entry in ENTRIES}) == len(ENTRIES)
     assert {entry["category"] for entry in ENTRIES} == {c["id"] for c in CATALOG["categories"]}

@@ -61,6 +61,7 @@ from .lesson_planner import request_lesson
 from .scene_examples import VISUAL_EXAMPLE, example_plan
 from .scene_picker import AssetRequest, PlannerRequest, ScenePicker
 from .scene_planner import request_plan
+from .scene_revision import RevisionRequest, RevisionResult, revise_plan
 from .scenes import SceneError, VisualPlan
 from .secondary_assets import AssetPreparation, prepare_plan
 from .storage import (
@@ -103,6 +104,7 @@ class MainWindow(QMainWindow):
         self._adopted_draft: LessonDraft | None = None
         self._adopted_revision = -1
         self._asset_request: AssetRequest | None = None
+        self._revision_request: RevisionRequest | None = None
         self._result_file: Path | None = None
         self._html_source: Path | None = None
         self._html_result_file: Path | None = None
@@ -328,6 +330,7 @@ class MainWindow(QMainWindow):
         self.scene_picker.requested.connect(self._request_scenes)
         self.scene_picker.example_requested.connect(self._scene_example)
         self.scene_picker.assets_requested.connect(self._request_assets)
+        self.scene_picker.revision_requested.connect(self._request_revision)
         self.scene_section.content_layout.addWidget(self.scene_picker)
         self.lesson_section = Disclosure("من وصف قصير إلى درس كامل مرسوم · مسودة ومراجعة أولًا")
         self.lesson_picker = LessonPicker(lambda: self.scene_picker.policy.currentData())
@@ -1024,6 +1027,32 @@ class MainWindow(QMainWindow):
             "scene-assets",
         )
 
+    def _request_revision(self, request: RevisionRequest) -> None:
+        if self.worker:
+            return
+        try:
+            if self._adopted_draft is not None:
+                self._bind_story_plan(request.previous, self._source_lesson())
+            if (
+                request.revision != self.scene_picker.revision
+                or self.scene_picker._current()[1] != request.previous
+                or self._source_lesson().manifest() != request.source
+            ):
+                raise SceneError("تغيّر النص أو الرسم قبل بدء المحاولة؛ راجع الاختيار من جديد.")
+        except ScriptError as error:
+            QMessageBox.warning(self, "راجع اختيار المعاينة", str(error))
+            return
+        self._revision_request = request
+        self._start_task(
+            lambda cancel, progress: revise_plan(
+                request,
+                cancel,
+                progress,
+                directory=self.data_dir / "secondary-assets-v1",
+            ),
+            "scene-revision",
+        )
+
     def _scene_example(self) -> None:
         if self.worker:
             return
@@ -1394,6 +1423,7 @@ class MainWindow(QMainWindow):
             "video-convert": "جارٍ التحويل المحلي إلى H.264/AAC؛ لا رفع ملفات أو تغيير للأصل…",
             "scene-plan": "جارٍ طلب اقتراح مجاني واحد بإذنك؛ لا رسم أو نطق قبل المراجعة…",
             "scene-assets": "جارٍ تجهيز الموارد المسموح بها وفحصها؛ لا اعتماد أو نطق أو تصدير…",
+            "scene-revision": "جارٍ تجهيز اختيارك: اقتراح واحد وموارد مدققة فقط، ثم معاينة صامتة…",
             "lesson-draft": "جارٍ اقتراح درس كامل ورسوم بطلب مجاني واحد؛ لا اعتماد أو نطق تلقائي…",
             "html": "جارٍ تجهيز الصفحة وتوليد الصوت محليًا…",
             "whiteboard": "جارٍ تحويل السكريبت إلى سبورة HTML محليًا…",
@@ -1432,7 +1462,7 @@ class MainWindow(QMainWindow):
                     self.status.setText(f"جارٍ {stage} محليًا… {value}%")
                 elif self._progress_kind in ("scene-plan", "lesson-draft"):
                     self.status.setText("وصل رد المزود؛ جارٍ التحقق المحلي من خطة المشاهد…")
-                elif self._progress_kind == "scene-assets":
+                elif self._progress_kind in ("scene-assets", "scene-revision"):
                     self.status.setText(f"جارٍ فحص وتجهيز موارد الخطة الاختيارية… {value}%")
                 elif self._progress_kind == "video-convert":
                     self.status.setText("جارٍ فحص حاوية MP4 وفك الفيديو كاملًا قبل نشر الملف…")
@@ -1456,6 +1486,19 @@ class MainWindow(QMainWindow):
             self.status.setText(
                 "حُفظ MP4 بترميز H.264 وصوت AAC إن وُجد، وفُك الخرج كاملًا. جرّبه على جهازك."
             )
+            return
+        if isinstance(result, RevisionResult):
+            try:
+                if self._revision_request is None:
+                    raise SceneError("لا يوجد اختيار معاينة حالي لهذه النتيجة.")
+                self.scene_picker.apply_revision(result, self._revision_request)
+                self.scene_section.set_expanded(True)
+                self.status.setText(
+                    "انتهت محاولة واحدة. راجع النتيجة والموارد والبدائل، ثم اختر هل هذا المطلوب. "
+                    "لم يبدأ صوت أو اعتماد أو تصدير."
+                )
+            except ScriptError as error:
+                QMessageBox.warning(self, "راجع اختيار المعاينة الحالي", str(error))
             return
         if isinstance(result, AssetPreparation):
             try:
@@ -1573,12 +1616,13 @@ class MainWindow(QMainWindow):
     def _task_cancelled(self) -> None:
         self.status.setText(
             "أُلغي تجهيز الموارد دون تغيير الخطة. قد تبقى موارد مكتملة ومدققة في الذاكرة المحلية."
-            if self._progress_kind == "scene-assets"
+            if self._progress_kind in ("scene-assets", "scene-revision")
             else "تم الإلغاء. لم يتم استبدال أي ملف سابق أو الصفحة الأصلية."
         )
 
     def _task_finished(self) -> None:
         self._asset_request = None
+        self._revision_request = None
         worker = self.worker
         self.worker = None
         if worker:

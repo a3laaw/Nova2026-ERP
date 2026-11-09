@@ -932,3 +932,165 @@ def test_secondary_native_fallback_removes_resources_only_and_keeps_source_and_v
     assert "resources" not in current.to_data()
     assert "asset_id" in current.payload_json and panel._approved is None
     assert window._source_lesson() == original and window._cast() == cast
+
+
+def test_review_choices_are_real_native_buttons_and_sacred_mode_disables_them(window):
+    window._scene_example()
+    panel = window.scene_picker
+    assert "هذا المطلوب" in panel.approve_button.text()
+    assert panel.another_button.isEnabled() and panel.external_button.isEnabled()
+    assert panel.another_button.height() == panel.external_button.height() == 40
+    assert panel.approve_button.height() == 48
+    panel.policy.setCurrentIndex(1)
+    assert not panel.another_button.isEnabled() and not panel.external_button.isEnabled()
+
+
+def test_review_another_needs_setup_but_never_opens_a_teacher_resource_picker(window, monkeypatch):
+    window._scene_example()
+    panel, requests, warnings = window.scene_picker, [], []
+    panel.revision_requested.disconnect()
+    panel.revision_requested.connect(requests.append)
+    monkeypatch.setattr(QMessageBox, "warning", lambda *args: warnings.append(args[-1]))
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: pytest.fail("not configured"))
+    panel._revise("another")
+    panel.adult.setChecked(True)
+    panel._revise("another")
+    assert not requests and len(warnings) == 2
+    assert "مفتاح" in warnings[-1] and not panel.cloud_section.content.isHidden()
+    assert window.worker is None and window.player.source().isEmpty()
+
+
+def test_declining_a_review_choice_does_not_consume_key_or_change_the_old_plan(window, monkeypatch):
+    window._scene_example()
+    panel, requests = window.scene_picker, []
+    panel.revision_requested.disconnect()
+    panel.revision_requested.connect(requests.append)
+    panel.key.setText("test-only-NOT-A-REAL-KEY")
+    panel.adult.setChecked(True)
+    _, old = panel._current()
+    panel._approved = old
+    before = panel.revision
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.StandardButton.No)
+    panel._revise("another")
+    assert not requests and panel.revision == before and panel._approved == old
+    assert panel.key.text() == "test-only-NOT-A-REAL-KEY"
+
+
+def test_another_choice_snapshots_feedback_and_revokes_approval_without_rewriting_text(
+    window, monkeypatch
+):
+    window._scene_example()
+    panel, requests, notices = window.scene_picker, [], []
+    panel.revision_requested.disconnect()
+    panel.revision_requested.connect(requests.append)
+    panel.feedback.setText("وضّح الأجزاء المتحركة")
+    panel.key.setText("test-only-NOT-A-REAL-KEY")
+    panel.adult.setChecked(True)
+    old, cast = window._source_lesson(), window._cast()
+    panel._approved = panel._current()[1]
+
+    def accept(*args):
+        notices.append(args[2])
+        return QMessageBox.StandardButton.Yes
+
+    monkeypatch.setattr(QMessageBox, "question", accept)
+    panel._revise("another")
+    assert len(requests) == 1 and requests[0].feedback == "وضّح الأجزاء المتحركة"
+    assert requests[0].send_consent and not requests[0].download_consent
+    assert requests[0].revision == panel.revision and "OpenRouter" in notices[0]
+    assert panel._approved is None and not panel.key.text() and not panel.consent.isChecked()
+    assert window._source_lesson() == old and window._cast() == cast
+    assert not window.create_board_button.isEnabled() and window.player.source().isEmpty()
+
+
+def test_external_choice_prepares_pending_ids_without_model_key_or_manual_files(
+    window, monkeypatch
+):
+    from PySide6.QtWidgets import QFileDialog
+
+    panel = secondary_draft(window)
+    requests, notices = [], []
+    panel.revision_requested.disconnect()
+    panel.revision_requested.connect(requests.append)
+    monkeypatch.setattr(
+        QFileDialog, "getOpenFileName", lambda *a, **k: pytest.fail("resource picker")
+    )
+
+    def accept(*args):
+        notices.append(args[2])
+        return QMessageBox.StandardButton.Yes
+
+    monkeypatch.setattr(QMessageBox, "question", accept)
+    panel.external_button.click()
+    assert len(requests) == 1 and requests[0].download_consent
+    assert not requests[0].send_consent and not requests[0].key
+    assert "لا إرسال سكريبت" in notices[0] and "api.github.com" in notices[0]
+    assert "CC BY3.0" in notices[0] and panel._approved is None
+    assert window.worker is None and window.player.source().isEmpty()
+
+
+def test_optional_review_key_is_not_saved_and_source_edit_forget_and_cleanup_clear_it(
+    window, monkeypatch
+):
+    from dataclasses import asdict
+
+    window._scene_example()
+    panel, requests = window.scene_picker, []
+    panel.requested.disconnect()
+    panel.requested.connect(requests.append)
+    panel.remember_review_key.setChecked(True)
+    panel.key.setText("test-only-NOT-A-REAL-KEY")
+    panel.adult.setChecked(True)
+    panel.consent.setChecked(True)
+    panel._request()
+    fingerprint = window._source_lesson().manifest()["fingerprint"]
+    assert panel._review_credential.get(fingerprint) == "test-only-NOT-A-REAL-KEY"
+    assert not panel.key.text() and "test-only" not in repr(asdict(window.preferences))
+    panel._forget_review_key()
+    assert not panel._review_credential.get(fingerprint)
+    panel._review_credential.remember("test-only-NOT-A-REAL-KEY", fingerprint)
+    window.editor.insertPlainText(" Changed.")
+    assert not panel._review_credential.get(fingerprint)
+    panel._review_credential.remember("test-only-NOT-A-REAL-KEY", fingerprint)
+    panel.cleanup()
+    assert not panel._review_credential.get(fingerprint)
+
+
+def test_revision_result_opens_new_silent_preview_and_stale_feedback_result_is_rejected(
+    window, monkeypatch
+):
+    from pathlib import Path
+
+    from nova_voice.scene_revision import RevisionRequest, RevisionResult
+    from nova_voice.scenes import VisualPlan
+    from nova_voice.timing import data_fingerprint
+    from nova_voice.whiteboard import WhiteboardPage
+
+    window._scene_example()
+    panel, opened = window.scene_picker, []
+    source, previous = panel._current()
+    changed = previous.to_data()
+    changed["steps"][0]["elements"][0]["x"] += 10
+    changed = VisualPlan.from_data(changed, source.manifest())
+    request = RevisionRequest(source.manifest(), previous, panel.revision, "another")
+    result = RevisionResult(
+        data_fingerprint(previous.to_data()),
+        source.manifest()["fingerprint"],
+        "another",
+        changed,
+        True,
+        changed=True,
+    )
+    monkeypatch.setattr(
+        "nova_voice.scene_picker.QDesktopServices.openUrl", lambda url: opened.append(url) or True
+    )
+    panel.apply_revision(result, request)
+    assert len(opened) == 1 and panel._approved is None
+    page = WhiteboardPage.load(Path(opened[0].toLocalFile()))
+    assert page.lesson.visuals == changed
+    assert '<script id="nova-whiteboard-recordings"' not in page.page.content
+    assert window.player.source().isEmpty() and not window.create_board_button.isEnabled()
+    assert window._source_lesson() == source
+    panel.feedback.setText("تعديل جديد")
+    with pytest.raises(Exception, match="قديمة"):
+        panel.apply_revision(result, request)

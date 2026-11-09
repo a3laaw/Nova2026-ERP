@@ -5,7 +5,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QUrl, Signal
+from PySide6.QtCore import Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication,
@@ -21,6 +21,15 @@ from PySide6.QtWidgets import (
 
 from .controls import Disclosure, button, combo, label
 from .scene_planner import manual_prompt
+from .scene_revision import (
+    MAX_FEEDBACK,
+    SESSION_SECONDS,
+    ReviewCredential,
+    RevisionRequest,
+    RevisionResult,
+    needs_planner,
+    revision_matches,
+)
 from .scenes import SceneError, VisualPlan, empty_plan, review_text
 from .secondary_assets import (
     AssetPreparation,
@@ -60,6 +69,7 @@ class ScenePicker(QWidget):
     requested = Signal(object)
     example_requested = Signal()
     assets_requested = Signal(object)
+    revision_requested = Signal(object)
 
     def __init__(
         self,
@@ -73,6 +83,10 @@ class ScenePicker(QWidget):
         self._lesson_provider = lesson_provider
         self._plan_adapter = plan_adapter
         self._approved: VisualPlan | None = None
+        self._review_credential = ReviewCredential()
+        self._credential_timer = QTimer(self)
+        self._credential_timer.setSingleShot(True)
+        self._credential_timer.timeout.connect(self._review_credential.clear)
         self.revision = 0
         self._asset_cache = asset_cache if asset_cache is not None else cache_directory()
         self._preview_dir = tempfile.TemporaryDirectory(prefix="nova-scene-review-")
@@ -157,7 +171,8 @@ class ScenePicker(QWidget):
         cloud.content_layout.addWidget(
             label(
                 "طلب نصي واحد إلى OpenRouter ومزوّد النموذج، بحساب المعلم البالغ 18+ فقط. "
-                "يُرسل السكريبت والمادة والصف؛ لا أصوات أو ملفات أخرى. "
+                "يُرسل السكريبت والمادة والصف؛ في البدائل الخطة السابقة وملاحظتك أيضًا. "
+                "لا أصوات أو ملفات موارد خام. "
                 "لا بيانات طلاب أو معلومات حساسة. النموذج openrouter/free فقط، "
                 "سقف سعر صفر ومنع التدريب/الاحتفاظ بحسب مرشحات المزود. "
                 "عند غياب نموذج يوافقها، أو نفاد الحصة، نتوقف دون تخفيفها أو شراء رصيد. "
@@ -173,7 +188,7 @@ class ScenePicker(QWidget):
         self.key = QLineEdit()
         self.key.setEchoMode(QLineEdit.EchoMode.Password)
         self.key.setMaxLength(512)
-        self.key.setPlaceholderText("مفتاح OpenRouter · لهذا الطلب فقط، لا يُحفظ")
+        self.key.setPlaceholderText("مفتاح OpenRouter · لا حفظ على القرص؛ جلسة البدائل اختيارية")
         self.key.setAccessibleName("مفتاح OpenRouter السري، لا يُكتب في السكريبت")
         self.key.setInputMethodHints(
             Qt.InputMethodHint.ImhSensitiveData | Qt.InputMethodHint.ImhNoPredictiveText
@@ -186,6 +201,14 @@ class ScenePicker(QWidget):
         self.request_button = button("اقتراح مشاهد · طلب مجاني واحد", "primary")
         self.request_button.clicked.connect(self._request)
         cloud.content_layout.addWidget(self.request_button)
+        self.remember_review_key = QCheckBox(
+            "إبقاء المفتاح في ذاكرة هذه الجلسة لتجربة البدائل · حتى30 دقيقة، لا حفظ على القرص"
+        )
+        self.remember_review_key.toggled.connect(self._remember_changed)
+        cloud.content_layout.addWidget(self.remember_review_key)
+        self.forget_review_key_button = button("نسيان مفتاح جلسة البدائل الآن")
+        self.forget_review_key_button.clicked.connect(self._forget_review_key)
+        cloud.content_layout.addWidget(self.forget_review_key_button)
         layout.addWidget(cloud)
         advanced = Disclosure("بيانات الخطة المتقدمة · تعديل اختياري، لا يلزم تركيب الأجزاء يدويًا")
         self.advanced_section = advanced
@@ -226,16 +249,39 @@ class ScenePicker(QWidget):
         layout.addWidget(self.review)
         self.use_plan = QCheckBox("تضمين المشاهد في تصدير السبورة فقط")
         layout.addWidget(self.use_plan)
-        self.approve_button = button("راجعت الخطة والنطق · اعتماد للتصدير", "primary")
+        layout.addWidget(label("هل هذا المطلوب؟", "section"))
+        layout.addWidget(
+            label(
+                "بعد فتح المعاينة الصامتة ارجع هنا واختر. «اقتراح آخر» يطلب رسمًا مختلفًا "
+                "للنص نفسه. «مصدر خارجي» يجعل البرنامج يقترح ويجهّز الموارد من القائمة "
+                "المدققة دون اختيارك ملفًا أو معرّفًا، مع إذن الإرسال/التنزيل لهذه المحاولة. "
+                "ليس بحثًا مفتوحًا ولا ضمانًا لوجود مورد. النتيجة تُعاين ولا تُعتمد تلقائيًا.",
+                "muted",
+                True,
+            )
+        )
+        self.feedback = QLineEdit()
+        self.feedback.setMaxLength(MAX_FEEDBACK)
+        self.feedback.setPlaceholderText("تعديل اختياري: وضّح الحركة أكثر أو قلّل التفاصيل…")
+        self.feedback.setAccessibleName("ملاحظة اختيارية للاقتراح البديل، لا تدخل في النطق")
+        layout.addWidget(self.feedback)
+        self.approve_button = button("نعم، هذا المطلوب · اعتماد بعد المراجعة", "primary")
         self.approve_button.clicked.connect(self._approve)
         layout.addWidget(self.approve_button)
+        self.another_button = button("اعمل اقتراحًا آخر")
+        self.another_button.clicked.connect(lambda: self._revise("another"))
+        layout.addWidget(self.another_button)
+        self.external_button = button("جرّب مصدرًا خارجيًا مجانيًا · بإذني")
+        self.external_button.clicked.connect(lambda: self._revise("external"))
+        layout.addWidget(self.external_button)
         self.state = label("اختياري: الوضع القديم يعمل كما هو دون خطة أو اتصال.", "muted", True)
         layout.addWidget(self.state)
         self.plan_edit.textChanged.connect(self._draft_changed)
         self.use_plan.toggled.connect(self._use_changed)
         self.subject.textChanged.connect(self.invalidate_source)
         self.grade.textChanged.connect(self.invalidate_source)
-        self.key.textChanged.connect(self._reset_consent)
+        self.key.textChanged.connect(self._key_changed)
+        self.feedback.textChanged.connect(self._feedback_changed)
         self.policy.currentIndexChanged.connect(self.invalidate_source)
         self.allow_assets.toggled.connect(self.invalidate_source)
         self._use_changed()
@@ -244,12 +290,47 @@ class ScenePicker(QWidget):
         self.consent.setChecked(False)
 
     def invalidate_source(self, *_):
+        self._review_credential.clear()
+        self._credential_timer.stop()
         self.revision += 1
         self._approved = None
         self._reset_consent()
         self.review.clear()
         self._state()
         self.changed.emit()
+
+    def _key_changed(self, *_):
+        self._review_credential.clear()
+        self._credential_timer.stop()
+        self._reset_consent()
+
+    def _remember_changed(self, enabled):
+        if not enabled:
+            self._review_credential.clear()
+            self._credential_timer.stop()
+
+    def _forget_review_key(self):
+        self._review_credential.clear()
+        self._credential_timer.stop()
+        self.key.clear()
+        self._reset_consent()
+        self.state.setText("نُسي مفتاح جلسة البدائل؛ لم تتغير الخطة أو الأصوات أو الملفات.")
+
+    def _feedback_changed(self, *_):
+        self.revision += 1
+        self._approved = None
+        self._reset_consent()
+        self._state()
+        self.changed.emit()
+
+    def _take_key(self, source: dict) -> str:
+        entered = self.key.text()
+        key = entered or self._review_credential.get(source["fingerprint"])
+        self.key.clear()
+        if self.remember_review_key.isChecked() and entered:
+            self._review_credential.remember(key, source["fingerprint"])
+            self._credential_timer.start(SESSION_SECONDS * 1000)
+        return key
 
     def _draft_changed(self):
         self.revision += 1
@@ -278,6 +359,11 @@ class ScenePicker(QWidget):
         if self.policy.currentData() == "sacred":
             message = "حماية النصوص المقدسة: لا إرسال أو نطق آلي. " + message
         self.state.setText(message)
+        can_revise = (
+            bool(self.plan_edit.toPlainText().strip()) and self.policy.currentData() == "general"
+        )
+        self.another_button.setEnabled(can_revise)
+        self.external_button.setEnabled(can_revise)
 
     def export_ready(self) -> bool:
         return not self.use_plan.isChecked() or self._approved is not None
@@ -388,15 +474,17 @@ class ScenePicker(QWidget):
     def _preview(self):
         try:
             lesson, plan = self._current()
-            path = Path(self._preview_dir.name) / "Nova-DRAFT-review.html"
+            path = Path(self._preview_dir.name) / f"Nova-DRAFT-review-{self.revision}.html"
             save_whiteboard(replace(lesson, visuals=plan), path)
             if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))):
                 raise SceneError(
                     "تعذّر فتح المتصفح. استخدم حفظ الخطة أو معاينة السبورة بعد اعتمادها."
                 )
             self.state.setText("فُتحت معاينة مسودة مؤقتة بلا صوت أو إنترنت؛ لم تُعتمد للتصدير بعد.")
+            return True
         except (OSError, ScriptError) as error:
             self._error(error)
+            return False
 
     def _export(self):
         try:
@@ -506,7 +594,7 @@ class ScenePicker(QWidget):
             source = self._lesson_provider().manifest()
             request = PlannerRequest(
                 source,
-                self.key.text(),
+                self._take_key(source),
                 self.subject.text(),
                 self.grade.text(),
                 self.policy.currentData(),
@@ -514,13 +602,117 @@ class ScenePicker(QWidget):
                 True,
                 self.allow_assets.isChecked(),
             )
-            self.key.clear()
             self.consent.setChecked(False)
             self.requested.emit(request)
         except ScriptError as error:
             self._error(error)
 
+    def _revise(self, action: str):
+        try:
+            lesson, plan = self._current()
+            if self.policy.currentData() != "general" or plan.to_data()["policy"] != "general":
+                raise SceneError("حماية النصوص المقدسة لا تسمح باقتراح بديل أو موارد خارجية.")
+            source, revision = lesson.manifest(), self.revision
+            feedback = self.feedback.text().strip()
+            model_needed = needs_planner(plan, action, feedback=feedback)
+            if model_needed:
+                if not self.adult.isChecked():
+                    self.cloud_section.set_expanded(True)
+                    raise SceneError("أكد أهلية حساب المعلم البالغ في قسم الاقتراح المجاني أولًا.")
+                if not (self.key.text() or self._review_credential.get(source["fingerprint"])):
+                    self.cloud_section.set_expanded(True)
+                    self.key.setFocus()
+                    raise SceneError(
+                        "يلزم إعداد مفتاح الاقتراح المجاني داخل البرنامج. يمكنك إبقاءه في ذاكرة "
+                        "الجلسة اختياريًا لتجربة البدائل دون إدخاله كل مرة؛ لا مصدر مدفوع."
+                    )
+            notice = (
+                "سيُرسل السكريبت والخطة المرئية السابقة وملاحظتك إلى OpenRouter ومزوّده "
+                "لطلب مجاني واحد، بسعرصفر ومنع التدريب/الاحتفاظ كما في الطلب الأصلي. "
+                "لا بيانات طلاب أو معلومات حساسة. لا ضمان حصة أو جودة ولا إصلاح/دفع تلقائي.\n\n"
+                if model_needed
+                else "الموارد مقترحة في الخطة بالفعل؛ لا إرسال سكريبت أو طلب نموذج لغوي.\n\n"
+            )
+            if action == "external":
+                notice += (
+                    "وتأذن مستقلاً بتنزيل الموارد التي تختارها هذه المحاولة من القائمة المثبتة "
+                    "ذات16 رسمًا عبر api.github.com، دون اختيار ملفات منك. لا بحث حر أو رفع "
+                    "صوت/درس إلى مصدر الرسوم. المصدر يرى عنوان الاتصال ومعرّفات الموارد. "
+                    "تبقى نسبة المؤلف وCC BY3.0؛ الفشل يرجع للبديل المحلي، والإلغاء قد ينتظر "
+                    "مهلة الشبكة وتبقى ملفات مكتملة في الذاكرة.\n\n"
+                )
+            notice += (
+                "النتيجة مسودة بمعاينة صامتة؛ لا اعتماد أو نطق أو تصدير. هل تسمح بهذه المحاولة؟"
+            )
+            if (
+                QMessageBox.question(
+                    self,
+                    "إذن هذه المحاولة: اقتراح وتنزيل"
+                    if action == "external"
+                    else "إذن اقتراح بديل واحد",
+                    notice,
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No,
+                )
+                != QMessageBox.StandardButton.Yes
+            ):
+                return
+            current_source, current = self._current()
+            if (
+                revision != self.revision
+                or current_source.manifest() != source
+                or current != plan
+                or self.feedback.text().strip() != feedback
+            ):
+                raise SceneError("تغيّرت الخطة أو الملاحظة أثناء الموافقة؛ اضغط الاختيار من جديد.")
+            key = self._take_key(source) if model_needed else ""
+            self._approved = None
+            self.revision += 1
+            self.consent.setChecked(False)
+            self._state()
+            self.changed.emit()
+            self.revision_requested.emit(
+                RevisionRequest(
+                    source,
+                    plan,
+                    self.revision,
+                    action,
+                    feedback,
+                    key,
+                    self.adult.isChecked() if model_needed else False,
+                    model_needed,
+                    action == "external",
+                )
+            )
+        except ScriptError as error:
+            self._error(error)
+
+    def apply_revision(self, result: RevisionResult, request: RevisionRequest):
+        lesson, current = self._current()
+        if (
+            self.revision != request.revision
+            or result.action != request.action
+            or not revision_matches(result, current, lesson.manifest())
+        ):
+            raise SceneError("تغيّرت الخطة أو النص أو الملاحظة؛ لم تُطبّق نتيجة اختيار قديمة.")
+        prepared = VisualPlan.from_data(result.plan.to_data(), lesson.manifest())
+        if self._plan_adapter is not None:
+            prepared = self._plan_adapter(prepared, lesson)
+        self.set_draft(prepared)
+        self.review.setPlainText(result.summary() + "\n\n" + self.review.toPlainText())
+        opened = self._preview()  # Only a silent local preview, never approval/audio/export.
+        self.state.setText(
+            result.summary()
+            + (
+                "\nبعد المعاينة اختر هل هذا المطلوب، أو جرّب بديلًا."
+                if opened
+                else "\nتعذّر فتح المعاينة؛ افتحها وراجعها قبل الاعتماد."
+            )
+        )
+
     def cleanup(self):
+        self._review_credential.clear()
+        self._credential_timer.stop()
         self.key.clear()
         self.consent.setChecked(False)
         self._preview_dir.cleanup()
