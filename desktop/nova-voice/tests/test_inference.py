@@ -89,7 +89,14 @@ def test_catalog_covers_every_existing_browser_control():
 
 def native_buttons():
     buttons = set()
-    for name in ("ui", "appearance_picker", "scene_picker", "lesson_picker", "video_picker"):
+    for name in (
+        "ui",
+        "appearance_picker",
+        "scene_picker",
+        "lesson_picker",
+        "video_picker",
+        "azure_picker",
+    ):
         tree = ast.parse((ROOT / f"nova_voice/{name}.py").read_text())
         for node in ast.walk(tree):
             if (
@@ -113,7 +120,7 @@ def test_catalog_covers_all_named_native_action_buttons_and_has_no_stale_names()
 
 
 def test_catalog_is_free_form_complete_and_references_real_owned_sources():
-    assert len(ENTRIES) == 86
+    assert len(ENTRIES) == 90
     assert len(CATALOG["categories"]) == 8
     assert len({entry["id"] for entry in ENTRIES}) == len(ENTRIES)
     assert {entry["category"] for entry in ENTRIES} == {c["id"] for c in CATALOG["categories"]}
@@ -319,3 +326,18 @@ def test_invalid_owned_catalog_fails_with_a_recoverable_message(tmp_path):
     path.write_text(json.dumps(data))
     with pytest.raises(InferenceError):
         load_catalog(path)
+
+
+def test_azure_setup_steps_cover_curated_voices_and_cannot_send_or_embed_guide_fields():
+    from nova_voice.azure_speech import AZURE_VOICES
+
+    entries = [entry for entry in ENTRIES if entry["id"].startswith("azure-")]
+    assert len(entries) == 4 and all(entry["kind"] == "local" for entry in entries)
+    serialized = json.dumps(entries, ensure_ascii=False)
+    assert all(voice.voice_id in serialized for voice in AZURE_VOICES)
+    assert "F0" in serialized and "S0" in serialized and "30" in serialized
+    for entry in entries:
+        instructions = build_prompt(
+            entry["id"], GuideFields(source="PRIVATE_SOURCE", notes="PRIVATE_NOTES")
+        )
+        assert "PRIVATE_" not in instructions and "Azure" in instructions

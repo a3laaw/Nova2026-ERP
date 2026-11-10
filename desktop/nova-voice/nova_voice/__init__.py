@@ -1,3 +1,3 @@
-"""Nova Voice: local speech/drawing with optional, consent-only lesson authoring."""
+"""Nova Voice: local speech/drawing with optional consented Azure speech and lesson authoring."""
 
-__version__ = "0.14.0.dev1"
+__version__ = "0.15.0.dev1"

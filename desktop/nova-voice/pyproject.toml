@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nova-voice-desktop"
-version = "0.14.0.dev1"
-description = "Reviewed script-driven lessons with scoped scene edits, bounded version history and offline visual comparison."
+version = "0.15.0.dev1"
+description = "Reviewed script-driven lessons with local Piper and optional session-only consented Azure TTS."
 requires-python = ">=3.11,<3.14"
 license = "GPL-3.0-or-later"
 dependencies = [

@@ -13,8 +13,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-ARCHIVE_NAME = "NovaVoice-Source-v0.14.0.dev1.rar"
-GUIDE_NAME = "INFERENCE-GUIDE-v0.14.0.dev1-AR.html"
+ARCHIVE_NAME = "NovaVoice-Source-v0.15.0.dev1.rar"
+GUIDE_NAME = "INFERENCE-GUIDE-v0.15.0.dev1-AR.html"
 PDF_NAME = "NovaVoice-Motion-A4-v0.9.0.dev1.pdf"
 VIDEO_NAME = "NovaVoice-Motion-H264-v0.9.0.dev1.mp4"
 WEBM_NAME = "NovaVoice-Motion-v0.9.0.dev1.webm"
@@ -66,6 +66,11 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         "/start": (source / "RUN-FIRST-AR.html", html, False),
         "/desktop/nova-voice/RUN-FIRST-AR.html": (
             source / "RUN-FIRST-AR.html",
+            html,
+            False,
+        ),
+        "/INFERENCE-GUIDE-v0.14.0.dev1-AR.html": (
+            delivery / "INFERENCE-GUIDE-v0.14.0.dev1-AR.html",
             html,
             False,
         ),
@@ -136,6 +141,7 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         "SECONDARY-SOURCES-AR.md",
         "REVIEW-CHOICES-AR.md",
         "SCENE-HISTORY-AR.md",
+        "AZURE-SPEECH-AR.md",
         "THIRD_PARTY.md",
     ):
         routes["/desktop/nova-voice/" + name] = (
@@ -161,6 +167,7 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         "SECONDARY-SOURCES-AR.md",
         "REVIEW-CHOICES-AR.md",
         "SCENE-HISTORY-AR.md",
+        "AZURE-SPEECH-AR.md",
         "THIRD_PARTY.md",
     ):
         routes["/" + name] = routes["/desktop/nova-voice/" + name]
@@ -192,6 +199,7 @@ def public_routes(repository: Path) -> dict[str, tuple[Path, str, bool]]:
         routes["/examples/" + name] = route
         routes["/desktop/nova-voice/examples/" + name] = route
     for legacy in (
+        "NovaVoice-Source-v0.14.0.dev1.rar",
         "NovaVoice-Source-v0.13.0.dev1.rar",
         "NovaVoice-Source-v0.12.0.dev1.rar",
         "NovaVoice-Source-v0.11.0.dev1.rar",

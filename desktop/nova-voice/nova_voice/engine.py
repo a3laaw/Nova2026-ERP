@@ -1,4 +1,4 @@
-"""Offline, streaming single-voice/dialogue synthesis with atomic WAV/MP3 output."""
+"""Streaming local/optional consented Azure synthesis with atomic WAV/MP3 output."""
 
 import os
 import tempfile
@@ -10,6 +10,7 @@ from pathlib import Path
 from threading import Event, Lock
 from typing import Any
 
+from .azure_speech import AzureError, AzureJob, AzureVoice, CloudRequest
 from .dialogue import DialogueTurn, has_voice_markers, merge_turns, parse_dialogue
 from .language import narration_text, validate_spoken_language
 from .pcm import resample_pcm16
@@ -28,7 +29,7 @@ class RenderOptions:
     pause_ms: int = 250
     speaker_id: int = 0
 
-    def validate(self, voice: VoiceSpec) -> None:
+    def validate(self, voice: VoiceSpec | AzureVoice) -> None:
         if not 0.6 <= self.speed <= 1.6:
             raise AudioError("اختر سرعة بين 0.60 و1.60.")
         if not 0 <= self.pause_ms <= 1500:
@@ -39,7 +40,7 @@ class RenderOptions:
 
 @dataclass(frozen=True)
 class DialogueVoice:
-    voice: VoiceSpec
+    voice: VoiceSpec | AzureVoice
     speaker_id: int = 0
 
 
@@ -68,7 +69,7 @@ class SpeechLine:
 @dataclass(frozen=True)
 class _SpeechBlock:
     text: str
-    voice: VoiceSpec
+    voice: VoiceSpec | AzureVoice
     options: RenderOptions
     pause_after_ms: int
     line_id: int | None = None
@@ -86,10 +87,15 @@ def validate_dialogue_cast(
         replace(options, speaker_id=assignment.speaker_id).validate(assignment.voice)
     if used == {1, 2}:
         first, second = cast[1], cast[2]
-        if (first.voice.model_path, first.speaker_id) == (
-            second.voice.model_path,
-            second.speaker_id,
-        ):
+
+        def identity(voice):
+            return (
+                ("azure", voice.voice_id)
+                if isinstance(voice, AzureVoice)
+                else ("piper", voice.model_path)
+            )
+
+        if (identity(first.voice), first.speaker_id) == (identity(second.voice), second.speaker_id):
             raise VoiceError(
                 "الصوتان يستخدمان النموذج والمتحدث نفسيهما. اختر نموذجًا آخر للصوت الثاني، "
                 "أو متحدثًا مختلفًا داخل نموذج متعدد المتحدثين."
@@ -101,7 +107,8 @@ def validate_dialogue_cast(
 class SpeechEngine:
     """At most two cached models; one serialized job prevents eSpeak/encoder races."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, azure_job: AzureJob | None = None) -> None:
+        self._azure_job = azure_job
         self._voices: OrderedDict[tuple[Any, ...], Any] = OrderedDict()
         self._lock = Lock()
 
@@ -146,24 +153,14 @@ class SpeechEngine:
     def render(
         self,
         text: str,
-        voice: VoiceSpec,
+        voice: VoiceSpec | AzureVoice,
         destination: Path,
         options: RenderOptions,
         cancel: Event | None = None,
         progress: Callable[[int], None] | None = None,
     ) -> RenderResult:
-        if has_voice_markers(text):
-            raise ScriptError(
-                "السكريبت يحتوي وسوم أصوات. اختر «حوار بين صوتين» حتى لا تُقرأ الوسوم."
-            )
-        text = validate_text(text)
-        options.validate(voice)
-        validate_spoken_language(text, voice.language_family)
-        text = narration_text(text)
-        blocks = [
-            _SpeechBlock(block.text, voice, options, options.pause_ms if block.paragraph_end else 0)
-            for block in split_text(text)
-        ]
+        blocks = self._single_blocks(text, voice, options)
+        self.preflight_cloud(self.cloud_requests(blocks), complete=True)
         return self._render(blocks, destination, cancel, progress)
 
     def render_dialogue(
@@ -177,6 +174,86 @@ class SpeechEngine:
         *,
         turn_pause_ms: int = 350,
     ) -> RenderResult:
+        blocks = self._dialogue_blocks(script, cast, options, turn_pause_ms=turn_pause_ms)
+        self.preflight_cloud(self.cloud_requests(blocks), complete=True)
+        return self._render(blocks, destination, cancel, progress)
+
+    def render_lines(
+        self,
+        lines: Sequence[SpeechLine],
+        cast: Mapping[int, DialogueVoice],
+        destination: Path,
+        options: RenderOptions,
+        cancel: Event | None = None,
+        progress: Callable[[int], None] | None = None,
+    ) -> RenderResult:
+        return self._render(self._line_blocks(lines, cast, options), destination, cancel, progress)
+
+    def preflight_cloud(
+        self, requests: tuple[CloudRequest, ...], *, complete: bool = False
+    ) -> None:
+        if requests:
+            if self._azure_job is None:
+                raise AzureError("محرك Azure يحتاج مراجعة وإذنًا جديدين قبل هذه العملية.")
+            self._azure_job.preflight(requests, complete=complete)
+
+    @staticmethod
+    def cloud_requests(blocks: Sequence[_SpeechBlock]) -> tuple[CloudRequest, ...]:
+        return tuple(
+            CloudRequest(block.voice, block.text, block.options.speed)
+            for block in blocks
+            if isinstance(block.voice, AzureVoice)
+        )
+
+    def script_cloud_requests(
+        self,
+        text: str,
+        cast: Mapping[int, DialogueVoice],
+        options: RenderOptions,
+        *,
+        dialogue: bool = False,
+        turn_pause_ms: int = 350,
+    ) -> tuple[CloudRequest, ...]:
+        blocks = (
+            self._dialogue_blocks(text, cast, options, turn_pause_ms=turn_pause_ms)
+            if dialogue
+            else self._single_blocks(text, cast[1].voice, options)
+        )
+        return self.cloud_requests(blocks)
+
+    def line_cloud_requests(
+        self,
+        lines: Sequence[SpeechLine],
+        cast: Mapping[int, DialogueVoice],
+        options: RenderOptions,
+    ) -> tuple[CloudRequest, ...]:
+        return self.cloud_requests(self._line_blocks(lines, cast, options))
+
+    def _single_blocks(
+        self, text: str, voice: VoiceSpec | AzureVoice, options: RenderOptions
+    ) -> list[_SpeechBlock]:
+        if has_voice_markers(text):
+            raise ScriptError(
+                "السكريبت يحتوي وسوم أصوات. اختر «حوار بين صوتين» حتى لا تُقرأ الوسوم."
+            )
+        text = validate_text(text)
+        options.validate(voice)
+        validate_spoken_language(text, voice.language_family)
+        text = narration_text(text)
+        blocks = [
+            _SpeechBlock(block.text, voice, options, options.pause_ms if block.paragraph_end else 0)
+            for block in split_text(text)
+        ]
+        return blocks
+
+    def _dialogue_blocks(
+        self,
+        script: str,
+        cast: Mapping[int, DialogueVoice],
+        options: RenderOptions,
+        *,
+        turn_pause_ms: int = 350,
+    ) -> list[_SpeechBlock]:
         """Render turns in source order into ONE encoder, never overlapping tracks.
 
         A cast entry's speaker_id overrides the single-narrator options.speaker_id.
@@ -200,17 +277,11 @@ class SpeechEngine:
                 if index == len(pieces) - 1:
                     pause = turn_pause_ms
                 blocks.append(_SpeechBlock(piece.text, assignment.voice, turn_options, pause))
-        return self._render(blocks, destination, cancel, progress)
+        return blocks
 
-    def render_lines(
-        self,
-        lines: Sequence[SpeechLine],
-        cast: Mapping[int, DialogueVoice],
-        destination: Path,
-        options: RenderOptions,
-        cancel: Event | None = None,
-        progress: Callable[[int], None] | None = None,
-    ) -> RenderResult:
+    def _line_blocks(
+        self, lines: Sequence[SpeechLine], cast: Mapping[int, DialogueVoice], options: RenderOptions
+    ) -> list[_SpeechBlock]:
         """Count each logical row in ONE sequential PCM/encoder stream.
 
         This opt-in API leaves render/render_dialogue callers and their existing
@@ -255,7 +326,7 @@ class SpeechEngine:
                         line.speaker,
                     )
                 )
-        return self._render(blocks, destination, cancel, progress)
+        return blocks
 
     def _render(
         self,
@@ -283,18 +354,22 @@ class SpeechEngine:
         cancel: Event,
         progress: Callable[[int], None],
     ) -> RenderResult:
-        from piper import SynthesisConfig
-
         check_cancelled(cancel)
         progress(-1)
-        loaded: dict[VoiceSpec, Any] = {}
+        self.preflight_cloud(self.cloud_requests(blocks))
+        loaded: dict[VoiceSpec | AzureVoice, Any] = {}
         # Preflight both voices before opening a temporary output file.
         for block in blocks:
             if block.voice not in loaded:
                 check_cancelled(cancel)
-                loaded[block.voice] = self._load(block.voice)
+                loaded[block.voice] = (
+                    None if isinstance(block.voice, AzureVoice) else self._load(block.voice)
+                )
                 check_cancelled(cancel)
-        rate = max(voice.config.sample_rate for voice in loaded.values())
+        rate = max(
+            spec.sample_rate if isinstance(spec, AzureVoice) else voice.config.sample_rate
+            for spec, voice in loaded.items()
+        )
         destination = destination.expanduser().absolute()
         destination.parent.mkdir(parents=True, exist_ok=True)
         fd, name = tempfile.mkstemp(prefix=".nova-voice-", dir=destination.parent)
@@ -343,15 +418,25 @@ class SpeechEngine:
                         ):
                             line_start = frames
                         voice = loaded[block.voice]
-                        synthesis = SynthesisConfig(
-                            length_scale=voice.config.length_scale / block.options.speed,
-                            speaker_id=block.options.speaker_id,
-                        )
+                        if isinstance(block.voice, AzureVoice):
+                            chunks = self._azure_job.synthesize(
+                                CloudRequest(block.voice, block.text, block.options.speed), cancel
+                            )
+                            expected_rate = block.voice.sample_rate
+                        else:
+                            from piper import SynthesisConfig
+
+                            synthesis = SynthesisConfig(
+                                length_scale=voice.config.length_scale / block.options.speed,
+                                speaker_id=block.options.speaker_id,
+                            )
+                            chunks = voice.synthesize(block.text, syn_config=synthesis)
+                            expected_rate = voice.config.sample_rate
                         speech_frames = 0
-                        for chunk in voice.synthesize(block.text, syn_config=synthesis):
+                        for chunk in chunks:
                             check_cancelled(cancel)
                             if (chunk.sample_rate, chunk.sample_width, chunk.sample_channels) != (
-                                voice.config.sample_rate,
+                                expected_rate,
                                 2,
                                 1,
                             ):

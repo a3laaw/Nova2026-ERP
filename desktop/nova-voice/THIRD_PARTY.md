@@ -171,3 +171,21 @@ credits or artwork already embedded in exported files. The optional public GitHu
 GET has separate per-request consent and sends no lesson, audio or API key; no
 GitHub authentication is needed. Review [SECONDARY-SOURCES-AR.md](SECONDARY-SOURCES-AR.md)
 for the bounded importer, fallback, cache and privacy details.
+
+
+## Optional Microsoft Azure Speech (0.15 source preview)
+
+The optional real-time standard Neural TTS client uses Python's standard-library
+HTTPS/XML facilities, not an Azure SDK, copied voice model, hosted browser API or
+new dependency. Microsoft service, account, privacy and output-use terms apply
+separately; GPL licensing of this client does not grant a Speech subscription or
+certify model/output rights. No cloud voice weights or real Azure-generated sample
+is redistributed here. Consult Microsoft's current Speech pricing and responsible-AI
+privacy documentation linked from `AZURE-SPEECH-AR.md`.
+
+Piper is still the default and retains its license/notices. A user-entered Speech
+key cannot prove SKU/balance. The F0 checkbox is user attestation, not billing
+verification: an S0 resource may incur charges even if wrongly attested as F0.
+No account creation, billing upgrade, retry or fallback is performed by this client.
+Tests inject dummy credentials/PCM; no live cloud or native Windows validation is
+claimed. Exported Nova whiteboards contain local audio, never a cloud key/client.

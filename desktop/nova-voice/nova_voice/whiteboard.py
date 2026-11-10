@@ -27,6 +27,7 @@ from .appearance import (
     character_catalog,
     character_templates,
 )
+from .azure_speech import CloudRequest
 from .dialogue import DialogueTurn, has_voice_markers, merge_turns, parse_dialogue
 from .engine import (
     DialogueVoice,
@@ -629,7 +630,7 @@ def validate_lesson_cast(
     if lesson.visuals and lesson.visuals.to_data()["policy"] == "sacred":
         raise VoiceError(
             "وضع النصوص المقدسة يعرض النص المراجع فقط في هذه النسخة. لا "
-            "يُستخدم Piper كتلاوة أو تجويد معتمدين."
+            "يُستخدم Piper أو Azure كتلاوة أو تجويد معتمدين."
         )
     if lesson.dialogue:
         validate_dialogue_cast(
@@ -647,6 +648,48 @@ def validate_lesson_cast(
         replace(options, speaker_id=cast[1].speaker_id).validate(cast[1].voice)
         for index in range(len(lesson.steps)):
             validate_spoken_language(lesson.step_speech(index), cast[1].voice.language_family)
+
+
+def whiteboard_speech_lines(
+    lesson: Lesson, index: int, turn_pause_ms: int = 350
+) -> tuple[SpeechLine, ...]:
+    """One source of truth for actual narration rows, not headings/display text."""
+    step = lesson.steps[index]
+    return tuple(
+        SpeechLine(
+            row_index,
+            row.text,
+            row.speaker,
+            turn_pause_ms
+            if (
+                lesson.dialogue
+                and row_index + 1 < len(step.rows)
+                and step.rows[row_index + 1].speaker != row.speaker
+            )
+            else 0,
+        )
+        for row_index, row in enumerate(lesson.effective_rows(index, speech=True))
+    )
+
+
+def whiteboard_cloud_requests(
+    engine: SpeechEngine,
+    lesson: Lesson,
+    cast: Mapping[int, DialogueVoice],
+    options: RenderOptions,
+    *,
+    turn_pause_ms: int = 350,
+) -> tuple[CloudRequest, ...]:
+    validate_lesson_cast(lesson, cast, options)
+    if not 0 <= turn_pause_ms <= 2000:
+        raise WhiteboardError("فاصل الردود يجب أن يكون بين 0 و2000 ملّي ثانية.")
+    return tuple(
+        request
+        for index in range(len(lesson.steps))
+        for request in engine.line_cloud_requests(
+            whiteboard_speech_lines(lesson, index, turn_pause_ms), cast, options
+        )
+    )
 
 
 def render_whiteboard_audio(
@@ -678,6 +721,14 @@ def render_whiteboard_audio(
         raise WhiteboardError("فاصل الردود يجب أن يكون بين 0 و2000 ملّي ثانية.")
     clips: list[tuple[Path, float, int]] = []
     measured: list[ClipTiming] = []
+    preflight = getattr(engine, "preflight_cloud", None)
+    if callable(preflight):
+        preflight(
+            whiteboard_cloud_requests(
+                engine, board.lesson, cast, options, turn_pause_ms=turn_pause_ms
+            ),
+            complete=True,
+        )
     completed = 0
     audio_bytes = 0
     total = board.lesson.characters
@@ -699,21 +750,7 @@ def render_whiteboard_audio(
             if callable(render_lines):
                 # Stable manifest-row IDs are attached before any TTS splitting.
                 # Do not create a separate file or artificial pause per row.
-                lines = tuple(
-                    SpeechLine(
-                        row_index,
-                        row.text,
-                        row.speaker,
-                        turn_pause_ms
-                        if (
-                            board.lesson.dialogue
-                            and row_index + 1 < len(step.rows)
-                            and step.rows[row_index + 1].speaker != row.speaker
-                        )
-                        else 0,
-                    )
-                    for row_index, row in enumerate(speech_rows)
-                )
+                lines = whiteboard_speech_lines(board.lesson, index, turn_pause_ms)
                 result = render_lines(lines, cast, clip, options, cancel, speech_progress)
                 if not isinstance(result.timing, ClipTiming):
                     raise WhiteboardError("لم يُرجع المحرك قياسًا فعليًا لسطور الخطوة.")

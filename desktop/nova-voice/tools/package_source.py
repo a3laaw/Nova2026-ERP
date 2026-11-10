@@ -29,6 +29,7 @@ FILES = (
     "SECONDARY-SOURCES-AR.md",
     "REVIEW-CHOICES-AR.md",
     "SCENE-HISTORY-AR.md",
+    "AZURE-SPEECH-AR.md",
     "INFERENCE-GUIDE-AR.md",
     "INFERENCE-GUIDE-AR.html",
     "CHANGELOG.md",

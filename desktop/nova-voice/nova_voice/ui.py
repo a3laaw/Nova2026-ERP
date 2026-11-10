@@ -4,6 +4,7 @@ import logging
 import tempfile
 from dataclasses import replace
 from datetime import datetime
+from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +13,7 @@ from PySide6.QtGui import QAction, QCloseEvent, QDesktopServices, QIcon, QKeySeq
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PySide6.QtWidgets import (
     QApplication,
+    QDialog,
     QFileDialog,
     QFrame,
     QHBoxLayout,
@@ -31,6 +33,8 @@ from PySide6.QtWidgets import (
 from . import __version__
 from .appearance import AppearanceError
 from .appearance_picker import AppearancePicker
+from .azure_picker import AzureConsentDialog, AzurePicker
+from .azure_speech import AzureError, AzureJob, AzurePlan, CloudRequest
 from .controls import Disclosure, button, card, clock, combo, label
 from .dialogue import (
     BILINGUAL_EXAMPLE,
@@ -87,6 +91,7 @@ from .whiteboard import (
     render_whiteboard_with_audio,
     save_whiteboard,
     validate_lesson_cast,
+    whiteboard_cloud_requests,
 )
 from .worker import TaskWorker
 
@@ -98,6 +103,7 @@ class MainWindow(QMainWindow):
         self.preferences = load_preferences(self.data_dir)
         self.library = VoiceLibrary(self.data_dir / "voices", application_dir() / "voices")
         self.engine = SpeechEngine()
+        self._active_azure_job: AzureJob | None = None
         self.voices: list[VoiceSpec] = []
         self.worker: TaskWorker | None = None
         self._closing = False
@@ -129,6 +135,9 @@ class MainWindow(QMainWindow):
             min(850, available.height() - 70) if available else 850,
         )
         self._build_ui()
+        self.provider_combo.currentIndexChanged.connect(self._provider_changed)
+        self.azure_picker.changed.connect(self._update_buttons)
+        self.azure_picker.forgotten.connect(self._azure_forgotten)
         self._build_player()
         self._restore_preferences()
         self.refresh_voices(self.preferences.voice_path)
@@ -159,7 +168,8 @@ class MainWindow(QMainWindow):
         titles.addWidget(label("اكتب النص، اختر الأصوات، ثم أنشئ درسك في ملف واحد.", "muted"))
         heading.addLayout(titles)
         heading.addStretch()
-        heading.addWidget(label("محلي · الاقتراح الشبكي اختياري", "privacy"))
+        self.privacy_badge = label("محلي · الاقتراح الشبكي اختياري", "privacy")
+        heading.addWidget(self.privacy_badge)
         about = button("حول البرنامج")
         about.clicked.connect(self._about)
         heading.addWidget(about)
@@ -231,7 +241,7 @@ class MainWindow(QMainWindow):
         editor_layout.addWidget(self.text_stats)
         editor_layout.addWidget(
             label(
-                "النص لا يُرسل أو يُحفظ تلقائيًا. الاقتراح الشبكي اختياري وبإذن لكل طلب. "
+                "النص لا يُرسل أو يُحفظ تلقائيًا. الاقتراح الشبكي وصوت Azure اختياريان بإذن صريح. "
                 "يمكن تشكيل الكلمات العربية الملتبسة لتحسين النطق.",
                 "muted",
                 True,
@@ -243,6 +253,14 @@ class MainWindow(QMainWindow):
         settings_card.setMinimumWidth(310)
         settings_card.setMaximumWidth(410)
         settings.addWidget(label("2 · اختر الأصوات", "section"))
+        self.provider_combo = combo()
+        self.provider_combo.setAccessibleName("محرك الصوت: محلي أو Azure اختياري")
+        self.provider_combo.addItem("Piper / كريم · محلي دون إنترنت", "local")
+        self.provider_combo.addItem("Azure Speech · سحابي بإذن لكل عملية", "azure")
+        settings.addWidget(self.provider_combo)
+        self.azure_picker = AzurePicker()
+        self.azure_picker.hide()
+        settings.addWidget(self.azure_picker)
         self.mode_combo = combo()
         self.mode_combo.addItem("راوٍ واحد", "single")
         self.mode_combo.addItem("حوار بين صوتين", "dialogue")
@@ -572,6 +590,7 @@ class MainWindow(QMainWindow):
             self.voice_tabs.setCurrentIndex(0)
         self.voice_tabs.setTabText(0, "الصوت 1" if dialogue else "الراوي")
         self.primary_voice.title.setText("الصوت الأول · [1]" if dialogue else "الراوي")
+        self.azure_picker.set_dialogue(dialogue)
         self.turn_pause_widget.setVisible(dialogue)
         self.editor.setPlaceholderText(
             BILINGUAL_EXAMPLE
@@ -619,10 +638,136 @@ class MainWindow(QMainWindow):
         self.mode_combo.setCurrentIndex(1)
         self.editor.setPlainText(BILINGUAL_EXAMPLE)
 
+    def _using_azure(self) -> bool:
+        return self.provider_combo.currentData() == "azure"
+
+    def _provider_changed(self, *_args) -> None:
+        azure = self._using_azure()
+        self.voice_tabs.setVisible(not azure)
+        self.azure_picker.setVisible(azure)
+        for widget in (self.add_voice_button, self.refresh_button):
+            widget.setVisible(not azure)
+        self.setup_hint.setVisible(not azure and not self.voices)
+        self.privacy_badge.setText(
+            "Azure سحابي · لا إرسال دون مراجعة وإذن" if azure else "محلي · الاقتراح الشبكي اختياري"
+        )
+        if not azure:
+            self.azure_picker.forget()
+        self._update_buttons()
+
+    def _azure_forgotten(self) -> None:
+        if self._active_azure_job is not None:
+            self._active_azure_job.close()
+            if self.worker:
+                self.worker.cancel_event.set()
+
+    @staticmethod
+    def _cloud_source_hash(source: Path) -> str:
+        # Recheck a bounded original, not an arbitrarily grown file from another process.
+        digest = sha256()
+        total = 0
+        with source.open("rb") as handle:
+            while data := handle.read(65536):
+                total += len(data)
+                if total > MAX_HTML_BYTES:
+                    raise AzureError("كبر ملف المصدر أثناء المراجعة؛ اختره وراجعه مجددًا.")
+                digest.update(data)
+        return digest.hexdigest()
+
+    def _cloud_snapshot(self, source: Path | None, for_editor: bool) -> tuple:
+        return (
+            self.editor.document().revision() if for_editor else None,
+            self.provider_combo.currentData(),
+            self.azure_picker.revision,
+            self.scene_picker.policy.currentData(),
+            self.scene_picker.audio_allowed(),
+            self.scene_picker.revision if for_editor else None,
+            self.lesson_picker.revision if for_editor else None,
+            self.mode_combo.currentData(),
+            self.speed_slider.value(),
+            self.pause_spin.value(),
+            self.turn_pause_spin.value(),
+            self.format_combo.currentData(),
+            self._cloud_source_hash(source) if source is not None else None,
+        )
+
+    def _cloud_engine(
+        self,
+        requests: tuple[CloudRequest, ...],
+        *,
+        source: Path | None = None,
+        for_editor: bool = True,
+    ) -> SpeechEngine | None:
+        if not requests:
+            raise AzureError("لا توجد مقاطع Azure صالحة في هذه العملية.")
+        self._options(for_editor=for_editor)
+        credentials = self.azure_picker.credentials()
+        before = self._cloud_snapshot(source, for_editor)
+        plan = AzurePlan(requests)
+        dialog = AzureConsentDialog(plan, credentials.region, self)
+        if dialog.exec() != QDialog.DialogCode.Accepted or not dialog.review_check.isChecked():
+            return None
+        if before != self._cloud_snapshot(source, for_editor) or self.worker:
+            raise AzureError("تغير المصدر أو سياق الإرسال أثناء المراجعة؛ وافق مجددًا.")
+        self._options(for_editor=for_editor)
+        self._active_azure_job = AzureJob(
+            plan, credentials, consent=True, policy=self.scene_picker.policy.currentData()
+        )
+        return SpeechEngine(azure_job=self._active_azure_job)
+
+    def _engine_for_script(
+        self,
+        text: str,
+        cast: dict[int, DialogueVoice],
+        options: RenderOptions,
+        *,
+        source: Path | None = None,
+    ) -> SpeechEngine | None:
+        if not self._using_azure():
+            return self.engine
+        try:
+            requests = self.engine.script_cloud_requests(
+                text,
+                cast,
+                options,
+                dialogue=self.dialogue_mode(),
+                turn_pause_ms=self.turn_pause_spin.value(),
+            )
+            return self._cloud_engine(requests, source=source)
+        except (OSError, ScriptError, VoiceError, AudioError) as error:
+            QMessageBox.warning(self, "راجع إرسال Azure", str(error))
+            return None
+
+    def _engine_for_lesson(
+        self,
+        lesson: Lesson,
+        cast: dict[int, DialogueVoice],
+        options: RenderOptions,
+        *,
+        source: Path | None = None,
+    ) -> SpeechEngine | None:
+        if not self._using_azure():
+            return self.engine
+        try:
+            requests = whiteboard_cloud_requests(
+                self.engine, lesson, cast, options, turn_pause_ms=self.turn_pause_spin.value()
+            )
+            return self._cloud_engine(requests, source=source, for_editor=source is None)
+        except (OSError, ScriptError, VoiceError, AudioError) as error:
+            QMessageBox.warning(self, "راجع إرسال Azure", str(error))
+            return None
+
     def selected_voice(self) -> VoiceSpec | None:
         return self.primary_voice.selected_voice()
 
     def _cast(self) -> dict[int, DialogueVoice]:
+        if self._using_azure():
+            if not self.azure_picker.ready():
+                return {}
+            return {
+                1: DialogueVoice(self.azure_picker.first_voice.currentData()),
+                2: DialogueVoice(self.azure_picker.second_voice.currentData()),
+            }
         return {
             role: DialogueVoice(voice, picker.speaker_id())
             for role, picker in ((1, self.primary_voice), (2, self.secondary_voice))
@@ -635,7 +780,7 @@ class MainWindow(QMainWindow):
         self.voices, warnings = self.library.scan()
         self.primary_voice.set_voices(self.voices, select_path)
         self.secondary_voice.set_voices(self.voices)
-        self.setup_hint.setVisible(not self.voices)
+        self.setup_hint.setVisible(not self.voices and not self._using_azure())
         if warnings:
             self.status.setText(f"تم تجاهل {len(warnings)} نموذج غير مكتمل أو غير متوافق.")
             self.status.setToolTip("\n".join(warnings[:10]))
@@ -722,6 +867,8 @@ class MainWindow(QMainWindow):
             self.board_source_label.setToolTip(str(self._board_open_file))
         for widget in (
             self.primary_voice,
+            self.provider_combo,
+            self.azure_picker,
             self.choose_html_button,
             self.appearance_picker,
             self.choose_board_button,
@@ -751,11 +898,13 @@ class MainWindow(QMainWindow):
                 "راجعها مجددًا أو افصل الارتباط صراحة."
             )
         if not self.scene_picker.audio_allowed():
-            raise VoiceError("حماية النصوص المقدسة مفعّلة؛ لا نطق آلي أو تلاوة Piper في هذا الوضع.")
+            raise VoiceError(
+                "حماية النصوص المقدسة مفعّلة؛ لا نطق آلي أو إرسال صوتي إلى Azure في هذا الوضع."
+            )
         return RenderOptions(
             speed=self.speed_slider.value() / 100,
             pause_ms=self.pause_spin.value(),
-            speaker_id=self.primary_voice.speaker_id(),
+            speaker_id=0 if self._using_azure() else self.primary_voice.speaker_id(),
         )
 
     def _input(self) -> tuple[str, dict[int, DialogueVoice]] | None:
@@ -787,13 +936,16 @@ class MainWindow(QMainWindow):
         options = self._options()
         dialogue = self.dialogue_mode()
         pause = self.turn_pause_spin.value()
+        engine = self._engine_for_script(text, cast, options)
+        if engine is None:
+            return
 
         def task(cancel, progress):
             if dialogue:
-                return self.engine.render_dialogue(
+                return engine.render_dialogue(
                     text, cast, path, options, cancel, progress, turn_pause_ms=pause
                 )
-            return self.engine.render(text, cast[1].voice, path, options, cancel, progress)
+            return engine.render(text, cast[1].voice, path, options, cancel, progress)
 
         self._release_player()
         self.open_html_button.setEnabled(False)
@@ -1143,11 +1295,14 @@ class MainWindow(QMainWindow):
             return
         self.preferences.output_dir = str(path.parent)
         pause, audio_format = self.turn_pause_spin.value(), self.format_combo.currentData()
+        engine = self._engine_for_lesson(lesson, cast, options)
+        if engine is None:
+            return
         self._release_player()
         self.open_html_button.setEnabled(False)
         self._start_task(
             lambda cancel, progress: render_whiteboard_with_audio(
-                self.engine,
+                engine,
                 lesson,
                 cast,
                 path,
@@ -1238,11 +1393,14 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "اختر اسمًا آخر", str(error))
             return
         pause, audio_format = self.turn_pause_spin.value(), self.format_combo.currentData()
+        engine = self._engine_for_lesson(board.lesson, cast, options, source=source)
+        if engine is None:
+            return
         self._release_player()
         self.open_html_button.setEnabled(False)
         self._start_task(
             lambda cancel, progress: render_whiteboard_audio(
-                self.engine,
+                engine,
                 source,
                 cast,
                 path,
@@ -1339,10 +1497,13 @@ class MainWindow(QMainWindow):
         dialogue = self.dialogue_mode()
         pause = self.turn_pause_spin.value()
         audio_format = self.format_combo.currentData()
+        engine = self._engine_for_script(text, cast, options, source=source)
+        if engine is None:
+            return
 
         def task(cancel, progress):
             return render_html(
-                self.engine,
+                engine,
                 source,
                 text,
                 cast,
@@ -1431,12 +1592,25 @@ class MainWindow(QMainWindow):
             "whiteboard-audio": "جارٍ توليد مقطع صوتي لكل خطوة من السبورة…",
             "whiteboard-combined": "جارٍ إنشاء السبورة وتوليد صوتها في ملف HTML واحد…",
         }
-        self.status.setText(messages.get(kind, "جارٍ تجهيز المحرك المحلي…"))
+        self.status.setText(
+            "جارٍ إرسال المقاطع المراجعة إلى Azure بإذنك ثم حفظ الناتج محليًا؛ لا إعادة مدفوعة…"
+            if self._active_azure_job is not None
+            else messages.get(kind, "جارٍ تجهيز المحرك المحلي…")
+        )
         self.progress.setRange(0, 0)
         self._update_buttons()
         self.worker.start()
 
     def _task_progress(self, value: int) -> None:
+        if self._active_azure_job is not None:
+            self.progress.setRange(0, 0 if value < 0 else 100)
+            if value >= 0:
+                self.progress.setValue(value)
+            self.status.setText(
+                "جارٍ توليد المقاطع المراجعة عبر Azure وحفظ الصوت محليًا؛ "
+                "تُراعى حدود المعدل، ولا إعادة تلقائية عند الفشل…"
+            )
+            return
         if value < 0:
             self.progress.setRange(0, 0)
             if (
@@ -1622,6 +1796,9 @@ class MainWindow(QMainWindow):
         )
 
     def _task_finished(self) -> None:
+        if self._active_azure_job is not None:
+            self._active_azure_job.close()
+            self._active_azure_job = None
         self._asset_request = None
         self._revision_request = None
         worker = self.worker
@@ -1636,6 +1813,8 @@ class MainWindow(QMainWindow):
 
     def _cancel(self) -> None:
         if self.worker:
+            if self._active_azure_job is not None:
+                self._active_azure_job.close()
             self.worker.cancel_event.set()
             self.cancel_button.setEnabled(False)
             self.status.setText(
@@ -1747,17 +1926,19 @@ class MainWindow(QMainWindow):
                 "ثم Download-Arabic-Voice.bat أو Download-English-Voice.bat "
                 "لتنزيل الأصوات مرة واحدة. "
                 "إذا كان الجهاز غير متصل، انقل نموذج ONNX وملف JSON من جهاز آخر، "
-                "ثم اضغط «إضافة نموذج».",
+                "ثم اضغط «إضافة نموذج». Azureاختياري منفصل بمفتاح وRegionوإقرار F0؛ "
+                "راجع AZURE-SPEECH-AR.md ولا ترسل المفتاح في المحادثة.",
             )
 
     def _about(self) -> None:
         QMessageBox.about(
             self,
             "حول Nova Voice",
-            f"Nova Voice {__version__}\nتحويل النص إلى صوت محليًا باستخدام Piper.\n\n"
-            "الصوت والرسم محليان. اقتراح المشاهد عبر الإنترنت اختياري وبإذن لكل طلب.\n"
+            f"Nova Voice {__version__}\nPiperمحلي افتراضي وAzureسحابي اختياري.\n\n"
+            "الرسم محلي؛ Azureواقتراح المشاهد عبر الإنترنت اختياريان بإذن مستقل.\n"
             "لا يُحفظ السكريبت أو مفتاح API تلقائيًا؛ لا تُرسل بيانات شخصية.\n"
-            "الأصوات تعتمد على النماذج المثبتة؛ لا يتضمن التطبيق استنساخ الأصوات.\n\n"
+            "الأصوات المحلية من نماذجك. Azureيحتاج F0تتحقق منه؛ المفتاح لا يثبت المجانية.\n"
+            "لا استنساخ أصوات أو ترقية أو تبديل صوت تلقائي.\n\n"
             "هذا التطبيق الفرعي مرخص تحت GPL-3.0-or-later، دون أي ضمان. "
             "يسمح بإعادة توزيعه وتعديله وفق الترخيص. راجع LICENSE وTHIRD_PARTY.md بجانب البرنامج. "
             "لكل نموذج صوتي ترخيص مستقل موضح في MODEL_CARD.",
@@ -1767,6 +1948,8 @@ class MainWindow(QMainWindow):
         if self._cleanup_done:
             return
         self._cleanup_done = True
+        self.azure_picker.forget()
+        self.azure_picker.timer.stop()
         self._release_player()
         voice = self.selected_voice()
         self.preferences.voice_path = str(voice.model_path) if voice else ""
