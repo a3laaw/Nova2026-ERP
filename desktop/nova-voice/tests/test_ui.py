@@ -1094,3 +1094,283 @@ def test_revision_result_opens_new_silent_preview_and_stale_feedback_result_is_r
     panel.feedback.setText("تعديل جديد")
     with pytest.raises(Exception, match="قديمة"):
         panel.apply_revision(result, request)
+
+
+# Native-only integration for scoped edits/history. Pure invariants and real
+# browser comparisons run separately when Qt system libraries are unavailable.
+def history_draft(window):
+    from nova_voice.scenes import VisualPlan, empty_plan
+
+    window.editor.setPlainText("# History lesson\n## First\nA first cue.\n## Second\nA second cue.")
+    source = window._source_lesson()
+    data = empty_plan(source.manifest())
+    for i, step in enumerate(data["steps"]):
+        step["elements"] = [dict(kind="circle", row=0, x=100 + i * 250, y=100, r=30)]
+    original = VisualPlan.from_data(data, source.manifest())
+    window.scene_picker.set_draft(original)
+    data["steps"][1]["elements"][0]["x"] += 30
+    changed = VisualPlan.from_data(data, source.manifest())
+    return window.scene_picker, source, original, changed
+
+
+def test_scope_picker_is_optional_actual_source_scenes_and_not_an_asset_template(window):
+    panel, source, _, _ = history_draft(window)
+    assert panel.revision_scope.currentData() is None
+    assert panel.revision_scope.count() == len(source.steps) + 1
+    assert panel.revision_scope.itemData(1) == 0 and panel.revision_scope.itemData(2) == 1
+    assert source.steps[1].title in panel.revision_scope.itemText(2)
+    assert panel.revision_scope.maxVisibleItems() == 8
+    assert panel.revision_scope.isEnabled()
+    panel.policy.setCurrentIndex(1)
+    assert not panel.revision_scope.isEnabled()
+
+
+def test_targeted_native_choice_snapshots_scope_and_discloses_only_selected_content(
+    window, monkeypatch
+):
+    panel, source, original, _ = history_draft(window)
+    requests, notices = [], []
+    panel.revision_requested.disconnect()
+    panel.revision_requested.connect(requests.append)
+    panel.revision_scope.setCurrentIndex(2)
+    panel.adult.setChecked(True)
+    panel.key.setText("test-only-NOT-A-REAL-KEY")
+    panel._approved = original
+    cast = window._cast()
+
+    def accept(*args):
+        notices.append(args[2])
+        return QMessageBox.StandardButton.Yes
+
+    monkeypatch.setattr(QMessageBox, "question", accept)
+    panel.another_button.click()
+    assert len(requests) == 1 and requests[0].target_step == 1
+    assert requests[0].previous == original and requests[0].source == source.manifest()
+    assert "المشهد 2 فقط" in notices[0] and "لا باقي النص" in notices[0]
+    assert "سيُرسل نص وخطة المشهد المختار" in notices[0]
+    assert panel._approved is None and window._source_lesson() == source
+    assert window._cast() == cast and window.player.source().isEmpty() and window.worker is None
+
+
+def test_scope_switch_rejects_even_a_valid_scoped_result_without_opening_preview(
+    window, monkeypatch
+):
+    from nova_voice.scene_revision import RevisionRequest, RevisionResult
+    from nova_voice.timing import data_fingerprint
+
+    panel, source, original, changed = history_draft(window)
+    panel.revision_scope.setCurrentIndex(2)
+    request = RevisionRequest(source.manifest(), original, panel.revision, "another", target_step=1)
+    result = RevisionResult(
+        data_fingerprint(original.to_data()),
+        source.manifest()["fingerprint"],
+        "another",
+        changed,
+        True,
+        changed=True,
+        target_step=1,
+    )
+    panel.revision_scope.setCurrentIndex(1)
+    monkeypatch.setattr(
+        "nova_voice.scene_picker.QDesktopServices.openUrl", lambda *a: pytest.fail("stale")
+    )
+    with pytest.raises(Exception, match="قديمة"):
+        panel.apply_revision(result, request)
+    assert panel._current()[1] == original
+
+
+def test_native_comparison_opens_actual_local_silent_frames_and_preserves_current_approval(
+    window, monkeypatch
+):
+    from pathlib import Path
+
+    panel, source, original, changed = history_draft(window)
+    panel.set_draft(changed)
+    panel._approved = changed
+    panel.history_choice.setCurrentIndex(0)
+    opened = []
+    monkeypatch.setattr(
+        "nova_voice.scene_picker.QDesktopServices.openUrl", lambda url: opened.append(url) or True
+    )
+    revision, cast = panel.revision, window._cast()
+    panel.compare_history_button.click()
+    assert len(opened) == 1 and opened[0].isLocalFile()
+    page = Path(opened[0].toLocalFile()).read_text()
+    assert page.count('sandbox="allow-scripts"') == 2 and "data:text/html;base64," in page
+    assert panel._approved == changed and panel.revision == revision
+    assert (
+        panel._current()[1] == changed
+        and window._source_lesson() == source
+        and window._cast() == cast
+    )
+    assert (
+        len(panel.history.entries) == 2
+        and window.worker is None
+        and window.player.source().isEmpty()
+    )
+
+
+def test_native_restore_revokes_approval_and_pending_results_but_preserves_source_and_voices(
+    window, monkeypatch
+):
+    from pathlib import Path
+
+    from nova_voice.whiteboard import WhiteboardPage
+
+    panel, source, original, changed = history_draft(window)
+    panel.set_draft(changed)
+    panel._approved = changed
+    panel.consent.setChecked(True)
+    panel.history_choice.setCurrentIndex(0)
+    cast, opened = window._cast(), []
+    revision = panel.revision
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.StandardButton.Yes)
+    monkeypatch.setattr(
+        "nova_voice.scene_picker.QDesktopServices.openUrl", lambda url: opened.append(url) or True
+    )
+    panel.restore_history_button.click()
+    assert panel._current()[1] == original and panel._approved is None
+    assert panel.revision > revision and not panel.consent.isChecked()
+    assert (
+        len(opened) == 1
+        and WhiteboardPage.load(Path(opened[0].toLocalFile())).lesson.visuals == original
+    )
+    assert len(panel.history.entries) == 2 and panel.history.current.plan == original
+    assert panel.redo_history_button.isEnabled() and not panel.undo_history_button.isEnabled()
+    assert window._source_lesson() == source and window._cast() == cast
+    assert not window.create_board_button.isEnabled() and window.player.source().isEmpty()
+
+
+def test_declining_restore_keeps_plan_and_approval_and_does_not_open_a_page(window, monkeypatch):
+    panel, _, _, changed = history_draft(window)
+    panel.set_draft(changed)
+    panel._approved = changed
+    panel.history_choice.setCurrentIndex(0)
+    revision = panel.revision
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.StandardButton.No)
+    monkeypatch.setattr(
+        "nova_voice.scene_picker.QDesktopServices.openUrl", lambda *a: pytest.fail("declined")
+    )
+    panel.restore_history_button.click()
+    assert (
+        panel._current()[1] == changed and panel._approved == changed and panel.revision == revision
+    )
+
+
+def test_native_history_previous_next_do_not_duplicate_or_discard_saved_proposals(
+    window, monkeypatch
+):
+    panel, _, original, changed = history_draft(window)
+    panel.set_draft(changed)
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.StandardButton.Yes)
+    monkeypatch.setattr("nova_voice.scene_picker.QDesktopServices.openUrl", lambda *a: True)
+    panel.undo_history_button.click()
+    assert panel._current()[1] == original and panel.history.can_redo
+    panel.redo_history_button.click()
+    assert panel._current()[1] == changed and len(panel.history.entries) == 2
+    assert panel._approved is None and window.player.source().isEmpty()
+
+
+def test_valid_manual_json_edits_checkpoint_on_review_not_each_keystroke(window):
+    panel, _, _, changed = history_draft(window)
+    assert len(panel.history.entries) == 1
+    panel.plan_edit.setPlainText(changed.to_json())
+    assert len(panel.history.entries) == 1
+    panel._review()
+    assert len(panel.history.entries) == 2 and panel.history.current.plan == changed
+    panel._review()
+    assert len(panel.history.entries) == 2
+
+
+def test_native_restore_can_recover_invalid_json_only_after_explicit_confirmation(
+    window, monkeypatch
+):
+    panel, source, original, _ = history_draft(window)
+    panel.plan_edit.setPlainText('{"broken":')
+    assert panel._approved is None and len(panel.history.entries) == 1
+    notices = []
+
+    def accept(*args):
+        notices.append(args[2])
+        return QMessageBox.StandardButton.Yes
+
+    monkeypatch.setattr(QMessageBox, "question", accept)
+    monkeypatch.setattr("nova_voice.scene_picker.QDesktopServices.openUrl", lambda *a: True)
+    panel.restore_history_button.click()
+    assert panel._current()[1] == original and "JSON غير صالح" in notices[0]
+    assert panel._approved is None and window._source_lesson() == source
+
+
+def test_history_is_cleared_on_source_and_context_change_not_on_visual_keystrokes(window):
+    panel, _, _, changed = history_draft(window)
+    panel.set_draft(changed)
+    panel.subject.setText("علوم")
+    assert not panel.history.entries and not panel.restore_history_button.isEnabled()
+    panel._review()
+    assert len(panel.history.entries) == 1
+    window.editor.insertPlainText(" Changed source.")
+    assert not panel.history.entries and panel.revision_scope.currentData() is None
+    assert panel.revision_scope.count() == 1
+
+
+def test_manual_narration_change_starts_new_history_instead_of_restoring_other_reviewed_text(
+    window,
+):
+    from nova_voice.scenes import VisualPlan
+
+    panel, source, _, _ = history_draft(window)
+    data = panel._current()[1].to_data()
+    data["steps"][1]["rows"] = [
+        dict(index=0, display="Different display", speech="Different speech.")
+    ]
+    panel.plan_edit.setPlainText(VisualPlan.from_data(data, source.manifest()).to_json())
+    panel._review()
+    assert len(panel.history.entries) == 1 and not panel.history.can_undo
+
+
+def test_clearing_history_alone_does_not_change_plan_approval_credentials_or_voices(
+    window, monkeypatch
+):
+    panel, source, original, _ = history_draft(window)
+    panel._approved = original
+    panel._review_credential.remember("test-only-NOT-A-REAL-KEY", source.manifest()["fingerprint"])
+    cast, revision = window._cast(), panel.revision
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.StandardButton.Yes)
+    panel.clear_history_button.click()
+    assert not panel.history.entries and panel._approved == original and panel.revision == revision
+    assert panel._current()[1] == original and window._cast() == cast
+    assert panel._review_credential.get(source.manifest()["fingerprint"])
+
+
+def test_restore_modal_cannot_apply_after_source_changes_while_confirmation_is_open(
+    window, monkeypatch
+):
+    panel, _, _, changed = history_draft(window)
+    panel.set_draft(changed)
+    panel.history_choice.setCurrentIndex(0)
+    warnings = []
+
+    def mutate(*args, **kwargs):
+        window.editor.insertPlainText(" Changed while deciding.")
+        return QMessageBox.StandardButton.Yes
+
+    monkeypatch.setattr(QMessageBox, "question", mutate)
+    monkeypatch.setattr(QMessageBox, "warning", lambda *args: warnings.append(args[-1]))
+    monkeypatch.setattr(
+        "nova_voice.scene_picker.QDesktopServices.openUrl", lambda *a: pytest.fail("stale restore")
+    )
+    panel.restore_history_button.click()
+    assert warnings and "تغيّرت" in warnings[0]
+    assert panel.plan_edit.toPlainText() == changed.to_json() and not panel.history.entries
+
+
+def test_main_window_checks_scope_again_before_starting_a_revision_worker(window, monkeypatch):
+    from nova_voice.scene_revision import RevisionRequest
+
+    panel, source, original, _ = history_draft(window)
+    warnings = []
+    # Same revision/source/plan, but not the scope actually selected in the UI.
+    request = RevisionRequest(source.manifest(), original, panel.revision, "another", target_step=1)
+    monkeypatch.setattr(QMessageBox, "warning", lambda *args: warnings.append(args[-1]))
+    window._request_revision(request)
+    assert warnings and window.worker is None and window._revision_request is None

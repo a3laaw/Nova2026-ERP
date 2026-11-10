@@ -15,7 +15,7 @@ from threading import Event
 
 from . import scene_planner as planner
 from .scene_graph import walk_elements
-from .scenes import SceneError, VisualPlan, _require
+from .scenes import SceneError, VisualPlan, _require, load_plan_json
 from .secondary_assets import (
     _open as asset_transport,
 )
@@ -61,6 +61,7 @@ class RevisionRequest:
     adult: bool = False
     send_consent: bool = False
     download_consent: bool = False
+    target_step: int | None = field(default=None, kw_only=True)
 
 
 @dataclass(frozen=True)
@@ -72,6 +73,7 @@ class RevisionResult:
     model_requested: bool
     outcomes: tuple[tuple[str, str], ...] = ()
     changed: bool = False
+    target_step: int | None = field(default=None, kw_only=True)
 
     def summary(self) -> str:
         lines = [
@@ -79,6 +81,8 @@ class RevisionResult:
             if self.changed
             else "لم ينتج تغيير مرئي في هذه المحاولة؛ بقي المقترح السابق بلا اعتماد تلقائي."
         ]
+        if self.target_step is not None:
+            lines.append(f"التعديل محصور في المشهد {self.target_step + 1}؛ باقي الدرس ثابت.")
         if self.model_requested:
             lines.append("نُفذ طلب اقتراح مجاني واحد فقط؛ لا إعادة محاولة تلقائية.")
         if self.action == "external":
@@ -118,10 +122,40 @@ class ReviewCredential:
         return "ReviewCredential(redacted)"
 
 
-def needs_planner(previous: VisualPlan, action: str, *, feedback: str = "") -> bool:
+def _target(plan: VisualPlan, target_step: int | None):
+    _require(
+        target_step is None
+        or (type(target_step) is int and 0 <= target_step < len(plan.to_data()["steps"])),
+        "اختر مشهدًا موجودًا أو الدرس كله؛ ترقيم المشهد غير صالح.",
+    )
+
+
+def _scope_ids(plan: VisualPlan, target_step: int | None) -> tuple[set[str], set[str]]:
+    data = plan.to_data()
+    _target(plan, target_step)
+    if target_step is None:
+        return set(referenced_ids(data["steps"])), set()
+    return (
+        set(referenced_ids([data["steps"][target_step]])),
+        set(referenced_ids([s for i, s in enumerate(data["steps"]) if i != target_step])),
+    )
+
+
+def preparation_ids(plan: VisualPlan, target_step: int | None) -> tuple[str, ...]:
+    selected, others = _scope_ids(plan, target_step)
+    # A global resource shared with another step cannot be added/removed in a
+    # one-step edit: doing so would change that other step's visible fallback.
+    return tuple(sorted(selected - others)) if target_step is not None else tuple(sorted(selected))
+
+
+def needs_planner(
+    previous: VisualPlan, action: str, *, feedback: str = "", target_step: int | None = None
+) -> bool:
     _require(action in ACTIONS, "اختر اقتراحًا آخر أو تجربة مصدر خارجي.")
     data = previous.to_data()
-    missing = set(referenced_ids(data["steps"])) - {r["id"] for r in data.get("resources", [])}
+    missing = set(preparation_ids(previous, target_step)) - {
+        r["id"] for r in data.get("resources", [])
+    }
     return action == "another" or not missing or bool(feedback.strip())
 
 
@@ -139,43 +173,134 @@ def _validated(request: RevisionRequest) -> VisualPlan:
         "ملاحظة التعديل نص عادي حتى 1000 حرف، بلا بيانات شخصية أو مفاتيح.",
     )
     previous = VisualPlan.from_data(request.previous.to_data(), request.source)
+    _target(previous, request.target_step)
     _require(previous.to_data()["policy"] == "general", "النصوص المقدسة محلية بلا اقتراح أو موارد.")
     return previous
 
 
+SCOPED_RULES = """
+TARGETED RESPONSE OVERRIDES the full-plan response schema above for this request:
+Only source_scene and the previous target scene are supplied, not other lesson
+content. Return exactly this JSON object (no extra fields):
+{"schema":1,"source_fingerprint":"exact fingerprint from output_skeleton",
+ "target_step":TARGET_INDEX,"description":"reviewable visual explanation",
+ "elements":[bounded scene elements using that scene's original row numbers]}
+No steps/rows/notes/resources/origin/script/approval. Local application merges
+ONLY description/elements into that target; other steps, notes, overrides,
+narration, roles, metadata, origin and shared outside resources are immutable.
+"""
+
+
 def revision_prompt(request: RevisionRequest) -> tuple[str, str]:
     previous = _validated(request)
-    if (
+    scoped = request.target_step is not None
+    if not scoped and (
         len(request.source.get("script", "")) > planner.MAX_CLOUD_CHARACTERS
         or len(request.source.get("steps", [])) > planner.MAX_CLOUD_STEPS
     ):
-        raise SceneError("طلب البديل المجاني حتى12 خطوة و12000 حرف؛ قسّم الدرس دون حذف محتواه.")
+        raise SceneError("طلب البديل المجاني حتى12 خطوة و12000 حرف؛ قسّم الدرس أو حدد مشهدًا واحدًا.")
     old = previous.to_data()
     old.pop("resources", None)
     old.pop("origin", None)
     old["schema"] = 1
+    system, content = planner.prompt_parts(
+        request.source, old["subject"], old["grade"], secondary_assets=request.action == "external"
+    )
+    data = json.loads(content)
+    if request.action == "external":
+        embedded = {r["id"] for r in previous.to_data().get("resources", [])}
+        selected, others = _scope_ids(previous, request.target_step)
+        excluded = embedded if not scoped else (selected & embedded) | (others - embedded)
+        data["secondary_asset_catalog"] = [
+            e for e in data["secondary_asset_catalog"] if e["id"] not in excluded
+        ]
+    if scoped:
+        index = request.target_step
+        old["steps"] = [old["steps"][index]]
+        old["notes"] = []
+        scene = request.source["steps"][index]
+        _require(
+            len(json.dumps(scene, ensure_ascii=False)) <= planner.MAX_CLOUD_CHARACTERS,
+            "نص المشهد أكبر من حد الطلب المجاني؛ اختصره دون حذف المعنى.",
+        )
+        data.pop("source_lesson")
+        data["source_scene"] = scene
+        data["lesson_title"] = request.source["title"]
+        data["dialogue"] = request.source["dialogue"]
+        data["output_skeleton"] = {
+            "schema": 1,
+            "source_fingerprint": request.source["fingerprint"],
+            "target_step": index,
+            "description": old["steps"][0]["description"],
+            "elements": [],
+        }
     encoded = json.dumps(old, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
     _require(
         len(encoded.encode()) <= MAX_PREVIOUS_BYTES, "الخطة السابقة كبيرة؛ بسّط الرسم قبل طلب بديل."
     )
-    system, content = planner.prompt_parts(
-        request.source,
-        old["subject"],
-        old["grade"],
-        secondary_assets=request.action == "external",
-    )
-    data = json.loads(content)
-    if request.action == "external":
-        excluded = {r["id"] for r in previous.to_data().get("resources", [])}
-        data["secondary_asset_catalog"] = [
-            e for e in data["secondary_asset_catalog"] if e["id"] not in excluded
-        ]
     data.update(
-        review_action=request.action,
-        teacher_feedback=request.feedback,
-        previous_visual_plan=old,
+        review_action=request.action, teacher_feedback=request.feedback, previous_visual_plan=old
     )
-    return system + REVISION_RULES, json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+    return system + REVISION_RULES + (SCOPED_RULES if scoped else ""), json.dumps(
+        data, ensure_ascii=False, separators=(",", ":")
+    )
+
+
+def _scoped_candidate(answer: str, request: RevisionRequest, previous: VisualPlan) -> VisualPlan:
+    try:
+        patch = load_plan_json(answer)
+        _require(
+            isinstance(patch, dict)
+            and set(patch)
+            == {"schema", "source_fingerprint", "target_step", "description", "elements"}
+            and type(patch["schema"]) is int
+            and patch["schema"] == 1
+            and type(patch["target_step"]) is int
+            and patch["target_step"] == request.target_step
+            and patch["source_fingerprint"] == request.source["fingerprint"],
+            "رد تعديل المشهد ليس رقعة صالحة للنطاق المختار؛ بقيت الخطة السابقة.",
+        )
+        data = previous.to_data()
+        data["steps"][request.target_step].update(
+            description=patch["description"], elements=patch["elements"]
+        )
+        # Validate the new bounded tree BEFORE walking it for resource IDs.
+        from .scene_graph import validate_elements
+
+        validate_elements(
+            patch["elements"], len(request.source["steps"][request.target_step]["rows"])
+        )
+        validate_model_proposal(
+            {"steps": [data["steps"][request.target_step]]}, enabled=request.action == "external"
+        )
+        referenced = set(referenced_ids(data["steps"]))
+        if "resources" in data:
+            data["resources"] = [r for r in data["resources"] if r["id"] in referenced]
+        return VisualPlan.from_data(data, request.source)
+    except (ValueError, TypeError, KeyError, RecursionError):
+        raise SceneError("تعذّر قراءة رقعة المشهد؛ لم تُستخدم ولم يُرسل طلب إصلاح تلقائي.") from None
+
+
+def _preserve_scope(candidate: VisualPlan, previous: VisualPlan, target_step: int | None):
+    _target(previous, target_step)
+    if target_step is None:
+        return
+    new, old = candidate.to_data(), previous.to_data()
+    _require(
+        new["notes"] == old["notes"]
+        and all(
+            a == b
+            for i, (a, b) in enumerate(zip(new["steps"], old["steps"], strict=True))
+            if i != target_step
+        ),
+        "تغيّر مشهد أو ملاحظات خارج النطاق المختار؛ لم تُستخدم النتيجة.",
+    )
+    _, outside = _scope_ids(previous, target_step)
+    _require(
+        {r["id"]: r for r in new.get("resources", []) if r["id"] in outside}
+        == {r["id"]: r for r in old.get("resources", []) if r["id"] in outside},
+        "تغيّر مورد مشترك مع مشهد آخر؛ لم تُستخدم النتيجة.",
+    )
 
 
 def _preserve_content(candidate: VisualPlan, previous: VisualPlan, source: dict) -> VisualPlan:
@@ -221,7 +346,9 @@ def revise_plan(
     """At most one free proposal and six pinned downloads, only after permissions."""
     check_cancelled(cancel)
     previous = _validated(request)
-    requires_model = needs_planner(previous, request.action, feedback=request.feedback)
+    requires_model = needs_planner(
+        previous, request.action, feedback=request.feedback, target_step=request.target_step
+    )
     if request.action == "external":
         _require(request.download_consent is True, "يلزم إذن مستقل لتنزيل موارد هذه المحاولة.")
     candidate = previous
@@ -244,29 +371,47 @@ def revise_plan(
             adult=request.adult,
             _transport=_planner_transport,
         )
-        candidate = VisualPlan.from_json(answer, request.source)
-        validate_model_proposal(candidate.to_data(), enabled=request.action == "external")
+        if request.target_step is not None:
+            candidate = _scoped_candidate(answer, request, previous)
+        else:
+            candidate = VisualPlan.from_json(answer, request.source)
+            validate_model_proposal(candidate.to_data(), enabled=request.action == "external")
         candidate = _preserve_content(candidate, previous, request.source)
         if request.action == "external":
             available = {e["id"] for e in json.loads(content)["secondary_asset_catalog"]}
             _require(
-                set(referenced_ids(candidate.to_data()["steps"])) <= available,
+                _scope_ids(candidate, request.target_step)[0] <= available,
                 "لم يقترح النموذج موردًا مختلفًا ضمن القائمة المتاحة؛ بقي المقترح السابق.",
             )
     check_cancelled(cancel)
     outcomes = ()
-    if request.action == "external" and referenced_ids(candidate.to_data()["steps"]):
+    selected_ids = preparation_ids(candidate, request.target_step)
+    if request.action == "external" and selected_ids:
         prepared = prepare_plan(
             candidate,
             request.source,
             cancel,
             progress,
             allow_download=True,
+            selected_ids=selected_ids,
             directory=directory,
             _transport=_asset_transport,
         )
         candidate, outcomes = prepared.plan, prepared.outcomes
+    if request.action == "external" and request.target_step is not None:
+        selected, shared = _scope_ids(candidate, request.target_step)
+        embedded = {r["id"] for r in candidate.to_data().get("resources", [])}
+        outcomes += tuple(
+            (
+                identifier,
+                "مورد مضمّن مشترك محفوظ؛ لا تنزيل خارج النطاق"
+                if identifier in embedded
+                else "بديل مشترك باقٍ؛ لم يُغير موردًا في مشهد آخر",
+            )
+            for identifier in sorted(selected & shared)
+        )
     check_cancelled(cancel)
+    _preserve_scope(candidate, previous, request.target_step)
     changed = _visual_fingerprint(candidate) != _visual_fingerprint(previous)
     progress(100)
     return RevisionResult(
@@ -277,13 +422,15 @@ def revise_plan(
         requires_model,
         outcomes,
         changed,
+        target_step=request.target_step,
     )
 
 
 def revision_matches(result: RevisionResult, current: VisualPlan, source: dict) -> bool:
     current = VisualPlan.from_data(current.to_data(), source)
     if (
-        result.action not in ACTIONS
+        type(result.changed) is not bool
+        or result.action not in ACTIONS
         or result.source_fingerprint != source["fingerprint"]
         or result.base_fingerprint != data_fingerprint(current.to_data())
     ):
@@ -295,4 +442,5 @@ def revision_matches(result: RevisionResult, current: VisualPlan, source: dict) 
         "فُقد ارتباط الوصف الأصلي؛ لم تُطبّق النتيجة.",
     )
     _preserve_content(candidate, current, source)
+    _preserve_scope(candidate, current, result.target_step)
     return result.changed == (_visual_fingerprint(candidate) != _visual_fingerprint(current))

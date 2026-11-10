@@ -1035,6 +1035,7 @@ class MainWindow(QMainWindow):
                 self._bind_story_plan(request.previous, self._source_lesson())
             if (
                 request.revision != self.scene_picker.revision
+                or request.target_step != self.scene_picker.revision_scope.currentData()
                 or self.scene_picker._current()[1] != request.previous
                 or self._source_lesson().manifest() != request.source
             ):

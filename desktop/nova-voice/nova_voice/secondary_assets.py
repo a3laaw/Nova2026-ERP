@@ -461,6 +461,7 @@ def prepare_plan(
     progress: Callable[[int], None],
     *,
     allow_download: bool = False,
+    selected_ids: tuple[str, ...] | None = None,
     directory: Path | None = None,
     _transport: Callable = _open,
 ) -> AssetPreparation:
@@ -472,9 +473,18 @@ def prepare_plan(
     _require(data["policy"] == "general", "لا موارد ثانوية في حماية النصوص المقدسة.")
     identifiers = referenced_ids(data["steps"])
     _require(bool(identifiers), "لا موارد ثانوية مقترحة في هذه الخطة؛ الرسم المحلي كافٍ.")
+    if selected_ids is not None:
+        _require(
+            isinstance(selected_ids, tuple)
+            and all(isinstance(i, str) for i in selected_ids)
+            and list(selected_ids) == sorted(set(selected_ids))
+            and set(selected_ids) <= set(identifiers),
+            "نطاق تجهيز الموارد غير صالح؛ لم يُجهّز مورد خارج النطاق.",
+        )
+        identifiers = list(selected_ids)
     existing = {r["id"]: r for r in data.get("resources", [])}
     directory = directory if directory is not None else cache_directory()
-    outcomes, resources = [], []
+    outcomes, resources = [], dict(existing)
     for index, identifier in enumerate(identifiers):
         check_cancelled(cancel)
         progress(int(index / len(identifiers) * 100))
@@ -499,11 +509,13 @@ def prepare_plan(
         elif resource is None:
             outcome = "غير موجود محليًا؛ البديل المحلي الأصلي، دون اتصال"
         if resource is not None:
-            resources.append(resource)
+            resources[identifier] = resource
+        else:
+            resources.pop(identifier, None)
         outcomes.append((identifier, outcome))
     check_cancelled(cancel)
     if resources:
-        data["resources"] = resources
+        data["resources"] = [resources[i] for i in sorted(resources)]
     else:
         data.pop("resources", None)
     prepared = VisualPlan.from_data(data, source)

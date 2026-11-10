@@ -5,7 +5,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer, QUrl, Signal
+from PySide6.QtCore import QSignalBlocker, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication,
@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 from .controls import Disclosure, button, combo, label
+from .scene_history import PlanHistory, comparison_html
 from .scene_planner import manual_prompt
 from .scene_revision import (
     MAX_FEEDBACK,
@@ -83,6 +84,8 @@ class ScenePicker(QWidget):
         self._lesson_provider = lesson_provider
         self._plan_adapter = plan_adapter
         self._approved: VisualPlan | None = None
+        self.history = PlanHistory()
+        self._scope_source = ""
         self._review_credential = ReviewCredential()
         self._credential_timer = QTimer(self)
         self._credential_timer.setSingleShot(True)
@@ -260,6 +263,20 @@ class ScenePicker(QWidget):
                 True,
             )
         )
+        layout.addWidget(
+            label(
+                "عدّل مشهدًا واحدًا فقط: اختره في النطاق أدناه ثم اطلب البديل؛ "
+                "يبقى النص والنطق وباقي المشاهد ثابتًا. «الدرس كله» يحفظ المسار السابق.",
+                "muted",
+                True,
+            )
+        )
+        self.revision_scope = combo()
+        self.revision_scope.addItem("الدرس كله · أو اختر مشهدًا واحدًا للتعديل فقط", None)
+        self.revision_scope.setAccessibleName(
+            "نطاق التعديل: الدرس كله أو مشهد واحد مع تثبيت الباقي"
+        )
+        layout.addWidget(self.revision_scope)
         self.feedback = QLineEdit()
         self.feedback.setMaxLength(MAX_FEEDBACK)
         self.feedback.setPlaceholderText("تعديل اختياري: وضّح الحركة أكثر أو قلّل التفاصيل…")
@@ -274,6 +291,37 @@ class ScenePicker(QWidget):
         self.external_button = button("جرّب مصدرًا خارجيًا مجانيًا · بإذني")
         self.external_button.clicked.connect(lambda: self._revise("external"))
         layout.addWidget(self.external_button)
+        versions = Disclosure("سجل نسخ الجلسة · مقارنة واستعادة بلا صوت أو شبكة")
+        versions.content_layout.addWidget(
+            label(
+                "آخر12 نسخة حتى4MiB في الذاكرة فقط، لا حفظ تلقائي بعد الإغلاق. "
+                "اختر نسخة للمقارنة المرئية أو الاستعادة، أو السابق/التالي. "
+                "الاستعادة مسودة تحتاج معاينة واعتمادًا جديدًا؛ لا تستعيد موافقة قديمة. "
+                "تغيير المصدر/السياق/العرض أو النطق المراجع يبدأ سجلًا جديدًا. احفظ JSON للاحتفاظ. "
+                "المقارنة HTML مؤقت يُحذف عند الإغلاق، وقد تبقى نسخة في المتصفح.",
+                "muted",
+                True,
+            )
+        )
+        self.history_choice = combo()
+        self.history_choice.setAccessibleName("نسخة من سجل الجلسة للمقارنة أو الاستعادة")
+        versions.content_layout.addWidget(self.history_choice)
+        self.compare_history_button = button("قارن النسخة المختارة بالمقترح الحالي · بلا صوت")
+        self.compare_history_button.clicked.connect(self._compare_history)
+        versions.content_layout.addWidget(self.compare_history_button)
+        self.restore_history_button = button("استعادة النسخة المختارة كمسودة")
+        self.restore_history_button.clicked.connect(lambda: self._restore_history())
+        versions.content_layout.addWidget(self.restore_history_button)
+        self.undo_history_button = button("الرجوع للنسخة السابقة · يحتاج اعتمادًا جديدًا")
+        self.undo_history_button.clicked.connect(lambda: self._restore_history(direction=-1))
+        versions.content_layout.addWidget(self.undo_history_button)
+        self.redo_history_button = button("الانتقال للنسخة التالية · يحتاج اعتمادًا جديدًا")
+        self.redo_history_button.clicked.connect(lambda: self._restore_history(direction=1))
+        versions.content_layout.addWidget(self.redo_history_button)
+        self.clear_history_button = button("مسح سجل نسخ هذه الجلسة فقط")
+        self.clear_history_button.clicked.connect(self._clear_history)
+        versions.content_layout.addWidget(self.clear_history_button)
+        layout.addWidget(versions)
         self.state = label("اختياري: الوضع القديم يعمل كما هو دون خطة أو اتصال.", "muted", True)
         layout.addWidget(self.state)
         self.plan_edit.textChanged.connect(self._draft_changed)
@@ -282,6 +330,7 @@ class ScenePicker(QWidget):
         self.grade.textChanged.connect(self.invalidate_source)
         self.key.textChanged.connect(self._key_changed)
         self.feedback.textChanged.connect(self._feedback_changed)
+        self.revision_scope.currentIndexChanged.connect(self._feedback_changed)
         self.policy.currentIndexChanged.connect(self.invalidate_source)
         self.allow_assets.toggled.connect(self.invalidate_source)
         self._use_changed()
@@ -290,6 +339,12 @@ class ScenePicker(QWidget):
         self.consent.setChecked(False)
 
     def invalidate_source(self, *_):
+        self.history.clear()
+        self._refresh_history()
+        self._scope_source = ""
+        with QSignalBlocker(self.revision_scope):
+            self.revision_scope.clear()
+            self.revision_scope.addItem("الدرس كله · أو اختر مشهدًا واحدًا للتعديل فقط", None)
         self._review_credential.clear()
         self._credential_timer.stop()
         self.revision += 1
@@ -333,6 +388,7 @@ class ScenePicker(QWidget):
         return key
 
     def _draft_changed(self):
+        self._reset_consent()
         self.revision += 1
         self._approved = None
         self.review.clear()
@@ -364,6 +420,8 @@ class ScenePicker(QWidget):
         )
         self.another_button.setEnabled(can_revise)
         self.external_button.setEnabled(can_revise)
+        self.revision_scope.setEnabled(can_revise)
+        self._refresh_history()
 
     def export_ready(self) -> bool:
         return not self.use_plan.isChecked() or self._approved is not None
@@ -394,16 +452,158 @@ class ScenePicker(QWidget):
     def _error(self, error):
         QMessageBox.warning(self, "راجع خطة المشاهد", str(error))
 
-    def set_draft(self, plan: VisualPlan):
-        self.revision += 1  # Identical reimports/results must also invalidate in-flight work.
+    def _refresh_history(self):
+        selected = self.history_choice.currentData()
+        with QSignalBlocker(self.history_choice):
+            self.history_choice.clear()
+            for entry in self.history.entries:
+                self.history_choice.addItem(f"نسخة {entry.number} · {entry.label}", entry.number)
+            index = self.history_choice.findData(selected)
+            self.history_choice.setCurrentIndex(
+                index if index >= 0 else max(0, self.history_choice.count() - 2)
+            )
+        self.compare_history_button.setEnabled(bool(self.history.entries))
+        self.restore_history_button.setEnabled(bool(self.history.entries))
+        self.undo_history_button.setEnabled(self.history.can_undo)
+        self.redo_history_button.setEnabled(self.history.can_redo)
+        self.clear_history_button.setEnabled(bool(self.history.entries))
+
+    def _refresh_scopes(self, source: dict):
+        selected = (
+            self.revision_scope.currentData()
+            if self._scope_source == source["fingerprint"]
+            else None
+        )
+        self._scope_source = source["fingerprint"]
+        with QSignalBlocker(self.revision_scope):
+            self.revision_scope.clear()
+            self.revision_scope.addItem("الدرس كله · أو اختر مشهدًا واحدًا للتعديل فقط", None)
+            for i, step in enumerate(source["steps"]):
+                self.revision_scope.addItem(f"المشهد {i + 1} · {step['title']}", i)
+            index = self.revision_scope.findData(selected)
+            self.revision_scope.setCurrentIndex(max(0, index))
+
+    def _checkpoint(self, label_text="مراجعة المسودة الحالية"):
+        lesson, plan = self._current()
+        self.history.record(plan, lesson.manifest(), label_text)
+        self._refresh_scopes(lesson.manifest())
+        self._refresh_history()
+        return lesson, plan
+
+    def set_draft(self, plan: VisualPlan, *, history_label="مسودة جديدة", record_history=True):
+        lesson = self._lesson_provider()
+        plan = VisualPlan.from_data(plan.to_data(), lesson.manifest())
+        if self._plan_adapter is not None:
+            plan = self._plan_adapter(plan, lesson)
+        if record_history:
+            try:
+                old_lesson, old = self._current()
+                self.history.record(old, old_lesson.manifest(), "قبل التغيير")
+            except ScriptError:
+                pass  # No checkpoint for invalid JSON or a different source.
+        self.revision += 1
         self._approved = None
         if plan.to_data()["policy"] == "sacred":
             self.policy.setCurrentIndex(1)
         self.plan_edit.setPlainText(plan.to_json())
         self.use_plan.setChecked(True)
+        if record_history:
+            self.history.record(plan, lesson.manifest(), history_label)
+        self._refresh_scopes(lesson.manifest())
         self._review()
         self._state()
         self.changed.emit()
+
+    def _compare_history(self):
+        try:
+            selected = self.history_choice.currentData()
+            lesson, current = self._checkpoint()
+            entry = self.history.find(selected, lesson.manifest(), current)
+            page = comparison_html(
+                lesson,
+                entry.plan,
+                current,
+                focus_step=self.revision_scope.currentData(),
+                before_number=entry.number,
+                after_number=self.history.current.number,
+            )
+            path = Path(self._preview_dir.name) / "Nova-compare.html"
+            path.write_text(page, encoding="utf-8")
+            if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))):
+                raise SceneError("تعذّر فتح المقارنة في المتصفح؛ لم تتغير الخطة.")
+            self.state.setText(
+                "فُتحت مقارنة مرئية محلية بلا صوت أو شبكة؛ لم تُستعد نسخة أو يتغير اعتماد."
+            )
+        except (OSError, ScriptError) as error:
+            self._error(error)
+
+    def _restore_history(self, *, direction=0):
+        try:
+            selected = self.history_choice.currentData()
+            try:
+                lesson, current = self._checkpoint()
+            except ScriptError:
+                # An explicit restore can recover an invalid JSON edit, but only
+                # after validating the saved source/context/origin again.
+                entry = self.history.current
+                if entry is None:
+                    raise SceneError(
+                        "لا نسخة صالحة لاستعادة JSON؛ راجع المصدر أو استورد خطة."
+                    ) from None
+                lesson = self._lesson_provider()
+                current = VisualPlan.from_data(entry.plan.to_data(), lesson.manifest())
+                if self._plan_adapter is not None:
+                    current = self._plan_adapter(current, lesson)
+                if current.to_data()["policy"] != self.policy.currentData():
+                    raise SceneError("تغيّرت سياسة المحتوى؛ لم تُستعد نسخة من سياق آخر.") from None
+            if direction:
+                selected = self.history.previous_number(forward=direction > 0)
+            entry = self.history.find(selected, lesson.manifest(), current)
+            revision, raw = self.revision, self.plan_edit.toPlainText()
+            if (
+                QMessageBox.question(
+                    self,
+                    "استعادة نسخة كمسودة فقط",
+                    f"هل تستعيد النسخة {entry.number} بدل المسودة الحالية "
+                    "حتى إن كان JSON غير صالح؟ "
+                    "المصدر والنطق المراجع والأصوات ثابتة، ويُلغى الاعتماد الحالي. "
+                    "راجع المعاينة ثم اعتمد من جديد؛ لا صوت أو تصدير.",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No,
+                )
+                != QMessageBox.StandardButton.Yes
+            ):
+                return
+            if (
+                revision != self.revision
+                or self.plan_edit.toPlainText() != raw
+                or self._lesson_provider().manifest() != lesson.manifest()
+            ):
+                raise SceneError("تغيّرت المسودة أثناء المراجعة؛ لم تُستعد نسخة قديمة.")
+            if self._plan_adapter is not None:
+                self._plan_adapter(current, lesson)
+            restored = self.history.restore(entry.number, lesson.manifest(), current)
+            self.set_draft(restored, record_history=False)
+            self._preview()
+        except ScriptError as error:
+            self._error(error)
+
+    def _clear_history(self):
+        if (
+            QMessageBox.question(
+                self,
+                "مسح سجل الجلسة فقط",
+                "هل تمسح النسخ المؤقتة؟ المقترح الحالي واعتماده والأصوات "
+                "والملفات المحفوظة لا تتغير.",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            != QMessageBox.StandardButton.Yes
+        ):
+            return
+        self.history.clear()
+        self._refresh_history()
+        self.state.setText("مُسح سجل الجلسة فقط. لحفظ نسخة دائمة استخدم حفظ JSON صراحة.")
 
     def _import(self):
         path, _ = QFileDialog.getOpenFileName(
@@ -442,14 +642,14 @@ class ScenePicker(QWidget):
 
     def _review(self):
         try:
-            lesson, plan = self._current()
+            lesson, plan = self._checkpoint()
             self.review.setPlainText(review_text(plan, lesson.manifest()))
         except ScriptError as error:
             self._error(error)
 
     def _approve(self):
         try:
-            lesson, plan = self._current()
+            lesson, plan = self._checkpoint()
             self.review.setPlainText(review_text(plan, lesson.manifest()))
             if (
                 QMessageBox.question(
@@ -473,7 +673,7 @@ class ScenePicker(QWidget):
 
     def _preview(self):
         try:
-            lesson, plan = self._current()
+            lesson, plan = self._checkpoint()
             path = Path(self._preview_dir.name) / f"Nova-DRAFT-review-{self.revision}.html"
             save_whiteboard(replace(lesson, visuals=plan), path)
             if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path))):
@@ -614,7 +814,9 @@ class ScenePicker(QWidget):
                 raise SceneError("حماية النصوص المقدسة لا تسمح باقتراح بديل أو موارد خارجية.")
             source, revision = lesson.manifest(), self.revision
             feedback = self.feedback.text().strip()
-            model_needed = needs_planner(plan, action, feedback=feedback)
+            self._refresh_scopes(source)
+            target_step = self.revision_scope.currentData()
+            model_needed = needs_planner(plan, action, feedback=feedback, target_step=target_step)
             if model_needed:
                 if not self.adult.isChecked():
                     self.cloud_section.set_expanded(True)
@@ -626,13 +828,25 @@ class ScenePicker(QWidget):
                         "يلزم إعداد مفتاح الاقتراح المجاني داخل البرنامج. يمكنك إبقاءه في ذاكرة "
                         "الجلسة اختياريًا لتجربة البدائل دون إدخاله كل مرة؛ لا مصدر مدفوع."
                     )
-            notice = (
-                "سيُرسل السكريبت والخطة المرئية السابقة وملاحظتك إلى OpenRouter ومزوّده "
-                "لطلب مجاني واحد، بسعرصفر ومنع التدريب/الاحتفاظ كما في الطلب الأصلي. "
-                "لا بيانات طلاب أو معلومات حساسة. لا ضمان حصة أو جودة ولا إصلاح/دفع تلقائي.\n\n"
-                if model_needed
-                else "الموارد مقترحة في الخطة بالفعل؛ لا إرسال سكريبت أو طلب نموذج لغوي.\n\n"
+            scope_notice = (
+                f"المشهد {target_step + 1} فقط؛ باقي المشاهد والنص ثابت. "
+                "في الطلب اللغوي يُرسل نص وخطة هذا المشهد فقط مع عنوان الدرس، لا باقي النص.\n\n"
+                if target_step is not None
+                else "النطاق: الدرس كله كما في المسار السابق.\n\n"
             )
+            notice = scope_notice
+            if model_needed:
+                notice += (
+                    "سيُرسل نص وخطة المشهد المختار وملاحظتك إلى OpenRouter ومزوّده "
+                    if target_step is not None
+                    else "سيُرسل السكريبت والخطة المرئية السابقة وملاحظتك إلى OpenRouter ومزوّده "
+                )
+                notice += (
+                    "لطلب مجاني واحد، بسعرصفر ومنع التدريب/الاحتفاظ كما في الطلب الأصلي. "
+                    "لا بيانات طلاب أو معلومات حساسة. لا ضمان حصة أو جودة ولا إصلاح/دفع تلقائي.\n\n"
+                )
+            else:
+                notice += "الموارد مقترحة في الخطة بالفعل؛ لا إرسال سكريبت أو طلب نموذج لغوي.\n\n"
             if action == "external":
                 notice += (
                     "وتأذن مستقلاً بتنزيل الموارد التي تختارها هذه المحاولة من القائمة المثبتة "
@@ -663,9 +877,12 @@ class ScenePicker(QWidget):
                 or current_source.manifest() != source
                 or current != plan
                 or self.feedback.text().strip() != feedback
+                or self.revision_scope.currentData() != target_step
             ):
                 raise SceneError("تغيّرت الخطة أو الملاحظة أثناء الموافقة؛ اضغط الاختيار من جديد.")
             key = self._take_key(source) if model_needed else ""
+            self.history.record(plan, source, "قبل طلب البديل")
+            self._refresh_history()
             self._approved = None
             self.revision += 1
             self.consent.setChecked(False)
@@ -682,6 +899,7 @@ class ScenePicker(QWidget):
                     self.adult.isChecked() if model_needed else False,
                     model_needed,
                     action == "external",
+                    target_step=target_step,
                 )
             )
         except ScriptError as error:
@@ -692,13 +910,22 @@ class ScenePicker(QWidget):
         if (
             self.revision != request.revision
             or result.action != request.action
+            or result.target_step != request.target_step
+            or self.revision_scope.currentData() != request.target_step
             or not revision_matches(result, current, lesson.manifest())
         ):
             raise SceneError("تغيّرت الخطة أو النص أو الملاحظة؛ لم تُطبّق نتيجة اختيار قديمة.")
         prepared = VisualPlan.from_data(result.plan.to_data(), lesson.manifest())
         if self._plan_adapter is not None:
             prepared = self._plan_adapter(prepared, lesson)
-        self.set_draft(prepared)
+        self.set_draft(
+            prepared,
+            history_label=(
+                f"تعديل المشهد {request.target_step + 1}"
+                if request.target_step is not None
+                else "اقتراح بديل للدرس"
+            ),
+        )
         self.review.setPlainText(result.summary() + "\n\n" + self.review.toPlainText())
         opened = self._preview()  # Only a silent local preview, never approval/audio/export.
         self.state.setText(
@@ -711,6 +938,7 @@ class ScenePicker(QWidget):
         )
 
     def cleanup(self):
+        self.history.clear()
         self._review_credential.clear()
         self._credential_timer.stop()
         self.key.clear()
