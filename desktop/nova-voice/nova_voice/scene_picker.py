@@ -476,6 +476,13 @@ class ScenePicker(QWidget):
         self.revision_scope.setEnabled(can_revise)
         self._refresh_history()
 
+    @property
+    def approved_plan(self) -> VisualPlan | None:
+        """الخطة المعتمَدة للنص الحالي عند تفعيل التضمين، وإلا None."""
+        if not self.use_plan.isChecked():
+            return None
+        return self._approved
+
     def export_ready(self) -> bool:
         return not self.use_plan.isChecked() or self._approved is not None
 

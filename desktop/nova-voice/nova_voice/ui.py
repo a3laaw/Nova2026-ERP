@@ -4,7 +4,6 @@ import logging
 import tempfile
 from dataclasses import replace
 from datetime import datetime
-from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +15,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QFileDialog,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QMainWindow,
     QMessageBox,
@@ -51,13 +51,7 @@ from .engine import (
     validate_dialogue_cast,
 )
 from .gemini_planner import request_plan as request_gemini_plan
-from .html_export import (
-    MAX_HTML_BYTES,
-    HtmlAudioResult,
-    HtmlExportError,
-    render_html,
-    validate_destination,
-)
+from .html_export import HtmlAudioResult
 from .inference_picker import InferencePicker
 from .lesson_draft import LessonDraft
 from .lesson_library import LessonLibrary, LibraryError, LibraryMetadata
@@ -87,10 +81,8 @@ from .voices import VoiceError, VoiceLibrary, VoiceSpec
 from .whiteboard import (
     WHITEBOARD_EXAMPLE,
     Lesson,
-    WhiteboardPage,
     WhiteboardResult,
     parse_lesson,
-    render_whiteboard_audio,
     render_whiteboard_with_audio,
     save_whiteboard,
     validate_lesson_cast,
@@ -118,11 +110,7 @@ class MainWindow(QMainWindow):
         self._asset_request: AssetRequest | None = None
         self._revision_request: RevisionRequest | None = None
         self._result_file: Path | None = None
-        self._html_source: Path | None = None
         self._html_result_file: Path | None = None
-        self._board_source: Path | None = None
-        self._board_lesson: Lesson | None = None
-        self._board_open_file: Path | None = None
         self._preview_directory = tempfile.TemporaryDirectory(prefix="nova-voice-preview-")
         self._preview_number = 0
         self._progress_kind = "render"
@@ -344,7 +332,8 @@ class MainWindow(QMainWindow):
         settings.addWidget(self.guide_button)
         columns.addWidget(settings_card, 4)
         input_layout.addLayout(columns, 1)
-        self.scene_section = Disclosure("مشاهد ذكية · اختياري: سكريبت ← مسودة ← مراجعة ← اعتماد")
+        self.scene_section = Disclosure("مشاهد ذكية · اختياري")
+        self.scene_section.toggle_button.hide()
         self.scene_picker = ScenePicker(
             self._source_lesson,
             plan_adapter=self._bind_story_plan,
@@ -366,6 +355,56 @@ class MainWindow(QMainWindow):
         self.lesson_section.content_layout.addWidget(self.lesson_picker)
         input_layout.addWidget(self.lesson_section)
         input_layout.addWidget(self.scene_section)
+        self.scene_toggle_button = button("مشاهد ذكية", "scene-toggle")
+        self.scene_toggle_button.setCheckable(True)
+        self.scene_toggle_button.setAccessibleName("مشاهد ذكية")
+        self.scene_toggle_button.setToolTip(
+            "سكريبت ← مسودة ← مراجعة ← اعتماد. الزر يفتح القسم في مكانه؛ "
+            "التصدير بمشاهد يحتاج اعتماد الخطة أولًا ولا يُرسل شيئًا وحده."
+        )
+        self.scene_toggle_button.toggled.connect(self.scene_section.content.setVisible)
+        input_layout.addWidget(self.scene_toggle_button)
+        self.scene_summary = label("لا توجد خطة معتمدة · المشاهد غير مضمّنة", "muted")
+        self.scene_summary.setAccessibleName("حالة خطة المشاهد")
+        input_layout.addWidget(self.scene_summary)
+        # الأزرار الأربعة متساوية الوزن في موضع التوليد — كل زر رئيسي (ق١)
+        generation = QGridLayout()
+        generation.setSpacing(10)
+        self.combined_board_button = button("سبورة مع صوت", "primary")
+        self.combined_board_button.setToolTip(
+            "من النص والأصوات والتخصيصات المختارة إلى ملف HTML واحد بالنص والصوت معًا."
+        )
+        self.combined_board_button.clicked.connect(self.generate_whiteboard_with_audio)
+        self.create_board_button = button("سبورة فقط", "primary")
+        self.create_board_button.setToolTip(
+            "سبورة HTML صامتة بلا صوت. المشاهد تُضمَّن إن فُعّلت واعتُمدت."
+        )
+        self.create_board_button.clicked.connect(self.generate_whiteboard)
+        self.generate_button = button("صوت فقط", "primary")
+        self.generate_button.setToolTip("Ctrl+Enter · MP3 أو WAV دون سبورة.")
+        self.generate_button.clicked.connect(self.generate)
+        self.scenes_board_button = button("سبورة مع صوت مع مشاهد ذكية", "primary")
+        self.scenes_board_button.setToolTip(
+            "مثل «سبورة مع صوت»، ويتطلب اعتماد خطة مشاهد لهذا النص — "
+            "إن لم تعتمدها بعد يفتح القسم ويطلب منك الاعتماد."
+        )
+        self.scenes_board_button.clicked.connect(self.generate_whiteboard_with_scenes)
+        generation.addWidget(self.combined_board_button, 0, 0)
+        generation.addWidget(self.create_board_button, 0, 1)
+        generation.addWidget(self.generate_button, 1, 0)
+        generation.addWidget(self.scenes_board_button, 1, 1)
+        generation.setColumnStretch(0, 1)
+        generation.setColumnStretch(1, 1)
+        input_layout.addLayout(generation)
+        preview_row = QHBoxLayout()
+        preview_row.addStretch()
+        self.preview_button = button("معاينة أول 400 حرف")
+        self.preview_button.clicked.connect(self.preview)
+        preview_row.addWidget(self.preview_button)
+        input_layout.addLayout(preview_row)
+        self.cancel_button = button("إلغاء العملية", "cancel")
+        self.cancel_button.clicked.connect(self._cancel)
+        self.cancel_button.hide()
         self.workspace_tabs.addTab(input_page, "النص والأصوات")
 
         appearance_card, appearance_layout = card()
@@ -387,108 +426,7 @@ class MainWindow(QMainWindow):
         export_card, export_layout = card()
         export_layout.setContentsMargins(18, 12, 18, 12)
         export_layout.setSpacing(8)
-        export_actions = QHBoxLayout()
 
-        board_card, board_layout = card()
-        board_layout.addWidget(label("سبورة محفوظة · المسار ذو الخطوتين", "section"))
-        board_layout.addWidget(
-            label(
-                "للمراجعة قبل النطق: أنشئ نسخة صامتة من المحرر بالخطوة 1، ثم اختر الأصوات "
-                "من تبويب «النص والأصوات» وأضفها إلى النص المحفوظ في HTML بالخطوة 2. "
-                "للحفظ المباشر من المحرر استخدم الزر الموحّد أدناه.",
-                "muted",
-                True,
-            )
-        )
-        self.combined_board_button = button("توليد السبورة بالنص والصوت معًا", "primary")
-        self.combined_board_button.setToolTip(
-            "من السكريبت الحالي والأصوات والتخصيصات المختارة إلى HTML واحد؛ "
-            "لا تحتاج إنشاء سبورة محفوظة أولًا."
-        )
-        self.combined_board_button.clicked.connect(self.generate_whiteboard_with_audio)
-        export_actions.addWidget(self.combined_board_button, 1)
-        board_actions = QHBoxLayout()
-        self.create_board_button = button("1. توليد السبورة HTML")
-        self.create_board_button.clicked.connect(self.generate_whiteboard)
-        self.open_board_button = button("فتح السبورة")
-        self.open_board_button.clicked.connect(self._open_whiteboard)
-        board_actions.addWidget(self.create_board_button)
-        export_actions.addWidget(self.open_board_button)
-        board_actions.addStretch()
-        board_layout.addLayout(board_actions)
-        self.board_source_label = label(
-            "لم تُنشأ سبورة بعد. الخطوة 1 لا تحتاج صوتًا مثبتًا.", "muted", True
-        )
-        self.board_source_label.setTextInteractionFlags(
-            Qt.TextInteractionFlag.TextSelectableByMouse
-        )
-        board_layout.addWidget(self.board_source_label)
-        board_audio_actions = QHBoxLayout()
-        self.choose_board_button = button("اختيار سبورة محفوظة")
-        self.choose_board_button.clicked.connect(self._choose_whiteboard)
-        self.board_audio_button = button("2. توليد صوت السبورة")
-        self.board_audio_button.clicked.connect(self.generate_whiteboard_audio)
-        board_audio_actions.addWidget(self.choose_board_button)
-        board_audio_actions.addWidget(self.board_audio_button)
-        board_audio_actions.addStretch()
-        board_layout.addLayout(board_audio_actions)
-        board_layout.addStretch()
-        self.workspace_tabs.addTab(board_card, "سبورة محفوظة")
-
-        other_page = QWidget()
-        other_layout = QVBoxLayout(other_page)
-        other_layout.setContentsMargins(0, 16, 0, 0)
-        html_card, html_layout = card()
-        html_layout.addWidget(label("أضف الصوت إلى ملف HTML", "section"))
-        html_layout.addWidget(
-            label(
-                "اختر صفحة موثوقة وأدخل السكريبت أعلاه. تُحفظ نسخة جديدة والصوت مضمّن داخلها، "
-                "مع تقليل سرعة الصوت وحركات CSS / Web Animations المدعومة. "
-                "حركات JavaScript الخاصة قد تحتاج ربطًا مخصصًا.",
-                "muted",
-                True,
-            )
-        )
-        html_actions = QHBoxLayout()
-        self.choose_html_button = button("اختيار ملف HTML")
-        self.choose_html_button.clicked.connect(self._choose_html)
-        self.html_source_label = label("لم تختر صفحة بعد.", "muted", True)
-        self.html_source_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        self.clear_html_button = button("إلغاء الاختيار")
-        self.clear_html_button.clicked.connect(self._clear_html)
-        self.html_export_button = button("توليد صفحة HTML بالصوت", "primary")
-        self.html_export_button.clicked.connect(self.generate_html)
-        html_actions.addWidget(self.choose_html_button)
-        html_actions.addWidget(self.html_source_label, 1)
-        html_actions.addWidget(self.clear_html_button)
-        html_layout.addLayout(html_actions)
-        html_layout.addWidget(self.html_export_button)
-        other_layout.addWidget(html_card)
-        audio_card, audio_layout = card()
-        audio_layout.addWidget(label("تصدير صوت فقط · MP3 أو WAV", "section"))
-        audio_layout.addWidget(
-            label(
-                "يستخدم النص والأصوات من التبويب الأول. لهذه الأزرار استخدم سكريبتًا صوتيًا "
-                "دون عناوين # و## الخاصة بالسبورة. Ctrl+Enter لحفظ الصوت فقط.",
-                "muted",
-                True,
-            )
-        )
-        actions = QHBoxLayout()
-        self.generate_button = button("توليد وحفظ الصوت", "primary")
-        self.generate_button.setToolTip("Ctrl+Enter")
-        self.generate_button.clicked.connect(self.generate)
-        self.preview_button = button("معاينة أول 400 حرف")
-        self.preview_button.clicked.connect(self.preview)
-        self.cancel_button = button("إلغاء العملية", "cancel")
-        self.cancel_button.clicked.connect(self._cancel)
-        self.cancel_button.hide()
-        actions.addWidget(self.generate_button, 2)
-        actions.addWidget(self.preview_button)
-        audio_layout.addLayout(actions)
-        other_layout.addWidget(audio_card)
-        other_layout.addStretch()
-        self.workspace_tabs.addTab(other_page, "صوت فقط / HTML")
         video_card, video_layout = card()
         self.video_picker = VideoPicker()
         self.video_picker.requested.connect(self._convert_video)
@@ -516,8 +454,10 @@ class MainWindow(QMainWindow):
         self.library_panel.editCancelled.connect(self._cancel_library_edit)
         library_layout.addWidget(self.library_panel)
         self.workspace_tabs.addTab(library_card, "مكتبة المنهج")
-        export_actions.addWidget(self.cancel_button)
-        export_layout.addLayout(export_actions)
+        status_row = QHBoxLayout()
+        status_row.addStretch()
+        status_row.addWidget(self.cancel_button)
+        export_layout.addLayout(status_row)
         self.progress = QProgressBar()
         self.progress.hide()
         export_layout.addWidget(self.progress)
@@ -687,19 +627,7 @@ class MainWindow(QMainWindow):
                 self.worker.cancel_event.set()
 
     @staticmethod
-    def _cloud_source_hash(source: Path) -> str:
-        # Recheck a bounded original, not an arbitrarily grown file from another process.
-        digest = sha256()
-        total = 0
-        with source.open("rb") as handle:
-            while data := handle.read(65536):
-                total += len(data)
-                if total > MAX_HTML_BYTES:
-                    raise AzureError("كبر ملف المصدر أثناء المراجعة؛ اختره وراجعه مجددًا.")
-                digest.update(data)
-        return digest.hexdigest()
-
-    def _cloud_snapshot(self, source: Path | None, for_editor: bool) -> tuple:
+    def _cloud_snapshot(self, for_editor: bool) -> tuple:
         return (
             self.editor.document().revision() if for_editor else None,
             self.provider_combo.currentData(),
@@ -713,26 +641,24 @@ class MainWindow(QMainWindow):
             self.pause_spin.value(),
             self.turn_pause_spin.value(),
             self.format_combo.currentData(),
-            self._cloud_source_hash(source) if source is not None else None,
         )
 
     def _cloud_engine(
         self,
         requests: tuple[CloudRequest, ...],
         *,
-        source: Path | None = None,
         for_editor: bool = True,
     ) -> SpeechEngine | None:
         if not requests:
             raise AzureError("لا توجد مقاطع Azure صالحة في هذه العملية.")
         self._options(for_editor=for_editor)
         credentials = self.azure_picker.credentials()
-        before = self._cloud_snapshot(source, for_editor)
+        before = self._cloud_snapshot(for_editor)
         plan = AzurePlan(requests)
         dialog = AzureConsentDialog(plan, credentials.region, self)
         if dialog.exec() != QDialog.DialogCode.Accepted or not dialog.review_check.isChecked():
             return None
-        if before != self._cloud_snapshot(source, for_editor) or self.worker:
+        if before != self._cloud_snapshot(for_editor) or self.worker:
             raise AzureError("تغير المصدر أو سياق الإرسال أثناء المراجعة؛ وافق مجددًا.")
         self._options(for_editor=for_editor)
         self._active_azure_job = AzureJob(
@@ -745,8 +671,6 @@ class MainWindow(QMainWindow):
         text: str,
         cast: dict[int, DialogueVoice],
         options: RenderOptions,
-        *,
-        source: Path | None = None,
     ) -> SpeechEngine | None:
         if not self._using_azure():
             return self.engine
@@ -758,7 +682,7 @@ class MainWindow(QMainWindow):
                 dialogue=self.dialogue_mode(),
                 turn_pause_ms=self.turn_pause_spin.value(),
             )
-            return self._cloud_engine(requests, source=source)
+            return self._cloud_engine(requests)
         except (OSError, ScriptError, VoiceError, AudioError) as error:
             QMessageBox.warning(self, "راجع إرسال Azure", str(error))
             return None
@@ -768,8 +692,6 @@ class MainWindow(QMainWindow):
         lesson: Lesson,
         cast: dict[int, DialogueVoice],
         options: RenderOptions,
-        *,
-        source: Path | None = None,
     ) -> SpeechEngine | None:
         if not self._using_azure():
             return self.engine
@@ -777,7 +699,7 @@ class MainWindow(QMainWindow):
             requests = whiteboard_cloud_requests(
                 self.engine, lesson, cast, options, turn_pause_ms=self.turn_pause_spin.value()
             )
-            return self._cloud_engine(requests, source=source, for_editor=source is None)
+            return self._cloud_engine(requests)
         except (OSError, ScriptError, VoiceError, AudioError) as error:
             QMessageBox.warning(self, "راجع إرسال Azure", str(error))
             return None
@@ -838,14 +760,9 @@ class MainWindow(QMainWindow):
         speech_allowed = self.scene_picker.audio_allowed() and story_ready
         self.generate_button.setEnabled(not busy and ready and speech_allowed)
         self.preview_button.setEnabled(not busy and ready and speech_allowed)
-        self.html_export_button.setEnabled(
-            not busy and ready and speech_allowed and self._html_source is not None
-        )
-        self.clear_html_button.setEnabled(not busy and self._html_source is not None)
         scene_ready = self.scene_picker.export_ready() and story_ready
-        self.create_board_button.setEnabled(
-            not busy and scene_ready and 0 < len(text.strip()) <= MAX_CHARACTERS
-        )
+        has_text = 0 < len(text.strip()) <= MAX_CHARACTERS
+        self.create_board_button.setEnabled(not busy and scene_ready and has_text)
         combined_ready = False
         if not busy and 0 < len(text.strip()) <= MAX_CHARACTERS and (cast := self._cast()):
             try:
@@ -858,45 +775,13 @@ class MainWindow(QMainWindow):
         self.combined_board_button.setEnabled(
             combined_ready and scene_ready and self.scene_picker.audio_allowed()
         )
-        self.open_board_button.setEnabled(not busy and self._board_open_file is not None)
-        board_ready = self._board_lesson is not None and self._board_lesson.speakers.issubset(
-            self._cast()
-        )
-        sacred_board = bool(
-            self._board_lesson
-            and self._board_lesson.visuals
-            and self._board_lesson.visuals.to_data()["policy"] == "sacred"
-        )
-        self.board_audio_button.setEnabled(
-            not busy and board_ready and not sacred_board and self.scene_picker.audio_allowed()
-        )
-        if self._board_source and self._board_lesson:
-            changed = bool(text.strip()) and text.strip() != self._board_lesson.script
-            note = (
-                " · السكريبت الحالي مختلف؛ الخطوة 2 تستخدم النص المحفوظ في هذه السبورة. "
-                "أعد الخطوة 1 لتطبيق تعديلات النص."
-                if changed
-                else " · الصوت من النص والخطة المحفوظين في HTML، لا تعديلات المحرر الحالية."
-            )
-            if sacred_board:
-                note = " · نصوص مقدسة: عرض النص المراجع فقط؛ لا توليد تلاوة آلي في هذه النسخة."
-            self.board_source_label.setText(
-                f"{self._board_source.name} · {len(self._board_lesson.steps)} خطوات" + note
-            )
-            self.board_source_label.setToolTip(str(self._board_source))
-        elif self._board_open_file:
-            self.board_source_label.setText(
-                f"{self._board_open_file.name} · سبورة بالنص والصوت في ملف واحد. "
-                "لإعادة التوليد استخدم السكريبت والزر الموحّد، أو أنشئ نسخة صامتة بالخطوة 1."
-            )
-            self.board_source_label.setToolTip(str(self._board_open_file))
+        self.scenes_board_button.setEnabled(self.combined_board_button.isEnabled())
+        self.scene_summary.setText(self._scene_summary_text())
         for widget in (
             self.primary_voice,
             self.provider_combo,
             self.azure_picker,
-            self.choose_html_button,
             self.appearance_picker,
-            self.choose_board_button,
             self.board_example_button,
             self.secondary_voice,
             self.mode_combo,
@@ -915,6 +800,32 @@ class MainWindow(QMainWindow):
         self.cancel_button.setVisible(busy)
         self.cancel_button.setEnabled(busy and not self._closing)
         self.progress.setVisible(busy)
+
+    def _scene_summary_text(self) -> str:
+        approved = self.scene_picker.approved_plan
+        if approved is None:
+            if self.scene_picker.use_plan.isChecked():
+                return "خطة المشاهد بانتظار الاعتماد · راجع الخطة ثم اضغط «اعتماد»"
+            return "لا توجد خطة معتمدة · المشاهد غير مضمّنة"
+        steps = len(approved.to_data().get("steps", []))
+        return (
+            f"خطة مشاهد معتمدة ✓ · {steps} خطوات · "
+            "تُضمَّن مع «سبورة مع صوت مع مشاهد ذكية»"
+        )
+
+    def generate_whiteboard_with_scenes(self) -> None:
+        """ق4: التصدير بمشاهد يتطلب اعتمادًا — يرفض ويفتح القسم إن غاب."""
+        if self.scene_picker.approved_plan is None:
+            QMessageBox.information(
+                self,
+                "اعتمد خطة المشاهد أولًا",
+                "هذا الزر مثل «سبورة مع صوت» مع مشاهد، ولا يعمل قبل اعتمادك "
+                "خطة مشاهد لهذا النص. افتح القسم، راجع المسودة والمعاينة، "
+                "ثم اضغط «اعتمد».",
+            )
+            self.scene_toggle_button.setChecked(True)
+            return
+        self.generate_whiteboard_with_audio()
 
     def _options(self, *, for_editor: bool = True) -> RenderOptions:
         if for_editor and not self._story_ready():
@@ -1135,7 +1046,7 @@ class MainWindow(QMainWindow):
             self._adopted_draft = draft
             self._adopted_revision = self.lesson_picker.revision
             self.scene_picker.set_draft(lesson.visuals)
-            self.scene_section.set_expanded(True)
+            self.scene_toggle_button.setChecked(True)
             self.status.setText(
                 "نُقل الدرس الموسع مع حفظ الوصف. راجع خطة المشاهد واعتمدها؛ لم يبدأ صوت أو تصدير."
             )
@@ -1251,7 +1162,7 @@ class MainWindow(QMainWindow):
         self.mode_combo.setCurrentIndex(0)
         self.editor.setPlainText(VISUAL_EXAMPLE)
         self.scene_picker.policy.setCurrentIndex(0)
-        self.scene_section.set_expanded(True)
+        self.scene_toggle_button.setChecked(True)
         self.scene_picker.set_draft(example_plan(self._source_lesson().manifest()))
 
     def _refresh_appearance_sentences(self) -> None:
@@ -1311,15 +1222,6 @@ class MainWindow(QMainWindow):
         )
         if path is None:
             return
-        try:
-            # A one-click editor export must not overwrite either selected
-            # original page, including aliases/hard links checked by this helper.
-            for source in (self._board_source, self._html_source):
-                if source is not None and source.exists():
-                    validate_destination(source, path)
-        except (OSError, HtmlExportError) as error:
-            QMessageBox.warning(self, "اختر اسمًا آخر", str(error))
-            return
         self.preferences.output_dir = str(path.parent)
         pause, audio_format = self.turn_pause_spin.value(), self.format_combo.currentData()
         engine = self._engine_for_lesson(lesson, cast, options)
@@ -1342,210 +1244,6 @@ class MainWindow(QMainWindow):
             ),
             "whiteboard-combined",
         )
-
-    def _choose_whiteboard(self) -> None:
-        if self.worker:
-            return
-        selected, _ = QFileDialog.getOpenFileName(
-            self, "اختيار سبورة Nova بلا صوت", "", "HTML (*.html *.htm)"
-        )
-        if not selected:
-            return
-        try:
-            board = WhiteboardPage.load(Path(selected))
-        except (OSError, HtmlExportError, ScriptError) as error:
-            QMessageBox.warning(self, "تعذّر فتح السبورة", str(error))
-            return
-        self._board_source = board.page.source
-        self._board_lesson = board.lesson
-        self._board_open_file = board.page.source
-        self.mode_combo.setCurrentIndex(1 if board.lesson.dialogue else 0)
-        self.appearance_picker.restore(board.appearance, board.lesson)
-        self._update_buttons()
-
-    def generate_whiteboard_audio(self) -> None:
-        if self.worker or self._board_source is None:
-            return
-        try:
-            board = WhiteboardPage.load(self._board_source)
-            cast = self._cast()
-            options = self._options(for_editor=False)
-            validate_lesson_cast(board.lesson, cast, options)
-        except (OSError, HtmlExportError, ScriptError, VoiceError, AudioError) as error:
-            QMessageBox.warning(self, "راجع السبورة والأصوات", str(error))
-            return
-        current_text = self.editor.toPlainText().strip()
-        if board.lesson.visuals and board.lesson.visuals.to_data()["schema"] == 2:
-            # A saved full-lesson page can come from a silent draft preview.
-            # Approval is never serialized: review this independent saved source,
-            # without letting an unrelated stale editor draft block its workflow.
-            if (
-                QMessageBox.question(
-                    self,
-                    "مراجعة درس موسع محفوظ قبل توليد صوته",
-                    "قد يكون هذا الملف معاينة مسودة؛ الحزمة لا تحفظ اعتمادًا بشريًا. "
-                    "هل فتحت السبورة وراجعت الوصف الأصلي والنص والحقائق والإجابات "
-                    "والرسوم وكل فرق بين العرض والنطق، وتوافق على توليد صوتها الآن؟ "
-                    "الصوت من بيانات هذا الملف المحفوظ، لا من المحرر أو مسودة أخرى.",
-                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                    QMessageBox.StandardButton.No,
-                )
-                != QMessageBox.StandardButton.Yes
-            ):
-                return
-        elif (
-            current_text
-            and current_text != board.lesson.script
-            and QMessageBox.question(
-                self,
-                "الصوت من السبورة المحفوظة",
-                "السكريبت الحالي مختلف عن النص الذي أُنشئت منه السبورة. "
-                "أعد الخطوة 1 لتحديثها، أو تابع لتوليد الصوت من النص المحفوظ داخلها. "
-                "هل تريد المتابعة؟",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No,
-            )
-            != QMessageBox.StandardButton.Yes
-        ):
-            return
-        source = board.page.source
-        path = self._board_save_path(
-            "الخطوة 2 · حفظ نسخة السبورة بالصوت", source.with_name(source.stem + "-with-voice.html")
-        )
-        if path is None:
-            return
-        try:
-            validate_destination(source, path)
-        except (OSError, HtmlExportError) as error:
-            QMessageBox.warning(self, "اختر اسمًا آخر", str(error))
-            return
-        pause, audio_format = self.turn_pause_spin.value(), self.format_combo.currentData()
-        engine = self._engine_for_lesson(board.lesson, cast, options, source=source)
-        if engine is None:
-            return
-        self._release_player()
-        self.open_html_button.setEnabled(False)
-        self._start_task(
-            lambda cancel, progress: render_whiteboard_audio(
-                engine,
-                source,
-                cast,
-                path,
-                options,
-                cancel,
-                progress,
-                turn_pause_ms=pause,
-                audio_format=audio_format,
-            ),
-            "whiteboard-audio",
-        )
-
-    def _open_whiteboard(self) -> None:
-        if self._board_open_file and not QDesktopServices.openUrl(
-            QUrl.fromLocalFile(str(self._board_open_file))
-        ):
-            QMessageBox.information(
-                self, "فتح السبورة", "افتح ملف HTML الناتج يدويًا في متصفح حديث."
-            )
-
-    def _choose_html(self) -> None:
-        if self.worker:
-            return
-        selected, _ = QFileDialog.getOpenFileName(
-            self, "اختيار ملف HTML الأصلي", "", "HTML (*.html *.htm)"
-        )
-        if not selected:
-            return
-        path = Path(selected)
-        try:
-            if path.stat().st_size > MAX_HTML_BYTES:
-                raise HtmlExportError("ملف HTML أكبر من 25 ميغابايت.")
-        except (OSError, HtmlExportError) as error:
-            QMessageBox.warning(self, "تعذّر اختيار الصفحة", str(error))
-            return
-        self._html_source = path
-        self.html_source_label.setText(path.name)
-        self.html_source_label.setToolTip(str(path))
-        self._update_buttons()
-
-    def _clear_html(self) -> None:
-        if self.worker:
-            return
-        self._html_source = None
-        self.html_source_label.setText("لم تختر صفحة بعد.")
-        self.html_source_label.setToolTip("")
-        self._update_buttons()
-
-    def generate_html(self) -> None:
-        values = self._input()
-        if values is None:
-            return
-        source = self._html_source
-        if source is None:
-            QMessageBox.information(self, "اختر الصفحة", "اختر ملف HTML الأصلي أولًا.")
-            return
-        text, cast = values
-        suggested = source.with_name(source.stem + "-with-voice.html")
-        chosen, _ = QFileDialog.getSaveFileName(
-            self, "حفظ نسخة HTML بالصوت", str(suggested), "HTML (*.html *.htm)"
-        )
-        if not chosen:
-            return
-        path = Path(chosen)
-        if path.suffix.lower() not in (".html", ".htm"):
-            path = Path(str(path) + ".html")
-            if (
-                path.exists()
-                and QMessageBox.question(
-                    self, "استبدال نسخة سابقة؟", "الملف الناتج موجود. هل تريد استبداله؟"
-                )
-                != QMessageBox.StandardButton.Yes
-            ):
-                return
-        try:
-            validate_destination(source, path)
-        except (OSError, HtmlExportError) as error:
-            QMessageBox.warning(self, "اختر اسمًا آخر", str(error))
-            return
-        if (
-            path.parent.resolve() != source.parent.resolve()
-            and QMessageBox.question(
-                self,
-                "ملفات الصفحة المرتبطة",
-                "يفضّل حفظ النسخة بجانب الصفحة الأصلية حتى تعمل الصور والملفات النسبية. "
-                "الصوت فقط مضمّن؛ لن تُنسخ ملفات الصفحة الأخرى. هل تريد الحفظ هنا رغم ذلك؟",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No,
-            )
-            != QMessageBox.StandardButton.Yes
-        ):
-            return
-        options = self._options()
-        dialogue = self.dialogue_mode()
-        pause = self.turn_pause_spin.value()
-        audio_format = self.format_combo.currentData()
-        engine = self._engine_for_script(text, cast, options, source=source)
-        if engine is None:
-            return
-
-        def task(cancel, progress):
-            return render_html(
-                engine,
-                source,
-                text,
-                cast,
-                path,
-                options,
-                cancel,
-                progress,
-                dialogue=dialogue,
-                turn_pause_ms=pause,
-                audio_format=audio_format,
-            )
-
-        self._release_player()
-        self.open_html_button.setEnabled(False)
-        self._start_task(task, "html")
 
     def _open_html_result(self) -> None:
         if self._html_result_file and not QDesktopServices.openUrl(
@@ -1917,9 +1615,7 @@ class MainWindow(QMainWindow):
             "scene-assets": "جارٍ تجهيز الموارد المسموح بها وفحصها؛ لا اعتماد أو نطق أو تصدير…",
             "scene-revision": "جارٍ تجهيز اختيارك: اقتراح واحد وموارد مدققة فقط، ثم معاينة صامتة…",
             "lesson-draft": "جارٍ اقتراح درس كامل ورسوم بطلب مجاني واحد؛ لا اعتماد أو نطق تلقائي…",
-            "html": "جارٍ تجهيز الصفحة وتوليد الصوت محليًا…",
             "whiteboard": "جارٍ تحويل السكريبت إلى سبورة HTML محليًا…",
-            "whiteboard-audio": "جارٍ توليد مقطع صوتي لكل خطوة من السبورة…",
             "whiteboard-combined": "جارٍ إنشاء السبورة وتوليد صوتها في ملف HTML واحد…",
         }
         self.status.setText(
@@ -1962,9 +1658,6 @@ class MainWindow(QMainWindow):
                         else "حفظ النص والصوت داخل HTML"
                     )
                     self.status.setText(f"جارٍ {stage} محليًا… {value}%")
-                elif self._progress_kind in ("html", "whiteboard-audio"):
-                    stage = "حفظ الصوت داخل HTML" if value >= 85 else "توليد صوت الصفحة"
-                    self.status.setText(f"جارٍ {stage} محليًا… {value}%")
                 elif self._progress_kind in ("scene-plan", "lesson-draft"):
                     self.status.setText("وصل رد المزود؛ جارٍ التحقق المحلي من خطة المشاهد…")
                 elif self._progress_kind in ("scene-assets", "scene-revision"):
@@ -1998,7 +1691,7 @@ class MainWindow(QMainWindow):
                 if self._revision_request is None:
                     raise SceneError("لا يوجد اختيار معاينة حالي لهذه النتيجة.")
                 self.scene_picker.apply_revision(result, self._revision_request)
-                self.scene_section.set_expanded(True)
+                self.scene_toggle_button.setChecked(True)
                 self.status.setText(
                     "انتهت محاولة واحدة. راجع النتيجة والموارد والبدائل، ثم اختر هل هذا المطلوب. "
                     "لم يبدأ صوت أو اعتماد أو تصدير."
@@ -2011,7 +1704,7 @@ class MainWindow(QMainWindow):
                 if self._asset_request is None:
                     raise SceneError("لا يوجد طلب موارد حالي لهذه النتيجة.")
                 self.scene_picker.apply_assets(result, self._asset_request)
-                self.scene_section.set_expanded(True)
+                self.scene_toggle_button.setChecked(True)
                 self.status.setText(
                     "جُهّزت الخطة مع بيان الموارد والبدائل. راجع المعاينة الصامتة والنسبة "
                     "واعتمد من جديد؛ لم يبدأ صوت أو تصدير."
@@ -2036,7 +1729,7 @@ class MainWindow(QMainWindow):
                 except ScriptError as error:
                     QMessageBox.warning(self, "النص تغير عن المسودة", str(error))
                     return
-            self.scene_section.set_expanded(True)
+            self.scene_toggle_button.setChecked(True)
             self.scene_picker.set_draft(result)
             self.status.setText(
                 "وصلت مسودة مشاهد؛ راجع الوصف والعرض والنطق والمعاينة ثم اعتمدها. "
@@ -2048,50 +1741,31 @@ class MainWindow(QMainWindow):
             self.result_path.setToolTip(str(result.path))
         if isinstance(result, WhiteboardResult):
             self.appearance_picker.restore(result.appearance, result.lesson)
-            self._board_source = result.path
-            self._board_lesson = result.lesson
-            self._board_open_file = result.path
             self._result_file = result.path
             self._html_result_file = result.path
-            self.player_title.setText("الخطوة 1 اكتملت · السبورة جاهزة بلا صوت")
+            self.player_title.setText("السبورة جاهزة بلا صوت")
             self.result_path.setText(str(result.path))
             self.status.setText(
                 f"تم إنشاء {len(result.lesson.steps)} خطوات. افتح السبورة لمراجعتها، "
-                "ثم اختر الأصوات واضغط «2. توليد صوت السبورة»."
+                "أو اضغط «سبورة مع صوت» للنسخة النهائية بصوت واحد في ملف واحد."
             )
             self.open_folder_button.setEnabled(True)
             self.open_html_button.setEnabled(True)
             self._offer_library_save(result.path, "whiteboard", result.lesson.title)
             return
         if isinstance(result, HtmlAudioResult):
-            if self._progress_kind in ("whiteboard-audio", "whiteboard-combined"):
-                # Never store the combined job's deleted staging HTML as a source.
-                # Keep any previously selected silent board for the old step 2.
-                self._board_open_file = result.path
             self._result_file = result.path
             self._html_result_file = result.path
-            self.player_title.setText("صفحة HTML الصوتية جاهزة")
+            self.player_title.setText("السبورة بالنص والصوت جاهزة")
             self.result_path.setText(str(result.path))
-            message = (
-                "تم توليد السبورة بالنص والصوت معًا في ملف HTML واحد. "
-                "افتحه لعرض النص وتشغيل الصوت والتحكم بالسرعة. "
-                if self._progress_kind == "whiteboard-combined"
-                else "اكتملت الخطوة 2: نسخة السبورة بالصوت لكل خطوة جاهزة. "
-                "افتحها للتحكم بالصوت والكتابة. "
-                if self._progress_kind == "whiteboard-audio"
-                else "تم حفظ نسخة HTML جديدة والصوت داخلها. افتحها للتحكم بالسرعة. "
-            )
             self.status.setText(
-                message + f"مدة الصوت {clock(round(result.duration_seconds * 1000))}."
+                "تم توليد السبورة بالنص والصوت معًا في ملف HTML واحد. "
+                "افتحها لعرض النص وتشغيل الصوت والتحكم بالسرعة. "
+                f"مدة الصوت {clock(round(result.duration_seconds * 1000))}."
             )
             self.open_folder_button.setEnabled(True)
             self.open_html_button.setEnabled(True)
-            board_kind = (
-                "whiteboard-audio"
-                if self._progress_kind in ("whiteboard-audio", "whiteboard-combined")
-                else "html-page"
-            )
-            self._offer_library_save(result.path, board_kind, result.path.stem)
+            self._offer_library_save(result.path, "whiteboard-audio", result.path.stem)
             return
         result: RenderResult
         preview = self._progress_kind == "preview"

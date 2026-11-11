@@ -25,7 +25,7 @@ from test_ui_lesson_draft import adopt  # noqa: E402
 from nova_voice.azure_picker import AzureConsentDialog  # noqa: E402
 from nova_voice.azure_speech import AzureError, AzureJob, AzurePlan  # noqa: E402
 from nova_voice.ui import MainWindow  # noqa: E402
-from nova_voice.whiteboard import WhiteboardPage, parse_lesson, save_whiteboard  # noqa: E402
+from nova_voice.whiteboard import WhiteboardPage  # noqa: E402
 
 qapp, window = native.qapp, native.window
 
@@ -184,7 +184,7 @@ def test_declining_or_unchecked_even_with_accepted_code_cannot_start_a_cloud_job
     assert window._active_azure_job is None
 
 
-@pytest.mark.parametrize("operation", ["preview", "audio", "generic-html", "combined", "saved"])
+@pytest.mark.parametrize("operation", ["preview", "audio", "combined"])
 def test_every_audio_entrypoint_gets_new_consent_and_publishes_without_a_key(
     window, monkeypatch, tmp_path, operation
 ):
@@ -203,21 +203,9 @@ def test_every_audio_entrypoint_gets_new_consent_and_publishes_without_a_key(
         window.preview()
     elif operation == "audio":
         window.generate()
-    elif operation == "generic-html":
-        source = tmp_path / "original.html"
-        source.write_text("<html><body>HTML_PRIVATE_SENTINEL</body></html>", encoding="utf-8")
-        window._html_source = source
-        window.generate_html()
-    elif operation == "combined":
+    else:
         window.editor.setPlainText("# UNREAD_HEADING\n## UNREAD_STEP\nمرحبًا.")
         window.generate_whiteboard_with_audio()
-    else:
-        source = tmp_path / "saved.html"
-        lesson = parse_lesson("# UNREAD_HEADING\n## UNREAD_STEP\nمرحبًا.")
-        save_whiteboard(lesson, source)
-        window._board_source, window._board_lesson = source, lesson
-        window.editor.setPlainText("EDITOR_PRIVATE_SENTINEL")
-        window.generate_whiteboard_audio()
     finish(window)
     assert len(plans) == 1 and len(jobs) == 1 and len(sent) == 1 and not warnings
     assert [r.text for r in plans[0][0].requests] == ["مرحبًا."]
@@ -227,7 +215,7 @@ def test_every_audio_entrypoint_gets_new_consent_and_publishes_without_a_key(
     )
     if operation != "preview":
         assert output.exists() and KEY.encode() not in output.read_bytes()
-    if operation in ("combined", "saved"):
+    if operation == "combined":
         assert WhiteboardPage.load(output, allow_recordings=True).timing is not None
     assert window.azure_picker.key_edit.text() == KEY  # Session only, not a saved setting.
 
@@ -272,26 +260,7 @@ def test_context_changed_during_cloud_review_invalidates_consent_before_send(
     assert window.worker is None and window._active_azure_job is None
 
 
-def test_saved_html_source_changed_during_review_cannot_send(window, monkeypatch, tmp_path):
-    enable_azure(window)
-    window.editor.setPlainText("مرحبًا.")
-    source = tmp_path / "original.html"
-    source.write_text("<html><body>Original.</body></html>", encoding="utf-8")
-    window._html_source = source
-    output = tmp_path / "copy.html"
-    monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *args: (str(output), ""))
-    def change():
-        source.write_text("<html>Changed.</html>", encoding="utf-8")
-
-    consent_dialog(monkeypatch, during=change)
-    warnings = []
-    monkeypatch.setattr(QMessageBox, "warning", lambda *args: warnings.append(args[-1]))
-    sent, jobs = fake_azure(monkeypatch)
-    window.generate_html()
-    assert warnings and not sent and not jobs and not output.exists() and window.worker is None
-
-
-@pytest.mark.parametrize("operation", ["audio", "combined", "generic-html"])
+@pytest.mark.parametrize("operation", ["audio", "combined"])
 def test_cancel_save_never_opens_cloud_consent_or_sends(window, monkeypatch, tmp_path, operation):
     enable_azure(window)
     window.editor.setPlainText("مرحبًا.")
@@ -300,13 +269,8 @@ def test_cancel_save_never_opens_cloud_consent_or_sends(window, monkeypatch, tmp
     monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *args: ("", ""))
     if operation == "audio":
         window.generate()
-    elif operation == "combined":
-        window.generate_whiteboard_with_audio()
     else:
-        source = tmp_path / "original.html"
-        source.write_text("<html><body>Original.</body></html>", encoding="utf-8")
-        window._html_source = source
-        window.generate_html()
+        window.generate_whiteboard_with_audio()
     assert not plans and not sent and not jobs and window.worker is None
 
 

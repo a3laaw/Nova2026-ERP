@@ -12,14 +12,13 @@ pytest.importorskip("PySide6.QtWidgets", exc_type=ImportError)
 
 # Reuse the same native fixtures, not another application or test runtime dependency.
 import test_ui as native  # noqa: E402
-from PySide6.QtTest import QSignalSpy  # noqa: E402
-from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox  # noqa: E402
+from PySide6.QtWidgets import QFileDialog, QMessageBox  # noqa: E402
 from test_ui import add_bilingual_voices  # noqa: E402
 
 from nova_voice.lesson_draft import LessonDraft  # noqa: E402
 from nova_voice.scenes import VisualPlan  # noqa: E402
 from nova_voice.text import ScriptError  # noqa: E402
-from nova_voice.whiteboard import WhiteboardPage, parse_lesson, save_whiteboard  # noqa: E402
+from nova_voice.whiteboard import WhiteboardPage  # noqa: E402
 
 qapp = native.qapp
 window = native.window
@@ -155,19 +154,15 @@ def test_stale_or_unchecked_full_draft_cannot_bypass_review_via_any_editor_expor
         pytest.fail("An invalid adopted draft must be blocked before any save dialog or worker.")
 
     monkeypatch.setattr(QFileDialog, "getSaveFileName", no_dialog)
-    source = tmp_path / "ordinary.html"
-    source.write_text("<html><body>Keep me.</body></html>", encoding="utf-8")
-    window._html_source = source
     for action in (
         window.generate,
         window.preview,
         window.generate_whiteboard,
         window.generate_whiteboard_with_audio,
-        window.generate_html,
     ):
         action()
         assert window.worker is None
-    assert len(warnings) == 5 and source.read_text(encoding="utf-8").endswith("</html>")
+    assert len(warnings) == 4
 
 
 def test_raw_edit_recomputes_hash_locally_but_needs_new_adoption_and_scene_approval(
@@ -239,32 +234,6 @@ def test_detach_is_explicit_and_restores_ordinary_editing_without_erasing_the_sa
     assert window._lesson_for_export().visuals is None
 
 
-def test_unrelated_saved_board_audio_is_not_blocked_by_a_stale_editor_draft(
-    window, monkeypatch, tmp_path, bilingual_cast
-):
-    add_bilingual_voices(window, bilingual_cast)
-    adopt(window, monkeypatch)
-    window.lesson_picker.brief_edit.insertPlainText("Changed. ")
-    assert not window._story_ready()
-    source = tmp_path / "saved.html"
-    lesson = parse_lesson("# Saved lesson\nSaved English sentence.")
-    save_whiteboard(lesson, source)
-    window._board_source = source
-    window._board_lesson = lesson
-    window.primary_voice.language_combo.setCurrentIndex(2)
-    window.format_combo.setCurrentIndex(1)
-    window._update_buttons()
-    assert window.board_audio_button.isEnabled()
-    output = tmp_path / "saved-with-audio.html"
-    monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *a, **k: (str(output), ""))
-    window.generate_whiteboard_audio()
-    worker = window.worker
-    assert worker is not None and QSignalSpy(worker.finished).wait(30000)
-    QApplication.processEvents()
-    assert window.worker is None
-    assert WhiteboardPage.load(output, allow_recordings=True).lesson == lesson
-
-
 def test_lesson_request_only_sends_exact_brief_clears_key_and_does_not_include_old_script(window):
     window.editor.setPlainText("Old private script, not part of this request.")
     panel, requests = window.lesson_picker, []
@@ -313,38 +282,3 @@ def test_a_separate_unadopted_brief_does_not_block_the_ordinary_editor(window):
     window.lesson_picker.brief_edit.setPlainText("A different unfinished brief.")
     assert window._adopted_draft is None and window.create_board_button.isEnabled()
     assert window._lesson_for_export().script == "Ordinary manual script."
-
-
-@pytest.mark.parametrize("approve", [False, True])
-def test_saved_full_draft_preview_needs_fresh_independent_review_before_step_two_audio(
-    window, monkeypatch, tmp_path, bilingual_cast, approve
-):
-    add_bilingual_voices(window, bilingual_cast)
-    window.primary_voice.language_combo.setCurrentIndex(1)
-    source = tmp_path / "unapproved-draft-preview.html"
-    lesson = example().compile()
-    save_whiteboard(lesson, source)
-    window._board_source = source
-    window._board_lesson = lesson
-    window.editor.setPlainText("Unrelated manual editor script.")
-    assert window._adopted_draft is None and window.scene_picker._approved is None
-    questions, started, dialogs = [], [], []
-
-    def decide(*args, **kwargs):
-        questions.append(args[2])
-        return QMessageBox.StandardButton.Yes if approve else QMessageBox.StandardButton.No
-
-    def save_dialog(*args, **kwargs):
-        dialogs.append(args)
-        assert approve, "No output dialog before independent saved-page approval"
-        return str(tmp_path / "approved-with-audio.html"), ""
-
-    monkeypatch.setattr(QMessageBox, "question", decide)
-    monkeypatch.setattr(QFileDialog, "getSaveFileName", save_dialog)
-    monkeypatch.setattr(window, "_start_task", lambda task, kind: started.append(kind))
-    window.generate_whiteboard_audio()
-    assert len(questions) == 1 and "معاينة مسودة" in questions[0]
-    assert (started == ["whiteboard-audio"]) is approve
-    assert len(dialogs) == int(approve)
-    assert window.editor.toPlainText() == "Unrelated manual editor script."
-    assert window._adopted_draft is None
