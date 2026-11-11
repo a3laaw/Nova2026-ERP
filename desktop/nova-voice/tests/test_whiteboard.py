@@ -163,7 +163,8 @@ def test_user_html_and_script_strings_are_text_never_executed(tmp_path):
 def test_duplicate_or_modified_manifest_is_refused(saved_board):
     source, _ = saved_board
     original = source.read_text(encoding="utf-8-sig")
-    source.write_text(original.replace('"title":"My lesson"', '"title":"Other lesson"'))
+    changed = original.replace('"title":"My lesson"', '"title":"Other lesson"')
+    source.write_text(changed, encoding="utf-8")
     with pytest.raises(WhiteboardError, match="تغيّرت"):
         WhiteboardPage.load(source)
     source.write_text(
@@ -171,7 +172,7 @@ def test_duplicate_or_modified_manifest_is_refused(saved_board):
             AUDIO_MARKER,
             f'<script id="{DATA_ID}" type="application/json">{{}}</script>' + AUDIO_MARKER,
         )
-    )
+    , encoding="utf-8")
     with pytest.raises(WhiteboardError):
         WhiteboardPage.load(source)
 
@@ -179,11 +180,11 @@ def test_duplicate_or_modified_manifest_is_refused(saved_board):
 def test_runtime_structure_and_unsupported_html_are_refused(saved_board, tmp_path):
     source, _ = saved_board
     original = source.read_text(encoding="utf-8-sig")
-    source.write_text(original.replace(AUDIO_MARKER, ""))
+    source.write_text(original.replace(AUDIO_MARKER, ""), encoding="utf-8")
     with pytest.raises(WhiteboardError):
         WhiteboardPage.load(source)
     foreign = tmp_path / "foreign.html"
-    foreign.write_text("<body>Not a generated Nova lesson</body>")
+    foreign.write_text("<body>Not a generated Nova lesson</body>", encoding="utf-8")
     with pytest.raises(WhiteboardError, match="الخطوة 1"):
         WhiteboardPage.load(foreign)
 
@@ -195,7 +196,7 @@ def test_corrupt_json_and_boolean_schema_are_refused(saved_board):
         original.replace('"schema":1', '"schema":true'),
         original.replace('"schema":1', "NOT JSON"),
     ):
-        source.write_text(changed)
+        source.write_text(changed, encoding="utf-8")
         with pytest.raises(WhiteboardError):
             WhiteboardPage.load(source)
 

@@ -234,7 +234,7 @@ def test_comparison_contains_actual_independent_safe_whiteboards_and_the_untouch
         assert 'id="nova-whiteboard-recordings"' not in content
         assert 'document.querySelectorAll("#lesson-outline button")[1]' in content
         path = tmp_path / f"{index}.html"
-        path.write_text(content)
+        path.write_text(content, encoding="utf-8")
         saved = WhiteboardPage.load(path)
         assert saved.lesson.script == lesson().script and saved.lesson.dialogue
         assert saved.lesson.visuals == (previous(), changed())[index]

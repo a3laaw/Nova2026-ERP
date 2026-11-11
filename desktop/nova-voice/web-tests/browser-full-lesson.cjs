@@ -140,7 +140,7 @@ from nova_voice.whiteboard import render_whiteboard_with_audio
 root=Path(sys.argv[1]); voice_root=root/'synthetic-voice'; voice_root.mkdir(exist_ok=True)
 model=voice_root/'ar-synthetic.onnx'; config=model.with_suffix('.onnx.json')
 shutil.copyfile('tests/fixtures/test_voice.onnx',model)
-data=json.loads(Path('tests/fixtures/test_voice.onnx.json').read_text())
+data=json.loads(Path('tests/fixtures/test_voice.onnx.json').read_text(encoding='utf-8'))
 data['espeak']['voice']='ar'; data['language']={'code':'ar_JO','name_native':'العربية'}
 config.write_text(json.dumps(data),encoding='utf-8')
 lesson=LessonDraft.load(Path('examples/complete-lesson-demo.json')).compile()

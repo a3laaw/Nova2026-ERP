@@ -124,14 +124,14 @@ def test_explicit_save_and_added_suffix_overwrite_require_consent(window, monkey
     path = tmp_path / "request.txt"
     monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *a, **k: (str(path), ""))
     picker.save_button.click()
-    assert path.read_text() == picker.output.toPlainText()
-    path.write_text("previous")
+    assert path.read_text(encoding="utf-8") == picker.output.toPlainText()
+    path.write_text("previous", encoding="utf-8")
     monkeypatch.setattr(
         QFileDialog, "getSaveFileName", lambda *a, **k: (str(path.with_suffix("")), "")
     )
     monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.StandardButton.No)
     picker.save_button.click()
-    assert path.read_text() == "previous"
+    assert path.read_text(encoding="utf-8") == "previous"
     assert not list(tmp_path.glob(".nova-guide-*"))
 
 

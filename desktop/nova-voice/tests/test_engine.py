@@ -42,7 +42,7 @@ def test_real_piper_mp3_encoding(tmp_path, voice_spec):
 
 def test_arabic_phonemization_and_bundled_tashkeel(tmp_path, voice_files):
     model, config = voice_files
-    data = json.loads(config.read_text())
+    data = json.loads(config.read_text(encoding="utf-8"))
     data["espeak"]["voice"] = "ar"
     data["language"] = {"code": "ar_JO", "name_native": "العربية"}
     config.write_text(json.dumps(data), encoding="utf-8")

@@ -28,7 +28,7 @@ def test_model_discovery_and_bad_files_are_isolated(tmp_path, voice_files):
 )
 def test_invalid_or_non_offline_model_config(voice_files, field, value):
     model, config = voice_files
-    data = json.loads(config.read_text())
+    data = json.loads(config.read_text(encoding="utf-8"))
     data[field] = value
     config.write_text(json.dumps(data), encoding="utf-8")
     with pytest.raises(VoiceError):
@@ -55,7 +55,7 @@ def test_atomic_import_preserves_originals_and_licenses(tmp_path, voice_files):
     assert model.read_bytes() == original
     assert imported.model_path.read_bytes() == original
     assert imported.config_path.is_file()
-    assert (imported.model_path.parent / "MODEL_CARD").read_text() == "Test license"
+    assert (imported.model_path.parent / "MODEL_CARD").read_text(encoding="utf-8") == "Test license"
     assert progress[-1] == 100
     # The same original can be imported again without replacing an earlier copy.
     second = library.import_voice(model, config, Event(), lambda _: None)

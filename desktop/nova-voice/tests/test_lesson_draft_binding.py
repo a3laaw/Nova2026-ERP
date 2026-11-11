@@ -120,7 +120,7 @@ def test_raw_response_can_be_deliberately_edited_and_recompiled_but_saved_hashes
 
 def test_atomic_draft_save_failure_preserves_old_bundle_and_cleans_temp(tmp_path, monkeypatch):
     path = tmp_path / "draft.json"
-    path.write_text("old data")
+    path.write_text("old data", encoding="utf-8")
 
     def failed(*_):
         raise OSError("simulated local failure")
@@ -128,7 +128,7 @@ def test_atomic_draft_save_failure_preserves_old_bundle_and_cleans_temp(tmp_path
     monkeypatch.setattr(Path, "replace", failed)
     with pytest.raises(OSError):
         example().save(path)
-    assert path.read_text() == "old data"
+    assert path.read_text(encoding="utf-8") == "old data"
     assert not list(tmp_path.glob(".nova-lesson-draft-*"))
 
 

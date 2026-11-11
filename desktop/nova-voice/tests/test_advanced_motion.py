@@ -12,7 +12,7 @@ from nova_voice.scenes import SceneError, VisualPlan, empty_plan, validate_eleme
 from nova_voice.whiteboard import WhiteboardPage, parse_lesson, save_whiteboard
 
 FIXTURES = Path(__file__).parent / "fixtures"
-CASES = json.loads((FIXTURES / "motion-cases.json").read_text())
+CASES = json.loads((FIXTURES / "motion-cases.json").read_text(encoding="utf-8"))
 
 
 def shape(motion):

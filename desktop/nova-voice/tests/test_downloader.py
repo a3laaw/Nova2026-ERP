@@ -26,7 +26,7 @@ def remote(monkeypatch, voice_files, request):
     voice = request.param
     prefix = downloader.VOICE_PATHS[voice]
     code = voice.split("-", 1)[0]
-    configuration = json.loads(config.read_text())
+    configuration = json.loads(config.read_text(encoding="utf-8"))
     configuration["language"] = {
         "code": code,
         "name_native": "العربية" if code == "ar_JO" else "English",
@@ -152,7 +152,7 @@ def test_explicit_voice_and_interactive_setup_are_mutually_exclusive(monkeypatch
 
 
 def test_english_batch_only_delegates_to_the_explicit_interactive_setup():
-    text = (SCRIPT.parent.parent / "Download-English-Voice.bat").read_text()
+    text = (SCRIPT.parent.parent / "Download-English-Voice.bat").read_text(encoding="utf-8")
     assert "--english-setup --output voices" in text
     assert "tools\\download_voice.py en_US-" not in text
     assert "if errorlevel 1 goto failed" in text

@@ -111,10 +111,12 @@ def test_unsafe_or_missing_character_assets_cannot_be_bundled(tmp_path):
     for key, _, _ in CHARACTERS:
         (folder / f"{key}.svg").write_text(
             '<svg xmlns="http://www.w3.org/2000/svg"><script>bad()</script></svg>'
-        )
+        , encoding="utf-8")
     with pytest.raises(AppearanceError):
         character_templates(tmp_path)
-    (folder / "adam.svg").write_text('<!DOCTYPE svg><svg xmlns="http://www.w3.org/2000/svg"/>')
+    (folder / "adam.svg").write_text(
+        '<!DOCTYPE svg><svg xmlns="http://www.w3.org/2000/svg"/>', encoding="utf-8"
+    )
     with pytest.raises(AppearanceError):
         character_templates(tmp_path)
 
@@ -141,7 +143,7 @@ def test_old_styleless_saved_lessons_still_load_without_losing_speech(tmp_path):
     content = re.sub(
         rf'<script id="{STYLE_ID}" type="application/json">.*?</script>', "", content, flags=re.S
     )
-    source.write_text(content)
+    source.write_text(content, encoding="utf-8")
     loaded = WhiteboardPage.load(source)
     assert loaded.lesson == lesson
     assert loaded.appearance == BoardAppearance()
@@ -175,7 +177,7 @@ def test_bad_style_metadata_is_refused_before_audio_generation(tmp_path, change)
         content = content.replace(
             tag, f'<script id="{STYLE_ID}" type="application/json">{json.dumps(data)}</script>'
         )
-    source.write_text(content)
+    source.write_text(content, encoding="utf-8")
     with pytest.raises(WhiteboardError):
         WhiteboardPage.load(source)
 

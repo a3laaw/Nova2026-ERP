@@ -345,7 +345,8 @@ def test_bilingual_board_lines_and_pauses_share_the_actual_planning_helper(tmp_p
 
 def test_general_html_sends_only_reviewed_script_not_the_html_source(tmp_path):
     source = tmp_path / "source.html"
-    source.write_text("<!doctype html><html><body><p>HTML_PRIVATE_SENTINEL</p></body></html>")
+    sentinel = "<!doctype html><html><body><p>HTML_PRIVATE_SENTINEL</p></body></html>"
+    source.write_text(sentinel, encoding="utf-8")
     original = source.read_bytes()
     cast, options = {1: DialogueVoice(SALMA)}, RenderOptions()
     requests = SpeechEngine().script_cloud_requests("مرحبًا.", cast, options)

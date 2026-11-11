@@ -22,7 +22,7 @@ from nova_voice.voices import Cancelled
 from nova_voice.whiteboard import WhiteboardPage, parse_lesson, save_whiteboard, whiteboard_html
 
 ROOT = Path(__file__).resolve().parents[1]
-CASES = json.loads((ROOT / "tests/fixtures/secondary-cases.json").read_text())
+CASES = json.loads((ROOT / "tests/fixtures/secondary-cases.json").read_text(encoding="utf-8"))
 ENTRIES = assets.catalog()["entries"]
 
 
@@ -353,8 +353,8 @@ def test_bad_cache_and_symlinks_never_reach_renderer_and_clear_only_vetted_files
     e = assets.asset_info("gi-magnifying-glass")
     entry = tmp_path / (e["raw_sha256"] + ".json")
     keep = tmp_path / "settings.json"
-    keep.write_text("keep")
-    entry.write_text('{"paths":["<script/>"]}')
+    keep.write_text("keep", encoding="utf-8")
+    entry.write_text('{"paths":["<script/>"]}', encoding="utf-8")
     t = BlobTransport()
     result = assets.prepare_plan(
         plan(), source().manifest(), Event(), lambda _: None, directory=tmp_path, _transport=t
@@ -366,7 +366,7 @@ def test_bad_cache_and_symlinks_never_reach_renderer_and_clear_only_vetted_files
         plan(), source().manifest(), Event(), lambda _: None, directory=tmp_path, _transport=t
     )
     assert result.plan == plan() and not t.calls
-    assert assets.clear_cache(tmp_path) == 1 and keep.read_text() == "keep"
+    assert assets.clear_cache(tmp_path) == 1 and keep.read_text(encoding="utf-8") == "keep"
     assert assets.clear_cache(tmp_path) == 0
 
 

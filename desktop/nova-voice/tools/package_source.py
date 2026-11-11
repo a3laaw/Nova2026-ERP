@@ -130,7 +130,10 @@ def package_source(root: Path, output: Path) -> int:
                 if path.suffix == ".bat":
                     # Native Windows line endings in the downloadable handoff.
                     archive.writestr(
-                        name, path.read_text().replace("\r\n", "\n").replace("\n", "\r\n")
+                        name,
+                        path.read_text(encoding="utf-8")
+                        .replace("\r\n", "\n")
+                        .replace("\n", "\r\n"),
                     )
                 else:
                     archive.write(path, name)

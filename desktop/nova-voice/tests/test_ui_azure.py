@@ -205,7 +205,7 @@ def test_every_audio_entrypoint_gets_new_consent_and_publishes_without_a_key(
         window.generate()
     elif operation == "generic-html":
         source = tmp_path / "original.html"
-        source.write_text("<html><body>HTML_PRIVATE_SENTINEL</body></html>")
+        source.write_text("<html><body>HTML_PRIVATE_SENTINEL</body></html>", encoding="utf-8")
         window._html_source = source
         window.generate_html()
     elif operation == "combined":
@@ -276,11 +276,14 @@ def test_saved_html_source_changed_during_review_cannot_send(window, monkeypatch
     enable_azure(window)
     window.editor.setPlainText("مرحبًا.")
     source = tmp_path / "original.html"
-    source.write_text("<html><body>Original.</body></html>")
+    source.write_text("<html><body>Original.</body></html>", encoding="utf-8")
     window._html_source = source
     output = tmp_path / "copy.html"
     monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *args: (str(output), ""))
-    consent_dialog(monkeypatch, during=lambda: source.write_text("<html>Changed.</html>"))
+    def change():
+        source.write_text("<html>Changed.</html>", encoding="utf-8")
+
+    consent_dialog(monkeypatch, during=change)
     warnings = []
     monkeypatch.setattr(QMessageBox, "warning", lambda *args: warnings.append(args[-1]))
     sent, jobs = fake_azure(monkeypatch)
@@ -301,7 +304,7 @@ def test_cancel_save_never_opens_cloud_consent_or_sends(window, monkeypatch, tmp
         window.generate_whiteboard_with_audio()
     else:
         source = tmp_path / "original.html"
-        source.write_text("<html><body>Original.</body></html>")
+        source.write_text("<html><body>Original.</body></html>", encoding="utf-8")
         window._html_source = source
         window.generate_html()
     assert not plans and not sent and not jobs and window.worker is None
@@ -352,7 +355,7 @@ def test_local_preferences_keep_local_paths_only_and_restart_is_local(
     enable_azure(window)
     directory = window.data_dir
     window.cleanup()
-    saved = (directory / "settings.json").read_text()
+    saved = (directory / "settings.json").read_text(encoding="utf-8")
     assert KEY not in saved and "azure" not in saved.lower() and "eastus" not in saved
     assert window.preferences.voice_path == str(local.model_path)
     assert not window.azure_picker.key_edit.text()

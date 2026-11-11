@@ -22,7 +22,7 @@ def example():
 def test_one_exact_brief_expands_to_objectives_four_drawn_stages_questions_answers_summary():
     draft = example()
     brief = draft.brief.to_data()
-    assert brief["text"] == (EXAMPLES / "water-cycle-description.txt").read_text()
+    assert brief["text"] == (EXAMPLES / "water-cycle-description.txt").read_text(encoding="utf-8")
     assert len(parse_lesson(brief["text"]).steps[0].rows) == 1
     lesson = draft.compile()
     assert len(lesson.steps) == 10 and sum(len(s.rows) for s in lesson.steps) == 16

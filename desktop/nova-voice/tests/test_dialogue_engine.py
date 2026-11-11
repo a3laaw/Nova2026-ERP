@@ -230,9 +230,9 @@ def test_invalid_turn_pause_and_speaker_are_rejected_before_writing(tmp_path, bi
 def test_changed_model_metadata_requires_refresh(bilingual_cast):
     engine = SpeechEngine()
     spec = bilingual_cast[1].voice
-    data = json.loads(spec.config_path.read_text())
+    data = json.loads(spec.config_path.read_text(encoding="utf-8"))
     data["audio"]["sample_rate"] = 24000
-    spec.config_path.write_text(json.dumps(data))
+    spec.config_path.write_text(json.dumps(data), encoding="utf-8")
     with pytest.raises(VoiceError, match="تحديث"):
         engine._load(spec)
 

@@ -22,7 +22,7 @@ from nova_voice.text import ScriptError
 from nova_voice.whiteboard import WhiteboardPage, parse_lesson, save_whiteboard, whiteboard_html
 
 ROOT = Path(__file__).resolve().parents[1]
-CASES = json.loads((ROOT / "tests/fixtures/graph-cases.json").read_text())
+CASES = json.loads((ROOT / "tests/fixtures/graph-cases.json").read_text(encoding="utf-8"))
 
 
 def lesson():
@@ -133,7 +133,7 @@ def test_review_exposes_nested_meaningful_names_motion_and_illustrative_sphere_l
 
 
 def test_authored_demo_is_reproducible_and_uses_composition_not_hidden_templates():
-    script = (ROOT / "examples/composition-demo-script.txt").read_text()
+    script = (ROOT / "examples/composition-demo-script.txt").read_text(encoding="utf-8")
     source = parse_lesson(script)
     plan = VisualPlan.load(ROOT / "examples/composition-demo.json", source.manifest())
     content = (ROOT / "examples/composition-demo.html").read_text(encoding="utf-8-sig")

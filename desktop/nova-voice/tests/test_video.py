@@ -72,7 +72,7 @@ def files(tmp_path):
         for name in ("input.webm", "ffmpeg.exe" if os.name == "nt" else "ffmpeg", "result.mp4")
     )
     source.write_bytes(b"\x1aE\xdf\xa3" + bytes(30))
-    encoder.write_text("trusted executable selected by the user in the unit test")
+    encoder.write_text("trusted executable selected by the user in the unit test", encoding="utf-8")
     return source, target, encoder
 
 

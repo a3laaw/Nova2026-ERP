@@ -97,7 +97,7 @@ def test_insertion_uses_real_body_end_not_comments_scripts_or_inert_content(
     content,
 ):
     source = tmp_path / "page.html"
-    source.write_text(content)
+    source.write_text(content, encoding="utf-8")
     page = HtmlPage.load(source)
     assert page.insertion_offset == content.rindex("</body>")
     output = tmp_path / "result.html"
@@ -112,7 +112,7 @@ def test_insertion_uses_real_body_end_not_comments_scripts_or_inert_content(
 )
 def test_fragments_and_missing_body_tag_have_a_fallback(tmp_path, audio_file, content):
     source = tmp_path / "page.htm"
-    source.write_text(content)
+    source.write_text(content, encoding="utf-8")
     output = tmp_path / "result.htm"
     embed_audio(HtmlPage.load(source), audio_file, output)
     assert embedded_bytes(output)[1] == audio_file.read_bytes()
@@ -125,10 +125,10 @@ def test_csp_is_never_silently_removed_or_weakened(tmp_path, policy):
         f'<html><head><meta http-equiv="Content-Security-Policy" content="{policy}">'
         "</head><body>Hi</body></html>"
     )
-    source.write_text(content)
+    source.write_text(content, encoding="utf-8")
     with pytest.raises(HtmlExportError, match="CSP"):
         HtmlPage.load(source)
-    assert source.read_text() == content
+    assert source.read_text(encoding="utf-8") == content
 
 
 def test_inert_csp_does_not_block_and_previous_player_is_detected(tmp_path):
@@ -136,11 +136,11 @@ def test_inert_csp_does_not_block_and_previous_player_is_detected(tmp_path):
     source.write_text(
         '<body><template><meta http-equiv="Content-Security-Policy" '
         'content="default-src none"></template></body>'
-    )
+    , encoding="utf-8")
     HtmlPage.load(source)
     source.write_text(
         '<body><nova-voice-player data-nova-voice-player="0.3.0"></nova-voice-player></body>'
-    )
+    , encoding="utf-8")
     with pytest.raises(HtmlExportError, match="الأصلي"):
         HtmlPage.load(source)
 
@@ -156,7 +156,7 @@ def test_inert_csp_does_not_block_and_previous_player_is_detected(tmp_path):
 )
 def test_unclosed_raw_text_cannot_swallow_the_added_player(tmp_path, content):
     source = tmp_path / "page.html"
-    source.write_text(content)
+    source.write_text(content, encoding="utf-8")
     with pytest.raises(HtmlExportError):
         HtmlPage.load(source)
 
@@ -168,7 +168,7 @@ def test_bad_encoding_empty_and_non_html_inputs_are_reported(tmp_path):
         with pytest.raises(HtmlExportError):
             HtmlPage.load(source)
     wrong = tmp_path / "page.txt"
-    wrong.write_text("Hello")
+    wrong.write_text("Hello", encoding="utf-8")
     with pytest.raises(HtmlExportError):
         HtmlPage.load(wrong)
 
@@ -251,7 +251,8 @@ def test_end_to_end_local_render_and_html_export(
 
 def test_invalid_html_is_rejected_before_synthesizing_audio(tmp_path):
     source = tmp_path / "strict.html"
-    source.write_text('<meta http-equiv="Content-Security-Policy" content="default-src none">')
+    strict = '<meta http-equiv="Content-Security-Policy" content="default-src none">'
+    source.write_text(strict, encoding="utf-8")
     engine = SimpleNamespace(render=lambda *a, **k: pytest.fail("Should preflight HTML first"))
     with pytest.raises(HtmlExportError):
         render_html(engine, source, "Hi", {}, tmp_path / "out.html", RenderOptions())

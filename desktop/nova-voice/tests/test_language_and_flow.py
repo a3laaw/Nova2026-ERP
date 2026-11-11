@@ -96,10 +96,10 @@ def test_roles_are_not_hardcoded_to_languages_and_same_role_has_no_reply_gap(
 
 
 def test_changed_language_metadata_requires_refresh_before_loading(voice_spec):
-    data = json.loads(voice_spec.config_path.read_text())
+    data = json.loads(voice_spec.config_path.read_text(encoding="utf-8"))
     data["language"] = {"code": "ar_JO", "name_native": "العربية"}
     data["espeak"]["voice"] = "ar"
-    voice_spec.config_path.write_text(json.dumps(data))
+    voice_spec.config_path.write_text(json.dumps(data), encoding="utf-8")
     with pytest.raises(VoiceError, match="تحديث"):
         SpeechEngine()._load(voice_spec)
 
@@ -163,7 +163,7 @@ def test_historical_six_row_manifest_is_still_strictly_verified(tmp_path):
     assert WhiteboardPage.load(path).lesson.manifest() == legacy.manifest()
     altered = legacy.manifest()
     altered["steps"][0]["rows"][0]["text"] = "changed"
-    content = path.read_text()
+    content = path.read_text(encoding="utf-8")
     original = json.dumps(legacy.manifest(), ensure_ascii=True, separators=(",", ":"))
     assert original in content
     path.write_text(content.replace(original, json.dumps(altered)), encoding="utf-8")

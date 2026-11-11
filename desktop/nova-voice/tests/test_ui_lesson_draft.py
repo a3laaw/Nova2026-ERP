@@ -156,7 +156,7 @@ def test_stale_or_unchecked_full_draft_cannot_bypass_review_via_any_editor_expor
 
     monkeypatch.setattr(QFileDialog, "getSaveFileName", no_dialog)
     source = tmp_path / "ordinary.html"
-    source.write_text("<html><body>Keep me.</body></html>")
+    source.write_text("<html><body>Keep me.</body></html>", encoding="utf-8")
     window._html_source = source
     for action in (
         window.generate,
@@ -167,7 +167,7 @@ def test_stale_or_unchecked_full_draft_cannot_bypass_review_via_any_editor_expor
     ):
         action()
         assert window.worker is None
-    assert len(warnings) == 5 and source.read_text().endswith("</html>")
+    assert len(warnings) == 5 and source.read_text(encoding="utf-8").endswith("</html>")
 
 
 def test_raw_edit_recomputes_hash_locally_but_needs_new_adoption_and_scene_approval(

@@ -455,7 +455,7 @@ def test_json_plan_save_is_atomic_and_roundtrips_without_implicit_approval(tmp_p
     plan.save(path)
     assert VisualPlan.load(path, source) == plan
     assert not list(tmp_path.glob(".nova-scene-plan-*"))
-    assert "approved" not in path.read_text()
+    assert "approved" not in path.read_text(encoding="utf-8")
 
 
 def test_near_limit_plans_export_compactly_if_pretty_whitespace_would_be_too_large(tmp_path):

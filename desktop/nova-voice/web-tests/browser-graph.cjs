@@ -33,7 +33,7 @@ from nova_voice.engine import SpeechEngine,DialogueVoice,RenderOptions
 from nova_voice.voices import VoiceSpec
 p=Path(sys.argv[1]); example=Path('examples/composition-demo.json')
 import json
-original=json.loads(example.read_text())
+original=json.loads(example.read_text(encoding='utf-8'))
 lesson=parse_lesson('# Authored composition diagnostic, NOT narration'+chr(10)+'First diagnostic tone.'+chr(10)+'Second diagnostic tone.')
 plan=empty_plan(lesson.manifest()); actor=copy.deepcopy(original['steps'][0]['elements'][1]);actor.update(x=50,y=70)
 actor['motion']=dict(type='sequence',span=2,frames=[dict(at=0,dx=0,scale=65),dict(at=1000,dx=160,scale=65)])

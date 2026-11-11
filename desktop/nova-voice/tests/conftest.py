@@ -45,7 +45,7 @@ def bilingual_cast(tmp_path, voice_files):
     model = root / "ar_JO-test.onnx"
     config = root / "ar_JO-test.onnx.json"
     shutil.copyfile(english.model_path, model)
-    data = json.loads(english.config_path.read_text())
+    data = json.loads(english.config_path.read_text(encoding="utf-8"))
     data["espeak"]["voice"] = "ar"
     data["language"] = {"code": "ar_JO", "name_native": "العربية"}
     config.write_text(json.dumps(data), encoding="utf-8")

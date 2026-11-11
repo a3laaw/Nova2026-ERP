@@ -20,7 +20,10 @@ def source_root(tmp_path):
     for name in FILES:
         path = root / name
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text("@echo off\necho Test\n" if path.suffix == ".bat" else "Example: " + name)
+        if path.suffix == ".bat":
+            path.write_text("@echo off\necho Test\n", encoding="utf-8")
+        else:
+            path.write_text("Example: " + name, encoding="utf-8")
     for name in DIRECTORIES:
         (root / name).mkdir(exist_ok=True)
     (root / "assets" / "binary.ico").write_bytes(bytes(range(256)))
@@ -98,7 +101,7 @@ def test_archives_and_large_generated_directories_are_excluded(source_root):
     for directory in ("node_modules", "__pycache__"):
         path = source_root / "assets" / directory
         path.mkdir()
-        (path / "excluded.txt").write_text("not source")
+        (path / "excluded.txt").write_text("not source", encoding="utf-8")
     for suffix in (".rar", ".zip", ".WAV", ".mp3", ".mp4", ".WEBM", ".mkv", ".mov", ".pyc"):
         (source_root / "examples" / ("excluded" + suffix)).write_bytes(b"generated")
     target = source_root / "source.rar"
@@ -124,7 +127,7 @@ def test_unsupported_extension_is_not_silently_a_renamed_zip(source_root):
 
 
 def test_default_output_of_an_extracted_source_stays_in_its_deliverables(source_root):
-    (source_root / "pyproject.toml").write_text('[project]\nversion = "0.4.0"\n')
+    (source_root / "pyproject.toml").write_text('[project]\nversion = "0.4.0"\n', encoding="utf-8")
     assert default_destination(source_root) == (
         source_root / "deliverables" / "NovaVoice-Source-v0.4.0.rar"
     )
@@ -135,7 +138,7 @@ def test_checkout_default_output_is_a_visible_repo_deliverable(tmp_path):
     root = repository / "desktop" / "nova-voice"
     root.mkdir(parents=True)
     (repository / ".git").mkdir()
-    (root / "pyproject.toml").write_text('[project]\nversion = "0.4.0"\n')
+    (root / "pyproject.toml").write_text('[project]\nversion = "0.4.0"\n', encoding="utf-8")
     assert default_destination(root) == (
         repository / "deliverables" / "nova-voice" / "NovaVoice-Source-v0.4.0.rar"
     )
@@ -144,5 +147,5 @@ def test_checkout_default_output_is_a_visible_repo_deliverable(tmp_path):
 def test_named_desktop_folder_without_a_checkout_does_not_escape_source(tmp_path):
     root = tmp_path / "desktop" / "nova-voice"
     root.mkdir(parents=True)
-    (root / "pyproject.toml").write_text('[project]\nversion = "0.4.0"\n')
+    (root / "pyproject.toml").write_text('[project]\nversion = "0.4.0"\n', encoding="utf-8")
     assert default_destination(root).parent == root / "deliverables"

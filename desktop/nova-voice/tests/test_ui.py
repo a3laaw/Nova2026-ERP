@@ -194,11 +194,11 @@ def test_html_source_selection_enables_export_without_touching_the_page(
     window.editor.setPlainText("Hello.")
     assert not window.html_export_button.isEnabled()
     source = tmp_path / "page.html"
-    source.write_text("<body>Original page</body>")
+    source.write_text("<body>Original page</body>", encoding="utf-8")
     monkeypatch.setattr(QFileDialog, "getOpenFileName", lambda *a, **k: (str(source), ""))
     window._choose_html()
     assert window.html_export_button.isEnabled()
-    assert source.read_text() == "<body>Original page</body>"
+    assert source.read_text(encoding="utf-8") == "<body>Original page</body>"
     window._clear_html()
     assert not window.html_export_button.isEnabled()
     assert source.exists()
@@ -216,7 +216,7 @@ def test_generate_html_finishes_with_open_page_action_not_a_media_player_source(
     window.editor.setPlainText("Hello.")
     window.format_combo.setCurrentIndex(1)  # WAV for the tiny integration test.
     source = tmp_path / "original.html"
-    source.write_text("<body>Original page</body>")
+    source.write_text("<body>Original page</body>", encoding="utf-8")
     output = tmp_path / "with-voice.html"
     window._html_source = source
     monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *a, **k: (str(output), ""))
@@ -229,7 +229,7 @@ def test_generate_html_finishes_with_open_page_action_not_a_media_player_source(
     assert window.open_html_button.isEnabled()
     assert window.player.source().isEmpty()
     assert "data:audio/wav;base64," in output.read_text(encoding="utf-8-sig")
-    assert source.read_text() == "<body>Original page</body>"
+    assert source.read_text(encoding="utf-8") == "<body>Original page</body>"
 
 
 def test_html_original_overwrite_is_blocked_before_starting_a_worker(
@@ -240,7 +240,7 @@ def test_html_original_overwrite_is_blocked_before_starting_a_worker(
     add_test_voice(window, voice_files)
     window.editor.setPlainText("Hello.")
     source = tmp_path / "original.html"
-    source.write_text("<body>Original page</body>")
+    source.write_text("<body>Original page</body>", encoding="utf-8")
     window._html_source = source
     messages = []
     monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *a, **k: (str(source), ""))
@@ -248,7 +248,7 @@ def test_html_original_overwrite_is_blocked_before_starting_a_worker(
     window.generate_html()
     assert window.worker is None
     assert len(messages) == 1
-    assert source.read_text() == "<body>Original page</body>"
+    assert source.read_text(encoding="utf-8") == "<body>Original page</body>"
 
 
 def test_whiteboard_step_one_does_not_need_any_voice(window, tmp_path, monkeypatch):
@@ -798,7 +798,7 @@ def test_composition_is_reviewed_without_requiring_expert_json_or_part_selection
     from nova_voice.scenes import VisualPlan
 
     root = Path(__file__).resolve().parents[1] / "examples"
-    window.editor.setPlainText((root / "composition-demo-script.txt").read_text())
+    window.editor.setPlainText((root / "composition-demo-script.txt").read_text(encoding="utf-8"))
     source = window._source_lesson()
     panel = window.scene_picker
     plan = VisualPlan.load(root / "composition-demo.json", source.manifest())
@@ -826,7 +826,7 @@ def test_composition_preview_stays_silent_and_never_adopts_or_requests_narration
     from nova_voice.whiteboard import WhiteboardPage
 
     root = Path(__file__).resolve().parents[1] / "examples"
-    window.editor.setPlainText((root / "composition-demo-script.txt").read_text())
+    window.editor.setPlainText((root / "composition-demo-script.txt").read_text(encoding="utf-8"))
     source = window._source_lesson()
     panel, opened = window.scene_picker, []
     panel.set_draft(VisualPlan.load(root / "composition-demo.json", source.manifest()))
@@ -848,7 +848,7 @@ def secondary_draft(window):
     from nova_voice.scenes import VisualPlan
 
     root = Path(__file__).resolve().parents[1] / "examples"
-    window.editor.setPlainText((root / "secondary-source-script.txt").read_text())
+    window.editor.setPlainText((root / "secondary-source-script.txt").read_text(encoding="utf-8"))
     panel = window.scene_picker
     panel.set_draft(
         VisualPlan.load(root / "secondary-source-demo.json", window._source_lesson().manifest())
@@ -1195,7 +1195,7 @@ def test_native_comparison_opens_actual_local_silent_frames_and_preserves_curren
     revision, cast = panel.revision, window._cast()
     panel.compare_history_button.click()
     assert len(opened) == 1 and opened[0].isLocalFile()
-    page = Path(opened[0].toLocalFile()).read_text()
+    page = Path(opened[0].toLocalFile()).read_text(encoding="utf-8")
     assert page.count('sandbox="allow-scripts"') == 2 and "data:text/html;base64," in page
     assert panel._approved == changed and panel.revision == revision
     assert (

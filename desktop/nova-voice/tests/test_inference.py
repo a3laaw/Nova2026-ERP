@@ -81,7 +81,7 @@ def test_catalog_covers_engine_vocabulary_and_all_example_elements_validate():
 
 def test_catalog_covers_every_existing_browser_control():
     parser = Inspector()
-    parser.feed((ROOT / "assets/whiteboard.html").read_text())
+    parser.feed((ROOT / "assets/whiteboard.html").read_text(encoding="utf-8"))
     actual = {value for e in ENTRIES for value in e["covers"] if value.startswith("control:")}
     assert len(parser.controls) == 29
     assert actual == parser.controls  # A new/missing control must update the guide.
@@ -97,7 +97,7 @@ def native_buttons():
         "video_picker",
         "azure_picker",
     ):
-        tree = ast.parse((ROOT / f"nova_voice/{name}.py").read_text())
+        tree = ast.parse((ROOT / f"nova_voice/{name}.py").read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if (
                 isinstance(node, ast.Assign)
@@ -262,7 +262,7 @@ def test_search_supports_arabic_diacritics_aliases_multiple_terms_and_empty_resu
 
 def test_offline_html_is_deterministic_current_embedded_and_has_unique_ids():
     html = render_guide()
-    assert (ROOT / "INFERENCE-GUIDE-AR.html").read_text() == html
+    assert (ROOT / "INFERENCE-GUIDE-AR.html").read_text(encoding="utf-8") == html
     parser = Inspector()
     parser.feed(html)
     assert len(parser.ids) == len(set(parser.ids))
@@ -274,6 +274,7 @@ def test_offline_html_is_deterministic_current_embedded_and_has_unique_ids():
         [sys.executable, str(ROOT / "tools/build_inference_guide.py"), "--check"],
         capture_output=True,
         text=True,
+        encoding="utf-8",
         check=False,
     )
     assert result.returncode == 0, result.stderr
@@ -298,7 +299,7 @@ def test_embedded_json_escapes_raw_html_script_breakouts(monkeypatch):
 
 def test_core_and_native_guide_do_not_import_any_provider_or_auto_write_settings():
     for name in ("inference.py", "inference_picker.py"):
-        code = (ROOT / "nova_voice" / name).read_text()
+        code = (ROOT / "nova_voice" / name).read_text(encoding="utf-8")
         tree = ast.parse(code)
         imported = []
         for node in ast.walk(tree):
@@ -323,7 +324,7 @@ def test_invalid_owned_catalog_fails_with_a_recoverable_message(tmp_path):
     data = copy.deepcopy(CATALOG)
     data["entries"][0]["id"] = data["entries"][1]["id"]
     path = tmp_path / "catalog.json"
-    path.write_text(json.dumps(data))
+    path.write_text(json.dumps(data), encoding="utf-8")
     with pytest.raises(InferenceError):
         load_catalog(path)
 
