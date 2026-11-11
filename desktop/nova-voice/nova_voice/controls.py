@@ -1,7 +1,29 @@
 """Shared native controls, with a bounded model picker and plain-text labels."""
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QComboBox, QFrame, QLabel, QPushButton, QVBoxLayout
+from PySide6.QtGui import QWheelEvent
+from PySide6.QtWidgets import QComboBox, QFrame, QLabel, QPushButton, QSlider, QSpinBox, QVBoxLayout
+
+
+class NoWheelComboBox(QComboBox):
+    """Combo that never changes value through the mouse wheel (only click/keys)."""
+
+    def wheelEvent(self, event: QWheelEvent) -> None:
+        event.ignore()
+
+
+class NoWheelSpinBox(QSpinBox):
+    """Spin box that never changes value through the mouse wheel."""
+
+    def wheelEvent(self, event: QWheelEvent) -> None:
+        event.ignore()
+
+
+class NoWheelSlider(QSlider):
+    """Slider that never changes value through the mouse wheel."""
+
+    def wheelEvent(self, event: QWheelEvent) -> None:
+        event.ignore()
 
 
 def label(text: str, role: str = "", wrap: bool = False) -> QLabel:
@@ -32,7 +54,7 @@ def card() -> tuple[QFrame, QVBoxLayout]:
 
 
 def combo() -> QComboBox:
-    widget = QComboBox()
+    widget = NoWheelComboBox()
     widget.setMaxVisibleItems(8)
     widget.view().setMaximumHeight(300)
     widget.setMinimumContentsLength(10)

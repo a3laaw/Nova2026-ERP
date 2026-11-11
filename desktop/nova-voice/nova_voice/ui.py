@@ -23,8 +23,6 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QProgressDialog,
     QScrollArea,
-    QSlider,
-    QSpinBox,
     QStyle,
     QTabWidget,
     QVBoxLayout,
@@ -36,7 +34,7 @@ from .appearance import AppearanceError
 from .appearance_picker import AppearancePicker
 from .azure_picker import AzureConsentDialog, AzurePicker
 from .azure_speech import AzureError, AzureJob, AzurePlan, CloudRequest
-from .controls import Disclosure, button, card, clock, combo, label
+from .controls import Disclosure, NoWheelSlider, NoWheelSpinBox, button, card, clock, combo, label
 from .dialogue import (
     BILINGUAL_EXAMPLE,
     has_voice_markers,
@@ -307,7 +305,7 @@ class MainWindow(QMainWindow):
         self.speed_label.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         speed_heading.addWidget(self.speed_label)
         tuning.addLayout(speed_heading)
-        self.speed_slider = QSlider(Qt.Orientation.Horizontal)
+        self.speed_slider = NoWheelSlider(Qt.Orientation.Horizontal)
         self.speed_slider.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         self.speed_slider.setRange(60, 160)
         self.speed_slider.setSingleStep(5)
@@ -318,7 +316,7 @@ class MainWindow(QMainWindow):
         )
         tuning.addWidget(self.speed_slider)
         tuning.addWidget(label("فاصل الفقرات · ملّي ثانية", "muted"))
-        self.pause_spin = QSpinBox()
+        self.pause_spin = NoWheelSpinBox()
         self.pause_spin.setRange(0, 1500)
         self.pause_spin.setSingleStep(50)
         self.pause_spin.setAccessibleName("الفاصل بين الفقرات بالملّي ثانية")
@@ -327,7 +325,7 @@ class MainWindow(QMainWindow):
         turn_pause_layout = QVBoxLayout(self.turn_pause_widget)
         turn_pause_layout.setContentsMargins(0, 0, 0, 0)
         turn_pause_layout.addWidget(label("فاصل الردود · ملّي ثانية", "muted"))
-        self.turn_pause_spin = QSpinBox()
+        self.turn_pause_spin = NoWheelSpinBox()
         self.turn_pause_spin.setRange(0, 2000)
         self.turn_pause_spin.setSingleStep(50)
         self.turn_pause_spin.setAccessibleName("الفاصل بين جملة الشخص ورد الشخص الآخر")
@@ -548,7 +546,7 @@ class MainWindow(QMainWindow):
         self.play_button = button("تشغيل")
         self.play_button.setEnabled(False)
         self.play_button.clicked.connect(self._toggle_play)
-        self.seek_slider = QSlider(Qt.Orientation.Horizontal)
+        self.seek_slider = NoWheelSlider(Qt.Orientation.Horizontal)
         self.seek_slider.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         self.seek_slider.setRange(0, 0)
         self.seek_slider.setAccessibleName("موضع الاستماع")
