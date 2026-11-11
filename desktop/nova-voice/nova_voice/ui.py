@@ -60,8 +60,10 @@ from .html_export import (
 )
 from .inference_picker import InferencePicker
 from .lesson_draft import LessonDraft
+from .lesson_library import LessonLibrary, LibraryError, LibraryMetadata
 from .lesson_picker import LessonPicker, LessonRequest
 from .lesson_planner import request_lesson
+from .library_picker import LibraryPanel, LibrarySaveDialog
 from .scene_examples import VISUAL_EXAMPLE, example_plan
 from .scene_picker import AssetRequest, PlannerRequest, ScenePicker
 from .scene_planner import request_plan
@@ -102,6 +104,9 @@ class MainWindow(QMainWindow):
         self.data_dir = data_dir or user_data_dir()
         self.preferences = load_preferences(self.data_dir)
         self.library = VoiceLibrary(self.data_dir / "voices", application_dir() / "voices")
+        self.lesson_library = LessonLibrary(self.data_dir / "library")
+        self._editing_entry_id: int | None = None
+        self._library_last_meta = LibraryMetadata()
         self.engine = SpeechEngine()
         self._active_azure_job: AzureJob | None = None
         self.voices: list[VoiceSpec] = []
@@ -491,6 +496,24 @@ class MainWindow(QMainWindow):
         self.inference_picker = InferencePicker(lambda: self.scene_picker.policy.currentData())
         self.scene_picker.policy.currentIndexChanged.connect(self.inference_picker.refresh_policy)
         self.workspace_tabs.addTab(self.inference_picker, "استدلال")
+        library_card, library_layout = card()
+        library_layout.addWidget(label("مكتبة المنهج · كل ما تولّده محفوظ محليًا", "section"))
+        library_layout.addWidget(
+            label(
+                "كل توليد مكتمل (سبورة، سبورة بالصوت، صوت فقط، صفحة HTML، فيديو بعد التحويل) "
+                "يُقترح حفظه هنا تلقائيًا، ويمكنك إضافة أي ملف يدويًا مثل PDF للطباعة أو فيديو "
+                "السبورة المحمّل من المتصفح. كل الحقول اختيارية باسمين حرين: الدولة، المرحلة، "
+                "الصف، السنة الدراسية، المادة، الترم. لا يغادر شيء جهازك.",
+                "muted",
+                True,
+            )
+        )
+        self.library_panel = LibraryPanel(self.lesson_library)
+        self.library_panel.editRequested.connect(self._edit_library_entry)
+        self.library_panel.entryDeleted.connect(self._library_entry_deleted)
+        self.library_panel.editCancelled.connect(self._cancel_library_edit)
+        library_layout.addWidget(self.library_panel)
+        self.workspace_tabs.addTab(library_card, "مكتبة المنهج")
         export_actions.addWidget(self.cancel_button)
         export_layout.addLayout(export_actions)
         self.progress = QProgressBar()
@@ -1526,6 +1549,138 @@ class MainWindow(QMainWindow):
         ):
             QMessageBox.information(self, "فتح الصفحة", "افتح ملف HTML الناتج يدويًا في متصفح حديث.")
 
+    # -------------------------------------------------------- lesson library
+    def _offer_library_save(
+        self, path, kind: str, suggested_title: str = "", *, script=None
+    ) -> None:
+        """Offer to archive a completed output in «مكتبة المنهج» (skippable)."""
+        if self._closing:
+            return
+        source = Path(path)
+        if not source.is_file():
+            return
+        update_entry = None
+        if self._editing_entry_id is not None:
+            update_entry = self.lesson_library.get(self._editing_entry_id)
+        if update_entry is not None:
+            title, metadata, notes = (
+                update_entry.title,
+                update_entry.metadata,
+                update_entry.notes,
+            )
+        else:
+            title = suggested_title.strip() if suggested_title else source.stem
+            title = title[:200] or source.stem
+            metadata = LibraryMetadata(
+                country=self._library_last_meta.country,
+                stage=self._library_last_meta.stage,
+                grade=self.scene_picker.grade.text().strip()
+                or self._library_last_meta.grade,
+                academic_year=self._library_last_meta.academic_year,
+                subject=self.scene_picker.subject.text().strip()
+                or self._library_last_meta.subject,
+                term=self._library_last_meta.term,
+            )
+            notes = ""
+        script_text = (
+            self.editor.toPlainText() if script is None and kind != "video" else script or ""
+        )
+        dialog = LibrarySaveDialog(
+            self,
+            title=title,
+            metadata=metadata,
+            notes=notes,
+            update_entry=(update_entry.id, update_entry.title) if update_entry else None,
+        )
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        values = dialog.result_values()
+        if not values.title:
+            QMessageBox.warning(self, "العنوان مطلوب", "اكتب عنوانًا للإدخال في المكتبة.")
+            return
+        self._library_last_meta = values.metadata
+        try:
+            if values.update_id is not None:
+                self.lesson_library.update(
+                    values.update_id,
+                    title=values.title,
+                    files={"main": source},
+                    metadata=values.metadata,
+                    script=script_text,
+                    notes=values.notes,
+                )
+                message = f"حُدّث الإدخال #{values.update_id} «{values.title}» في مكتبة المنهج."
+            else:
+                self.lesson_library.add(
+                    title=values.title,
+                    kind=kind,
+                    files={"main": source},
+                    metadata=values.metadata,
+                    script=script_text,
+                    notes=values.notes,
+                )
+                message = f"أُضيف «{values.title}» إلى مكتبة المنهج."
+        except LibraryError as error:
+            QMessageBox.warning(self, "تعذر الحفظ في المكتبة", str(error))
+            return
+        self.library_panel.refresh()
+        self.status.setText(message)
+
+    def _edit_library_entry(self, entry_id: int) -> None:
+        if self.worker:
+            QMessageBox.information(
+                self, "انتظر اكتمال العملية", "أنهِ أو ألغِ العملية الجارية قبل فتح إدخال للتعديل."
+            )
+            return
+        entry = self.lesson_library.get(entry_id)
+        if entry is None:
+            QMessageBox.warning(
+                self, "الإدخال غير موجود", "لم يُعثر على الإدخال؛ جرى تحديث القائمة."
+            )
+            self.library_panel.refresh()
+            return
+        if not entry.script.strip():
+            QMessageBox.information(
+                self,
+                "إدخال بلا سكريبت",
+                "هذا الإدخال أُضيف كملف (مثل فيديو أو PDF) دون سكريبت، فلا يمكن تحميله في المحرر. "
+                "افتح الملف أو مجلده من أزرار المكتبة بدلًا من ذلك.",
+            )
+            return
+        if self.editor.toPlainText().strip() and (
+            QMessageBox.question(
+                self,
+                "فتح للتعديل؟",
+                f"سيُستبدل النص الحالي في المحرر بالنص المحفوظ في إدخال «{entry.title}». "
+                "هل تريد المتابعة؟",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            != QMessageBox.StandardButton.Yes
+        ):
+            return
+        self.editor.setPlainText(entry.script)
+        self.scene_picker.subject.setText(entry.metadata.subject)
+        self.scene_picker.grade.setText(entry.metadata.grade)
+        self._editing_entry_id = entry.id
+        self.workspace_tabs.setCurrentIndex(0)
+        self._update_buttons()
+        self.status.setText(
+            f"وضع التحرير لإدخال مكتبة المنهج «{entry.title}». بعد أي تصدير ستُسأل: "
+            "تحديث نفس الإدخال (استبدال) أو إنشاء إدخال جديد."
+        )
+
+    def _library_entry_deleted(self, entry_id: int) -> None:
+        if self._editing_entry_id == entry_id:
+            self._editing_entry_id = None
+            self.status.setText(
+                "حُذف الإدخال الذي كنت تحرره؛ التصديرات القادمة تُحفظ كإدخالات جديدة."
+            )
+
+    def _cancel_library_edit(self) -> None:
+        self._editing_entry_id = None
+        self.status.setText("أُنهي وضع تحرير إدخال المكتبة؛ التصديرات القادمة تُحفظ كإدخالات جديدة.")
+
     def _convert_video(self, request: ConversionRequest) -> None:
         if (
             self.worker
@@ -1661,6 +1816,7 @@ class MainWindow(QMainWindow):
             self.status.setText(
                 "حُفظ MP4 بترميز H.264 وصوت AAC إن وُجد، وفُك الخرج كاملًا. جرّبه على جهازك."
             )
+            self._offer_library_save(result.path, "video", result.path.stem, script="")
             return
         if isinstance(result, RevisionResult):
             try:
@@ -1730,6 +1886,7 @@ class MainWindow(QMainWindow):
             )
             self.open_folder_button.setEnabled(True)
             self.open_html_button.setEnabled(True)
+            self._offer_library_save(result.path, "whiteboard", result.lesson.title)
             return
         if isinstance(result, HtmlAudioResult):
             if self._progress_kind in ("whiteboard-audio", "whiteboard-combined"):
@@ -1754,6 +1911,12 @@ class MainWindow(QMainWindow):
             )
             self.open_folder_button.setEnabled(True)
             self.open_html_button.setEnabled(True)
+            board_kind = (
+                "whiteboard-audio"
+                if self._progress_kind in ("whiteboard-audio", "whiteboard-combined")
+                else "html-page"
+            )
+            self._offer_library_save(result.path, board_kind, result.path.stem)
             return
         result: RenderResult
         preview = self._progress_kind == "preview"
@@ -1782,6 +1945,8 @@ class MainWindow(QMainWindow):
         self.seek_slider.setEnabled(True)
         if preview:
             self.player.play()
+        else:
+            self._offer_library_save(result.path, "audio", result.path.stem)
 
     def _task_error(self, message: str) -> None:
         self.status.setText("لم تكتمل العملية. لم تتغير الملفات السابقة أو الصفحة الأصلية.")

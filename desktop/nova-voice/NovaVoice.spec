@@ -7,7 +7,7 @@ from pathlib import Path
 from PyInstaller.utils.hooks import collect_data_files, collect_dynamic_libs, copy_metadata
 
 root = Path(SPECPATH)
-documents = ("README.md", "START-HERE.txt", "RUN-FIRST-AR.html", "INFERENCE-GUIDE-AR.html", "INFERENCE-GUIDE-AR.md", "HTML-GUIDE.md", "WHITEBOARD-GUIDE.md", "COMPOSITION-MOTION-AR.md", "SECONDARY-SOURCES-AR.md", "REVIEW-CHOICES-AR.md", "SCENE-HISTORY-AR.md", "AZURE-SPEECH-AR.md", "SMART-SCENES-AR.md", "KIDS-GUIDE-AR.md", "EGYPTIAN-VOICES-AR.md", "BRITISH-ENGLISH-AR.md", "FINAL-RELEASE-AR.md", "UI-ORGANIZATION-AR.md", "LICENSE", "THIRD_PARTY.md")
+documents = ("README.md", "START-HERE.txt", "RUN-FIRST-AR.html", "INFERENCE-GUIDE-AR.html", "INFERENCE-GUIDE-AR.md", "HTML-GUIDE.md", "WHITEBOARD-GUIDE.md", "COMPOSITION-MOTION-AR.md", "SECONDARY-SOURCES-AR.md", "REVIEW-CHOICES-AR.md", "SCENE-HISTORY-AR.md", "AZURE-SPEECH-AR.md", "LESSON-LIBRARY-AR.md", "SMART-SCENES-AR.md", "KIDS-GUIDE-AR.md", "EGYPTIAN-VOICES-AR.md", "BRITISH-ENGLISH-AR.md", "FINAL-RELEASE-AR.md", "UI-ORGANIZATION-AR.md", "LICENSE", "THIRD_PARTY.md")
 datas = [(str(root / "assets"), "assets")]
 datas += [(str(root / filename), ".") for filename in documents]
 # Include the bundled Arabic diacritizer, eSpeak dictionaries and their notices.
