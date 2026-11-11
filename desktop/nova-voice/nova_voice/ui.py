@@ -1559,14 +1559,15 @@ class MainWindow(QMainWindow):
         source = Path(path)
         if not source.is_file():
             return
-        update_entry = None
+        preselect_id = None
         if self._editing_entry_id is not None:
-            update_entry = self.lesson_library.get(self._editing_entry_id)
-        if update_entry is not None:
+            current = self.lesson_library.get(self._editing_entry_id)
+            preselect_id = current.id if current is not None else None
+        if preselect_id is not None:
             title, metadata, notes = (
-                update_entry.title,
-                update_entry.metadata,
-                update_entry.notes,
+                current.title,
+                current.metadata,
+                current.notes,
             )
         else:
             title = suggested_title.strip() if suggested_title else source.stem
@@ -1590,7 +1591,8 @@ class MainWindow(QMainWindow):
             title=title,
             metadata=metadata,
             notes=notes,
-            update_entry=(update_entry.id, update_entry.title) if update_entry else None,
+            library=self.lesson_library,
+            preselect_id=preselect_id,
         )
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return

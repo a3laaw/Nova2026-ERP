@@ -12,7 +12,6 @@ from PySide6.QtCore import Qt, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QAbstractItemView,
-    QCheckBox,
     QComboBox,
     QDialog,
     QFileDialog,
@@ -109,7 +108,12 @@ class LibrarySaveValues:
 
 
 class LibrarySaveDialog(QDialog):
-    """Shown after every completed export (or an explicit «إضافة ملف»)."""
+    """Save offer shown after every completed export.
+
+    Shows the matching library index entries (same six educational fields):
+    pick one to overwrite in place, or save as a brand-new entry. The index
+    is the same one the «مكتبة المنهج» tab browses — nothing is uploaded.
+    """
 
     def __init__(
         self,
@@ -118,14 +122,18 @@ class LibrarySaveDialog(QDialog):
         title: str,
         metadata: LibraryMetadata,
         notes: str = "",
-        update_entry: tuple[int, str] | None = None,
+        library: LessonLibrary | None = None,
+        preselect_id: int | None = None,
         heading: str = "حفظ في مكتبة المنهج؟",
     ):
         super().__init__(parent)
         self.setWindowTitle(heading)
         self.setAccessibleName(heading)
-        self._update_entry = update_entry
         self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        self.setMinimumWidth(560)
+        self._library = library
+        self._preselect_id = preselect_id
+        self._decision = "new"
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(18, 18, 18, 18)
@@ -154,6 +162,7 @@ class LibrarySaveDialog(QDialog):
             edit.setMaxLength(MAX_FIELD_CHARACTERS)
             edit.setPlaceholderText(FIELD_PLACEHOLDERS[field_name])
             edit.setAccessibleName(FIELD_LABELS[field_name])
+            edit.textChanged.connect(self._refresh_index)
             self.field_edits[field_name] = edit
             grid.addWidget(label(FIELD_LABELS[field_name]), (index // 2) * 2, index % 2)
             grid.addWidget(edit, (index // 2) * 2 + 1, index % 2)
@@ -165,32 +174,169 @@ class LibrarySaveDialog(QDialog):
         self.notes_edit.setAccessibleName("ملاحظات الإدخال")
         layout.addWidget(self.notes_edit)
 
-        if update_entry is not None:
-            self.update_check = QCheckBox(
-                f"تحديث الإدخال رقم #{update_entry[0]} في المكتبة بدل إنشاء إدخال جديد "
-                "(استبدال الملف والبيانات؛ لا تبقى لديك النسخة القديمة داخل المكتبة)"
-            )
-            self.update_check.setChecked(True)
-            layout.addWidget(self.update_check)
+        # --- الفهرس: الإدخالات المطابقة لنفس الحقول ---------------------
+        if self._library is not None:
+            layout.addWidget(label("الفهرس · إدخالات مطابقة لنفس البيانات", "muted"))
+            self.index_table = QTableWidget(0, 3)
+            self.index_table.setHorizontalHeaderLabels(("العنوان", "النوع", "آخر تحديث"))
+            self.index_table.setAccessibleName("الفهرس — الإدخالات المطابقة لنفس الحقول")
+            self.index_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+            self.index_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+            self.index_table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+            self.index_table.setMaximumHeight(150)
+            self.index_table.verticalHeader().setVisible(False)
+            index_header = self.index_table.horizontalHeader()
+            index_header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+            for column in (1, 2):
+                index_header.setSectionResizeMode(column, QHeaderView.ResizeMode.ResizeToContents)
+            self.index_table.itemSelectionChanged.connect(self._update_buttons)
+            self.index_table.itemDoubleClicked.connect(lambda _item: self._choose_update())
+            layout.addWidget(self.index_table)
+            self.index_hint = label("", "muted", True)
+            layout.addWidget(self.index_hint)
         else:
-            self.update_check = None
+            self.index_table = None
+            self.index_hint = None
 
         actions = QHBoxLayout()
-        self.save_button = button("حفظ في المكتبة", "primary")
-        self.save_button.clicked.connect(self.accept)
+        self.new_button = button("حفظ كإدخال جديد", "primary")
+        self.new_button.setToolTip(
+            "ينشئ إدخالًا جديدًا بالحقول أعلاه؛ الإدخالات السابقة تبقى كما هي."
+        )
+        self.new_button.clicked.connect(self._choose_new)
+        self.update_button = button("تحديث الإدخال المحدّد (استبدال)")
+        self.update_button.setToolTip(
+            "يستبدل الملف والبيانات والسكريبت للإدخال المحدّد؛ يُحذف ملفه القديم بعد نجاح التحديث."
+        )
+        self.update_button.clicked.connect(self._choose_update)
         self.skip_button = button("تخطي هذه المرة")
         self.skip_button.clicked.connect(self.reject)
-        actions.addWidget(self.save_button, 1)
+        actions.addWidget(self.new_button, 1)
+        actions.addWidget(self.update_button)
         actions.addWidget(self.skip_button)
         layout.addLayout(actions)
+        self._refresh_index()
 
-    def result_values(self) -> LibrarySaveValues:
-        metadata = LibraryMetadata.create(
+    # ----------------------------------------------------------------
+    def _filters(self) -> LibraryMetadata:
+        return LibraryMetadata.create(
             **{name: edit.text() for name, edit in self.field_edits.items()}
         )
-        update_id = None
-        if self.update_check is not None and self.update_check.isChecked():
-            update_id = self._update_entry[0] if self._update_entry else None
+
+    def _matching_entries(self):
+        if self._library is None:
+            return []
+        try:
+            matches = list(self._library.list(filters=self._filters()))
+        except Exception as error:  # index is a convenience; never block saving
+            self.index_hint.setText(f"تعذرت قراءة الفهرس: {error}")
+            return []
+        # The entry currently being edited stays selectable even if the user
+        # changed the metadata fields away from its stored values.
+        if (
+            self._preselect_id is not None
+            and all(entry.id != self._preselect_id for entry in matches)
+        ):
+            try:
+                editing = self._library.get(self._preselect_id)
+            except Exception:
+                editing = None
+            if editing is not None:
+                matches.insert(0, editing)
+        return matches
+
+    def _refresh_index(self, *_args) -> None:
+        if self.index_table is None:
+            return
+        entries = self._matching_entries()
+        self.index_table.blockSignals(True)
+        self.index_table.setRowCount(len(entries))
+        preselected_row = -1
+        for row, entry in enumerate(entries):
+            meta = entry.metadata
+            values = (
+                entry.title,
+                KIND_LABELS.get(entry.kind, entry.kind),
+                self._format_timestamp(entry.updated_at),
+            )
+            tooltip = (
+                f"الدولة: {meta.country or '—'}\nالمرحلة: {meta.stage or '—'}\n"
+                f"الصف: {meta.grade or '—'}\nالسنة: {meta.academic_year or '—'}\n"
+                f"المادة: {meta.subject or '—'}\nالترم: {meta.term or '—'}"
+            )
+            for column, value in enumerate(values):
+                item = QTableWidgetItem(str(value))
+                item.setToolTip(tooltip)
+                if column == 0:
+                    item.setData(Qt.ItemDataRole.UserRole, entry.id)
+                self.index_table.setItem(row, column, item)
+            if self._preselect_id is not None and entry.id == self._preselect_id:
+                preselected_row = row
+        if preselected_row >= 0:
+            self.index_table.selectRow(preselected_row)
+        self.index_table.blockSignals(False)
+        if entries:
+            self.index_hint.setText(
+                f"{len(entries)} إدخالًا مطابقًا — انقر صفًا لاختياره ثم «تحديث الإدخال المحدّد»، "
+                "أو انقر مرتين على الصف، أو احفظه كإدخال جديد."
+            )
+        else:
+            self.index_hint.setText("لا توجد إدخالات مطابقة — سيُنشأ إدخال جديد.")
+        self._update_buttons()
+
+    def _update_buttons(self) -> None:
+        if self.update_button is None:
+            return
+        self.update_button.setEnabled(
+            self.index_table is not None and self._selected_id() is not None
+        )
+
+    def _selected_id(self) -> int | None:
+        if self.index_table is None:
+            return None
+        row = self.index_table.currentRow()
+        if row < 0:
+            return None
+        item = self.index_table.item(row, 0)
+        if item is None:
+            return None
+        value = item.data(Qt.ItemDataRole.UserRole)
+        return int(value) if value is not None else None
+
+    @staticmethod
+    def _format_timestamp(value: str) -> str:
+        try:
+            return datetime.fromisoformat(value).strftime("%Y-%m-%d %H:%M")
+        except ValueError:
+            return value
+
+    def _title_or_warn(self) -> str | None:
+        title = self.title_edit.text().strip()
+        if not title:
+            QMessageBox.warning(self, "العنوان مطلوب", "اكتب عنوانًا للإدخال في المكتبة.")
+            return None
+        return title
+
+    def _choose_new(self) -> None:
+        if self._title_or_warn() is None:
+            return
+        self._decision = "new"
+        self.accept()
+
+    def _choose_update(self) -> None:
+        if self._title_or_warn() is None:
+            return
+        if self._selected_id() is None:
+            QMessageBox.information(
+                self, "اختر من الفهرس", "انقر صفًا من الفهرس أولًا، أو احفظه كإدخال جديد."
+            )
+            return
+        self._decision = "update"
+        self.accept()
+
+    def result_values(self) -> LibrarySaveValues:
+        metadata = self._filters()
+        update_id = self._selected_id() if self._decision == "update" else None
         return LibrarySaveValues(
             title=self.title_edit.text().strip(),
             metadata=metadata,
@@ -427,6 +573,7 @@ class LibraryPanel(QWidget):
                 self,
                 title=path.stem[:MAX_TITLE_CHARACTERS],
                 metadata=LibraryMetadata(),
+                library=self.library,
                 heading="إضافة ملف موجود إلى المكتبة",
             )
             if dialog.exec() != QDialog.DialogCode.Accepted:

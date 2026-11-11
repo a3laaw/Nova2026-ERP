@@ -10,8 +10,8 @@ pytest.importorskip("PySide6.QtWidgets", exc_type=ImportError)
 import test_ui as native  # noqa: E402
 from PySide6.QtWidgets import QDialog, QMessageBox  # noqa: E402
 
-from nova_voice.lesson_library import LibraryMetadata  # noqa: E402
-from nova_voice.library_picker import LibrarySaveValues  # noqa: E402
+from nova_voice.lesson_library import LessonLibrary, LibraryMetadata  # noqa: E402
+from nova_voice.library_picker import LibrarySaveDialog, LibrarySaveValues  # noqa: E402
 
 qapp, window = native.qapp, native.window
 
@@ -27,8 +27,8 @@ def fake_save_dialog(monkeypatch, *, accepted=True, title="درس العلوم",
             )
 
         def result_values(self):
-            update_entry = self.kwargs.get("update_entry")
-            update_id = update_entry[0] if update and update_entry else None
+            preselect_id = self.kwargs.get("preselect_id")
+            update_id = preselect_id if update and preselect_id else None
             return LibrarySaveValues(
                 title=title,
                 metadata=LibraryMetadata(
@@ -148,3 +148,97 @@ def test_end_edit_mode_and_delete_reset_editing_state(window, tmp_path):
     window._editing_entry_id = entry.id
     window._library_entry_deleted(entry.id)
     assert window._editing_entry_id is None
+
+
+def seeded_library(tmp_path):
+    library = LessonLibrary(tmp_path / "seeded-library")
+    source = tmp_path / "seed.html"
+    source.write_text("<html>seed</html>", encoding="utf-8")
+    library.add(
+        title="درس دورة المياه — الفصل الأول",
+        kind="whiteboard",
+        files={"main": source},
+        metadata=LibraryMetadata(
+            country="الكويت",
+            stage="الإعدادية",
+            grade="الأول الإعدادي",
+            academic_year="2025/2026",
+            subject="علوم",
+            term="الترم الأول",
+        ),
+        script="# دورة المياه",
+    )
+    return library
+
+
+def test_save_dialog_shows_the_index_and_preselects_the_edited_entry(tmp_path, qapp):
+    library = seeded_library(tmp_path)
+    dialog = LibrarySaveDialog(
+        None,
+        title="درس دورة المياه — الفصل الأول",
+        metadata=LibraryMetadata(subject="علوم", grade="الأول الإعدادي"),
+        library=library,
+        preselect_id=1,
+    )
+    assert dialog.index_table.rowCount() == 1
+    assert dialog._selected_id() == 1
+    assert dialog.update_button.isEnabled()
+    # Non-matching fields hide the entry again and disable the update path.
+    dialog.field_edits["subject"].setText("تاريخ")
+    assert dialog._selected_id() is None
+    assert not dialog.update_button.isEnabled()
+    assert dialog.index_hint.text().startswith("لا توجد إدخالات مطابقة")
+    library.close()
+
+
+def test_save_dialog_update_choice_flows_into_result_values(tmp_path, qapp):
+    library = seeded_library(tmp_path)
+    dialog = LibrarySaveDialog(
+        None,
+        title="نسخة محدثة",
+        metadata=LibraryMetadata(subject="علوم", grade="الأول الإعدادي"),
+        library=library,
+    )
+    # User clicks the update path with no row selected → nothing happens.
+    dialog._choose_update()
+    assert dialog.result_values().update_id is None
+    dialog.index_table.selectRow(0)
+    dialog._choose_update()
+    values = dialog.result_values()
+    assert values.update_id == 1 and values.title == "نسخة محدثة"
+    dialog._choose_new()
+    assert dialog.result_values().update_id is None
+    library.close()
+
+
+def test_save_dialog_empty_index_offers_only_new(tmp_path, qapp):
+    library = LessonLibrary(tmp_path / "empty-library")
+    dialog = LibrarySaveDialog(
+        None,
+        title="إدخال أول",
+        metadata=LibraryMetadata(subject="تاريخ"),
+        library=library,
+    )
+    assert dialog.index_table.rowCount() == 0
+    assert not dialog.update_button.isEnabled()
+    assert "لا توجد إدخالات مطابقة" in dialog.index_hint.text()
+    dialog._choose_new()
+    assert dialog.result_values().update_id is None
+    library.close()
+
+
+def test_empty_title_blocks_both_save_paths(tmp_path, qapp, monkeypatch):
+    library = seeded_library(tmp_path)
+    dialog = LibrarySaveDialog(
+        None,
+        title="",
+        metadata=LibraryMetadata(subject="علوم"),
+        library=library,
+    )
+    warnings = []
+    monkeypatch.setattr(QMessageBox, "warning", lambda *a, **k: warnings.append(a))
+    dialog._choose_new()
+    dialog._choose_update()
+    assert len(warnings) == 2
+    assert dialog.result_values().title == ""
+    library.close()
