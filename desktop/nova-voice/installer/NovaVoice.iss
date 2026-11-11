@@ -1,4 +1,4 @@
-﻿; Nova Voice — Inno Setup 6 script (Windows x64)
+; Nova Voice — Inno Setup 6 script (Windows x64)
 ; Builds: NovaVoice-Setup-v0.17.0.dev1.exe from: ..\dist\NovaVoice\ (produced by Build-Windows.bat)
 ; Per-user install (no admin/UAC). User data (%LOCALAPPDATA%\NovaVoice: voices, settings,
 ; library) is deliberately NEVER touched or removed by install/uninstall.
@@ -38,7 +38,7 @@ Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 ChangesAssociations=no
-VersionInfoVersion=0.16.0.1
+VersionInfoVersion=0.17.0.1
 VersionInfoCompany={#AppPublisher}
 VersionInfoDescription=Nova Voice installer
 
