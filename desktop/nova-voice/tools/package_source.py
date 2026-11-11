@@ -8,7 +8,7 @@ import zipfile
 import zlib
 from pathlib import Path, PurePosixPath
 
-DIRECTORIES = ("nova_voice", "tools", "assets", "tests", "examples", "web-tests")
+DIRECTORIES = ("nova_voice", "tools", "assets", "tests", "examples", "web-tests", "installer")
 FILES = (
     ".gitignore",
     "run.py",
@@ -31,6 +31,7 @@ FILES = (
     "SCENE-HISTORY-AR.md",
     "AZURE-SPEECH-AR.md",
     "LESSON-LIBRARY-AR.md",
+    "INSTALL-WINDOWS-AR.md",
     "INFERENCE-GUIDE-AR.md",
     "INFERENCE-GUIDE-AR.html",
     "CHANGELOG.md",

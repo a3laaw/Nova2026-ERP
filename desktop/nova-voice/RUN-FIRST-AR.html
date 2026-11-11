@@ -177,6 +177,8 @@
 <h2>اختياري: بناء EXE محليًا على Windows</h2>
 <p><strong>ليس مطلوبًا لتشغيل المصدر.</strong> بعد نجاح Setup، شغّل <code>Build-Windows.bat</code> لتثبيت أدوات البناء وفحص المشروع وبناء البرنامج محليًا. يحتاج تنزيل أدوات البناء مرة واحدة إن لم تكن موجودة.</p>
 <p>عند نجاح البناء ستجد <code>dist\NovaVoice\NovaVoice.exe</code>. احتفظ <strong>بمجلد NovaVoice كاملًا</strong> بما فيه <code>_internal</code>، وأضف النماذج إلى مجلد <code>voices</code> أو استوردها. لا تنقل EXE وحده.</p>
+<h2>اختياري: بناء مثبت Setup.exe على ويندوز</h2>
+<p>إن أردت نسخة قابلة للتثبيت كأي برنامج: ثبّت <strong>Inno Setup 6</strong> مرة واحدة (مثلًا <code>winget install --id JRSoftware.InnoSetup -e</code>)، ثم شغّل <code>Build-Windows.bat</code>؛ سيكتشف ISCC ويبني تلقائيًا <code>dist\NovaVoice-Setup-v0.16.0.dev1.exe</code>. المثبت لكل مستخدم بلا صلاحيات مسؤول، يضيف اختصارات قائمة ابدأ وسحبًا اختياريًا لسطح المكتب، ويُزيل تثبيته من الإعدادات؛ <strong>ولا يحذف أبدًا بياناتك</strong> (الأصوات والإعدادات ومكتبة المنهج في <code>%LOCALAPPDATA%\NovaVoice</code>). التفاصيل خطوة بخطوة في <a href="INSTALL-WINDOWS-AR.md">INSTALL-WINDOWS-AR.md</a>. ملفات البناء مراجعة ولم تُنفذ في بيئة التسليم؛ أي خطأ يظهر على جهازك يُبلغ به مع السجل.</p>
 </section>
 
 <footer>
