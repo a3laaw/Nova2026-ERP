@@ -1,6 +1,8 @@
 """Headless tests for the local lesson library (no Qt, no network)."""
 
 
+from pathlib import Path
+
 import pytest
 
 from nova_voice.lesson_library import (
@@ -248,3 +250,245 @@ def test_metadata_fields_are_cleaned_and_bounded(tmp_path, library):
         )
     dirty = LibraryMetadata.create(country="  الكويت  ")
     assert dirty.country == "الكويت"
+
+
+# ---------------------------------------------------- 0.17 organized folders
+@pytest.fixture
+def organized_library(tmp_path):
+    lib = LessonLibrary(tmp_path / "library", organized_root=tmp_path / "library_organized")
+    yield lib
+    lib.close()
+
+
+def test_add_to_index_creates_organized_tree_and_records_folder_path(
+    tmp_path, organized_library
+):
+    source = make_file(tmp_path, "board.html")
+    entry, fallback = organized_library.add_to_index(
+        title="درس رقم 3 — دورة المياه",
+        kind="whiteboard",
+        files={"main": source},
+        metadata=meta(),
+        script="# درس\nمحتوى.",
+    )
+    assert fallback is None
+    expected = (
+        tmp_path / "library_organized" / "الكويت" / "الإعدادية" / "الأول الإعدادي"
+        / "2025-2026" / "علوم" / "الترم الأول" / "درس رقم 3 — دورة المياه"
+    )
+    assert Path(entry.folder_path) == expected
+    assert (expected / entry.files[0].filename).is_file()
+    assert not (tmp_path / "library" / "entries" / str(entry.id)).exists()
+    assert organized_library.entry_dir(entry.id) == expected
+    assert organized_library.entry_file(entry.id, entry.files[0].filename).is_file()
+
+
+def test_add_to_index_empty_fields_render_general_placeholder(
+    tmp_path, organized_library
+):
+    source = make_file(tmp_path)
+    entry, fallback = organized_library.add_to_index(
+        title="درس عام", kind="audio", files={"main": source}, metadata=LibraryMetadata(),
+    )
+    assert fallback is None
+    parts = Path(entry.folder_path).parts
+    assert parts[-7:] == ("عام", "عام", "عام", "عام", "عام", "عام", "درس عام")
+
+
+def test_organized_path_sanitizes_dangerous_characters(tmp_path, organized_library):
+    path = organized_library.organized_path(
+        meta(academic_year="2025/2026", subject='علو:م/فيزياء*'), "درس/\\:*؟\"<>|test"
+    )
+    assert "/" not in path.name and "\\" not in path.name
+    for char in '<>:"|?*':
+        assert char not in path.name
+    assert Path("2025") / "2026" not in path.parts  # year joined with a dash, not a separator
+    assert "2025-2026" in path.parts
+    assert "-" in path.parts[-3]
+
+
+def test_organized_path_rejects_oversized_tree(tmp_path, organized_library):
+    long_meta = meta(
+        country="ك" * 120, stage="ك" * 120, grade="ك" * 120,
+        academic_year="ك" * 120, subject="ك" * 120, term="ك" * 120,
+    )
+    with pytest.raises(LibraryError):
+        organized_library.organized_path(long_meta, "درس " * 60)
+
+
+def test_add_to_index_falls_back_to_entries_when_folder_cannot_be_created(
+    tmp_path, organized_library
+):
+    blocker = make_file(tmp_path, "blocker", b"not a directory")
+    organized_library.organized_root = blocker  # mkdir(parents=True) will fail
+    source = make_file(tmp_path)
+    entry, fallback = organized_library.add_to_index(
+        title="درس احتياطي", kind="whiteboard", files={"main": source}, metadata=meta(),
+    )
+    assert fallback is not None and "تعذر" in fallback
+    assert (tmp_path / "library" / "entries" / str(entry.id)).is_dir()
+    assert entry.folder_path is None
+    assert source.is_file()
+
+
+def test_reexport_into_same_folder_never_overwrites_existing_files(
+    tmp_path, organized_library
+):
+    folder_source = make_file(tmp_path, "voice.mp3", b"original-bytes")
+    first, _ = organized_library.add_to_index(
+        title="درس رقم 1 — الصوت", kind="audio",
+        files={"main": folder_source}, metadata=meta(subject="لغة عربية"),
+    )
+    assert Path(first.folder_path).is_dir()
+    stored = Path(first.folder_path) / first.files[0].filename
+    assert stored.read_bytes() == b"original-bytes"
+    second_source = make_file(tmp_path, "voice.mp3", b"replacement-bytes")
+    second, fallback = organized_library.add_to_index(
+        title="درس رقم 1 — الصوت", kind="audio",
+        files={"main": second_source}, metadata=meta(subject="لغة عربية"),
+    )
+    assert fallback is None
+    assert first.folder_path == second.folder_path
+    assert stored.read_bytes() == b"original-bytes"
+    second_stored = Path(second.folder_path) / second.files[0].filename
+    assert second_stored.read_bytes() == b"replacement-bytes"
+    assert second.files[0].filename != first.files[0].filename
+
+
+def test_suggest_lesson_number_counts_same_grade_and_subject(tmp_path, organized_library):
+    assert organized_library.suggest_lesson_number("الأول الإعدادي", "علوم") == 1
+    source = make_file(tmp_path)
+    for title in ("درس أ", "درس ب"):
+        organized_library.add_to_index(
+            title=title, kind="audio", files={"main": source}, metadata=meta(),
+        )
+    assert organized_library.suggest_lesson_number("الأول الإعدادي", "علوم") == 3
+    assert organized_library.suggest_lesson_number("الأول الإعدادي", "لغة عربية") == 1
+    assert organized_library.suggest_lesson_number("الثاني الثانوي", "علوم") == 1
+
+
+def test_update_of_organized_entry_updates_in_place(tmp_path, organized_library):
+    source = make_file(tmp_path)
+    entry, _ = organized_library.add_to_index(
+        title="درس رقم 2 — تحديث", kind="audio",
+        files={"main": source}, metadata=meta(), script="# قديم",
+    )
+    replacement = make_file(tmp_path, "new.mp3", b"new-bytes")
+    updated = organized_library.update(
+        entry.id, files={"main": replacement}, script="# جديد"
+    )
+    assert updated.folder_path == entry.folder_path
+    stored_dir = Path(updated.folder_path)
+    files = list(stored_dir.iterdir())
+    assert len(files) == 1 and files[0].read_bytes() == b"new-bytes"
+    assert updated.script == "# جديد"
+    assert updated.metadata.subject == "علوم"
+
+
+def test_update_legacy_entry_keeps_entries_folder_and_stays_null(tmp_path):
+    with LessonLibrary(tmp_path / "library",
+                       organized_root=tmp_path / "library_organized") as lib:
+        source = make_file(tmp_path)
+        entry = lib.add(title="درس قديم", kind="audio",
+                        files={"main": source}, metadata=meta())
+        updated = lib.update(entry.id, script="# مُحدّث")
+        assert updated.folder_path is None
+        assert lib.entry_dir(entry.id) == tmp_path / "library" / "entries" / str(entry.id)
+        assert updated.script == "# مُحدّث"
+
+
+def test_folder_path_migration_from_legacy_database(tmp_path):
+    import sqlite3
+
+    root = tmp_path / "library"
+    root.mkdir()
+    legacy = sqlite3.connect(root / "index.sqlite3")
+    legacy.execute(
+        """
+        CREATE TABLE entries (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT NOT NULL,
+          kind TEXT NOT NULL CHECK (kind IN ('whiteboard', 'whiteboard-audio',
+            'html-page', 'audio', 'video', 'print', 'other')),
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          country TEXT NOT NULL DEFAULT '',
+          stage TEXT NOT NULL DEFAULT '',
+          grade TEXT NOT NULL DEFAULT '',
+          academic_year TEXT NOT NULL DEFAULT '',
+          subject TEXT NOT NULL DEFAULT '',
+          term TEXT NOT NULL DEFAULT '',
+          script TEXT NOT NULL DEFAULT '',
+          notes TEXT NOT NULL DEFAULT ''
+        )
+        """
+    )
+    legacy.execute(
+        """
+        CREATE TABLE files (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          entry_id INTEGER NOT NULL REFERENCES entries(id) ON DELETE CASCADE,
+          role TEXT NOT NULL,
+          filename TEXT NOT NULL,
+          size INTEGER NOT NULL,
+          sha256 TEXT NOT NULL
+        )
+        """
+    )
+    legacy.execute(
+        "INSERT INTO entries (title, kind, created_at, updated_at, grade, subject) "
+        "VALUES ('درس قديم', 'audio', '2026-01-01T00:00:00', '2026-01-01T00:00:00', "
+        "'الأول الإعدادي', 'علوم')"
+    )
+    legacy.commit()
+    legacy.close()
+
+    with LessonLibrary(root, organized_root=tmp_path / "library_organized") as lib:
+        entry = lib.get(1)
+        assert entry is not None
+        assert entry.folder_path is None  # legacy rows remain NULL, untouched
+        columns = {row["name"] for row in lib._db.execute("PRAGMA table_info(entries)")}
+        assert "folder_path" in columns
+
+
+def test_delete_organized_entry_removes_its_folder_but_never_the_root(
+    tmp_path, organized_library
+):
+    source = make_file(tmp_path)
+    entry, _ = organized_library.add_to_index(
+        title="درس رقم 9 — حذف", kind="audio", files={"main": source}, metadata=meta(),
+    )
+    folder = Path(entry.folder_path)
+    assert folder.is_dir()
+    organized_library.delete(entry.id)
+    assert not folder.exists()
+    assert organized_library.organized_root.is_dir()
+
+
+def test_delete_refuses_to_remove_library_roots(tmp_path, organized_library):
+    source = make_file(tmp_path)
+    entry, _ = organized_library.add_to_index(
+        title="درس رقم 10 — حارس", kind="audio", files={"main": source}, metadata=meta(),
+    )
+    organized_library._db.execute(
+        "UPDATE entries SET folder_path = ? WHERE id = ?",
+        (str(organized_library.organized_root), entry.id),
+    )
+    organized_library._db.commit()
+    organized_library.delete(entry.id)
+    assert organized_library.organized_root.is_dir()
+    assert organized_library.get(entry.id) is None  # row is still removed
+
+
+def test_add_with_destination_inside_a_file_fails_atomically(
+    tmp_path, organized_library
+):
+    source = make_file(tmp_path)
+    blocker = make_file(tmp_path, "blocker-dir", b"not a directory")
+    with pytest.raises(LibraryError):
+        organized_library.add(
+            title="درس مكسور", kind="audio", files={"main": source},
+            metadata=meta(), destination=blocker / "sub",
+        )
+    assert organized_library.count() == 0
+    assert list(organized_library.entries_dir.glob(".incoming-*")) == []

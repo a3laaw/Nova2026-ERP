@@ -33,6 +33,12 @@ def user_data_dir() -> Path:
     return Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share")) / "NovaVoice"
 
 
+def library_organized_dir(base: Path | None = None) -> Path:
+    """الجذر الافتراضي لحفظ المخرجات في مجلدات منظّمة (ق٤)."""
+    root = Path(base) if base is not None else user_data_dir()
+    return root / "library_organized"
+
+
 def application_dir() -> Path:
     if getattr(sys, "frozen", False):
         return Path(sys.executable).parent

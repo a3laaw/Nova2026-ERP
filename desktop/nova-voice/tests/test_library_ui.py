@@ -237,6 +237,9 @@ def test_empty_title_blocks_both_save_paths(tmp_path, qapp, monkeypatch):
     )
     warnings = []
     monkeypatch.setattr(QMessageBox, "warning", lambda *a, **k: warnings.append(a))
+    # at open the dialog auto-fills «درس رقم N»; the guard matters when the
+    # user deliberately clears the field again
+    dialog.title_edit.setText("")
     dialog._choose_new()
     dialog._choose_update()
     assert len(warnings) == 2
@@ -324,4 +327,104 @@ def test_video_export_non_html_shows_info(tmp_path, qapp, monkeypatch):
     panel.table.selectRow(0)
     panel.request_video_export()
     assert len(infos) == 1
+    library.close()
+
+
+def organized_seeded_library(tmp_path):
+    library = LessonLibrary(
+        tmp_path / "organized-seeded-library",
+        organized_root=tmp_path / "library_organized",
+    )
+    source = tmp_path / "seed.html"
+    source.write_text("<html>seed</html>", encoding="utf-8")
+    library.add(
+        title="درس دورة المياه — الفصل الأول",
+        kind="whiteboard",
+        files={"main": source},
+        metadata=LibraryMetadata(
+            country="الكويت",
+            stage="الثانوية",
+            grade="الصف العاشر",
+            academic_year="2026/2027",
+            subject="علوم",
+            term="الترم الأول",
+        ),
+        script="# دورة المياه",
+    )
+    return library
+
+
+def test_dialog_autofills_lesson_number_and_tracks_fields(tmp_path, qapp):
+    library = organized_seeded_library(tmp_path)
+    dialog = LibrarySaveDialog(
+        None,
+        title="",
+        metadata=LibraryMetadata(
+            subject="علوم", grade="الصف العاشر", academic_year="2026/2027"
+        ),
+        library=library,
+    )
+    # same grade+subject → next number after the seeded entry
+    assert dialog.title_edit.text() == "درس رقم 2"
+    # changing المادة recomputes the suggestion (no entries there yet)
+    dialog.field_edits["subject"].setText("رياضيات")
+    assert dialog.title_edit.text() == "درس رقم 1"
+    # a title the user typed is never clobbered by the suggestion
+    dialog.field_edits["subject"].setText("علوم")
+    assert dialog.title_edit.text() == "درس رقم 2"
+    dialog.title_edit.setText("دورة الماء")
+    dialog.field_edits["subject"].setText("تاريخ")
+    assert dialog.title_edit.text() == "دورة الماء"
+    library.close()
+
+
+def test_dialog_editing_entry_never_rewrites_title(tmp_path, qapp):
+    library = organized_seeded_library(tmp_path)
+    dialog = LibrarySaveDialog(
+        None,
+        title="درس رقم 1",
+        metadata=LibraryMetadata(subject="علوم", grade="الصف العاشر"),
+        library=library,
+        preselect_id=1,
+    )
+    dialog.field_edits["subject"].setText("تاريخ")
+    assert dialog.title_edit.text() == "درس رقم 1"
+    library.close()
+
+
+def test_dialog_path_preview_shows_organized_destination(tmp_path, qapp):
+    library = organized_seeded_library(tmp_path)
+    dialog = LibrarySaveDialog(
+        None,
+        title="دورة المياه",
+        metadata=LibraryMetadata(
+            country="الكويت",
+            stage="الثانوية",
+            grade="الصف العاشر",
+            academic_year="2026/2027",
+            subject="علوم",
+            term="الترم الأول",
+        ),
+        library=library,
+    )
+    preview = dialog.path_preview.text()
+    assert "library_organized" in preview
+    assert "2026-2027" in preview
+    assert "دورة المياه" in preview
+    # selecting the matching index row switches the preview to the update target
+    dialog.index_table.selectRow(0)
+    dialog._update_buttons()
+    assert "يستبدل" in dialog.path_preview.text()
+    library.close()
+
+
+def test_dialog_path_preview_reports_unavailable_organized_root(tmp_path, qapp):
+    library = LessonLibrary(tmp_path / "plain-library")  # no organized root configured
+    dialog = LibrarySaveDialog(
+        None,
+        title="درس",
+        metadata=LibraryMetadata(subject="علوم"),
+        library=library,
+    )
+    assert "بنية المكتبة" in dialog.path_preview.text()
     library.close()

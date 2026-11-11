@@ -4,6 +4,7 @@ Everything stays on disk in the app's data directory; this module only builds
 widgets and delegates persistence to :class:`nova_voice.lesson_library.LessonLibrary`.
 """
 
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -36,6 +37,8 @@ from .lesson_library import (
     LibraryMetadata,
 )
 from .video_export import is_exportable_main
+
+_LESSON_NUMBER_RE = re.compile(r"درس رقم \d+")
 
 KIND_LABELS = {
     "whiteboard": "سبورة HTML",
@@ -125,7 +128,7 @@ class LibrarySaveDialog(QDialog):
         notes: str = "",
         library: LessonLibrary | None = None,
         preselect_id: int | None = None,
-        heading: str = "حفظ في مكتبة المنهج؟",
+        heading: str = "الفهرس مطلوب للحفظ",
     ):
         super().__init__(parent)
         self.setWindowTitle(heading)
@@ -142,17 +145,20 @@ class LibrarySaveDialog(QDialog):
         layout.addWidget(label(heading, "section"))
         layout.addWidget(
             label(
-                "يُحفظ نسخة من الملف داخل مجلد Nova Voice على هذا الجهاز مع الفهرسة. "
-                "كل الحقول أدناه اختيارية ما عدا العنوان؛ اكتب ما يساعدك تجده لاحقًا.",
+                "لا يُكتب أي شيء قبل موافقتك. اختر إدخالًا مطابقًا من الفهرس، "
+                "أو «فهرس جديد» — وسيُبنى مسار في المجلدات المنظّمة من هذه الحقول. "
+                "كل الحقول اختيارية ما عدا «اسم الدرس»؛ اكتب ما يساعدك تجده لاحقًا.",
                 "muted",
                 True,
             )
         )
+        layout.addWidget(label("اسم الدرس · إجباري", "muted"))
         self.title_edit = QLineEdit(title)
         self.title_edit.setMaxLength(MAX_TITLE_CHARACTERS)
-        self.title_edit.setAccessibleName("عنوان الإدخال في المكتبة")
-        self.title_edit.setPlaceholderText("عنوان الدرس / المادة / الصف")
+        self.title_edit.setAccessibleName("اسم الدرس")
+        self.title_edit.setPlaceholderText("درس رقم 1 — اكتب اسم الدرس")
         layout.addWidget(self.title_edit)
+        self.title_edit.textChanged.connect(self._refresh_preview)
 
         grid = QGridLayout()
         grid.setHorizontalSpacing(10)
@@ -174,6 +180,13 @@ class LibrarySaveDialog(QDialog):
         self.notes_edit.setPlaceholderText("ملاحظات · اختياري — مثال: يحتاج مراجعة الإجابات")
         self.notes_edit.setAccessibleName("ملاحظات الإدخال")
         layout.addWidget(self.notes_edit)
+
+        self.path_preview = label("", "muted", True)
+        self.path_preview.setAccessibleName("المسار النهائي")
+        self.path_preview.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.path_preview.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+        self.path_preview.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        layout.addWidget(self.path_preview)
 
         # --- الفهرس: الإدخالات المطابقة لنفس الحقول ---------------------
         if self._library is not None:
@@ -217,6 +230,7 @@ class LibrarySaveDialog(QDialog):
         actions.addWidget(self.skip_button)
         layout.addLayout(actions)
         self._refresh_index()
+        self._refresh_preview()
 
     # ----------------------------------------------------------------
     def _filters(self) -> LibraryMetadata:
@@ -283,7 +297,34 @@ class LibrarySaveDialog(QDialog):
             )
         else:
             self.index_hint.setText("لا توجد إدخالات مطابقة — سيُنشأ إدخال جديد.")
+        self._maybe_update_lesson_number()
         self._update_buttons()
+        self._refresh_preview()
+
+    def _maybe_update_lesson_number(self) -> None:
+        """اقتراح «درس رقم N» عندما يُطابق العنوان النمط أو يكون فارغًا (ق٥).
+
+        يعمل فقط لحفظ إدخال جديد؛ أي عنوان كتبه المستخدم بنفسه لا يُلمس.
+        """
+        if self._library is None or self._preselect_id is not None:
+            return
+        current = self.title_edit.text().strip()
+        if current and not _LESSON_NUMBER_RE.fullmatch(current):
+            return
+        grade = self.field_edits.get("grade")
+        subject = self.field_edits.get("subject")
+        if grade is None or subject is None:
+            return
+        try:
+            number = self._library.suggest_lesson_number(grade.text(), subject.text())
+        except Exception:
+            return
+        suggestion = f"درس رقم {number}"
+        if current == suggestion:
+            return
+        self.title_edit.blockSignals(True)
+        self.title_edit.setText(suggestion)
+        self.title_edit.blockSignals(False)
 
     def _update_buttons(self) -> None:
         if self.update_button is None:
@@ -291,6 +332,7 @@ class LibrarySaveDialog(QDialog):
         self.update_button.setEnabled(
             self.index_table is not None and self._selected_id() is not None
         )
+        self._refresh_preview()
 
     def _selected_id(self) -> int | None:
         if self.index_table is None:
@@ -311,10 +353,49 @@ class LibrarySaveDialog(QDialog):
         except ValueError:
             return value
 
+    def _refresh_preview(self) -> None:
+        """المسار النهائي يُعرض قبل الضغط — معاينة حية لما سيُنشأ من الفهرس (ق٤)."""
+        if getattr(self, "path_preview", None) is None:
+            return
+        library = self._library
+        if library is None:
+            self.path_preview.setText("")
+            return
+        selected = self._selected_id()
+        if selected is not None:
+            entry = self._safe_get(selected)
+            target = None
+            if entry is not None:
+                target = entry.folder_path or str(
+                    Path(library.root) / "entries" / str(entry.id)
+                )
+            self.path_preview.setText(
+                "التحديث سيستبدل ملف الإدخال داخل نفس المجلد:\n"
+                + (target or f"بنية المكتبة الحالية (الإدخال #{selected})")
+            )
+            return
+        title = self.title_edit.text().strip()
+        try:
+            path = library.organized_path(self._filters(), title or "—")
+        except Exception as error:
+            self.path_preview.setText(
+                f"تعذر بناء مسار منظّم ({error})؛ سيُحفظ داخل بنية المكتبة الحالية."
+            )
+            return
+        self.path_preview.setText(f"المسار النهائي:\n{path}")
+
+    def _safe_get(self, entry_id):
+        try:
+            return self._library.get(entry_id) if self._library is not None else None
+        except Exception:
+            return None
+
     def _title_or_warn(self) -> str | None:
         title = self.title_edit.text().strip()
         if not title:
-            QMessageBox.warning(self, "العنوان مطلوب", "اكتب عنوانًا للإدخال في المكتبة.")
+            QMessageBox.warning(
+                self, "اسم الدرس مطلوب", "اكتب اسم الدرس أولًا — لا يمكن الحفظ بدونه."
+            )
             return None
         return title
 
@@ -566,7 +647,14 @@ class LibraryPanel(QWidget):
         if entry_id is None:
             return
         directory = self.library.entry_dir(entry_id)
-        directory.mkdir(parents=True, exist_ok=True)
+        if not directory.is_dir():
+            QMessageBox.information(
+                self,
+                "المجلد غير موجود",
+                f"لم يعثر التطبيق على مجلد هذا الإدخال:\n{directory}\n"
+                "ربما حُذف أو نُقل يدويًا. حذف الإدخال من المكتبة ممكن دون المجلد.",
+            )
+            return
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(directory)))
 
     def request_edit(self) -> None:
@@ -620,20 +708,23 @@ class LibraryPanel(QWidget):
                 return
             values = dialog.result_values()
             if not values.title:
-                QMessageBox.warning(self, "العنوان مطلوب", "اكتب عنوانًا للإدخال.")
+                QMessageBox.warning(self, "اسم الدرس مطلوب", "اكتب اسم الدرس أولًا.")
                 return
-            self.library.add(
+            entry, fallback_note = self.library.add_to_index(
                 title=values.title,
                 kind=kind_for_suffix(path),
                 files={"main": path},
                 metadata=values.metadata,
                 notes=values.notes,
             )
+            if fallback_note:
+                QMessageBox.warning(self, "حُفظ في بنية المكتبة الحالية", fallback_note)
         except LibraryError as error:
             QMessageBox.warning(self, "تعذرت الإضافة", str(error))
             return
         self.refresh()
-        self.status_label.setText(f"أُضيف «{values.title}» إلى المكتبة.")
+        saved_to = entry.folder_path or 'بنية المكتبة الحالية'
+        self.status_label.setText(f"أُضيف «{values.title}» إلى المكتبة في: {saved_to}")
 
     def delete_selected(self) -> None:
         entry_id = self._selected_entry_id()

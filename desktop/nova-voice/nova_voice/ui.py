@@ -54,7 +54,7 @@ from .gemini_planner import request_plan as request_gemini_plan
 from .html_export import HtmlAudioResult
 from .inference_picker import InferencePicker
 from .lesson_draft import LessonDraft
-from .lesson_library import LessonLibrary, LibraryError, LibraryMetadata
+from .lesson_library import MAX_TITLE_CHARACTERS, LessonLibrary, LibraryError, LibraryMetadata
 from .lesson_picker import LessonPicker, LessonRequest
 from .lesson_planner import request_lesson
 from .library_picker import LibraryPanel, LibrarySaveDialog
@@ -66,6 +66,7 @@ from .scenes import SceneError, VisualPlan
 from .secondary_assets import AssetPreparation, prepare_plan
 from .storage import (
     application_dir,
+    library_organized_dir,
     load_preferences,
     resource_dir,
     save_preferences,
@@ -97,7 +98,10 @@ class MainWindow(QMainWindow):
         self.data_dir = data_dir or user_data_dir()
         self.preferences = load_preferences(self.data_dir)
         self.library = VoiceLibrary(self.data_dir / "voices", application_dir() / "voices")
-        self.lesson_library = LessonLibrary(self.data_dir / "library")
+        self.lesson_library = LessonLibrary(
+            self.data_dir / "library",
+            organized_root=library_organized_dir(),
+        )
         self._editing_entry_id: int | None = None
         self._library_last_meta = LibraryMetadata()
         self.engine = SpeechEngine()
@@ -1272,8 +1276,8 @@ class MainWindow(QMainWindow):
                 current.notes,
             )
         else:
-            title = suggested_title.strip() if suggested_title else source.stem
-            title = title[:200] or source.stem
+            # بلا اقتراح من المستدعي ⇒ «درس رقم N» يقترحه الحوار من الفهرس نفسه (ق٥).
+            title = suggested_title.strip()[:MAX_TITLE_CHARACTERS]
             metadata = LibraryMetadata(
                 country=self._library_last_meta.country,
                 stage=self._library_last_meta.stage,
@@ -1313,9 +1317,13 @@ class MainWindow(QMainWindow):
                     script=script_text,
                     notes=values.notes,
                 )
+                refreshed = self.lesson_library.get(values.update_id)
+                saved_to = refreshed.folder_path if refreshed and refreshed.folder_path else ""
                 message = f"حُدّث الإدخال #{values.update_id} «{values.title}» في مكتبة المنهج."
+                if saved_to:
+                    message += f"\nالمجلد: {saved_to}"
             else:
-                self.lesson_library.add(
+                entry, fallback_note = self.lesson_library.add_to_index(
                     title=values.title,
                     kind=kind,
                     files={"main": source},
@@ -1323,7 +1331,10 @@ class MainWindow(QMainWindow):
                     script=script_text,
                     notes=values.notes,
                 )
-                message = f"أُضيف «{values.title}» إلى مكتبة المنهج."
+                saved_to = entry.folder_path or "بنية المكتبة الحالية (entries)"
+                message = f"أُضيف «{entry.title}» إلى مكتبة المنهج في:\n{saved_to}"
+                if fallback_note:
+                    QMessageBox.warning(self, "حُفظ في بنية المكتبة الحالية", fallback_note)
         except LibraryError as error:
             QMessageBox.warning(self, "تعذر الحفظ في المكتبة", str(error))
             return

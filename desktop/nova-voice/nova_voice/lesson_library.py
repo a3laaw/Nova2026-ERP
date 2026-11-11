@@ -7,6 +7,12 @@ indexes them in SQLite with the six educational fields every entry carries:
 السنة الدراسية (academic year), المادة الدراسية (subject), الترم الدراسي (term).
 All fields are free text; the app never invents or translates values.
 
+Since 0.17 the library also maintains a human-readable folder tree
+(`library_organized`) built from the index: empty fields render as «عام».
+Legacy `entries/<id>/` entries keep working untouched; new entries live in the
+organized tree and record their absolute folder in the nullable `folder_path`
+column (see the safe migration in ``LessonLibrary.__init__``).
+
 Guarantees:
 - files are copied in, so moving or deleting the original export never breaks an entry;
 - nothing is uploaded, scanned, or discovered on the disk — only files the caller
@@ -41,6 +47,22 @@ KINDS = (
 )
 _META_FIELDS = ("country", "stage", "grade", "academic_year", "subject", "term")
 _KIND_SQL = "', '".join(KINDS)
+_GENERAL = "عام"
+_MAX_COMPONENT = 48
+_MAX_ORGANIZED_PATH = 220  # conservative for Windows MAX_PATH with headroom
+_FORBIDDEN = '<>:"|?*\\'
+
+
+def _path_component(value: object, *, limit: int = _MAX_COMPONENT) -> str:
+    """Make free text a single safe folder name (Windows-safe, Arabic kept)."""
+    text = str(value or "").replace("/", "-").replace("\\", "-").strip()
+    for char in _FORBIDDEN:
+        text = text.replace(char, "-")
+    text = "".join("_" if ord(c) < 32 or c == "\x7f" else c for c in text)
+    text = " ".join(text.split()).strip(" .")
+    if not text:
+        return _GENERAL
+    return text[:limit].rstrip(" .") or _GENERAL
 
 
 class LibraryError(Exception):
@@ -169,6 +191,7 @@ class LibraryEntry:
     script: str
     notes: str
     files: tuple
+    folder_path: str | None = None
 
 
 def _normalize_files(files: object) -> list:
@@ -202,10 +225,17 @@ def _normalize_files(files: object) -> list:
 class LessonLibrary:
     """SQLite index + copied files. Local only; never touches the network."""
 
-    def __init__(self, root) -> None:
+    def __init__(self, root, organized_root=None) -> None:
         self.root = Path(root)
         self.entries_dir = self.root / "entries"
         self.entries_dir.mkdir(parents=True, exist_ok=True)
+        self.organized_root = Path(organized_root) if organized_root is not None else None
+        if self.organized_root is not None:
+            try:
+                self.organized_root.mkdir(parents=True, exist_ok=True)
+            except OSError:
+                # The save itself surfaces the reason and falls back to entries/<id>.
+                pass
         self._db = sqlite3.connect(self.root / "index.sqlite3")
         self._db.row_factory = sqlite3.Row
         with self._db:
@@ -248,8 +278,95 @@ class LessonLibrary:
             self._db.execute(
                 "CREATE INDEX IF NOT EXISTS idx_entries_updated ON entries(updated_at)"
             )
+            columns = {
+                row["name"] for row in self._db.execute("PRAGMA table_info(entries)")
+            }
+            if "folder_path" not in columns:
+                # Safe nullable migration (0.17): legacy rows stay NULL; nothing is
+                # moved, deleted, or rewritten.
+                self._db.execute("ALTER TABLE entries ADD COLUMN folder_path TEXT")
 
     # ------------------------------------------------------------------ API
+    def organized_path(self, metadata: LibraryMetadata | None, title: str) -> Path:
+        """المسار الكامل للمجلد المنظّم لدرس جديد؛ لا ينشئ شيئًا على القرص."""
+        if self.organized_root is None:
+            raise LibraryError("لا يوجد جذر مجلدات منظّمة مهيأ لهذه المكتبة.")
+        meta = self._metadata(metadata)
+        title_text = _clean_single_line(title, MAX_TITLE_CHARACTERS, "اسم الدرس")
+        if not title_text:
+            raise LibraryError("اسم الدرس مطلوب لبناء مسار الحفظ.")
+        parts = [
+            _path_component(meta.country),
+            _path_component(meta.stage),
+            _path_component(meta.grade),
+            _path_component(meta.academic_year.replace("/", "-").replace("\\", "-")),
+            _path_component(meta.subject),
+            _path_component(meta.term),
+            _path_component(title_text, limit=80),
+        ]
+        path = Path(self.organized_root.joinpath(*parts))
+        if len(str(path)) > _MAX_ORGANIZED_PATH:
+            raise LibraryError(
+                f"المسار أطول من الحد الآمن للنظام ({_MAX_ORGANIZED_PATH} حرفًا)؛ "
+                "قصّر اسم الدرس أو قيم الفهرس."
+            )
+        return path
+
+    def suggest_lesson_number(self, grade: str, subject: str) -> int:
+        """اقتراح «درس رقم N»: عدد الإدخالات في نفس الصف+المادة + 1."""
+        row = self._db.execute(
+            "SELECT COUNT(*) FROM entries "
+            "WHERE LOWER(grade) = LOWER(?) AND LOWER(subject) = LOWER(?)",
+            (str(grade or "").strip(), str(subject or "").strip()),
+        ).fetchone()
+        return int(row[0]) + 1
+
+    def add_to_index(
+        self,
+        *,
+        title,
+        kind,
+        files,
+        metadata=None,
+        script="",
+        notes="",
+    ):
+        """احفظ كإدخال جديد في المجلدات المنظّمة؛ عند أي فشل ارجع لبنية entries/<id>.
+
+        يُرجع (entry, fallback_note)؛ fallback_note نص التحذير عند السقوط الاحتياطي، أو None.
+        """
+        if self.organized_root is None:
+            entry = self.add(
+                title=title, kind=kind, files=files, metadata=metadata, script=script, notes=notes
+            )
+            return entry, None
+        try:
+            destination = self.organized_path(metadata, title)
+        except LibraryError as error:
+            entry = self.add(
+                title=title, kind=kind, files=files, metadata=metadata, script=script, notes=notes
+            )
+            return entry, f"تعذر بناء مسار منظّم ({error})؛ حُفظ في بنية المكتبة الحالية."
+        try:
+            entry = self.add(
+                title=title,
+                kind=kind,
+                files=files,
+                metadata=metadata,
+                script=script,
+                notes=notes,
+                destination=destination,
+            )
+            return entry, None
+        except LibraryError as error:
+            entry = self.add(
+                title=title, kind=kind, files=files, metadata=metadata, script=script, notes=notes
+            )
+            return entry, (
+                f"تعذر إنشاء المجلدات المنظّمة ({error})؛ "
+                "حُفظ في بنية المكتبة الحالية بدلًا منها."
+            )
+
     def close(self) -> None:
         self._db.close()
 
@@ -259,7 +376,17 @@ class LessonLibrary:
     def __exit__(self, *_args) -> None:
         self.close()
 
-    def add(self, *, title, kind, files, metadata=None, script="", notes="") -> LibraryEntry:
+    def add(
+        self,
+        *,
+        title,
+        kind,
+        files,
+        metadata=None,
+        script="",
+        notes="",
+        destination=None,
+    ) -> LibraryEntry:
         title = _require_title(title)
         kind = _require_kind(kind)
         metadata = self._metadata(metadata)
@@ -267,8 +394,21 @@ class LessonLibrary:
         notes = _clean_multiline(notes, MAX_NOTES_CHARACTERS, "الملاحظات")
         staged = _normalize_files(files)
         staging, records, entry_id = None, [], None
-        final_dir = None
+        final_dir: Path | None = None
+        created_destination = False
+        moved: list[Path] = []
         try:
+            if destination is not None:
+                final_dir = Path(destination)
+                if final_dir.exists() and not final_dir.is_dir():
+                    raise LibraryError(f"المسار المنظّم ليس مجلدًا: {final_dir}")
+                created_destination = not final_dir.exists()
+                try:
+                    final_dir.mkdir(parents=True, exist_ok=True)
+                except OSError as error:
+                    raise LibraryError(
+                        f"تعذر إنشاء المجلد المنظّم {final_dir}: {error}"
+                    ) from error
             staging, records = self._stage(staged)
             with self._db:
                 timestamp = _now()
@@ -276,8 +416,8 @@ class LessonLibrary:
                     """
                     INSERT INTO entries
                       (title, kind, created_at, updated_at, country, stage, grade,
-                       academic_year, subject, term, script, notes)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                       academic_year, subject, term, script, notes, folder_path)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         title,
@@ -287,12 +427,25 @@ class LessonLibrary:
                         *[metadata.as_dict()[field_name] for field_name in _META_FIELDS],
                         script,
                         notes,
+                        str(final_dir) if destination is not None else None,
                     ),
                 )
                 entry_id = cursor.lastrowid
-                final_dir = self.entries_dir / str(entry_id)
-                os.replace(staging, final_dir)
-                staging = None
+                if destination is None:
+                    final_dir = self.entries_dir / str(entry_id)
+                    os.replace(staging, final_dir)
+                    staging = None
+                else:
+                    # final_dir may already exist: never overwrite an existing file
+                    for index, record in enumerate(records):
+                        target_name = _unique_name(final_dir, record.filename)
+                        target = final_dir / target_name
+                        os.replace(staging / record.filename, target)
+                        records[index] = FileRecord(record.role, target_name, record.size,
+                                                    record.sha256)
+                        moved.append(target)
+                    shutil.rmtree(staging, ignore_errors=True)
+                    staging = None
                 for record in records:
                     self._db.execute(
                         "INSERT INTO files (entry_id, role, filename, size, sha256) "
@@ -300,10 +453,20 @@ class LessonLibrary:
                         (entry_id, record.role, record.filename, record.size, record.sha256),
                     )
         except LibraryError:
-            self._discard(staging, final_dir)
+            if staging is not None:
+                shutil.rmtree(staging, ignore_errors=True)
+            for target in moved:
+                target.unlink(missing_ok=True)
+            if created_destination and final_dir is not None:
+                shutil.rmtree(final_dir, ignore_errors=True)
             raise
         except (OSError, sqlite3.Error) as error:
-            self._discard(staging, final_dir)
+            if staging is not None:
+                shutil.rmtree(staging, ignore_errors=True)
+            for target in moved:
+                target.unlink(missing_ok=True)
+            if created_destination and final_dir is not None:
+                shutil.rmtree(final_dir, ignore_errors=True)
             raise LibraryError(f"تعذر حفظ الإدخال في المكتبة: {error}") from error
         finally:
             if staging is not None:
@@ -320,6 +483,7 @@ class LessonLibrary:
         metadata=None,
         script=None,
         notes=None,
+        destination=None,
     ) -> LibraryEntry:
         """Overwrite an entry in place («تحديث نفس الإدخال»).
 
@@ -346,13 +510,27 @@ class LessonLibrary:
             else current.notes
         )
         staged = _normalize_files(files) if files is not None else []
-        final_dir = self.entries_dir / str(entry_id)
+        if destination is not None:
+            new_folder = Path(destination)
+            folder_to_store = str(new_folder)
+        elif current.folder_path:
+            new_folder = Path(current.folder_path)
+            folder_to_store = current.folder_path
+        else:
+            new_folder = self.entries_dir / str(entry_id)
+            folder_to_store = None  # brand-new legacy entry stays on entries/<id>
+        final_dir = new_folder
         staging = None
         moved: list = []
         try:
             if staged:
                 staging, staged_records = self._stage(staged, unique=True)
-                final_dir.mkdir(parents=True, exist_ok=True)
+                try:
+                    final_dir.mkdir(parents=True, exist_ok=True)
+                except OSError as error:
+                    raise LibraryError(
+                        f"تعذر إنشاء مجلد الإدخال {final_dir}: {error}"
+                    ) from error
                 for record in staged_records:
                     target = final_dir / record.filename
                     os.replace(staging / record.filename, target)
@@ -379,7 +557,7 @@ class LessonLibrary:
                     """
                     UPDATE entries SET title = ?, kind = ?, updated_at = ?,
                       country = ?, stage = ?, grade = ?, academic_year = ?,
-                      subject = ?, term = ?, script = ?, notes = ?
+                      subject = ?, term = ?, script = ?, notes = ?, folder_path = ?
                     WHERE id = ?
                     """,
                     (
@@ -389,6 +567,7 @@ class LessonLibrary:
                         *[new_metadata.as_dict()[field_name] for field_name in _META_FIELDS],
                         new_script,
                         new_notes,
+                        folder_to_store,
                         entry_id,
                     ),
                 )
@@ -424,11 +603,20 @@ class LessonLibrary:
 
     def delete(self, entry_id) -> None:
         entry_id = self._entry_id(entry_id)
-        if self.get(entry_id) is None:
+        entry = self.get(entry_id)
+        if entry is None:
             raise LibraryError("الإدخال غير موجود في المكتبة.")
         with self._db:
             self._db.execute("DELETE FROM entries WHERE id = ?", (entry_id,))
-        shutil.rmtree(self.entries_dir / str(entry_id), ignore_errors=True)
+        target = Path(entry.folder_path) if entry.folder_path else self.entries_dir / str(entry_id)
+        resolved = target.resolve()
+        forbidden = {self.root.resolve(), self.entries_dir.resolve()}
+        if self.organized_root is not None:
+            forbidden.add(self.organized_root.resolve())
+        if resolved in forbidden:
+            # السجل يُمحى لكن المجلدات الجذرية لا تُمس أبدًا.
+            return
+        shutil.rmtree(resolved, ignore_errors=True)
 
     def get(self, entry_id) -> LibraryEntry | None:
         entry_id = self._entry_id(entry_id)
@@ -503,7 +691,10 @@ class LessonLibrary:
         return int(self._db.execute("SELECT COUNT(*) FROM entries").fetchone()[0])
 
     def entry_dir(self, entry_id) -> Path:
-        return self.entries_dir / str(self._entry_id(entry_id))
+        entry = self.get(self._entry_id(entry_id))
+        if entry is not None and entry.folder_path:
+            return Path(entry.folder_path)
+        return self.entries_dir / str(entry_id)
 
     def entry_file(self, entry_id, filename) -> Path:
         directory = self.entry_dir(entry_id).resolve()
@@ -556,6 +747,7 @@ class LessonLibrary:
             script=row["script"],
             notes=row["notes"],
             files=tuple(files),
+            folder_path=row["folder_path"],
         )
 
     def _stage(self, staged, unique: bool = False):
