@@ -78,6 +78,16 @@ apply separately (https://openrouter.ai/terms, https://openrouter.ai/privacy).
 Free access, output accuracy, downstream licensing and regional/age eligibility
 are not guaranteed by this application. Exported HTML never calls that API.
 
+## Optional Google Gemini (AI Studio) planner (0.16 source preview)
+
+Google Gemini via the Gemini API / AI Studio uses Python's standard library;
+Google's terms apply separately (https://ai.google.dev/gemini-api/terms,
+https://aistudio.google.com). Unlike the OpenRouter path, the app cannot enforce
+zero-cost or ZDR on the free tier; Google may use free-tier prompts/responses to
+improve its products and human reviewers may read them. No Gemini SDK is bundled.
+Free access, output accuracy, regional/age eligibility and AI Studio quotas are
+not guaranteed by this application. Exported HTML never calls that API.
+
 ## Optional external video converter (0.9 source preview)
 
 The H.264/AAC converter runs an explicitly selected, trusted local FFmpeg executable.

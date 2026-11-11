@@ -62,6 +62,7 @@ class RevisionRequest:
     send_consent: bool = False
     download_consent: bool = False
     target_step: int | None = field(default=None, kw_only=True)
+    provider: str = field(default="openrouter", kw_only=True)
 
 
 @dataclass(frozen=True)
@@ -353,7 +354,13 @@ def revise_plan(
         _require(request.download_consent is True, "يلزم إذن مستقل لتنزيل موارد هذه المحاولة.")
     candidate = previous
     if requires_model:
-        planner._authorize(
+        if request.provider == "gemini":
+            from . import gemini_planner as _gemini
+
+            authorize_fn, answer_fn = _gemini._authorize, _gemini.request_answer
+        else:
+            authorize_fn, answer_fn = planner._authorize, planner.request_answer
+        authorize_fn(
             request.key,
             cancel,
             consent=request.send_consent,
@@ -361,7 +368,7 @@ def revise_plan(
             policy=previous.to_data()["policy"],
         )
         system, content = revision_prompt(request)
-        answer = planner.request_answer(
+        answer = answer_fn(
             system,
             content,
             request.key,
@@ -369,6 +376,7 @@ def revise_plan(
             progress,
             consent=request.send_consent,
             adult=request.adult,
+            policy=previous.to_data()["policy"],
             _transport=_planner_transport,
         )
         if request.target_step is not None:

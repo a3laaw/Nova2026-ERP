@@ -52,6 +52,7 @@ from .engine import (
     SpeechEngine,
     validate_dialogue_cast,
 )
+from .gemini_planner import request_plan as request_gemini_plan
 from .html_export import (
     MAX_HTML_BYTES,
     HtmlAudioResult,
@@ -1102,6 +1103,7 @@ class MainWindow(QMainWindow):
                 consent=request.consent,
                 adult=request.adult,
                 secondary_assets=request.secondary_assets,
+                provider=request.provider,
             ),
             "lesson-draft",
         )
@@ -1173,8 +1175,9 @@ class MainWindow(QMainWindow):
             except ScriptError as error:
                 QMessageBox.warning(self, "راجع ارتباط الدرس قبل إعادة الرسم", str(error))
                 return
+        planner_fn = request_gemini_plan if request.provider == "gemini" else request_plan
         self._start_task(
-            lambda cancel, progress: request_plan(
+            lambda cancel, progress: planner_fn(
                 request.source,
                 request.key,
                 cancel,

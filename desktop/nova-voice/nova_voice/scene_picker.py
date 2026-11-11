@@ -55,6 +55,7 @@ class PlannerRequest:
     consent: bool
     adult: bool
     secondary_assets: bool = False
+    provider: str = "openrouter"
 
 
 @dataclass(frozen=True)
@@ -63,6 +64,39 @@ class AssetRequest:
     plan: VisualPlan = field(repr=False)
     revision: int
     allow_download: bool = False
+
+
+OPENROUTER_DISCLOSURE = (
+    "طلب نصي واحد إلى OpenRouter ومزوّد النموذج، بحساب المعلم البالغ 18+ فقط. "
+    "يُرسل السكريبت والمادة والصف؛ في البدائل الخطة السابقة وملاحظتك أيضًا. "
+    "لا أصوات أو ملفات موارد خام. "
+    "لا بيانات طلاب أو معلومات حساسة. النموذج openrouter/free فقط، "
+    "سقف سعر صفر ومنع التدريب/الاحتفاظ بحسب مرشحات المزود. "
+    "عند غياب نموذج يوافقها، أو نفاد الحصة، نتوقف دون تخفيفها أو شراء رصيد. "
+    "قد تتغير المجانية والشروط، وليست خدمة غير محدودة. "
+    "راجع شروط OpenRouter ومزوّديه وقوانين بلدك: "
+    "openrouter.ai/terms وopenrouter.ai/privacy. "
+    "للطلب الأول حد 12 خطوة و12000 حرف. "
+    "الإلغاء أثناء الشبكة قد ينتظر مهلة الاتصال."
+)
+
+GEMINI_DISCLOSURE = (
+    "طلب نصي واحد إلى Google Gemini عبر Google AI Studio، بحساب المعلم البالغ 18+ فقط. "
+    "يُرسل السكريبت والمادة والصف؛ في البدائل الخطة السابقة وملاحظتك أيضًا. "
+    "لا أصوات أو ملفات موارد خام. "
+    "لا بيانات طلاب أو معلومات حساسة. النموذج gemini-2.5-flash فقط داخل حصة AI Studio المجانية؛ "
+    "بلا فوترة وبلا أي مسار مدفوع، والتوقف عند نفاد الحصة دون ترقية أو شراء. "
+    "تنبيه مهم: طبقة Google المجانية قد تستخدم الطلبات والردود لتحسين منتجات Google، "
+    "وقد يطّلع عليها مُراجِعون بشريون؛ لا ترسل نصوصًا مقدسة أو شخصية أو طلابية. "
+    "قد تتغير المجانية والشروط والحصة، وليست خدمة غير محدودة. "
+    "راجع شروط Google AI Studio وقوانين بلدك: "
+    "ai.google.dev/gemini-api/terms وaistudio.google.com. "
+    "للطلب الأول حد 12 خطوة و12000 حرف. "
+    "الإلغاء أثناء الشبكة قد ينتظر مهلة الاتصال."
+)
+
+PROVIDER_LABELS = {"openrouter": "OpenRouter · مجاني مع منع التدريب/الاحتفاظ",
+                   "gemini": "Google Gemini · مجاني؛ قد يستخدمه Google للتحسين"}
 
 
 class ScenePicker(QWidget):
@@ -171,23 +205,14 @@ class ScenePicker(QWidget):
         layout.addWidget(resources)
         cloud = Disclosure("اقتراح عبر الإنترنت · اختياري ومجاني فقط")
         self.cloud_section = cloud
-        cloud.content_layout.addWidget(
-            label(
-                "طلب نصي واحد إلى OpenRouter ومزوّد النموذج، بحساب المعلم البالغ 18+ فقط. "
-                "يُرسل السكريبت والمادة والصف؛ في البدائل الخطة السابقة وملاحظتك أيضًا. "
-                "لا أصوات أو ملفات موارد خام. "
-                "لا بيانات طلاب أو معلومات حساسة. النموذج openrouter/free فقط، "
-                "سقف سعر صفر ومنع التدريب/الاحتفاظ بحسب مرشحات المزود. "
-                "عند غياب نموذج يوافقها، أو نفاد الحصة، نتوقف دون تخفيفها أو شراء رصيد. "
-                "قد تتغير المجانية والشروط، وليست خدمة غير محدودة. "
-                "راجع شروط OpenRouter ومزوّديه وقوانين بلدك: "
-                "openrouter.ai/terms وopenrouter.ai/privacy. "
-                "للطلب الأول حد 12 خطوة و12000 حرف. "
-                "الإلغاء أثناء الشبكة قد ينتظر مهلة الاتصال.",
-                "muted",
-                True,
-            )
-        )
+        self.provider = combo()
+        self.provider.addItem(PROVIDER_LABELS["openrouter"], "openrouter")
+        self.provider.addItem(PROVIDER_LABELS["gemini"], "gemini")
+        self.provider.setAccessibleName("مزود الاقتراح المجاني")
+        self.provider.currentIndexChanged.connect(self._provider_changed)
+        cloud.content_layout.addWidget(self.provider)
+        self.cloud_notice = label(OPENROUTER_DISCLOSURE, "muted", True)
+        cloud.content_layout.addWidget(self.cloud_notice)
         self.key = QLineEdit()
         self.key.setEchoMode(QLineEdit.EchoMode.Password)
         self.key.setMaxLength(512)
@@ -359,6 +384,33 @@ class ScenePicker(QWidget):
         self._credential_timer.stop()
         self._reset_consent()
 
+    def _provider_changed(self, *_):
+        provider = self.provider.currentData() or "openrouter"
+        self.cloud_notice.setText(
+            OPENROUTER_DISCLOSURE if provider == "openrouter" else GEMINI_DISCLOSURE
+        )
+        if provider == "openrouter":
+            placeholder = "مفتاح OpenRouter · لا حفظ على القرص؛ جلسة البدائل اختيارية"
+            accessible = "مفتاح OpenRouter السري، لا يُكتب في السكريبت"
+        else:
+            placeholder = "مفتاح Google AI Studio · لا حفظ على القرص؛ جلسة البدائل اختيارية"
+            accessible = "مفتاح Google AI Studio السري، لا يُكتب في السكريبت"
+        self.key.setPlaceholderText(placeholder)
+        self.key.setAccessibleName(accessible)
+        self.key.clear()
+        self._review_credential.clear()
+        self._credential_timer.stop()
+        self.remember_review_key.setChecked(False)
+        self._reset_consent()
+        self._state()
+
+    def _credential_fingerprint(self, source: dict) -> str:
+        provider = self.provider.currentData() or "openrouter"
+        return f"{provider}:{source['fingerprint']}"
+
+    def _current_provider(self) -> str:
+        return self.provider.currentData() or "openrouter"
+
     def _remember_changed(self, enabled):
         if not enabled:
             self._review_credential.clear()
@@ -379,11 +431,12 @@ class ScenePicker(QWidget):
         self.changed.emit()
 
     def _take_key(self, source: dict) -> str:
+        fingerprint = self._credential_fingerprint(source)
         entered = self.key.text()
-        key = entered or self._review_credential.get(source["fingerprint"])
+        key = entered or self._review_credential.get(fingerprint)
         self.key.clear()
         if self.remember_review_key.isChecked() and entered:
-            self._review_credential.remember(key, source["fingerprint"])
+            self._review_credential.remember(key, fingerprint)
             self._credential_timer.start(SESSION_SECONDS * 1000)
         return key
 
@@ -801,6 +854,7 @@ class ScenePicker(QWidget):
                 True,
                 True,
                 self.allow_assets.isChecked(),
+                self._current_provider(),
             )
             self.consent.setChecked(False)
             self.requested.emit(request)
@@ -821,7 +875,10 @@ class ScenePicker(QWidget):
                 if not self.adult.isChecked():
                     self.cloud_section.set_expanded(True)
                     raise SceneError("أكد أهلية حساب المعلم البالغ في قسم الاقتراح المجاني أولًا.")
-                if not (self.key.text() or self._review_credential.get(source["fingerprint"])):
+                if not (
+                    self.key.text()
+                    or self._review_credential.get(self._credential_fingerprint(source))
+                ):
                     self.cloud_section.set_expanded(True)
                     self.key.setFocus()
                     raise SceneError(
@@ -836,13 +893,22 @@ class ScenePicker(QWidget):
             )
             notice = scope_notice
             if model_needed:
-                notice += (
-                    "سيُرسل نص وخطة المشهد المختار وملاحظتك إلى OpenRouter ومزوّده "
-                    if target_step is not None
-                    else "سيُرسل السكريبت والخطة المرئية السابقة وملاحظتك إلى OpenRouter ومزوّده "
+                provider = self._current_provider()
+                provider_name = (
+                    "OpenRouter ومزوّده" if provider == "openrouter" else "Google AI Studio (Gemini)"
+                )
+                plan_tail = (
+                    "بسعرصفر ومنع التدريب/الاحتفاظ كما في الطلب الأصلي. "
+                    if provider == "openrouter"
+                    else "وقد تستخدم Google الطلبات والردود للتحسين وفق شروطها. "
                 )
                 notice += (
-                    "لطلب مجاني واحد، بسعرصفر ومنع التدريب/الاحتفاظ كما في الطلب الأصلي. "
+                    f"سيُرسل نص وخطة المشهد المختار وملاحظتك إلى {provider_name} "
+                    if target_step is not None
+                    else f"سيُرسل السكريبت والخطة المرئية السابقة وملاحظتك إلى {provider_name} "
+                )
+                notice += (
+                    "لطلب مجاني واحد، " + plan_tail +
                     "لا بيانات طلاب أو معلومات حساسة. لا ضمان حصة أو جودة ولا إصلاح/دفع تلقائي.\n\n"
                 )
             else:
@@ -900,6 +966,7 @@ class ScenePicker(QWidget):
                     model_needed,
                     action == "external",
                     target_step=target_step,
+                    provider=self._current_provider(),
                 )
             )
         except ScriptError as error:

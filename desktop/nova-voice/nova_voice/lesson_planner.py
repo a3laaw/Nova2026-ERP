@@ -83,12 +83,21 @@ def request_lesson(
     adult: bool = False,
     policy: str = "general",
     secondary_assets: bool = False,
+    provider: str = "openrouter",
     _transport: Callable = _open,
 ) -> LessonDraft:
     """No live inference is implied by the injected-transport tests."""
-    _authorize(key, cancel, consent=consent, adult=adult, policy=policy)
+    if provider == "gemini":
+        from . import gemini_planner as _gemini
+
+        authorize_fn, answer_fn = _gemini._authorize, _gemini.request_answer
+    elif provider == "openrouter":
+        authorize_fn, answer_fn = _authorize, request_answer
+    else:
+        raise SceneError("مزود غير معروف. استخدم OpenRouter أو Google Gemini فقط.")
+    authorize_fn(key, cancel, consent=consent, adult=adult, policy=policy)
     system, content = prompt_parts(brief, secondary_assets=secondary_assets)
-    answer = request_answer(
+    answer = answer_fn(
         system,
         content,
         key,

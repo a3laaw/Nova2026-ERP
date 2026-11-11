@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .controls import Disclosure, button, label
+from .controls import Disclosure, button, combo, label
 from .lesson_brief import LessonBrief
 from .lesson_draft import LessonDraft
 from .lesson_planner import manual_prompt
@@ -35,6 +35,34 @@ class LessonRequest:
     consent: bool = False
     adult: bool = False
     secondary_assets: bool = False
+    provider: str = "openrouter"
+
+
+OPENROUTER_DISCLOSURE = (
+    "يُرسل الوصف والمادة والصف فقط إلى OpenRouter ومزوّد النموذج، لا نص الم"
+    "حرر القديم أو صوت أو صور. للمُعدّ البالغ 18+ بحساب مؤهل وموافقة جديدة "
+    "لكل طلب، بلا بيانات طلاب أو معلومات حساسة. openrouter/free بسعر صفر وم"
+    "رشحات منع جمع البيانات وZDR، بلا إعادة محاولة أو شراء رصيد أو بديل مدف"
+    "وع. قد لا يتوفر مزود يوافقها؛ المجانية والحصص والأهلية غير مضمونة. راج"
+    "ع openrouter.ai/terms وopenrouter.ai/privacy وشروط المزوّد. لم يُختبر "
+    "استدلال حي هنا؛ الإلغاء قد ينتظر مهلة الشبكة."
+)
+
+GEMINI_DISCLOSURE = (
+    "يُرسل الوصف والمادة والصف فقط إلى Google AI Studio (Gemini)، لا نص الم"
+    "حرر القديم أو صوت أو صور. للمُعدّ البالغ 18+ بحساب مؤهل وموافقة جديدة "
+    "لكل طلب، بلا بيانات طلاب أو معلومات حساسة. gemini-2.5-flash فقط داخل "
+    "حصة AI Studio المجانية؛ بلا فوترة وبلا أي مسار مدفوع، والتوقف عند نفاد "
+    "الحصة دون ترقية. تنبيه: طبقة Google المجانية قد تستخدم الطلبات والردود "
+    "لتحسين منتجات Google ويطّلع عليها مُراجِعون بشريون؛ لا ترسل نصوصًا مقدسة "
+    "أو شخصية أو طلابية. الحصص والشروط تتغير؛ راجع ai.google.dev/gemini-api/terms "
+    "وaistudio.google.com. لم يُختبر استدلال حي هنا؛ الإلغاء قد ينتظر مهلة الشبكة."
+)
+
+PROVIDER_LABELS = {
+    "openrouter": "OpenRouter · مجاني مع منع التدريب/الاحتفاظ",
+    "gemini": "Google Gemini · مجاني؛ قد يستخدمه Google للتحسين",
+}
 
 
 class LessonPicker(QWidget):
@@ -104,21 +132,15 @@ class LessonPicker(QWidget):
             actions.addWidget(widget)
         layout.addLayout(actions)
         cloud = Disclosure("وصف ← درس كامل ورسوم · طلب شبكي اختياري واحد")
-        cloud.content_layout.addWidget(
-            label(
-                (
-                    "يُرسل الوصف والمادة والصف فقط إلى OpenRouter ومزوّد النموذج، لا نص الم"
-                    "حرر القديم أو صوت أو صور. للمُعدّ البالغ 18+ بحساب مؤهل وموافقة جديدة "
-                    "لكل طلب، بلا بيانات طلاب أو معلومات حساسة. openrouter/free بسعر صفر وم"
-                    "رشحات منع جمع البيانات وZDR، بلا إعادة محاولة أو شراء رصيد أو بديل مدف"
-                    "وع. قد لا يتوفر مزود يوافقها؛ المجانية والحصص والأهلية غير مضمونة. راج"
-                    "ع openrouter.ai/terms وopenrouter.ai/privacy وشروط المزوّد. لم يُختبر "
-                    "استدلال حي هنا؛ الإلغاء قد ينتظر مهلة الشبكة."
-                ),
-                "muted",
-                True,
-            )
-        )
+        self.cloud_section = cloud
+        self.provider = combo()
+        self.provider.addItem(PROVIDER_LABELS["openrouter"], "openrouter")
+        self.provider.addItem(PROVIDER_LABELS["gemini"], "gemini")
+        self.provider.setAccessibleName("مزود اقتراح الدرس الكامل المجاني")
+        self.provider.currentIndexChanged.connect(self._provider_changed)
+        cloud.content_layout.addWidget(self.provider)
+        self.cloud_notice = label(OPENROUTER_DISCLOSURE, "muted", True)
+        cloud.content_layout.addWidget(self.cloud_notice)
         self.key = QLineEdit()
         self.key.setEchoMode(QLineEdit.EchoMode.Password)
         self.key.setMaxLength(512)
@@ -188,6 +210,26 @@ class LessonPicker(QWidget):
             signal.connect(self.invalidate)
         self.key.textChanged.connect(self._reset_consent)
         self.allow_assets.toggled.connect(self.invalidate)
+
+    def _provider_changed(self, *_):
+        provider = self.provider.currentData() or "openrouter"
+        self.cloud_notice.setText(
+            OPENROUTER_DISCLOSURE if provider == "openrouter" else GEMINI_DISCLOSURE
+        )
+        if provider == "openrouter":
+            placeholder = "مفتاح خاص لهذا الطلب فقط — لا يُحفظ ولا يُكتب في المحادثة"
+            accessible = "مفتاح OpenRouter السري لطلب الدرس الكامل"
+        else:
+            placeholder = "مفتاح Google AI Studio — لا يُحفظ ولا يُكتب في المحادثة"
+            accessible = "مفتاح Google AI Studio السري لطلب الدرس الكامل"
+        self.key.setPlaceholderText(placeholder)
+        self.key.setAccessibleName(accessible)
+        self.key.clear()
+        self._reset_consent()
+        self.changed.emit()
+
+    def _current_provider(self) -> str:
+        return self.provider.currentData() or "openrouter"
 
     def _reset_consent(self, *_):
         self.consent.setChecked(False)
@@ -348,7 +390,12 @@ class LessonPicker(QWidget):
             if not self.adult.isChecked() or not self.consent.isChecked():
                 raise ScriptError("أكد أهلية حساب المُعدّ البالغ ووافق على إرسال هذا الوصف تحديدًا.")
             request = LessonRequest(
-                self.brief(), self.key.text(), True, True, self.allow_assets.isChecked()
+                self.brief(),
+                self.key.text(),
+                True,
+                True,
+                self.allow_assets.isChecked(),
+                self._current_provider(),
             )
             self.key.clear()
             self._reset_consent()
