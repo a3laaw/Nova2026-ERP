@@ -242,3 +242,86 @@ def test_empty_title_blocks_both_save_paths(tmp_path, qapp, monkeypatch):
     assert len(warnings) == 2
     assert dialog.result_values().title == ""
     library.close()
+
+
+def test_video_export_button_tracks_main_file_type(tmp_path, qapp):
+    from nova_voice.library_picker import LibraryPanel
+
+    library = LessonLibrary(tmp_path / "video-library")
+    html_source = tmp_path / "lesson.html"
+    html_source.write_text("<html>lesson</html>", encoding="utf-8")
+    video_source = tmp_path / "clip.mp4"
+    video_source.write_bytes(bytes(1024))
+    library.add(
+        title="سبورة الدرس",
+        kind="whiteboard",
+        files={"main": html_source},
+        metadata=LibraryMetadata(subject="علوم"),
+        script="# دورة المياه",
+    )
+    library.add(
+        title="فيديو جاهز",
+        kind="video",
+        files={"main": video_source},
+        metadata=LibraryMetadata(subject="علوم"),
+    )
+    from PySide6.QtCore import Qt as _Qt
+
+    panel = LibraryPanel(library)
+    assert panel.video_button.isEnabled() is False
+    # Select the HTML entry → export enabled.
+    ids = [
+        panel.table.item(row, 0).data(_Qt.ItemDataRole.UserRole)
+        for row in range(panel.table.rowCount())
+    ]
+    panel.table.selectRow(ids.index(1))
+    panel._update_action_buttons()
+    assert panel.video_button.isEnabled() is True
+    # Select the video entry → export disabled (it already is a video).
+    panel.table.selectRow(ids.index(2))
+    panel._update_action_buttons()
+    assert panel.video_button.isEnabled() is False
+    library.close()
+
+
+def test_video_export_emits_for_html_entries_only(tmp_path, qapp, monkeypatch):
+    from nova_voice.library_picker import LibraryPanel
+
+    library = LessonLibrary(tmp_path / "emit-library")
+    html_source = tmp_path / "lesson.html"
+    html_source.write_text("<html>lesson</html>", encoding="utf-8")
+    library.add(
+        title="سبورة",
+        kind="whiteboard",
+        files={"main": html_source},
+        metadata=LibraryMetadata(subject="علوم"),
+        script="# درس",
+    )
+    panel = LibraryPanel(library)
+    emitted = []
+    panel.videoExportRequested.connect(emitted.append)
+    panel.table.selectRow(0)
+    panel.request_video_export()
+    assert emitted == [1]
+    library.close()
+
+
+def test_video_export_non_html_shows_info(tmp_path, qapp, monkeypatch):
+    from nova_voice.library_picker import LibraryPanel
+
+    library = LessonLibrary(tmp_path / "info-library")
+    video_source = tmp_path / "clip.webm"
+    video_source.write_bytes(bytes(1024))
+    library.add(
+        title="مقطع",
+        kind="video",
+        files={"main": video_source},
+        metadata=LibraryMetadata(subject="علوم"),
+    )
+    panel = LibraryPanel(library)
+    infos = []
+    monkeypatch.setattr(QMessageBox, "information", lambda *a, **k: infos.append(a))
+    panel.table.selectRow(0)
+    panel.request_video_export()
+    assert len(infos) == 1
+    library.close()

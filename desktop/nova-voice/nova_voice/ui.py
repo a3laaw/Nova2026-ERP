@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPlainTextEdit,
     QProgressBar,
+    QProgressDialog,
     QScrollArea,
     QSlider,
     QSpinBox,
@@ -80,6 +81,7 @@ from .storage import (
 from .text import MAX_CHARACTERS, ScriptError, preview_text, read_script, validate_text
 from .theme import STYLESHEET
 from .video import VideoResult, convert_video
+from .video_export import LessonVideoExporter, is_exportable_main
 from .video_picker import ConversionRequest, VideoPicker
 from .voice_picker import VoicePicker
 from .voices import VoiceError, VoiceLibrary, VoiceSpec
@@ -511,6 +513,7 @@ class MainWindow(QMainWindow):
         self.library_panel = LibraryPanel(self.lesson_library)
         self.library_panel.editRequested.connect(self._edit_library_entry)
         self.library_panel.entryDeleted.connect(self._library_entry_deleted)
+        self.library_panel.videoExportRequested.connect(self._library_entry_export_video)
         self.library_panel.editCancelled.connect(self._cancel_library_edit)
         library_layout.addWidget(self.library_panel)
         self.workspace_tabs.addTab(library_card, "مكتبة المنهج")
@@ -1682,6 +1685,175 @@ class MainWindow(QMainWindow):
     def _cancel_library_edit(self) -> None:
         self._editing_entry_id = None
         self.status.setText("أُنهي وضع تحرير إدخال المكتبة؛ التصديرات القادمة تُحفظ كإدخالات جديدة.")
+
+    def _library_entry_export_video(self, entry_id: int) -> None:
+        """«تحويل إلى فيديو»: capture the archived whiteboard inside the app."""
+        if self.worker:
+            QMessageBox.information(
+                self, "انتظر اكتمال العملية", "أنهِ أو ألغِ العملية الجارية قبل تصدير الفيديو."
+            )
+            return
+        entry = self.lesson_library.get(entry_id)
+        if entry is None:
+            QMessageBox.warning(
+                self, "الإدخال غير موجود", "لم يُعثر على الإدخال؛ جرى تحديث القائمة."
+            )
+            self.library_panel.refresh()
+            return
+        record = self.lesson_library.main_file(entry)
+        if record is None or not is_exportable_main(record.filename):
+            QMessageBox.information(
+                self,
+                "التحويل متاح للسبورة HTML فقط",
+                "يحتاج زر «تحويل إلى فيديو» إدخالًا ملفه الرئيسي صفحة HTML سبورة Nova "
+                "(تحمل الرسوم والتوقيت). أضف فيديو جاهزًا بزر «إضافة ملف موجود…».",
+            )
+            return
+        html_copy = self.lesson_library.entry_file(entry_id, record.filename)
+        if not html_copy.is_file():
+            QMessageBox.warning(
+                self,
+                "الملف غير موجود",
+                "ملف السبورة غير موجود داخل المكتبة. قد تكون حذفته يدويًا؛ "
+                "احذف الإدخال أو أعد إضافته.",
+            )
+            return
+        answer = QMessageBox.question(
+            self,
+            "تحويل إلى فيديو؟",
+            f"سيُسجّل البرنامج نسخة «{entry.title}» المحفوظة كفيديو: الحركة "
+            "والصوت المضمّن بالتوقيت نفسه، داخل النظام دون فتح متصفح خارجي. "
+            "المدة = مدة الدرس. اترك نافذة التسجيل ظاهرة حتى تكتمل.\n\n"
+            "سيُحفظ الفيديو داخل نفس الإدخال بدور «فيديو» ويستبدل النسخة "
+            "السابقة إن وُجدت. هل تريد المتابعة؟",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        staging = Path(tempfile.mkdtemp(prefix=f"nova-voice-video-{entry_id}-"))
+        state = {"cancelled": False, "staging": staging}
+        progress = QProgressDialog("جارٍ تجهيز السبورة للتسجيل…", "إلغاء", 0, 1000, self)
+        progress.setWindowTitle("تحويل إلى فيديو — داخل النظام")
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setMinimumDuration(0)
+        progress.setAutoClose(False)
+        progress.setAutoReset(False)
+        progress.resize(460, 150)
+        self.status.setText("جارٍ تسجيل الفيديو داخل النظام…")
+
+        def on_progress(fraction, text):
+            progress.setValue(int(fraction * 1000))
+            text = str(text or "").strip()
+            if text:
+                progress.setLabelText(text[:140])
+
+        def finish_cleanup():
+            try:
+                import shutil
+
+                shutil.rmtree(state["staging"], ignore_errors=True)
+            except Exception:  # noqa: BLE001 — leftover temp dir is harmless
+                pass
+
+        def on_finished(path):
+            progress.reset()
+            progress.close()
+            self._video_exporter = None
+            saved = None
+            try:
+                self.lesson_library.update(
+                    entry_id, files={"video": path}
+                )
+                saved = "library"
+            except LibraryError as error:
+                if QMessageBox.question(
+                    self,
+                    "تعذر الحفظ في المكتبة",
+                    f"{error}\n\nهل تريد حفظ الفيديو على جهازك بدلًا من ذلك؟",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.Yes,
+                ) == QMessageBox.StandardButton.Yes:
+                    destination, _ = QFileDialog.getSaveFileName(
+                        self,
+                        "حفظ الفيديو",
+                        str(Path(path).name),
+                        "فيديو (*.webm *.mp4);;كل الملفات (*)",
+                    )
+                    if destination:
+                        import shutil
+
+                        shutil.copy2(path, destination)
+                        saved = "file"
+            finish_cleanup()
+            if saved:
+                self.library_panel.refresh()
+                if saved == "library":
+                    message = f"أُضيف فيديو «{entry.title}» إلى نفس الإدخال في مكتبة المنهج."
+                else:
+                    message = f"حُفظ فيديو «{entry.title}» على جهازك (تعذر الحفظ في المكتبة)."
+                self.status.setText(message)
+                QMessageBox.information(
+                    self,
+                    "اكتمل التحويل",
+                    message
+                    + "\nافتح مجلد الإدخال من أزرار المكتبة لمشاهدته والتحقق من الصورة والصوت.",
+                )
+            else:
+                self.status.setText("اكتمل التسجيل لكن الفيديو لم يُحفظ بعد؛ راجع الرسالة.")
+
+        def on_failed(message):
+            progress.reset()
+            progress.close()
+            self._video_exporter = None
+            finish_cleanup()
+            if state["cancelled"]:
+                self.status.setText("أُلغي التصدير؛ لم يُحفظ فيديو جزئي.")
+                return
+            self.status.setText("تعذر التصدير؛ لم يُحفظ فيديو جزئي.")
+            QMessageBox.warning(
+                self,
+                "تعذر التحويل إلى فيديو",
+                f"{message}\n\nتأكد أن الإدخال صفحة سبورة Nova سليمة (وليست نسخة «نصوص مقدسة»)، "
+                "وأن الصوت المضمّن سليم، وأن الجهاز قادر على التعامل مع الدرس. "
+                "لا يُحفظ ملف جزئي عند الفشل.",
+            )
+
+        def on_cancel():
+            state["cancelled"] = True
+
+        exporter = LessonVideoExporter(
+            html_copy,
+            staging,
+            on_progress=on_progress,
+            on_finished=on_finished,
+            on_failed=on_failed,
+            parent=self,
+        )
+        self._video_exporter = exporter  # keep a reference until completion
+        progress.canceled.connect(on_cancel)
+        progress.canceled.connect(exporter.cancel)
+        try:
+            started = exporter.start()
+        except Exception as error:  # noqa: BLE001 — engine missing/broken must not crash the app
+            logging.getLogger(__name__).exception("QtWebEngine capture failed to start")
+            started = False
+            QMessageBox.warning(
+                self,
+                "تعذر تجهيز المحرك المضمّن",
+                f"تعذر بدء المحرك المضمّن للتسجيل: {error}\n\n"
+                "الحل: ثبّت متطلبات البناء كاملة (Setup-Windows.bat) وتحقق من توفر "
+                "مكتبات QtWebEngine في %LOCALAPPDATA%، أو سجّل الفيديو من داخل صفحة "
+                "«السبورة الناتجة» كما كنت تفعل.",
+            )
+        if not started and self._video_exporter is not None:
+            progress.reset()
+            progress.close()
+            self._video_exporter = None
+            import shutil
+
+            shutil.rmtree(staging, ignore_errors=True)
+            self.status.setText("تعذر بدء التسجيل؛ لم يُحفظ فيديو.")
 
     def _convert_video(self, request: ConversionRequest) -> None:
         if (

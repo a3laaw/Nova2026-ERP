@@ -2,10 +2,22 @@
 
 import argparse
 import logging
+import os
 import sys
 from logging.handlers import RotatingFileHandler
 
 from .storage import user_data_dir
+
+
+def _chromium_flags() -> None:
+    """Allow the embedded whiteboard export audio to start without a real gesture.
+
+    Appends to any pre-existing user setting instead of overriding it.
+    """
+    flag = "--autoplay-policy=no-user-gesture-required"
+    current = os.environ.get("QTWEBENGINE_CHROMIUM_FLAGS", "").strip()
+    if flag not in current.split():
+        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = f"{current} {flag}".strip()
 
 
 def smoke_test_resources() -> None:
@@ -50,6 +62,13 @@ def main(argv: list[str] | None = None) -> int:
         from PySide6.QtGui import QFont
         from PySide6.QtWidgets import QApplication
 
+        _chromium_flags()
+        try:
+            # QtWebEngine must be imported before QApplication exists.
+            from PySide6 import QtWebEngineWidgets  # noqa: F401
+        except ImportError:
+            # The app still runs; «تحويل إلى فيديو» will report the missing engine.
+            pass
         from .ui import MainWindow
 
         app = QApplication([sys.argv[0]])

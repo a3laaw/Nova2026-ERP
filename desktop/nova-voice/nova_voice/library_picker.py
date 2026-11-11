@@ -35,6 +35,7 @@ from .lesson_library import (
     LibraryError,
     LibraryMetadata,
 )
+from .video_export import is_exportable_main
 
 KIND_LABELS = {
     "whiteboard": "سبورة HTML",
@@ -351,6 +352,7 @@ class LibraryPanel(QWidget):
     editRequested = Signal(int)
     entryDeleted = Signal(int)
     editCancelled = Signal()
+    videoExportRequested = Signal(int)
 
     def __init__(self, library: LessonLibrary, parent=None):
         super().__init__(parent)
@@ -421,6 +423,13 @@ class LibraryPanel(QWidget):
             "لإضافة ما لا تراه Nova Voice (مثل فيديو السبورة المحمّل من المتصفح أو PDF للطباعة)."
         )
         self.add_button.clicked.connect(self.add_existing_file)
+        self.video_button = button("تحويل إلى فيديو")
+        self.video_button.setToolTip(
+            "يسجّل نسخة السبورة المحفوظة لهذا الإدخال (الرسوم والصوت معًا بالتوقيت الأصلي) "
+            "داخل النظام دون متصفح خارجي، ويحفظ النتيجة في نفس الإدخال. المدة = مدة الدرس؛ "
+            "اترك نافذة التسجيل ظاهرة. أضف بزر «إضافة ملف موجود…» إن كان الفيديو من متصفحك."
+        )
+        self.video_button.clicked.connect(self.request_video_export)
         self.delete_button = button("حذف")
         self.delete_button.clicked.connect(self.delete_selected)
         self.end_edit_button = button("إنهاء وضع التحرير")
@@ -430,6 +439,7 @@ class LibraryPanel(QWidget):
         actions.addWidget(self.folder_button)
         actions.addWidget(self.edit_button)
         actions.addWidget(self.add_button)
+        actions.addWidget(self.video_button)
         actions.addWidget(self.delete_button)
         actions.addWidget(self.end_edit_button)
         layout.addLayout(actions)
@@ -455,9 +465,19 @@ class LibraryPanel(QWidget):
         return int(value) if value is not None else None
 
     def _update_action_buttons(self) -> None:
-        selected = self._selected_entry_id() is not None
+        entry_id = self._selected_entry_id()
+        selected = entry_id is not None
         for widget in (self.open_button, self.folder_button, self.edit_button, self.delete_button):
             widget.setEnabled(selected)
+        exportable = False
+        if entry_id is not None:
+            try:
+                entry = self.library.get(entry_id)
+                record = self.library.main_file(entry) if entry is not None else None
+                exportable = record is not None and is_exportable_main(record.filename)
+            except Exception:
+                exportable = False
+        self.video_button.setEnabled(exportable)
 
     # ------------------------------------------------------------- slots
     def refresh(self, *_args) -> None:
@@ -553,6 +573,26 @@ class LibraryPanel(QWidget):
         entry_id = self._selected_entry_id()
         if entry_id is not None:
             self.editRequested.emit(entry_id)
+
+    def request_video_export(self) -> None:
+        entry_id = self._selected_entry_id()
+        if entry_id is None:
+            return
+        try:
+            entry = self.library.get(entry_id)
+            record = self.library.main_file(entry) if entry is not None else None
+        except Exception:
+            record = None
+        if record is None or not is_exportable_main(record.filename):
+            QMessageBox.information(
+                self,
+                "التحويل متاح للسبورة HTML فقط",
+                "يحتاج زر «تحويل إلى فيديو» إدخالًا ملفه الرئيسي صفحة HTML سبورة Nova "
+                "(تحمل الرسوم والتوقيت). أضف فيديو جاهزًا بزر «إضافة ملف موجود…» بدلًا من ذلك.",
+            )
+            self._update_action_buttons()
+            return
+        self.videoExportRequested.emit(entry_id)
 
     def add_existing_file(self) -> None:
         chosen, _ = QFileDialog.getOpenFileName(

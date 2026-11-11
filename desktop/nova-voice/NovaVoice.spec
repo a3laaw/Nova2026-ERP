@@ -33,7 +33,9 @@ analysis = Analysis(
         "tkinter", "piper.train", "piper.http_server", "piper.download_voices",
         "piper.phonemize_chinese", "piper.g2pw_onnx", "piper.phonemize_hebrew",
         "piper.phonemize_japanese", "piper.phonemize_thai",
-        "PySide6.QtWebEngineCore", "PySide6.QtWebEngineWidgets",
+        # QtWebEngineCore/Widgets are kept: «مكتبة المنهج ← تحويل إلى فيديو» records
+        # the archived whiteboard in-process (no external browser, no network).
+        "PySide6.QtWebEngineQuick", "PySide6.QtWebEngineQuickDelegatesQml",
     ],
     noarchive=False,
 )
