@@ -240,7 +240,6 @@ def test_auto_row_colors_rotates_palette_across_steps_and_rows_in_order():
 
 
 def test_auto_row_colors_cover_long_lessons_within_the_720_cap():
-    body = "\n".join(f"Line {row}." for row in range(120 * 6))
     script = "# T\n" + "\n".join(
         f"## Step{step}\n" + "\n".join(f"Line {step}-{row}." for row in range(6))
         for step in range(120)

@@ -31,7 +31,7 @@ if defined ISCC (
     if errorlevel 1 (
         echo Installer build FAILED; the portable dist\NovaVoice folder is still valid.
     ) else (
-        echo Built: dist\NovaVoice-Setup-v0.16.0.dev1.exe
+        echo Built: dist\NovaVoice-Setup-v0.17.0.dev1.exe
         echo Per-user installer, no admin needed; uninstall keeps your voices and library.
     )
 ) else (

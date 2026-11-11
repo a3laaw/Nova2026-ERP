@@ -1,11 +1,11 @@
 ﻿; Nova Voice — Inno Setup 6 script (Windows x64)
-; Builds: NovaVoice-Setup-v0.16.0.dev1.exe from: ..\dist\NovaVoice\ (produced by Build-Windows.bat)
+; Builds: NovaVoice-Setup-v0.17.0.dev1.exe from: ..\dist\NovaVoice\ (produced by Build-Windows.bat)
 ; Per-user install (no admin/UAC). User data (%LOCALAPPDATA%\NovaVoice: voices, settings,
 ; library) is deliberately NEVER touched or removed by install/uninstall.
 ; Inno Setup is a build tool only; it is not redistributed inside the installer.
 
 #define AppName "Nova Voice"
-#define AppVersion "0.16.0.dev1"
+#define AppVersion "0.17.0.dev1"
 #define AppPublisher "Nova Voice Project"
 #define AppURL "https://github.com/a3laaw/Nova2026-ERP"
 #define AppExeName "NovaVoice.exe"
