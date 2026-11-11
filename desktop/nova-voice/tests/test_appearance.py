@@ -8,10 +8,12 @@ import pytest
 
 from nova_voice.appearance import (
     CHARACTERS,
+    ROW_PALETTE,
     STYLE_ID,
     AppearanceError,
     BoardAppearance,
     RowColor,
+    auto_row_colors,
     character_templates,
     color_value,
 )
@@ -225,3 +227,25 @@ def test_customization_cannot_change_the_voice_role_or_spoken_words():
     )[1]
     assert manifest in changed
     assert lesson.spoken_script == "[2] Hello.\n[1] مرحبًا."
+
+
+def test_auto_row_colors_rotates_palette_across_steps_and_rows_in_order():
+    lesson = parse_lesson(
+        "# Title\n## Step\nOne.\nTwo.\nThree.\n## Step2\nFour.\nFive.\nSix.\nSeven.",
+        dialogue=False,
+    )
+    colors = auto_row_colors(lesson)
+    ordered = [colors[key] for key in sorted(colors)]
+    assert ordered == [ROW_PALETTE[index % len(ROW_PALETTE)] for index in range(7)]
+
+
+def test_auto_row_colors_cover_long_lessons_within_the_720_cap():
+    body = "\n".join(f"Line {row}." for row in range(120 * 6))
+    script = "# T\n" + "\n".join(
+        f"## Step{step}\n" + "\n".join(f"Line {step}-{row}." for row in range(6))
+        for step in range(120)
+    )
+    lesson = parse_lesson(script, dialogue=False)
+    colors = auto_row_colors(lesson)
+    assert len(colors) == 720
+    assert set(colors.values()) <= set(ROW_PALETTE)

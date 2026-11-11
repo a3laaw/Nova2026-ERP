@@ -422,7 +422,7 @@ def test_combined_job_can_be_cancelled_and_reenables_both_generation_paths(windo
 def test_organized_workspace_keeps_main_generation_in_the_input_page(window):
     assert [window.workspace_tabs.tabText(i) for i in range(5)] == [
         "النص والأصوات",
-        "ألوان وشخصيات",
+        "تلوين الأسطر والحساب",
         "MP4 متوافق",
         "استدلال",
         "مكتبة المنهج",
@@ -1293,3 +1293,25 @@ def test_main_window_checks_scope_again_before_starting_a_revision_worker(window
     monkeypatch.setattr(QMessageBox, "warning", lambda *args: warnings.append(args[-1]))
     window._request_revision(request)
     assert warnings and window.worker is None and window._revision_request is None
+
+
+def test_auto_row_colors_generate_palette_and_manual_color_wins(window, monkeypatch):
+    from nova_voice.appearance import ROW_PALETTE
+    from nova_voice.whiteboard import parse_lesson
+
+    picker = window.appearance_picker
+    lesson = parse_lesson("# T\n## Step\nOne.\nTwo.", dialogue=False)
+    assert picker.auto_row_colors_box.isChecked() is False
+    picker.auto_row_colors_box.setChecked(True)
+    appearance = picker.snapshot(lesson)
+    assert [item.color for item in appearance.row_colors] == list(ROW_PALETTE[:2])
+    # يدوي على الجملة الأولى + لوحة على الثانية
+    picker._row_colors[(0, 0)] = "#475569"
+    picker._fingerprint = lesson.manifest()["fingerprint"]
+    appearance = picker.snapshot(lesson)
+    by_key = {(item.step, item.row): item.color for item in appearance.row_colors}
+    assert by_key == {(0, 0): "#475569", (0, 1): ROW_PALETTE[1]}
+    # الإعادة تلغي خيار اللوحة (الألوان تعود كيدوية)
+    picker.restore(appearance, lesson)
+    assert picker.auto_row_colors_box.isChecked() is False
+    assert picker._row_colors == {(0, 0): "#475569", (0, 1): ROW_PALETTE[1]}

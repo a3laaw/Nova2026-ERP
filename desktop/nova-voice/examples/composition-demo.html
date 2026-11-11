@@ -1358,9 +1358,19 @@ h1{font-size:clamp(21px,2.4vw,33px);line-height:1.5;margin:0;font-weight:750;ove
       }
       case "sphere": return window.novaSceneGraph.sphere(group, e, defs);
       case "calculation": {
+        // م٤-ب: كل رقم أزرق #2563EB، وكل علامة حساب برتقالية #C2410C، و= والناتج أخضر #15803D.
+        // الألوان ثابتة عن قصد (قرار «أزرق/برتقالي/أخضر» كما في خطة م٤).
         const op = { "+": "+", "-": "−", "*": "×", "/": "÷" }[e.op];
         const result = calculation(e.a, e.b, e.op);
-        label(group, e.x, e.y, `${e.a} ${op} ${e.b} = ${result}`, e.size ?? 36);
+        const size = e.size ?? 36;
+        const line = node("text", { x: e.x, y: e.y, "font-size": size, "text-anchor": "middle", direction: "ltr", "unicode-bidi": "plaintext", "font-family": "'Segoe UI',Tahoma,Arial,sans-serif", stroke: "none", "font-weight": 600 });
+        const seg = (value, fill) => line.append(node("tspan", { fill }, value));
+        seg(String(e.a), "#2563EB");
+        seg(" " + op + " ", "#C2410C");
+        seg(String(e.b), "#2563EB");
+        seg(" = ", "#15803D");
+        seg(String(result), "#15803D");
+        group.append(line);
         group.dataset.result = result; break;
       }
     }

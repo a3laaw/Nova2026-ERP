@@ -177,6 +177,15 @@ test("right triangle is uniformly scaled, with a correct right angle and leg rat
   } finally { app.close(); }
 });
 
+test("calculation paints digits blue, operators orange and equals/result green (م٤-ب)", () => {
+  const app = mount({file:"gallery.html"});
+  try {
+    const segments = Array.from(app.document.querySelectorAll('[data-scene-element] tspan'));
+    assert.deepEqual(segments.map(node => node.textContent), ["2", " ÷ ", "3", " = ", "2/3"]);
+    assert.deepEqual(segments.map(node => node.getAttribute("fill")), ["#2563EB", "#C2410C", "#2563EB", "#15803D", "#15803D"]);
+  } finally { app.close(); }
+});
+
 test("all allowed primitives and ten local icons render using SVG nodes only", () => {
   const app = mount({file:"gallery.html"});
   try {

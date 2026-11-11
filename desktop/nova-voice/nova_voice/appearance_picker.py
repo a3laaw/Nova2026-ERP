@@ -4,7 +4,7 @@ from PySide6.QtCore import Signal
 from PySide6.QtGui import QColor, QIcon
 from PySide6.QtWidgets import QCheckBox, QColorDialog, QHBoxLayout, QVBoxLayout, QWidget
 
-from .appearance import CHARACTERS, BoardAppearance, RowColor, color_value
+from .appearance import CHARACTERS, BoardAppearance, RowColor, auto_row_colors, color_value
 from .controls import Disclosure, button, combo, label
 from .storage import resource_dir
 
@@ -55,6 +55,15 @@ class AppearancePicker(QWidget):
         self.animate = QCheckBox("تحريك الشخصيات أثناء التشغيل فقط")
         self.animate.setChecked(True)
         layout.addWidget(self.animate)
+        self.auto_row_colors_box = QCheckBox(
+            "لون كل سطر آليًا من لوحة مدمجة (التلوين اليدوي يتقدم عليه)"
+        )
+        self.auto_row_colors_box.setAccessibleName("تلوين كل سطر آليًا")
+        self.auto_row_colors_box.setToolTip(
+            "يُطبق لوحة 6 ألوان متتابعة على جمل الدرس عند التوليد ويخزَّنها في نفس row_colors؛ "
+            "أي جملة لوّنتها يدويًا تحتفظ بلونها."
+        )
+        layout.addWidget(self.auto_row_colors_box)
         self.sentence_section = Disclosure("تخصيص متقدم · لون جملة بعينها")
         sentence_layout = self.sentence_section.content_layout
         row_actions = QHBoxLayout()
@@ -164,13 +173,14 @@ class AppearancePicker(QWidget):
 
     def snapshot(self, lesson) -> BoardAppearance:
         matching = self._fingerprint == lesson.manifest()["fingerprint"]
-        rows = (
-            tuple(
-                RowColor(step, row, color)
-                for (step, row), color in sorted(self._row_colors.items())
-            )
-            if matching
-            else ()
+        manual = self._row_colors if matching else {}
+        if self.auto_row_colors_box.isChecked():
+            merged = auto_row_colors(lesson)  # م٤‑أ: لوحة متدرجة على كل سطر
+            merged.update(manual)  # لون يدوي يسود اللوحة على نفس الجملة
+        else:
+            merged = manual
+        rows = tuple(
+            RowColor(step, row, color) for (step, row), color in sorted(merged.items())
         )
         return BoardAppearance(
             self._first_color,
@@ -192,6 +202,8 @@ class AppearancePicker(QWidget):
             self.second_character.findData(appearance.second_character)
         )
         self.animate.setChecked(appearance.animate_characters)
+        # الألوان المستعادة تتحول كلها إلى تلوين يدوي؛ اللوحة تعاد بالضغط على الخيار.
+        self.auto_row_colors_box.setChecked(False)
         self.layout_combo.setCurrentIndex(self.layout_combo.findData(appearance.layout))
         self.set_rows(lesson)
         self._row_colors = {(item.step, item.row): item.color for item in appearance.row_colors}

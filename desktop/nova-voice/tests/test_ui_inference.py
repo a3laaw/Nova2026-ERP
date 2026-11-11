@@ -23,7 +23,7 @@ def choose(picker, identifier):
 def test_guide_is_sixth_and_does_not_shift_existing_tabs_or_start_work(window):
     assert [window.workspace_tabs.tabText(i) for i in range(6)] == [
         "النص والأصوات",
-        "ألوان وشخصيات",
+        "تلوين الأسطر والحساب",
         "سبورة محفوظة",
         "صوت فقط / HTML",
         "MP4 متوافق",

@@ -425,7 +425,7 @@ class MainWindow(QMainWindow):
         self.appearance_picker.sentences_requested.connect(self._refresh_appearance_sentences)
         appearance_layout.addWidget(self.appearance_picker)
         appearance_layout.addStretch()
-        self.workspace_tabs.addTab(appearance_card, "ألوان وشخصيات")
+        self.workspace_tabs.addTab(appearance_card, "تلوين الأسطر والحساب")
 
         export_card, export_layout = card()
         export_layout.setContentsMargins(18, 12, 18, 12)

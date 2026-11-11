@@ -7,6 +7,9 @@ from pathlib import Path
 from xml.etree import ElementTree
 
 STYLE_ID = "nova-whiteboard-appearance"
+# اللوحة المدمجة لتلوين كل سطر آليًا (م٤‑أ) — أزرق/برتقالي/أخضر/بنفسجي/فيروزي/أحمر.
+# الأزرق/البرتقالي يتفقان مع لوني الدورين، لكن اللون هنا لموضع السطر لا للدور.
+ROW_PALETTE = ("#2563EB", "#C2410C", "#15803D", "#7C3AED", "#0F766E", "#B91C1C")
 CATALOG_ID = "nova-character-catalog"
 LAYOUTS = ("stacked", "columns", "script")
 CHARACTERS = (
@@ -30,6 +33,21 @@ def color_value(value: object) -> str:
     if not isinstance(value, str) or not _COLOR.fullmatch(value):
         raise AppearanceError("اختر لونًا سداسيًا صالحًا، مثل #2563EB، دون أكواد أو روابط.")
     return value.upper()
+
+
+def auto_row_colors(lesson) -> dict:
+    """لوحة متدرجة على كل سطر في الدرس بالترتيب (الخطوة ثم السطر) — م٤‑أ.
+
+    يعيد {(step, row): color}؛ مواضع يعيد المستخدم تلوينها يدويًا تتقدم عليه
+    (تُدمج في appearance_picker.snapshot). لا يلمس أي نص.
+    """
+    colors: dict[tuple[int, int], str] = {}
+    index = 0
+    for step_index in range(len(lesson.steps)):
+        for row_index in range(len(lesson.effective_rows(step_index))):
+            colors[(step_index, row_index)] = ROW_PALETTE[index % len(ROW_PALETTE)]
+            index += 1
+    return colors
 
 
 @dataclass(frozen=True)
