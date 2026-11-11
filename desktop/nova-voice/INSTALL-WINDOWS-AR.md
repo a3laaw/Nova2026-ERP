@@ -12,6 +12,7 @@
 
 مراجعة ثابتة لسلسلة البناء كاملة (Build-Windows.bat → NovaVoice.spec → dist\NovaVoice →
 installer\NovaVoice.iss → Setup-Windows.bat): تطابق أسماء المخرجات وAppVersion وVersionInfo،
+بعد أول تشغيل Windows Qt حقيقي (اختبار «مكتبة المنهج» تجمّد عند QMessageBox نافذة في اختبار بلا stub وحاجز أمني أُضيف في conftest؛ اختبارا عتبة preselect تناقض المصمم → أُصلحا).
 وجود كل مستند وأدلة المستخدم داخل الحزمة، AppId ثابت، الخطوط العربية/الإنجليزية مرفقة مع
 Inno Setup 6، وحارس عدم لمس بياناتك. **أُصلح عيب واحد**: `VersionInfoVersion` في NovaVoice.iss
 كان يشير إلى 0.16 (النسخة الداخلية للـexe — أصبح 0.17.0.1). تنفيذ البناء نفسه يحتاج ويندوز

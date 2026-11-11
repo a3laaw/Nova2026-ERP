@@ -183,15 +183,33 @@ def test_save_dialog_shows_the_index_and_preselects_the_edited_entry(tmp_path, q
     assert dialog.index_table.rowCount() == 1
     assert dialog._selected_id() == 1
     assert dialog.update_button.isEnabled()
-    # Non-matching fields hide the entry again and disable the update path.
+    # The entry being edited stays selectable even if the user edits the
+    # metadata fields away from its stored values (that is the point of
+    # preselect); a new-save dialog, tested below, hides it instead.
     dialog.field_edits["subject"].setText("تاريخ")
+    assert dialog._selected_id() == 1
+    assert dialog.update_button.isEnabled()
+    library.close()
+
+
+def test_save_dialog_hides_nonmatching_entries_without_preselect(tmp_path, qapp):
+    library = seeded_library(tmp_path)
+    dialog = LibrarySaveDialog(
+        None,
+        title="درس جديد",
+        metadata=LibraryMetadata(subject="علوم", grade="الأول الإعدادي"),
+        library=library,
+    )
+    assert dialog.index_table.rowCount() == 1
+    dialog.field_edits["subject"].setText("تاريخ")
+    assert dialog.index_table.rowCount() == 0
     assert dialog._selected_id() is None
     assert not dialog.update_button.isEnabled()
     assert dialog.index_hint.text().startswith("لا توجد إدخالات مطابقة")
     library.close()
 
 
-def test_save_dialog_update_choice_flows_into_result_values(tmp_path, qapp):
+def test_save_dialog_update_choice_flows_into_result_values(tmp_path, qapp, monkeypatch):
     library = seeded_library(tmp_path)
     dialog = LibrarySaveDialog(
         None,
@@ -199,8 +217,12 @@ def test_save_dialog_update_choice_flows_into_result_values(tmp_path, qapp):
         metadata=LibraryMetadata(subject="علوم", grade="الأول الإعدادي"),
         library=library,
     )
-    # User clicks the update path with no row selected → nothing happens.
+    # User clicks the update path with no row selected → an explanatory
+    # message is shown and nothing changes.
+    shown = []
+    monkeypatch.setattr(QMessageBox, "information", lambda *a, **k: shown.append(a))
     dialog._choose_update()
+    assert shown
     assert dialog.result_values().update_id is None
     dialog.index_table.selectRow(0)
     dialog._choose_update()

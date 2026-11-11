@@ -50,3 +50,32 @@ def bilingual_cast(tmp_path, voice_files):
     data["language"] = {"code": "ar_JO", "name_native": "العربية"}
     config.write_text(json.dumps(data), encoding="utf-8")
     return {1: DialogueVoice(VoiceSpec.from_path(model)), 2: DialogueVoice(english)}
+
+
+@pytest.fixture(autouse=True)
+def _no_blocking_modal_dialogs(monkeypatch):
+    """Qt tests must never freeze on a real modal dialog.
+
+    Provides non-blocking defaults for modal QMessageBox/QFileDialog entry
+    points. Tests that care about specific return values or arguments
+    monkeypatch these themselves on top of these defaults.
+    """
+    try:
+        from PySide6.QtWidgets import QFileDialog, QMessageBox
+    except ImportError:
+        return
+    monkeypatch.setattr(
+        QMessageBox, "warning", lambda *a, **k: QMessageBox.StandardButton.Ok
+    )
+    monkeypatch.setattr(
+        QMessageBox, "information", lambda *a, **k: QMessageBox.StandardButton.Ok
+    )
+    monkeypatch.setattr(
+        QMessageBox, "critical", lambda *a, **k: QMessageBox.StandardButton.Ok
+    )
+    monkeypatch.setattr(
+        QMessageBox, "question", lambda *a, **k: QMessageBox.StandardButton.No
+    )
+    monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *a, **k: ("", ""))
+    monkeypatch.setattr(QFileDialog, "getOpenFileName", lambda *a, **k: ("", ""))
+    monkeypatch.setattr(QFileDialog, "getExistingDirectory", lambda *a, **k: "")
