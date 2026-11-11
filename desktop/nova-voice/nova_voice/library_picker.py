@@ -504,11 +504,12 @@ class LibraryPanel(QWidget):
             "لإضافة ما لا تراه Nova Voice (مثل فيديو السبورة المحمّل من المتصفح أو PDF للطباعة)."
         )
         self.add_button.clicked.connect(self.add_existing_file)
-        self.video_button = button("تحويل إلى فيديو")
+        self.video_button = button("تحويل إلى فيديو", "primary")
         self.video_button.setToolTip(
             "يسجّل نسخة السبورة المحفوظة لهذا الإدخال (الرسوم والصوت معًا بالتوقيت الأصلي) "
-            "داخل النظام دون متصفح خارجي، ويحفظ النتيجة في نفس الإدخال. المدة = مدة الدرس؛ "
-            "اترك نافذة التسجيل ظاهرة. أضف بزر «إضافة ملف موجود…» إن كان الفيديو من متصفحك."
+            "داخل النظام دون متصفح خارجي، ويحفظ النتيجة في نفس الإدخال. "
+            "المدة = مدة الدرس حتى 15 دقيقة · اترك نافذة التسجيل ظاهرة · "
+            "لا يُحفظ أي ملف جزئي عند الإلغاء أو أي خلل."
         )
         self.video_button.clicked.connect(self.request_video_export)
         self.delete_button = button("حذف")
@@ -517,13 +518,21 @@ class LibraryPanel(QWidget):
         self.end_edit_button.setToolTip("ينهي ربط التصديرات بالإدخال الحالي دون حذفه أو تعديله.")
         self.end_edit_button.clicked.connect(self.editCancelled.emit)
         actions.addWidget(self.open_button)
+        actions.addWidget(self.video_button)  # م٣: الزر ثانيًا بعد «فتح الملف»
         actions.addWidget(self.folder_button)
         actions.addWidget(self.edit_button)
         actions.addWidget(self.add_button)
-        actions.addWidget(self.video_button)
         actions.addWidget(self.delete_button)
         actions.addWidget(self.end_edit_button)
         layout.addLayout(actions)
+        self.video_limits_label = label(
+            "تحويل إلى فيديو: لسبورة Nova المحفوظة (HTML) فقط · المدة = مدة الدرس حتى 15 دقيقة · "
+            "لا يُحفظ ملف جزئي عند الإلغاء أو أي خلل · يستبدل نسخة فيديو قديمة داخل نفس الإدخال.",
+            "muted",
+            True,
+        )
+        self.video_limits_label.setAccessibleName("حدود تحويل الفيديو")
+        layout.addWidget(self.video_limits_label)
 
         self.status_label = label("", "muted", True)
         layout.addWidget(self.status_label)
@@ -551,13 +560,34 @@ class LibraryPanel(QWidget):
         for widget in (self.open_button, self.folder_button, self.edit_button, self.delete_button):
             widget.setEnabled(selected)
         exportable = False
+        disable_reason = ""
         if entry_id is not None:
             try:
                 entry = self.library.get(entry_id)
                 record = self.library.main_file(entry) if entry is not None else None
-                exportable = record is not None and is_exportable_main(record.filename)
+                filename = record.filename if record is not None else ""
+                exportable = record is not None and is_exportable_main(filename)
+                if not exportable:
+                    shown = filename or "(بلا ملف رئيسي)"
+                    disable_reason = (
+                        f"تحويل إلى فيديو يعمل على سبورة Nova المحفوظة (HTML) فقط. "
+                        f"هذا الإدخال ملفه الرئيسي «{shown}» — استخدم «إضافة ملف موجود…» "
+                        f"لإضافة فيديو محمّل من المتصفح بدلًا من ذلك."
+                    )
             except Exception:
                 exportable = False
+                disable_reason = "تعذرت قراءة الإدخال؛ حدّث القائمة وحاول مجددًا."
+        else:
+            disable_reason = "اختر إدخالًا من الجدول أولًا (الزر الثاني بعد «فتح الملف»)."
+        if exportable:
+            self.video_button.setToolTip(
+                "يسجّل نسخة السبورة المحفوظة لهذا الإدخال (الرسوم والصوت معًا بالتوقيت الأصلي) "
+                "داخل النظام دون متصفح خارجي، ويحفظ النتيجة في نفس الإدخال. "
+                "المدة = مدة الدرس حتى 15 دقيقة · اترك نافذة التسجيل ظاهرة · "
+                "لا يُحفظ أي ملف جزئي عند الإلغاء أو أي خلل."
+            )
+        else:
+            self.video_button.setToolTip(disable_reason)
         self.video_button.setEnabled(exportable)
 
     # ------------------------------------------------------------- slots

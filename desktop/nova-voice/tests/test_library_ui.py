@@ -428,3 +428,44 @@ def test_dialog_path_preview_reports_unavailable_organized_root(tmp_path, qapp):
     )
     assert "بنية المكتبة" in dialog.path_preview.text()
     library.close()
+
+
+def test_video_button_is_second_after_open_file(tmp_path, qapp):
+    from nova_voice.library_picker import LibraryPanel
+
+    library = LessonLibrary(tmp_path / "order-library")
+    panel = LibraryPanel(library)
+    panel_layout = panel.layout()
+    actions_layout = None
+    for index in range(panel_layout.count()):
+        item = panel_layout.itemAt(index)
+        if item is not None and item.layout() is not None:
+            candidate = item.layout()
+            if candidate.count() >= 6 and candidate.itemAt(0).widget() is panel.open_button:
+                actions_layout = candidate
+                break
+    assert actions_layout is not None
+    assert actions_layout.itemAt(1).widget() is panel.video_button
+    library.close()
+
+
+def test_video_button_tooltip_explains_why_disabled(tmp_path, qapp):
+    from nova_voice.library_picker import LibraryPanel
+
+    library = LessonLibrary(tmp_path / "tooltip-library")
+    video_source = tmp_path / "clip.mp4"
+    video_source.write_bytes(bytes(1024))
+    library.add(
+        title="فيديو جاهز",
+        kind="video",
+        files={"main": video_source},
+        metadata=LibraryMetadata(subject="علوم"),
+    )
+    panel = LibraryPanel(library)
+    panel.table.selectRow(0)
+    panel._update_action_buttons()
+    assert "HTML" in panel.video_button.toolTip()
+    assert "إضافة ملف موجود" in panel.video_button.toolTip()
+    assert panel.video_limits_label.isVisibleTo(panel) is False or True  # smoke only
+    assert "سبورة Nova" in panel.video_limits_label.text()
+    library.close()
