@@ -22,6 +22,9 @@ class Preferences:
     second_language: str = "en"
     second_speaker_id: int = 0
     turn_pause_ms: int = 350
+    # Empty = the default library_organized folder under user_data_dir() (ق٤);
+    # otherwise an absolute path the owner picked from «مكتبة المنهج».
+    library_root: str = ""
 
 
 def user_data_dir() -> Path:
@@ -37,6 +40,32 @@ def library_organized_dir(base: Path | None = None) -> Path:
     """الجذر الافتراضي لحفظ المخرجات في مجلدات منظّمة (ق٤)."""
     root = Path(base) if base is not None else user_data_dir()
     return root / "library_organized"
+
+
+def resolve_organized_root(
+    preferences: Preferences, base: Path | None = None
+) -> Path:
+    """الجذر الفعلي لشجرة library_organized (ق٤ قابل للتخصيص).
+
+    سلسلة فارغة = الافتراضي تحت user_data_dir()؛ أي مسار نسبي يُتجاهل ويسقط
+    إلى الافتراضي فلا تنفجر علاقة الإصدارات القديمة، ولا تُقبل أظراف نسبية.
+    """
+    raw = str(getattr(preferences, "library_root", "") or "").strip()
+    if raw:
+        path = Path(raw)
+        if path.is_absolute():
+            return path
+    return library_organized_dir(base)
+
+
+def ensure_writable_dir(path: Path) -> Path:
+    """ينشئ المجلد ويتحقق أن الكتابة فيه ممكنة؛ يرفع OSError عند العجز."""
+    target = Path(path)
+    target.mkdir(parents=True, exist_ok=True)
+    probe = target / ".nova-voice-writable"
+    probe.write_bytes(b"")
+    probe.unlink()
+    return target
 
 
 def application_dir() -> Path:
@@ -69,6 +98,7 @@ def load_preferences(directory: Path) -> Preferences:
             ),
             second_speaker_id=max(0, min(999, int(data.get("second_speaker_id", 0)))),
             turn_pause_ms=max(0, min(2000, int(data.get("turn_pause_ms", 350)))),
+            library_root=str(data.get("library_root", "")),
         )
     except (OSError, ValueError, TypeError, AttributeError):
         return Preferences()

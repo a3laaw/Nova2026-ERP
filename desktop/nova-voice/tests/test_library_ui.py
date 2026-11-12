@@ -8,7 +8,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("PySide6.QtWidgets", exc_type=ImportError)
 
 import test_ui as native  # noqa: E402
-from PySide6.QtWidgets import QDialog, QMessageBox  # noqa: E402
+from PySide6.QtWidgets import QDialog, QFileDialog, QMessageBox  # noqa: E402
 
 from nova_voice.lesson_library import LessonLibrary, LibraryMetadata  # noqa: E402
 from nova_voice.library_picker import LibrarySaveDialog, LibrarySaveValues  # noqa: E402
@@ -491,3 +491,53 @@ def test_video_button_tooltip_explains_why_disabled(tmp_path, qapp):
     assert panel.video_limits_label.isVisibleTo(panel) is False or True  # smoke only
     assert "سبورة Nova" in panel.video_limits_label.text()
     library.close()
+
+
+def test_library_location_picker_switches_and_resets(tmp_path, window, monkeypatch):
+    from nova_voice.storage import load_preferences
+
+    default_root = window.lesson_library.organized_root
+    assert window.library_location.text() == str(default_root)
+    # The reset button is hidden while the default is in effect.
+    assert not window.library_location_reset.isVisibleTo(window)
+    custom = tmp_path / "اختيارات-ويندوز"
+    monkeypatch.setattr(QFileDialog, "getExistingDirectory", lambda *a, **k: str(custom))
+    window._choose_library_root()
+    assert window.lesson_library.organized_root == custom
+    assert load_preferences(window.data_dir).library_root == str(custom)
+    assert custom.is_dir() and (custom / ".nova-voice-writable").exists() is False
+    assert window.library_location_reset.isVisibleTo(window)
+    # The new root is used for the next organized save preview.
+    preview = LibrarySaveDialog(
+        None,
+        title="اختبار المسار",
+        metadata=LibraryMetadata(subject="علوم"),
+        library=window.lesson_library,
+    )
+    assert str(custom) in preview.path_preview.text()
+    preview.close()
+    # Reset brings the default back without touching the old root.
+    window._reset_library_root()
+    assert window.lesson_library.organized_root != custom
+    assert load_preferences(window.data_dir).library_root == ""
+    assert not window.library_location_reset.isVisibleTo(window)
+
+
+def test_library_location_picker_refuses_unwritable_target(tmp_path, window, monkeypatch):
+    monkeypatch.setattr(QFileDialog, "getExistingDirectory", lambda *a, **k: str(tmp_path))
+    warnings = []
+    monkeypatch.setattr(
+        QMessageBox, "warning", lambda *a, **k: warnings.append(a[-1])
+    )
+    # Simulate an I/O failure without needing a real unwritable folder.
+    monkeypatch.setattr(
+        "nova_voice.ui.ensure_writable_dir",
+        lambda target: (_ for _ in ()).throw(OSError("read-only")),
+    )
+    before = window.lesson_library.organized_root
+    window._choose_library_root()
+    assert warnings
+    assert window.lesson_library.organized_root == before
+    from nova_voice.storage import load_preferences
+
+    assert load_preferences(window.data_dir).library_root == ""

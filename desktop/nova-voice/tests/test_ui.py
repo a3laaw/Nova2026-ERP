@@ -27,6 +27,11 @@ def qapp():
 @pytest.fixture
 def window(qapp, tmp_path, monkeypatch):
     monkeypatch.setattr("nova_voice.ui.application_dir", lambda: tmp_path / "app")
+    # Keep the organized-library root inside the sandbox — never the real profile.
+    monkeypatch.setattr(
+        "nova_voice.ui.library_organized_dir",
+        lambda base=None: tmp_path / "app" / "library_organized",
+    )
     widget = MainWindow(tmp_path / "data")
     yield widget
     if widget.worker:

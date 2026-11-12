@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
     QHBoxLayout,
+    QLineEdit,
     QMainWindow,
     QMessageBox,
     QPlainTextEdit,
@@ -66,8 +67,10 @@ from .scenes import SceneError, VisualPlan
 from .secondary_assets import AssetPreparation, prepare_plan
 from .storage import (
     application_dir,
+    ensure_writable_dir,
     library_organized_dir,
     load_preferences,
+    resolve_organized_root,
     resource_dir,
     save_preferences,
     user_data_dir,
@@ -100,7 +103,7 @@ class MainWindow(QMainWindow):
         self.library = VoiceLibrary(self.data_dir / "voices", application_dir() / "voices")
         self.lesson_library = LessonLibrary(
             self.data_dir / "library",
-            organized_root=library_organized_dir(),
+            organized_root=resolve_organized_root(self.preferences),
         )
         self._editing_entry_id: int | None = None
         self._library_last_meta = LibraryMetadata()
@@ -457,6 +460,35 @@ class MainWindow(QMainWindow):
         self.library_panel.videoExportRequested.connect(self._library_entry_export_video)
         self.library_panel.editCancelled.connect(self._cancel_library_edit)
         library_layout.addWidget(self.library_panel)
+        self.library_location = QLineEdit(str(resolve_organized_root(self.preferences)))
+        self.library_location.setReadOnly(True)
+        self.library_location.setAccessibleName("المسار الحالي للحفظ الدائم")
+        self.library_location.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+        self.library_location.setToolTip(
+            "المجلد الذي تُبنى فيه شجرة «library_organized». "
+            "اتركها بالافتراضي داخل بيانات Nova Voice، أو اختر مكانًا آخر."
+        )
+        choose_location = button("اختيار مجلد…")
+        choose_location.setToolTip(
+            "ينطبق الاختيار على الحفظات القادمة فقط؛ الإدخالات القديمة تبقى مكانها."
+        )
+        choose_location.clicked.connect(self._choose_library_root)
+        reset_location = button("إعادة إلى الافتراضي")
+        reset_location.setVisible(bool(self.preferences.library_root.strip()))
+        reset_location.clicked.connect(self._reset_library_root)
+        self.library_location_reset = reset_location
+        location_row = QHBoxLayout()
+        location_row.addWidget(self.library_location, 1)
+        location_row.addWidget(choose_location)
+        location_row.addWidget(reset_location)
+        library_layout.addLayout(location_row)
+        library_layout.addWidget(
+            label(
+                "الإدخالات القديمة تبقى مكانها؛ الاختيار يغيّر مكان الحفظات القادمة فقط.",
+                "muted",
+                True,
+            )
+        )
         self.workspace_tabs.addTab(library_card, "مكتبة المنهج")
         status_row = QHBoxLayout()
         status_row.addStretch()
@@ -1340,6 +1372,45 @@ class MainWindow(QMainWindow):
             return
         self.library_panel.refresh()
         self.status.setText(message)
+
+    def _refresh_library_location(self) -> None:
+        root = self.lesson_library.organized_root
+        self.library_location.setText(str(root))
+        self.library_location_reset.setVisible(bool(self.preferences.library_root.strip()))
+
+    def _choose_library_root(self) -> None:
+        current = str(resolve_organized_root(self.preferences))
+        chosen = QFileDialog.getExistingDirectory(
+            self, "اختر مجلد الحفظ الدائم للمكتبة", current
+        )
+        if not chosen:
+            return
+        target = Path(chosen)
+        try:
+            ensure_writable_dir(target)
+        except OSError:
+            QMessageBox.warning(
+                self,
+                "لا يمكن الكتابة هنا",
+                "تعذر إنشاء مجلد «library_organized» أو الكتابة في هذا المكان. اختر مجلدًا آخر.",
+            )
+            return
+        self.preferences.library_root = str(target)
+        try:
+            save_preferences(self.data_dir, self.preferences)
+        except OSError:
+            logging.getLogger(__name__).warning("Could not save local preferences")
+        self.lesson_library.organized_root = target
+        self._refresh_library_location()
+
+    def _reset_library_root(self) -> None:
+        self.preferences.library_root = ""
+        try:
+            save_preferences(self.data_dir, self.preferences)
+        except OSError:
+            logging.getLogger(__name__).warning("Could not save local preferences")
+        self.lesson_library.organized_root = library_organized_dir()
+        self._refresh_library_location()
 
     def _edit_library_entry(self, entry_id: int) -> None:
         if self.worker:

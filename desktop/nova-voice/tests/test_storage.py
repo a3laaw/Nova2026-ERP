@@ -22,6 +22,7 @@ def test_round_trip_and_no_script_contents(tmp_path):
         "second_language",
         "second_speaker_id",
         "turn_pause_ms",
+        "library_root",
     }
     assert list(tmp_path.glob(".settings-*")) == []
 
@@ -67,3 +68,36 @@ def test_bad_dialogue_settings_are_clamped_or_defaulted(tmp_path):
     prefs = load_preferences(tmp_path)
     assert (prefs.mode, prefs.language, prefs.second_language) == ("single", "all", "en")
     assert (prefs.speaker_id, prefs.second_speaker_id, prefs.turn_pause_ms) == (0, 999, 2000)
+
+
+def test_library_root_preference_round_trips_and_resolves(tmp_path):
+    from nova_voice.storage import (
+        library_organized_dir,
+        resolve_organized_root,
+    )
+
+    prefs = load_preferences(tmp_path)  # no settings yet
+    assert prefs.library_root == ""
+    assert resolve_organized_root(prefs, base=tmp_path) == library_organized_dir(tmp_path)
+
+    custom = tmp_path / "مكتبة-خاصة"
+    prefs.library_root = str(custom)
+    save_preferences(tmp_path, prefs)
+    loaded = load_preferences(tmp_path)
+    assert loaded.library_root == str(custom)
+    assert resolve_organized_root(loaded, base=tmp_path) == custom
+
+    # Relative values never escape the default; the app stays on safe ground.
+    loaded.library_root = "relative/subdir"
+    assert resolve_organized_root(loaded, base=tmp_path) == library_organized_dir(tmp_path)
+    loaded.library_root = ""
+    assert resolve_organized_root(loaded, base=tmp_path) == library_organized_dir(tmp_path)
+
+
+def test_ensure_writable_dir_creates_and_verifies(tmp_path):
+    from nova_voice.storage import ensure_writable_dir
+
+    target = tmp_path / "deep" / "nested" / "organizer"
+    assert ensure_writable_dir(target) == target
+    assert target.is_dir()
+    assert list(target.iterdir()) == []
