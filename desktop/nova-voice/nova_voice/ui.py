@@ -428,6 +428,10 @@ class MainWindow(QMainWindow):
         self.appearance_picker.sentences_requested.connect(self._refresh_appearance_sentences)
         appearance_layout.addWidget(self.appearance_picker)
         appearance_layout.addStretch()
+        # «تلوين الأسطر والحساب» أُزيل بقرار المالك: الوحدة تبقى حية مخفية،
+        # لقطتها (snapshot) تُحقن في HTML الناتج وإلا زالت من الذاكرة.
+        appearance_card.setParent(self)
+        appearance_card.hide()
 
         export_card, export_layout = card()
         export_layout.setContentsMargins(18, 12, 18, 12)
@@ -437,6 +441,10 @@ class MainWindow(QMainWindow):
         self.video_picker = VideoPicker()
         self.video_picker.requested.connect(self._convert_video)
         video_layout.addWidget(self.video_picker)
+        # «MP4 متوافق» أُزيل بقرار المالك: الوحدة تبقى حية مخفية،
+        # مسارات الفيديو تستعمل حالتها وإلا زالت من الذاكرة.
+        video_card.setParent(self)
+        video_card.hide()
         self.inference_picker = InferencePicker(lambda: self.scene_picker.policy.currentData())
         self.scene_picker.policy.currentIndexChanged.connect(self.inference_picker.refresh_policy)
         self.workspace_tabs.addTab(self.inference_picker, "استدلال")
