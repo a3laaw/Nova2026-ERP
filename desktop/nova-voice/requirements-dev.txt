@@ -1,0 +1,6 @@
+-r requirements.txt
+pytest==8.4.2
+ruff==0.14.4
+pyinstaller==6.22.3
+# Small, local MP3 decoder for codec-delay measurement tests only.
+miniaudio==1.72

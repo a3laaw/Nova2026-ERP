@@ -1,0 +1,13 @@
+# Greetings and Introductions
+## Meeting a new friend
+[1] Good morning! What is your name?
+[2] My name is Sara. What is your name?
+[1] My name is Adam. Nice to meet you!
+[2] Nice to meet you too!
+## Checking in
+[1] How are you today?
+[2] I am fine, thank you. How are you?
+[1] I am well, thanks!
+## Saying goodbye
+[2] See you later!
+[1] Goodbye, Sara!

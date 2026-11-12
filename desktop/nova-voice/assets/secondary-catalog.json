@@ -1,0 +1,315 @@
+{
+  "schema": 1,
+  "revision": 1,
+  "provider": "Game-icons",
+  "repository": "game-icons/icons",
+  "pin": "82d948812bfe3f269ef8f731dcdb07b08160edc4",
+  "max_selected": 6,
+  "max_references": 24,
+  "entries": [
+    {
+      "id": "gi-atom",
+      "label_ar": "رمز ذري مبسط",
+      "description": "A conventional static atom symbol; NOT literal electron orbits, scale or a scientifically accurate atom model.",
+      "upstream_path": "skoll/atom.svg",
+      "blob_sha1": "abe68b80ed2005be8b4060901699ad9e182a4955",
+      "raw_sha256": "2d75aad60ba19969e98acb0cb1c03b9547b97437e67bf5cb96ea4506425462c7",
+      "raw_bytes": 3489,
+      "drawing_fingerprint": "278e22932e4d4702859864e93a771ff93543a81e836b538a44621d14ae6d5cb7",
+      "credit": {
+        "title": "Atom",
+        "author": "Skoll",
+        "attribution": "Icons made by Skoll",
+        "source": "https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/skoll/atom.svg",
+        "license": "CC-BY-3.0",
+        "license_url": "https://creativecommons.org/licenses/by/3.0/",
+        "changes": "Background removed; foreground recolored and uniformly scaled by Nova Voice."
+      }
+    },
+    {
+      "id": "gi-butterfly",
+      "label_ar": "فراشة",
+      "description": "A static butterfly silhouette; not a wing rig, life-cycle diagram or walking animation.",
+      "upstream_path": "lorc/butterfly.svg",
+      "blob_sha1": "c3a56ea61383f530c5bc5d0a86eee252793cbfdf",
+      "raw_sha256": "a40823a64300a68069cfd8abfb0c59fe6ab91bf5b322c8ad93abd807fdb73c7e",
+      "raw_bytes": 817,
+      "drawing_fingerprint": "89934423278412090c720db6043ddd64c26ee17ddb1a328b2ad97b3400a8d9fa",
+      "credit": {
+        "title": "Butterfly",
+        "author": "Lorc",
+        "attribution": "Icons made by Lorc",
+        "source": "https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/lorc/butterfly.svg",
+        "license": "CC-BY-3.0",
+        "license_url": "https://creativecommons.org/licenses/by/3.0/",
+        "changes": "Background removed; foreground recolored and uniformly scaled by Nova Voice."
+      }
+    },
+    {
+      "id": "gi-compass",
+      "label_ar": "بوصلة",
+      "description": "A static compass symbol; not a verified heading, map or calibrated instrument.",
+      "upstream_path": "lorc/compass.svg",
+      "blob_sha1": "82985d65f6a03f47c2398a5c7f567bf4bfa1eab5",
+      "raw_sha256": "beb88d002e3f2e3759a41c626ff67f52b9d92d70605a24e8e8d3ea9915208f20",
+      "raw_bytes": 1528,
+      "drawing_fingerprint": "a357b066af2178d119b3740cf2f32e8e4157b5766faf0ed2529baa2573007e7e",
+      "credit": {
+        "title": "Compass",
+        "author": "Lorc",
+        "attribution": "Icons made by Lorc",
+        "source": "https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/lorc/compass.svg",
+        "license": "CC-BY-3.0",
+        "license_url": "https://creativecommons.org/licenses/by/3.0/",
+        "changes": "Background removed; foreground recolored and uniformly scaled by Nova Voice."
+      }
+    },
+    {
+      "id": "gi-fox",
+      "label_ar": "ثعلب",
+      "description": "A static fox silhouette; not rigged, walking, articulated or a verified anatomy diagram.",
+      "upstream_path": "caro-asercion/fox.svg",
+      "blob_sha1": "776f6c1c48837501f4b0daecebfeb3be898525a9",
+      "raw_sha256": "61d236e879268d07bed5bf271e8137264569c87bb890c9819877fea2a36590fe",
+      "raw_bytes": 1587,
+      "drawing_fingerprint": "fd056d82aeedb21e78f394fa6a1d6e38ac4c0ccc8ddad23a088894416a5294b8",
+      "credit": {
+        "title": "Fox",
+        "author": "Caro Asercion",
+        "attribution": "Icons made by Caro Asercion",
+        "source": "https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/caro-asercion/fox.svg",
+        "license": "CC-BY-3.0",
+        "license_url": "https://creativecommons.org/licenses/by/3.0/",
+        "changes": "Background removed; foreground recolored and uniformly scaled by Nova Voice."
+      }
+    },
+    {
+      "id": "gi-gears",
+      "label_ar": "تروس",
+      "description": "A static pair of gears; not a mechanically correct meshing simulation.",
+      "upstream_path": "lorc/gears.svg",
+      "blob_sha1": "bf5675619e48fc290c0db9bb07cff25e6cb0c353",
+      "raw_sha256": "260ff96e39b1804e74072658cfa6cd382062826f6e8d40cb106fc530a6d38548",
+      "raw_bytes": 1315,
+      "drawing_fingerprint": "8cc8b7552ffcdf9b72a38663651274734369579de5f481977a05ea2c6025b6e4",
+      "credit": {
+        "title": "Gears",
+        "author": "Lorc",
+        "attribution": "Icons made by Lorc",
+        "source": "https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/lorc/gears.svg",
+        "license": "CC-BY-3.0",
+        "license_url": "https://creativecommons.org/licenses/by/3.0/",
+        "changes": "Background removed; foreground recolored and uniformly scaled by Nova Voice."
+      }
+    },
+    {
+      "id": "gi-hourglass",
+      "label_ar": "ساعة رملية",
+      "description": "A static hourglass symbol; not a measured clock or sand simulation.",
+      "upstream_path": "lorc/hourglass.svg",
+      "blob_sha1": "10204df071d898a8f4255f3db7cbced087aaff61",
+      "raw_sha256": "38459facefd9e01b25f2ef5d490d6ac5ac49ae51441b15f7c140e389e7650959",
+      "raw_bytes": 639,
+      "drawing_fingerprint": "a75529809bade9cb343e1ea02f434efd055f7a603e3ef500aafa861dfab0ebec",
+      "credit": {
+        "title": "Hourglass",
+        "author": "Lorc",
+        "attribution": "Icons made by Lorc",
+        "source": "https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/lorc/hourglass.svg",
+        "license": "CC-BY-3.0",
+        "license_url": "https://creativecommons.org/licenses/by/3.0/",
+        "changes": "Background removed; foreground recolored and uniformly scaled by Nova Voice."
+      }
+    },
+    {
+      "id": "gi-magnet",
+      "label_ar": "مغناطيس",
+      "description": "A static horseshoe-magnet symbol; not field lines or a polarity experiment.",
+      "upstream_path": "lorc/magnet.svg",
+      "blob_sha1": "13f3fafd04763a7e6d40111f9a5354ebe8e6996f",
+      "raw_sha256": "91ae9c913ae171d10855f7326997d2644d98502970a4a5073074c8b33c780c6f",
+      "raw_bytes": 1044,
+      "drawing_fingerprint": "4a3b0ffc422b7b1133809e903d9fed3455821c90edb2f1ad97c4bfa78df8244c",
+      "credit": {
+        "title": "Magnet",
+        "author": "Lorc",
+        "attribution": "Icons made by Lorc",
+        "source": "https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/lorc/magnet.svg",
+        "license": "CC-BY-3.0",
+        "license_url": "https://creativecommons.org/licenses/by/3.0/",
+        "changes": "Background removed; foreground recolored and uniformly scaled by Nova Voice."
+      }
+    },
+    {
+      "id": "gi-magnifying-glass",
+      "label_ar": "عدسة مكبرة",
+      "description": "A static magnifying-glass symbol; not a measured optics ray diagram.",
+      "upstream_path": "lorc/magnifying-glass.svg",
+      "blob_sha1": "f941b30d5ba585de3d7687d84005e2cc10a314ca",
+      "raw_sha256": "089f628ebb75669198850f8a5caacb648f557e6844652709abcbd709f1f03037",
+      "raw_bytes": 1239,
+      "drawing_fingerprint": "c26e2d5500faedd330db8cee6ce7530a56902b038bd449bf71fffb23a1e8eb04",
+      "credit": {
+        "title": "Magnifying glass",
+        "author": "Lorc",
+        "attribution": "Icons made by Lorc",
+        "source": "https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/lorc/magnifying-glass.svg",
+        "license": "CC-BY-3.0",
+        "license_url": "https://creativecommons.org/licenses/by/3.0/",
+        "changes": "Background removed; foreground recolored and uniformly scaled by Nova Voice."
+      }
+    },
+    {
+      "id": "gi-microscope",
+      "label_ar": "مجهر",
+      "description": "A static microscope symbol; not a microscopic image or a detailed optical diagram.",
+      "upstream_path": "lord-berandas/microscope.svg",
+      "blob_sha1": "572a249dba5e13ec049716e9345d6bed1a3db3cc",
+      "raw_sha256": "dc48e94afe883ea0b8f24c6c5fd1057de42a7f2a3b4c282b20a6b461b70bc584",
+      "raw_bytes": 910,
+      "drawing_fingerprint": "3e863d552f2d1ebbf4200a697f4b98df1b0d299f3a0dfed40c4d60ad093ee6e6",
+      "credit": {
+        "title": "Microscope",
+        "author": "Lord Berandas",
+        "attribution": "Icons made by Lord Berandas",
+        "source": "https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/lord-berandas/microscope.svg",
+        "license": "CC-BY-3.0",
+        "license_url": "https://creativecommons.org/licenses/by/3.0/",
+        "changes": "Background removed; foreground recolored and uniformly scaled by Nova Voice."
+      }
+    },
+    {
+      "id": "gi-mountains",
+      "label_ar": "جبال",
+      "description": "A static mountain-landform silhouette; not verified geography or an elevation profile.",
+      "upstream_path": "lorc/mountains.svg",
+      "blob_sha1": "238f4dd55ac74c29920a752c7ec1060168da3558",
+      "raw_sha256": "4eb8f5e862ec08551e403a6ab8b9ac768c8c39e024d1c16f1b924fb6207927ca",
+      "raw_bytes": 1338,
+      "drawing_fingerprint": "b2d04c168c2098f2485c349ec1f1c1f61ccf2f4f632ef354c10d1c90122bee85",
+      "credit": {
+        "title": "Mountains",
+        "author": "Lorc",
+        "attribution": "Icons made by Lorc",
+        "source": "https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/lorc/mountains.svg",
+        "license": "CC-BY-3.0",
+        "license_url": "https://creativecommons.org/licenses/by/3.0/",
+        "changes": "Background removed; foreground recolored and uniformly scaled by Nova Voice."
+      }
+    },
+    {
+      "id": "gi-open-book",
+      "label_ar": "كتاب مفتوح",
+      "description": "A static open-book symbol; no text, religious quotation or certified curriculum.",
+      "upstream_path": "lorc/open-book.svg",
+      "blob_sha1": "4bfefb16dd12b626449e589dd3117ae376f0d1a4",
+      "raw_sha256": "fea1988dca10d827a6159328da655f9aaefcd642e2a08588d728424190fcd285",
+      "raw_bytes": 1171,
+      "drawing_fingerprint": "d0e6aa0c62a58e9c26156f8b3291184206342d65446025782495afaa2be64531",
+      "credit": {
+        "title": "Open book",
+        "author": "Lorc",
+        "attribution": "Icons made by Lorc",
+        "source": "https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/lorc/open-book.svg",
+        "license": "CC-BY-3.0",
+        "license_url": "https://creativecommons.org/licenses/by/3.0/",
+        "changes": "Background removed; foreground recolored and uniformly scaled by Nova Voice."
+      }
+    },
+    {
+      "id": "gi-scales",
+      "label_ar": "ميزان",
+      "description": "A static balance-scale symbol; not measured masses or an equilibrium simulation.",
+      "upstream_path": "lorc/scales.svg",
+      "blob_sha1": "5834fbdeb040dfd1596947eb65e993e9d04fc7f2",
+      "raw_sha256": "d8ba4fa3bf72c26c6d66a0ec18f8454431154cec80161a50aa75f532c8f6f159",
+      "raw_bytes": 1186,
+      "drawing_fingerprint": "006407731e7f73ea5b067939dc86d75d6a2793b68e21601df4135c4f86c14adf",
+      "credit": {
+        "title": "Scales",
+        "author": "Lorc",
+        "attribution": "Icons made by Lorc",
+        "source": "https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/lorc/scales.svg",
+        "license": "CC-BY-3.0",
+        "license_url": "https://creativecommons.org/licenses/by/3.0/",
+        "changes": "Background removed; foreground recolored and uniformly scaled by Nova Voice."
+      }
+    },
+    {
+      "id": "gi-sprout",
+      "label_ar": "بادرة نبات",
+      "description": "A static plant sprout; not plant anatomy, germination order or a growth animation.",
+      "upstream_path": "lorc/sprout.svg",
+      "blob_sha1": "db7e8abbb00995d9afe916ef9ffc0965c990a371",
+      "raw_sha256": "7d5f66bd3acaeb982b3ff7a3cda7b69c0ae2a54b3ef64af879848dac8b310da3",
+      "raw_bytes": 1066,
+      "drawing_fingerprint": "4d0920af9af075faa3258eb2e9293e7f182c2fcec390f6cffc37e2dfb51a1f13",
+      "credit": {
+        "title": "Sprout",
+        "author": "Lorc",
+        "attribution": "Icons made by Lorc",
+        "source": "https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/lorc/sprout.svg",
+        "license": "CC-BY-3.0",
+        "license_url": "https://creativecommons.org/licenses/by/3.0/",
+        "changes": "Background removed; foreground recolored and uniformly scaled by Nova Voice."
+      }
+    },
+    {
+      "id": "gi-telescope",
+      "label_ar": "تلسكوب",
+      "description": "A static telescope symbol; not measured optics or an astronomical image.",
+      "upstream_path": "delapouite/telescope.svg",
+      "blob_sha1": "f6efa52c31ae79a1ab06141fe1b732061d340cfe",
+      "raw_sha256": "9ae9c81c3b32aea31697ab7f07ec2f0fc8c9c717821f1a482c04e9208cb86a0f",
+      "raw_bytes": 2027,
+      "drawing_fingerprint": "4a738bc1b778719005276d8ac14b5e72abc64fe760a5c946043d8e26d9d7570c",
+      "credit": {
+        "title": "Telescope",
+        "author": "Delapouite",
+        "attribution": "Icons made by Delapouite",
+        "source": "https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/delapouite/telescope.svg",
+        "license": "CC-BY-3.0",
+        "license_url": "https://creativecommons.org/licenses/by/3.0/",
+        "changes": "Background removed; foreground recolored and uniformly scaled by Nova Voice."
+      }
+    },
+    {
+      "id": "gi-test-tubes",
+      "label_ar": "أنابيب اختبار",
+      "description": "A static laboratory-glassware symbol; not chemical contents, a reaction or safe experiment instructions.",
+      "upstream_path": "lorc/test-tubes.svg",
+      "blob_sha1": "827ddec73c6288a8df19e5ff6fdee8464e224c29",
+      "raw_sha256": "b79ee911713caf9efb793ed7f90d24ee72e717e7cbd7b84c5b956f6e3ae15e51",
+      "raw_bytes": 3719,
+      "drawing_fingerprint": "888e1082d0694c3e18dabea42ad2d89930e667b6d694863864913421ca19ce5d",
+      "credit": {
+        "title": "Test tubes",
+        "author": "Lorc",
+        "attribution": "Icons made by Lorc",
+        "source": "https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/lorc/test-tubes.svg",
+        "license": "CC-BY-3.0",
+        "license_url": "https://creativecommons.org/licenses/by/3.0/",
+        "changes": "Background removed; foreground recolored and uniformly scaled by Nova Voice."
+      }
+    },
+    {
+      "id": "gi-water-drop",
+      "label_ar": "قطرة ماء",
+      "description": "A static drop symbol; not molecular structure or a fluid simulation.",
+      "upstream_path": "sbed/water-drop.svg",
+      "blob_sha1": "c104647f16622fe7f916ed28254b43f5bd2e1f75",
+      "raw_sha256": "90b5e5a161c83fe535d0a1abfec4c85efc69a5206d89b478295947d7cfeb30fa",
+      "raw_bytes": 230,
+      "drawing_fingerprint": "240766de6985704fdad1c1939f577db917d392dc3311e5caf78fe00d146d9336",
+      "credit": {
+        "title": "Water drop",
+        "author": "Sbed",
+        "attribution": "Icons made by Sbed",
+        "source": "https://github.com/game-icons/icons/blob/82d948812bfe3f269ef8f731dcdb07b08160edc4/sbed/water-drop.svg",
+        "license": "CC-BY-3.0",
+        "license_url": "https://creativecommons.org/licenses/by/3.0/",
+        "changes": "Background removed; foreground recolored and uniformly scaled by Nova Voice."
+      }
+    }
+  ]
+}

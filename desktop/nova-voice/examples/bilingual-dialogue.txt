@@ -1,0 +1,4 @@
+[1] مرحبًا، كيف يمكنني مساعدتك اليوم؟
+[2] Hello! I would like to learn more about this program.
+[1] بالتأكيد، يحوّل البرنامج الحوار المكتوب إلى ملف صوتي واحد.
+[2] Great! One voice asks a question, and the other voice replies.

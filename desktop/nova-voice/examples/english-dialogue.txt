@@ -1,0 +1,4 @@
+[1] Hello! Can we turn this conversation into a single audio file?
+[2] Yes. Choose a different English voice for each person.
+[1] Can the second person reply after the first person finishes?
+[2] Exactly. The lines are spoken in order, with a short pause between turns.

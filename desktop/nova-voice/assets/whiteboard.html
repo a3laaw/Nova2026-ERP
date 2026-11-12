@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>@@NOVA_TITLE@@</title>
+<style>@@NOVA_CSS@@</style>
+</head>
+<body>
+<a class="skip-link" href="#wb-play">تخطَّ إلى تشغيل الخطوة</a>
+<main class="lesson-shell">
+  <header class="lesson-heading">
+    <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="m7 23 2-8L22 2l8 8-13 13-8 2Z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/><path d="m18 6 8 8M9 15l8 8M4 30h23" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></div>
+    <div><p class="eyebrow">NOVA · تعلّم خطوة بخطوة</p><h1 id="lesson-title" dir="auto">@@NOVA_TITLE@@</h1><p class="subtitle">سبورة تفاعلية · كتابة بالقلم · نص الدرس محفوظ داخل هذا الملف</p></div>
+    <nav class="lesson-shortcuts" aria-label="أقسام صفحة الدرس">
+      <a href="#board-paper">السبورة</a><a href="#wb-customization">ألوان وأطفال</a><a href="#wb-transcript">النص المقروء</a><a href="#wb-output">طباعة وفيديو</a>
+    </nav>
+    <span class="local-badge">محلي · دون خدمات خارجية</span>
+  </header>
+  <div class="lesson-layout">
+    <aside class="outline-panel" aria-label="خطوات الدرس">
+      <details class="outline-disclosure" open>
+        <summary class="outline-heading"><span>خطوات الدرس</span><span id="step-count"></span></summary>
+        <ol id="lesson-outline"></ol>
+        <p class="outline-note">اختر خطوة، أو استخدم التالي والسابق. يمكنك طي القائمة لتوسيع مساحة الدرس. لا يبدأ الصوت تلقائيًا.</p>
+      </details>
+    </aside>
+    <div class="lesson-main">
+      <section class="board-panel" aria-labelledby="scene-title">
+        <div class="board-heading"><div><p id="scene-number" class="eyebrow"></p><h2 id="scene-title" dir="auto"></h2></div><span class="pen-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m4 17 1-4L16 2l6 6-11 11-4 1Z M13 5l6 6 M3 23h18"/></svg></span></div>
+        <div class="board-paper" id="board-paper">
+          <svg id="whiteboard" viewBox="0 0 1200 540" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="محتوى الخطوة مكتوب على السبورة؛ توجد نسخة نصية أسفلها">
+            <defs id="wb-defs"></defs><g id="wb-rows"></g>
+            <g id="wb-pen" opacity="0" pointer-events="none" aria-hidden="true">
+              <path d="M0 0 7-22 20-9Z" fill="#F5D0A9" stroke="#475569" stroke-width="2"/>
+              <path d="M0 0 3-9 8-4Z" fill="#334155"/>
+              <path d="m7-22 13 13 51-51-13-13Z" fill="#FFB000" stroke="#C2410C" stroke-width="2"/>
+              <path d="m58-73 13 13 10-10-13-13Z" fill="#FF5722" stroke="#C2410C" stroke-width="2"/>
+            </g>
+            <g id="wb-eraser" opacity="0" pointer-events="none" aria-hidden="true">
+              <rect id="wb-eraser-felt" x="-27" y="-78" width="54" height="156" rx="12" fill="#E2E8F0" stroke="#94A3B8" stroke-width="2"/>
+              <rect x="-23" y="-34" width="46" height="68" rx="11" fill="#FFB000" stroke="#C2410C" stroke-width="2"/>
+              <path d="M-14-12c-5-11-13-8-11-1l7 20c3 10 10 16 23 14l22-5 5-22c1-7-7-9-9-2l-2 8 1-23c0-7-9-7-9 0v17l-2-23c-1-6-9-5-9 1l1 21-4-18c-2-6-10-4-8 2Z" fill="#F5D0A9" stroke="#B77952" stroke-width="2" stroke-linejoin="round"/>
+              <path d="m-1 24 27-5 7 22-29 7Z" fill="#FF5722" stroke="#C2410C" stroke-width="2"/>
+            </g>
+          </svg>
+          <div id="board-placeholder">اضغط «تشغيل الخطوة» لبدء الكتابة</div>
+        </div>
+        <div class="board-footer"><span id="writing-status" role="status">السبورة جاهزة</span><span id="position-label">0%</span></div>
+        <p id="wb-visual-note" class="visual-note" hidden></p>
+      </section>
+      <section class="controls-panel" aria-labelledby="playback-heading">
+        <div class="controls-heading"><h2 id="playback-heading">شاهد، اسمع، وتعلّم</h2><span id="audio-badge" class="audio-badge">نسخة بلا صوت</span></div>
+        <div class="transport">
+          <button id="wb-play" class="primary" type="button">تشغيل الخطوة</button>
+          <button id="wb-restart" type="button">إعادة الخطوة</button>
+          <div class="step-buttons"><button id="wb-previous" type="button">السابقة</button><button id="wb-next" type="button">التالية</button></div>
+        </div>
+        <div class="speed-row"><label for="wb-rate">سرعة الصوت والكتابة</label><input id="wb-rate" type="range" min="0.5" max="2" step="0.05" value="1"><output id="wb-rate-label" for="wb-rate">1.00×</output><button id="wb-reset-rate" class="quiet" type="button">السرعة العادية</button></div>
+        <audio id="wb-audio" controls preload="metadata" aria-label="صوت الخطوة الحالية" hidden></audio>
+        <details class="playback-settings">
+          <summary>خيارات التشغيل ومعلومات الصوت</summary>
+          <div class="playback-options"><label><input id="wb-auto-next" type="checkbox"> الانتقال إلى الخطوة التالية تلقائيًا</label><label><input id="wb-scene-motion" type="checkbox" checked> رسم تدريجي وحركة تعليمية خفيفة</label></div>
+          <p class="hint">للتقديم والترجيع استخدم شريط الصوت عند وجود تسجيل. السرعة تربط الصوت بالكتابة.</p>
+        </details>
+        <p id="wb-status" class="hint" role="status">هذه نسخة السبورة قبل توليد الصوت. أضف الصوت من الخطوة 2 داخل Nova Voice؛ الكتابة تعمل الآن دون نموذج صوتي.</p>
+      </section>
+      <details id="wb-output" class="output-panel">
+        <summary>طباعة الدرس كاملًا أو تصديره كفيديو</summary>
+        <div class="output-content">
+          <p class="hint">الطباعة تشمل كل الخطوات والشرح والرسوم المرحلية والأسئلة وإجاباتها؛ ليست صورة للخطوة المفتوحة. الفيديو يعرض الرسوم ونص النطق دون أدوات الواجهة، بالصوت المضمّن إن وُجد. لا شبكة أو تسجيل للشاشة أو الميكروفون.</p>
+          <label class="output-review"><input id="wb-output-review" type="checkbox"> راجعت نص الدرس ورسوماته وإجاباته وملاءمته وحقوق استخدام صوته قبل الطباعة أو الفيديو. هذا تأكيد مراجعة شخصي، لا شهادة صحة.</label>
+          <fieldset class="settings-group"><legend>1 · ورق A4 أو PDF</legend>
+            <label><input id="wb-print-ink" type="checkbox"> نسخة رمادية موفّرة للحبر</label>
+            <div class="output-actions"><button id="wb-print-preview" type="button" disabled>معاينة كل صفحات الدرس</button><button id="wb-print" class="primary" type="button" disabled>طباعة / حفظ PDF</button><button id="wb-print-close" type="button" hidden>إخفاء المعاينة</button></div>
+            <p class="hint">تُحفظ كل لقطة تغيّر فيها الرسم، حتى لو اختفى عنصر لاحقًا. للمسار والدوران: بداية ووسط ونهاية الحركة على الورق. من نافذة الطباعة اختر A4 و«حفظ PDF» إن أردت ملفًا.</p>
+          </fieldset>
+          <fieldset class="settings-group"><legend>2 · تصدير الفيديو من هذه الصفحة</legend>
+            <div class="output-options"><label for="wb-video-scope">المحتوى <select id="wb-video-scope"><option value="all">الدرس كاملًا</option><option value="current">الخطوة الحالية فقط</option></select></label><label for="wb-video-format">الصيغة <select id="wb-video-format"><option value="webm">WebM</option><option value="mp4">MP4 المتصفح — ترميزه حسب الدعم</option></select></label></div>
+            <p id="wb-video-support" class="hint"></p>
+            <p class="hint">هذا هو مكان تصدير فيديو الدرس: اضغط «تصدير الفيديو» ويسجّل المتصفح الرسوم والصوت من هذه الصفحة ويحفظ الملف على جهازك (WebM غالبًا؛ MP4 فقط إن دعمه متصفحك). لا تحتاج برنامجًا آخر ولا خطوة إضافية.</p>
+            <p class="hint">إن أردت نسخة MP4 بترميز H.264/AAC متوافقًا مع شاشات المدارس وويندوز: بعد التنزيل افتح تبويب «MP4 متوافق» في Nova Voice واختر FFmpeg محليًا موثوقًا. هذه خطوة اختيارية بلا شبكة أو تنزيل تلقائي؛ لا يكفي تغيير الامتداد.</p>
+            <p class="hint">لحفظ الفيديو في «مكتبة المنهج» داخل Nova Voice (مع الدولة والصف والمادة والترم…): افتح التبويب «مكتبة المنهج» واضغط «إضافة ملف موجود…» واختر الفيديو المحمّل. Nova Voice لا ترى ما يحمّله المتصفح من هذه الصفحة تلقائيًا.</p>
+            <p class="hint">1280×720 · نحو 20 إطارًا/ثانية حسب الجهاز · سرعة 1×. التصدير يستغرق مدة العرض تقريبًا؛ اترك الصفحة ظاهرة. عند تأخر إطار أو اختلاف ساعة الصوت بأكثر من 350ms يتوقف التصدير بدل نشر خرج مشكوك في تزامنه. تقليل الحركة وخيار الحركة أعلاه يُحترمان. حد تجريبي 15 دقيقة و128 MiB؛ لا ضمان لجهاز 4 جيجا. النسخة بلا تسجيل تعطي فيديو صامتًا، ولا تولّد صوتًا جديدًا.</p>
+            <div class="output-actions"><button id="wb-video" class="primary" type="button" disabled>تصدير الفيديو</button><button id="wb-video-cancel" type="button" disabled>إلغاء التصدير</button></div>
+            <progress id="wb-video-progress" max="1" value="0" aria-label="تقدم تصدير الفيديو" hidden></progress>
+            <canvas id="wb-video-canvas" width="1280" height="720" aria-label="معاينة الفيديو الجاري تصديره" hidden></canvas>
+          </fieldset>
+          <p id="wb-output-status" class="hint" role="status">ابدأ بمراجعة الدرس ثم فعّل تأكيد المراجعة. لا يُحفظ هذا التأكيد في HTML المنزّل.</p>
+        </div>
+      </details>
+      <section id="character-stage" class="character-stage" aria-label="شخصيات الدرس" hidden>
+        <div id="character-role-1" class="character-card" hidden><div class="character-art"></div><p class="character-caption"></p></div>
+        <p class="character-note">أصدقاء التعلّم<br><span>حركات تشجيعية؛ ليست مزامنة شفاه أو أصواتًا جديدة</span></p>
+        <div id="character-role-2" class="character-card" hidden><div class="character-art"></div><p class="character-caption"></p></div>
+      </section>
+      <details id="wb-customization" class="customization-panel">
+        <summary>ألوان الجمل ومكتبة شخصيات الأطفال</summary>
+        <div class="customization-content">
+          <p class="hint">اختر لونًا لكل دور أو لكل جملة. اختر شخصية للدور الأول أو الثاني؛ الشخصيات لا تغيّر النموذج الصوتي أو لغته. التغييرات مؤقتة حتى تنزيل نسخة بالتخصيصات.</p>
+          <fieldset class="settings-group"><legend>1 · ترتيب اللغتين</legend>
+          <div class="color-tools"><label for="wb-language-layout">ترتيب اللغتين <select id="wb-language-layout"><option value="stacked">الإنجليزي فوق والعربي تحته</option><option value="columns">عمودان: English يسار / العربي يمين</option><option value="script">ترتيب السكريبت</option></select></label></div>
+          </fieldset>
+          <fieldset class="settings-group"><legend>2 · ألوان الأدوار والجمل</legend>
+          <div class="color-tools">
+            <label for="wb-color-1">لون الدور 1 <input id="wb-color-1" type="color" value="#2563eb"></label>
+            <label for="wb-color-2">لون الدور 2 <input id="wb-color-2" type="color" value="#c2410c"></label>
+            <label class="sentence-choice" for="wb-sentence">جملة من الخطوة الحالية <select id="wb-sentence"></select></label>
+            <label for="wb-sentence-color">لون الجملة <input id="wb-sentence-color" type="color" value="#2563eb"></label>
+            <button id="wb-clear-sentence-color" type="button">إعادة لون الدور للجملة</button>
+          </div>
+          </fieldset>
+          <fieldset class="settings-group"><legend>3 · أصدقاء التعلّم</legend>
+          <div class="library-tools">
+            <label for="wb-character-role">الشخصية للدور <select id="wb-character-role"><option value="1">الدور 1</option><option value="2">الدور 2</option></select></label>
+            <label for="wb-character-filter">المكتبة <select id="wb-character-filter"><option value="all">كل الشخصيات</option><option value="boy">الأولاد</option><option value="girl">البنات</option></select></label>
+            <label><input id="wb-character-motion" type="checkbox" checked> حركة أثناء التشغيل</label>
+          </div>
+          <div id="wb-character-library" class="character-library" aria-label="اختر شخصية كرتونية"></div>
+          </fieldset>
+          <div class="customization-actions"><button id="wb-save-customized" class="primary" type="button">تنزيل نسخة بالتخصيصات</button><button id="wb-reset-appearance" type="button">إعادة التخصيصات الافتراضية</button></div>
+          <p id="wb-customization-status" class="hint" role="status">كل الألوان والشخصيات محلية ومضمّنة في HTML. الشخصيات ثابتة عند الإيقاف أو تفعيل تقليل الحركة.</p>
+        </div>
+      </details>
+      <details id="wb-transcript" class="transcript-panel"><summary>نص الخطوة · نسخة مقروءة</summary><div id="step-transcript"></div></details>
+    </div>
+  </div>
+@@NOVA_RESOURCE_CREDITS@@
+  <footer class="page-footer">العناوين للتنظيم ولا تُقرأ صوتيًا. عند وجود خريطة التوقيت: حدود فعلية لكل سطر وتقدير للكتابة داخله، وليس محاذاة كلمة بكلمة. دونها يعمل التقدير السابق.</footer>
+  <noscript><p>السبورة والصوت يحتاجان JavaScript. يمكنك قراءة الدرس هنا:</p>@@NOVA_FALLBACK@@</noscript>
+</main>
+<section id="wb-print-root" aria-label="معاينة الدرس كاملًا للطباعة"><p>راجع الدرس وفعّل تأكيد المراجعة في «طباعة وفيديو» أولًا. الطباعة تحتاج JavaScript؛ لا تطبع هذه الصفحة على أنها درس معتمد.</p></section>
+<script id="nova-whiteboard-data" type="application/json">@@NOVA_DATA@@</script>
+@@NOVA_AUDIO@@
+@@NOVA_APPEARANCE@@
+@@NOVA_CATALOG@@
+@@NOVA_CHARACTERS@@
+@@NOVA_RESOURCE_CATALOG@@
+<script>@@NOVA_SCRIPT@@</script>
+</body>
+</html>

@@ -1,0 +1,3061 @@
+{
+  "rows": 3,
+  "valid": [
+    {
+      "id": "static-pending-fallback",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-rect",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "rect",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "w": 40,
+              "h": 50
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-ellipse",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "ellipse",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "rx": 20,
+              "ry": 25
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-line",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "line",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "x2": 90,
+              "y2": 90
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-arrow",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "arrow",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "x2": 90,
+              "y2": 90
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-polygon",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "polygon",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "points": [
+                [
+                  10,
+                  10
+                ],
+                [
+                  90,
+                  10
+                ],
+                [
+                  50,
+                  90
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-polyline",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "polyline",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "points": [
+                [
+                  10,
+                  10
+                ],
+                [
+                  90,
+                  90
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-text",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "text",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "text": "Local",
+              "size": 16
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-icons",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "icons",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "icon": "book",
+              "count": 1,
+              "columns": 1,
+              "size": 24
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-sector",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "sector",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "start": 0,
+              "sweep": 270
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "outer-move",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ],
+          "motion": {
+            "type": "move",
+            "dx": 100,
+            "dy": 30
+          }
+        }
+      ]
+    },
+    {
+      "id": "outer-rotate",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ],
+          "motion": {
+            "type": "rotate",
+            "degrees": 30,
+            "cx": 50,
+            "cy": 50
+          }
+        }
+      ]
+    },
+    {
+      "id": "outer-sequence",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ],
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "angle": 0,
+                "scale": 80
+              },
+              {
+                "at": 1000,
+                "angle": 25,
+                "scale": 100
+              }
+            ],
+            "span": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "later-global-cue",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 1,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 1,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ],
+          "until": 2
+        }
+      ]
+    },
+    {
+      "id": "fallback-at-max-depth",
+      "elements": [
+        {
+          "kind": "group",
+          "name": "Joint 1",
+          "row": 0,
+          "x": 0,
+          "y": 0,
+          "children": [
+            {
+              "kind": "group",
+              "name": "Joint 0",
+              "row": 0,
+              "x": 0,
+              "y": 0,
+              "children": [
+                {
+                  "kind": "asset",
+                  "asset_id": "gi-magnifying-glass",
+                  "row": 0,
+                  "x": 50,
+                  "y": 50,
+                  "w": 150,
+                  "h": 150,
+                  "fill": "#2563EB",
+                  "name": "Static symbol",
+                  "fallback": [
+                    {
+                      "kind": "circle",
+                      "row": 0,
+                      "x": 40,
+                      "y": 40,
+                      "r": 25,
+                      "fill": "#FFB000"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "exact-sixty-nodes",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "line",
+              "row": 0,
+              "x": 55,
+              "y": 55,
+              "x2": 90,
+              "y2": 90
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "line",
+              "row": 0,
+              "x": 55,
+              "y": 55,
+              "x2": 90,
+              "y2": 90
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "line",
+              "row": 0,
+              "x": 55,
+              "y": 55,
+              "x2": 90,
+              "y2": 90
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "line",
+              "row": 0,
+              "x": 55,
+              "y": 55,
+              "x2": 90,
+              "y2": 90
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "line",
+              "row": 0,
+              "x": 55,
+              "y": 55,
+              "x2": 90,
+              "y2": 90
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "line",
+              "row": 0,
+              "x": 55,
+              "y": 55,
+              "x2": 90,
+              "y2": 90
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "line",
+              "row": 0,
+              "x": 55,
+              "y": 55,
+              "x2": 90,
+              "y2": 90
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "line",
+              "row": 0,
+              "x": 55,
+              "y": 55,
+              "x2": 90,
+              "y2": 90
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "line",
+              "row": 0,
+              "x": 55,
+              "y": 55,
+              "x2": 90,
+              "y2": 90
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "line",
+              "row": 0,
+              "x": 55,
+              "y": 55,
+              "x2": 90,
+              "y2": 90
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "line",
+              "row": 0,
+              "x": 55,
+              "y": 55,
+              "x2": 90,
+              "y2": 90
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "line",
+              "row": 0,
+              "x": 55,
+              "y": 55,
+              "x2": 90,
+              "y2": 90
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "line",
+              "row": 0,
+              "x": 55,
+              "y": 55,
+              "x2": 90,
+              "y2": 90
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "line",
+              "row": 0,
+              "x": 55,
+              "y": 55,
+              "x2": 90,
+              "y2": 90
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "line",
+              "row": 0,
+              "x": 55,
+              "y": 55,
+              "x2": 90,
+              "y2": 90
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "line",
+              "row": 0,
+              "x": 55,
+              "y": 55,
+              "x2": 90,
+              "y2": 90
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "line",
+              "row": 0,
+              "x": 55,
+              "y": 55,
+              "x2": 90,
+              "y2": 90
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "line",
+              "row": 0,
+              "x": 55,
+              "y": 55,
+              "x2": 90,
+              "y2": 90
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "line",
+              "row": 0,
+              "x": 55,
+              "y": 55,
+              "x2": 90,
+              "y2": 90
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "line",
+              "row": 0,
+              "x": 55,
+              "y": 55,
+              "x2": 90,
+              "y2": 90
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "invalid": [
+    {
+      "id": "bad-asset_id-0",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "https://evil.invalid/a.svg",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bad-asset_id-1",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-unknown",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bad-asset_id-2",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "../gi-fox",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bad-asset_id-3",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": 42,
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bad-asset_id-4",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": null,
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bad-w-0",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 23,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bad-w-1",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 301,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bad-w-2",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": true,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bad-w-3",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 900,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bad-h-0",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 23,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bad-h-1",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 301,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bad-h-2",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": true,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bad-h-3",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 500,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bad-fill-0",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "none",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bad-fill-1",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "red",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bad-fill-2",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "url(#x)",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bad-name-0",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bad-name-1",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": null,
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bad-fallback-0",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": []
+        }
+      ]
+    },
+    {
+      "id": "bad-fallback-1",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": null
+        }
+      ]
+    },
+    {
+      "id": "bad-fallback-2",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            },
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "unexpected-gradient",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ],
+          "gradient": {
+            "color": "#FFB000",
+            "axis": "radial"
+          }
+        }
+      ]
+    },
+    {
+      "id": "unexpected-source",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ],
+          "source": "https://evil.invalid/x"
+        }
+      ]
+    },
+    {
+      "id": "unexpected-resources",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ],
+          "resources": []
+        }
+      ]
+    },
+    {
+      "id": "unexpected-paths",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ],
+          "paths": [
+            "M0 0L1 1"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-kind-asset",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "asset",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-kind-path",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "path",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-kind-group",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "group",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-kind-sphere",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "sphere",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-motion-{'type': 'no",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000",
+              "motion": {
+                "type": "none"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-dx-0",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000",
+              "dx": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-until-2",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000",
+              "until": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-gradient-{'color': '#",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000",
+              "gradient": {
+                "color": "#FFB000",
+                "axis": "radial"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-row-1",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 1,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-x-101",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 101,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-r-41",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 41,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "no-sequence-fill",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ],
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "fill": "#FFB000"
+              },
+              {
+                "at": 1000,
+                "fill": "#FFB000"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "no-sequence-spin",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ],
+          "motion": {
+            "type": "sequence",
+            "frames": [
+              {
+                "at": 0,
+                "spin": 180
+              },
+              {
+                "at": 1000,
+                "spin": 180
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "fallback-geometry-rect-38",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "rect",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "w": 80,
+              "h": 80
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-geometry-ellipse-39",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "ellipse",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "rx": 90,
+              "ry": 25
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-geometry-line-40",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "line",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "x2": 101,
+              "y2": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-geometry-polygon-41",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "polygon",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "points": [
+                [
+                  0,
+                  0
+                ],
+                [
+                  101,
+                  0
+                ],
+                [
+                  50,
+                  50
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-geometry-text-42",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "text",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "text": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-geometry-text-43",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "text",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "text": "A",
+              "size": 33
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-geometry-icons-44",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "icons",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "icon": "book",
+              "count": 5,
+              "columns": 1,
+              "size": 24
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-geometry-icons-45",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "icons",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "icon": "book",
+              "count": 1,
+              "columns": 1,
+              "size": 80
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fallback-over-depth",
+      "elements": [
+        {
+          "kind": "group",
+          "name": "Joint 2",
+          "row": 0,
+          "x": 0,
+          "y": 0,
+          "children": [
+            {
+              "kind": "group",
+              "name": "Joint 1",
+              "row": 0,
+              "x": 0,
+              "y": 0,
+              "children": [
+                {
+                  "kind": "group",
+                  "name": "Joint 0",
+                  "row": 0,
+                  "x": 0,
+                  "y": 0,
+                  "children": [
+                    {
+                      "kind": "asset",
+                      "asset_id": "gi-magnifying-glass",
+                      "row": 0,
+                      "x": 50,
+                      "y": 50,
+                      "w": 150,
+                      "h": 150,
+                      "fill": "#2563EB",
+                      "name": "Static symbol",
+                      "fallback": [
+                        {
+                          "kind": "circle",
+                          "row": 0,
+                          "x": 40,
+                          "y": 40,
+                          "r": 25,
+                          "fill": "#FFB000"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sixty-two-nodes",
+      "elements": [
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        },
+        {
+          "kind": "asset",
+          "asset_id": "gi-magnifying-glass",
+          "row": 0,
+          "x": 50,
+          "y": 50,
+          "w": 150,
+          "h": 150,
+          "fill": "#2563EB",
+          "name": "Static symbol",
+          "fallback": [
+            {
+              "kind": "circle",
+              "row": 0,
+              "x": 40,
+              "y": 40,
+              "r": 25,
+              "fill": "#FFB000"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

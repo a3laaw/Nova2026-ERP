@@ -1,0 +1,113 @@
+{
+  "schema": 1,
+  "modelSource": "User-provided files, downloaded from the connected Drive; hashes identify these exact bytes, not independent upstream authenticity.",
+  "upstream": {
+    "repository": "https://github.com/Oddadmix/nabra-tts",
+    "sourceCommit": "16b5281ce61993df3526740990cf845a3f3036f4",
+    "packageVersion": "0.1.0",
+    "onnxruntimeWeb": "1.30.0"
+  },
+  "model": {
+    "file": "model.onnx",
+    "bytes": 30542978,
+    "sha256": "08c1df048f2decbff3f86dc8e625e10ff3c8d5f66dfc97881c6974272f41ca5e"
+  },
+  "voice": {
+    "file": "af_msa.bin",
+    "bytes": 522240,
+    "shape": [
+      510,
+      256
+    ],
+    "sha256": "129d447a7c9bdce1d5b6cb5ecb789bbfd9f427b7775131a97dfa5638583b3b92"
+  },
+  "runtime": {
+    "platform": "linux",
+    "architecture": "x64",
+    "node": "v22.22.3",
+    "backend": "wasm",
+    "threads": 1,
+    "modelLoadMs": 4298
+  },
+  "settings": {
+    "speed": 1,
+    "normalize": false,
+    "automaticDiacritizer": false,
+    "postprocessing": "none; upstream WAV encoder only",
+    "format": "PCM signed 16-bit little-endian, 24000 Hz, mono"
+  },
+  "validation": {
+    "actualModelInference": true,
+    "externalFetches": 0,
+    "windowsTested": false,
+    "fourGbTested": false,
+    "humanPronunciationReview": false,
+    "qualityVersusKareemEstablished": false,
+    "novaVoiceIntegration": false,
+    "allowedFetchSchemes": [
+      "blob:"
+    ]
+  },
+  "clips": [
+    {
+      "id": "lesson-plain",
+      "title": "نص الدرس دون تشكيل",
+      "file": "Nabra-Lesson-Plain.wav",
+      "purpose": "عينة أساس: النص المعتاد مع ترقيم، دون إضافة تشكيل أو أي معالجة صوتية.",
+      "text": "مرحبا يا أصدقائي. سنتعلم اليوم كيف ينمو النبات. تمتص الجذور الماء من التربة، وتستخدم الأوراق ضوء الشمس لصنع الغذاء. لكن، ماذا يحدث إذا حجبنا الضوء لمدة ثلاثة أيام؟ لاحظوا الفرق بين النبتتين، ثم اشرحوا السبب.",
+      "bytes": 585644,
+      "sha256": "22dd04fa5e272f848ee837dab0c5bd5c6bbc1dfb9829dd580376c39e5e5d910e",
+      "sampleRate": 24000,
+      "channels": 1,
+      "sampleFrames": 292800,
+      "seconds": 12.2,
+      "generationMs": 3934,
+      "peak": 0.50375825,
+      "rms": 0.09790922,
+      "clippedSamples": 0,
+      "phonemeLengths": [
+        289
+      ]
+    },
+    {
+      "id": "lesson-diacritized",
+      "title": "نفس الدرس مع تشكيل يدوي للتجربة",
+      "file": "Nabra-Lesson-Diacritized.wav",
+      "purpose": "نفس الحروف والترقيم في العينة الأولى، مع تشكيل تجريبي يدوي. ليس تشكيلًا آليًا أو تصحيحًا لغويًا معتمدًا.",
+      "text": "مَرْحَبًا يَا أَصْدِقَائِي. سَنَتَعَلَّمُ الْيَوْمَ كَيْفَ يَنْمُو النَّبَاتُ. تَمْتَصُّ الْجُذُورُ الْمَاءَ مِنَ التُّرْبَةِ، وَتَسْتَخْدِمُ الْأَوْرَاقُ ضَوْءَ الشَّمْسِ لِصُنْعِ الْغِذَاءِ. لَكِنْ، مَاذَا يَحْدُثُ إِذَا حَجَبْنَا الضَّوْءَ لِمُدَّةِ ثَلَاثَةِ أَيَّامٍ؟ لَاحِظُوا الْفَرْقَ بَيْنَ النَّبْتَتَيْنِ، ثُمَّ اشْرَحُوا السَّبَبَ.",
+      "bytes": 686444,
+      "sha256": "4cbe8b587021158d5a047581a5e7854afdad7bdb46b790eb6f6eae3fcdd71400",
+      "sampleRate": 24000,
+      "channels": 1,
+      "sampleFrames": 343200,
+      "seconds": 14.3,
+      "generationMs": 3665,
+      "peak": 0.4723812,
+      "rms": 0.09697632,
+      "clippedSamples": 0,
+      "phonemeLengths": [
+        365
+      ]
+    },
+    {
+      "id": "consonants",
+      "title": "كلمات لفحص وضوح الحروف",
+      "file": "Nabra-Consonants.wav",
+      "purpose": "استمع خصوصًا إلى الحاء والخاء والعين، والتمييز بين القاف والكاف. ليست نتيجة اعتماد لغوي أو قياسًا آليًا لصحة النطق.",
+      "text": "حَرَارَةٌ، حَرَكَةٌ، حَيَاةٌ، خَلِيَّةٌ، عَيْنٌ، عَلَمٌ، قَلْبٌ، كَلْبٌ. كَيْفَ نُمَيِّزُ بَيْنَ هَذِهِ الْكَلِمَاتِ؟",
+      "bytes": 291644,
+      "sha256": "c7afe64e5bad43da82ea8b2e122dd2db9402cb8ae8ad2d82ebd30fa9531d9553",
+      "sampleRate": 24000,
+      "channels": 1,
+      "sampleFrames": 145800,
+      "seconds": 6.075,
+      "generationMs": 1519,
+      "peak": 0.43209141,
+      "rms": 0.09560725,
+      "clippedSamples": 0,
+      "phonemeLengths": [
+        130
+      ]
+    }
+  ]
+}
