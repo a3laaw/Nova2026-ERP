@@ -13,8 +13,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-ARCHIVE_NAME = "NovaVoice-Source-v0.15.0.dev1.rar"
-GUIDE_NAME = "INFERENCE-GUIDE-v0.15.0.dev1-AR.html"
+ARCHIVE_NAME = "NovaVoice-Source-v0.17.0.dev1.rar"
+GUIDE_NAME = "INFERENCE-GUIDE-v0.17.0.dev1-AR.html"
 PDF_NAME = "NovaVoice-Motion-A4-v0.9.0.dev1.pdf"
 VIDEO_NAME = "NovaVoice-Motion-H264-v0.9.0.dev1.mp4"
 WEBM_NAME = "NovaVoice-Motion-v0.9.0.dev1.webm"
