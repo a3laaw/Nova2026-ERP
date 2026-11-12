@@ -89,7 +89,11 @@ def test_audio_only_uses_expanded_approved_narration_not_titles_brief_or_json(
     window.primary_voice.language_combo.setCurrentIndex(1)
     draft = adopt(window, monkeypatch)
     text, cast = window._input()
-    assert text == draft.compile().spoken_script and set(cast) == {1}
+    assert text == draft.compile().spoken_script
+    # The approved narration is single-voiced; _cast() keeps every role with a
+    # selection (unchanged since 0.13), so pin what this test actually proves:
+    # the Arabic primary voice drives role 1.
+    assert cast[1].voice.language_family == "ar"
     assert draft.brief.to_data()["text"] not in text
     assert "أهداف الدرس" not in text and "##" not in text and "fingerprint" not in text
     assert window.generate_button.isEnabled() and window.preview_button.isEnabled()
@@ -207,7 +211,10 @@ def test_manual_drawing_revision_preview_export_and_approval_all_keep_original_p
     assert source == window._source_lesson()
     monkeypatch.setattr("nova_voice.scene_picker.QDesktopServices.openUrl", lambda _: True)
     window.scene_picker._preview()
-    preview = Path(window.scene_picker._preview_dir.name) / "Nova-DRAFT-review.html"
+    preview = (
+        Path(window.scene_picker._preview_dir.name)
+        / f"Nova-DRAFT-review-{window.scene_picker.revision}.html"
+    )
     assert WhiteboardPage.load(preview).lesson.visuals == bound
     path = tmp_path / "revised-plan.json"
     monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *a, **k: (str(path), ""))

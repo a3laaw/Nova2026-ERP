@@ -206,7 +206,8 @@ def test_csp_is_not_weakened(saved_board):
     source.write_text(
         source.read_text(encoding="utf-8-sig").replace(
             "<head>", '<head><meta http-equiv="Content-Security-Policy" content="default-src self">'
-        )
+        ),
+        encoding="utf-8",
     )
     with pytest.raises(HtmlExportError, match="CSP"):
         WhiteboardPage.load(source)

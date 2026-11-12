@@ -2,6 +2,7 @@
 
 import os
 import shutil
+import time
 
 import pytest
 
@@ -9,11 +10,29 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("PySide6.QtWidgets", exc_type=ImportError)
 
 from PySide6.QtCore import Qt  # noqa: E402
-from PySide6.QtTest import QSignalSpy  # noqa: E402
 from PySide6.QtWidgets import QApplication, QMessageBox  # noqa: E402
 
 from nova_voice.ui import MainWindow  # noqa: E402
 from nova_voice.voices import Cancelled  # noqa: E402
+
+
+def wait_for_worker(worker, timeout_ms: int = 120000) -> bool:
+    """Pump the Qt event loop until the background worker finishes.
+
+    QSignalSpy.wait spins a local loop that does not reliably yield the GIL to
+    the worker's Python thread on every platform — the worker can starve until
+    the timeout while sitting idle. Processing events while sleeping does
+    release the GIL, so the worker always gets scheduled. Returns False only
+    when the worker genuinely outlives the timeout.
+    """
+    deadline = time.monotonic() + timeout_ms / 1000
+    while worker.isRunning():
+        if time.monotonic() >= deadline:
+            return False
+        QApplication.processEvents()
+        time.sleep(0.02)
+    QApplication.processEvents()
+    return True
 
 
 @pytest.fixture(scope="session")
@@ -36,7 +55,7 @@ def window(qapp, tmp_path, monkeypatch):
     yield widget
     if widget.worker:
         widget.worker.cancel_event.set()
-        QSignalSpy(widget.worker.finished).wait(30000)
+        wait_for_worker(widget.worker)
     widget.close()
     qapp.processEvents()
 
@@ -69,7 +88,7 @@ def test_background_preview_completes_and_unlocks_ui(window, voice_files):
     worker = window.worker
     assert worker is not None
     assert not window.editor.isEnabled()
-    assert QSignalSpy(worker.finished).wait(30000)
+    assert wait_for_worker(worker)
     QApplication.processEvents()
     assert window.worker is None
     assert window.editor.isEnabled()
@@ -87,7 +106,7 @@ def test_close_cancels_without_destroying_running_thread(window, monkeypatch):
     monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.StandardButton.Yes)
     assert not window.close()
     assert window._closing
-    assert QSignalSpy(worker.finished).wait(30000)
+    assert wait_for_worker(worker)
     QApplication.processEvents()
     assert window.worker is None
     assert window._cleanup_done
@@ -165,7 +184,7 @@ def test_bilingual_preview_renders_both_voices_in_one_file(window, bilingual_cas
     window.preview()
     worker = window.worker
     assert worker is not None
-    assert QSignalSpy(worker.finished).wait(30000)
+    assert wait_for_worker(worker)
     QApplication.processEvents()
     assert window.worker is None
     paths = list(Path(window._preview_directory.name).glob("*.wav"))
@@ -202,7 +221,7 @@ def test_whiteboard_step_one_does_not_need_any_voice(window, tmp_path, monkeypat
     window.generate_whiteboard()
     worker = window.worker
     assert worker is not None
-    assert QSignalSpy(worker.finished).wait(30000)
+    assert wait_for_worker(worker)
     QApplication.processEvents()
     assert window.worker is None
     assert window.open_html_button.isEnabled()
@@ -284,7 +303,7 @@ def test_native_character_and_sentence_color_choices_round_trip_into_html(
     window.generate_whiteboard()
     worker = window.worker
     assert worker is not None
-    assert QSignalSpy(worker.finished).wait(30000)
+    assert wait_for_worker(worker)
     QApplication.processEvents()
     loaded = WhiteboardPage.load(output)
     assert loaded.appearance.first_character == "adam"
@@ -363,7 +382,7 @@ def test_combined_click_asks_for_one_output_and_keeps_no_temporary_source(
     assert worker is not None
     assert not window.combined_board_button.isEnabled()
     assert not window.create_board_button.isEnabled()
-    assert QSignalSpy(worker.finished).wait(30000)
+    assert wait_for_worker(worker)
     QApplication.processEvents()
     assert window.worker is None and len(dialogs) == 1
     assert window._html_result_file == output
@@ -411,13 +430,12 @@ def test_combined_job_can_be_cancelled_and_reenables_both_generation_paths(windo
 
     window._start_task(wait_for_cancel, "whiteboard-combined")
     worker = window.worker
-    finished = QSignalSpy(worker.finished)
     assert not window.combined_board_button.isEnabled()
     assert not window.create_board_button.isEnabled()
     window.generate_whiteboard_with_audio()  # A second click cannot replace the running worker.
     assert window.worker is worker
     window._cancel()
-    assert finished.count() > 0 or finished.wait(30000)
+    assert wait_for_worker(worker)
     QApplication.processEvents()
     assert window.worker is None
     assert window.combined_board_button.isEnabled() and window.create_board_button.isEnabled()
@@ -481,11 +499,15 @@ def test_scenes_button_asks_for_approval_and_opens_the_section_instead_of_export
 
 
 def test_scenes_button_exports_like_combined_when_a_plan_is_approved(
-    window, voice_files, tmp_path, monkeypatch
+    window, bilingual_cast, tmp_path, monkeypatch
 ):
     from PySide6.QtWidgets import QFileDialog
 
-    add_test_voice(window, voice_files)
+    # The bundled example lesson is Arabic; the cross-language guard (dabe88e)
+    # refuses an English narrator, so install the bilingual fixture and pin the
+    # Arabic primary voice — the same arrangement as the other Arabic-lesson tests.
+    add_bilingual_voices(window, bilingual_cast)
+    window.primary_voice.language_combo.setCurrentIndex(1)
     window._scene_example()
     window.scene_toggle_button.setChecked(True)
     monkeypatch.setattr(
@@ -499,7 +521,7 @@ def test_scenes_button_exports_like_combined_when_a_plan_is_approved(
     window.scenes_board_button.click()
     worker = window.worker
     assert worker is not None
-    assert QSignalSpy(worker.finished).wait(30000)
+    assert wait_for_worker(worker)
     QApplication.processEvents()
     assert window.worker is None
     assert output.is_file()
@@ -545,12 +567,11 @@ def test_job_does_not_disable_the_shared_cancel_or_result_disclosure(window):
 
     window._start_task(wait_for_cancel, "whiteboard-combined")
     worker = window.worker
-    finished = QSignalSpy(worker.finished)
     assert not window.workspace_tabs.isEnabled()
     assert window.cancel_button.isEnabled() and not window.cancel_button.isHidden()
     assert window.result_section.isEnabled()
     window._cancel()
-    assert finished.count() > 0 or finished.wait(30000)
+    assert wait_for_worker(worker)
     QApplication.processEvents()
     assert window.workspace_tabs.isEnabled()
 
@@ -965,7 +986,7 @@ def test_optional_review_key_is_not_saved_and_source_edit_forget_and_cleanup_cle
     panel.adult.setChecked(True)
     panel.consent.setChecked(True)
     panel._request()
-    fingerprint = window._source_lesson().manifest()["fingerprint"]
+    fingerprint = panel._credential_fingerprint(window._source_lesson().manifest())
     assert panel._review_credential.get(fingerprint) == "test-only-NOT-A-REAL-KEY"
     assert not panel.key.text() and "test-only" not in repr(asdict(window.preferences))
     panel._forget_review_key()

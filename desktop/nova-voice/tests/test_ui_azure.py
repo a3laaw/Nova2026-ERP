@@ -11,7 +11,6 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("PySide6.QtWidgets", exc_type=ImportError)
 
 import test_ui as native  # noqa: E402
-from PySide6.QtTest import QSignalSpy  # noqa: E402
 from PySide6.QtWidgets import (  # noqa: E402
     QApplication,
     QDialog,
@@ -77,8 +76,7 @@ def fake_azure(monkeypatch):
 def finish(window):
     worker = window.worker
     assert worker is not None
-    spy = QSignalSpy(worker.finished)
-    assert not worker.isRunning() or spy.count() > 0 or spy.wait(30000)
+    assert native.wait_for_worker(worker)
     QApplication.processEvents()
     assert window.worker is None and window._active_azure_job is None
 

@@ -4,6 +4,7 @@ import logging
 import tempfile
 from dataclasses import replace
 from datetime import datetime
+from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
@@ -52,7 +53,7 @@ from .engine import (
     validate_dialogue_cast,
 )
 from .gemini_planner import request_plan as request_gemini_plan
-from .html_export import HtmlAudioResult
+from .html_export import MAX_HTML_BYTES, HtmlAudioResult
 from .inference_picker import InferencePicker
 from .lesson_draft import LessonDraft
 from .lesson_library import MAX_TITLE_CHARACTERS, LessonLibrary, LibraryError, LibraryMetadata
@@ -671,6 +672,18 @@ class MainWindow(QMainWindow):
                 self.worker.cancel_event.set()
 
     @staticmethod
+    def _cloud_source_hash(source: Path) -> str:
+        # Recheck a bounded original, not an arbitrarily grown file from another process.
+        digest = sha256()
+        total = 0
+        with source.open("rb") as handle:
+            while data := handle.read(65536):
+                total += len(data)
+                if total > MAX_HTML_BYTES:
+                    raise AzureError("كبر ملف المصدر أثناء المراجعة؛ اختره وراجعه مجددًا.")
+                digest.update(data)
+        return digest.hexdigest()
+
     def _cloud_snapshot(self, for_editor: bool) -> tuple:
         return (
             self.editor.document().revision() if for_editor else None,
