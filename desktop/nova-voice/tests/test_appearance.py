@@ -78,6 +78,13 @@ def test_appearance_round_trips_colors_character_choices_and_row_overrides():
         {"row_colors": [{"step": 0, "row": 0, "color": "#2563EB"}] * 2},
         {"unknown": "ignored settings would be unsafe"},
     ],
+    ids=[
+        "url-in-first-character", "path-traversal-second", "null-first-character",
+        "animate-string-false", "animate-int-zero", "version-bool", "version-int",
+        "short-hex-color", "empty-row-colors", "721-row-colors",
+        "bool-step", "step-one", "row-three", "negative-step", "extra-code-key",
+        "two-row-colors", "unknown-key",
+    ],
 )
 def test_malformed_or_out_of_lesson_settings_are_rejected(changes):
     data = BoardAppearance().to_data() | changes

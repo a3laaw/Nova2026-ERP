@@ -76,7 +76,11 @@ def test_bundle_cannot_be_rebound_or_modified_silently(change):
         LessonDraft.from_data(data)
 
 
-@pytest.mark.parametrize("bad", ["", " ", "x" * 4001, "bad\ud800", "bad\x00"])
+@pytest.mark.parametrize(
+    "bad",
+    ["", " ", "x" * 4001, "bad\ud800", "bad\x00"],
+    ids=["empty", "blank", "too-long", "lone-surrogate", "nul-byte"],
+)
 def test_brief_limits_and_exact_whitespace(bad):
     with pytest.raises(ScriptError):
         LessonBrief.create(bad)
@@ -218,7 +222,9 @@ def test_cli_review_only_then_explicit_approval(tmp_path, monkeypatch, capsys):
 
 
 @pytest.mark.parametrize(
-    "raw", ['{"schema":1,"schema":1}', '{"schema":NaN}', "[]", "\ud800", "{}" * 300000]
+    "raw",
+    ['{"schema":1,"schema":1}', '{"schema":NaN}', "[]", "\ud800", "{}" * 300000],
+    ids=["duplicate-key", "non-finite", "array", "lone-surrogate", "oversized"],
 )
 def test_malformed_duplicate_nonfinite_and_oversized_raw_json_fail_as_recoverable_errors(raw):
     with pytest.raises(ScriptError):

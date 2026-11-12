@@ -35,6 +35,7 @@ def test_size_and_nul_validation():
         "Hello.\n\nAnother paragraph! " + "Word " * 500,
         "سَلَامٌ عَلَيْكُمْ " * 1000,
     ],
+    ids=["arabic-basic", "arabic-long-plain", "n-4000", "english-long", "arabic-tashkeel-long"],
 )
 def test_bounded_chunks_preserve_script(text):
     chunks = split_text(text)
