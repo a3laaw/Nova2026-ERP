@@ -79,3 +79,27 @@ def _no_blocking_modal_dialogs(monkeypatch):
     monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *a, **k: ("", ""))
     monkeypatch.setattr(QFileDialog, "getOpenFileName", lambda *a, **k: ("", ""))
     monkeypatch.setattr(QFileDialog, "getExistingDirectory", lambda *a, **k: "")
+    # Keeps generation-success paths from opening the real «الفهرس أولًا»
+    # dialog (LibrarySaveDialog.exec()) after a worker finishes — same
+    # freeze class as the modal QMessageBox defaults above. Tests that
+    # exercise the dialog patch nova_voice.ui.LibrarySaveDialog themselves.
+    try:
+        from PySide6.QtWidgets import QDialog
+
+        import nova_voice.ui as ui_module
+    except ImportError:
+        return
+
+    class _RejectingLibrarySaveDialog:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def exec(self):
+            return QDialog.DialogCode.Rejected
+
+        def result_values(self):
+            raise AssertionError("result_values() must not be read when the dialog is rejected")
+
+    monkeypatch.setattr(
+        ui_module, "LibrarySaveDialog", _RejectingLibrarySaveDialog
+    )

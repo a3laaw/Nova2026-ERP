@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QUrl, Signal
+from PySide6.QtCore import QItemSelectionModel, Qt, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -102,6 +102,19 @@ _KIND_BY_SUFFIX = {
 def kind_for_suffix(path: Path) -> str:
     return _KIND_BY_SUFFIX.get(path.suffix.lower(), "other")
 
+
+def select_table_row(table, row: int) -> None:
+    """برمجيًا: حدّد صفًا في جدول SingleSelection.
+
+    `QTableView.selectRow()` في Qt 6.10 لا يرفع currentIndex ولا يسجّل
+    تحديدًا داخل selectionModel() في وضع SingleSelection (يُبقي currentRow
+    عند -1 والاختيار فارغًا)، بينما نقرة المستخدم الحقيقية تعمل جيدًا.
+    نستدعي selectionModel مباشرة لنطابق سلوك المستخدم في كل البيئات.
+    """
+    table.selectionModel().setCurrentIndex(
+        table.model().index(row, 0),
+        QItemSelectionModel.ClearAndSelect | QItemSelectionModel.Rows,
+    )
 
 @dataclass(frozen=True)
 class LibrarySaveValues:
@@ -288,7 +301,7 @@ class LibrarySaveDialog(QDialog):
             if self._preselect_id is not None and entry.id == self._preselect_id:
                 preselected_row = row
         if preselected_row >= 0:
-            self.index_table.selectRow(preselected_row)
+            select_table_row(self.index_table, preselected_row)
         self.index_table.blockSignals(False)
         if entries:
             self.index_hint.setText(
@@ -337,10 +350,10 @@ class LibrarySaveDialog(QDialog):
     def _selected_id(self) -> int | None:
         if self.index_table is None:
             return None
-        row = self.index_table.currentRow()
-        if row < 0:
+        rows = self.index_table.selectionModel().selectedRows()
+        if not rows:
             return None
-        item = self.index_table.item(row, 0)
+        item = self.index_table.item(rows[0].row(), 0)
         if item is None:
             return None
         value = item.data(Qt.ItemDataRole.UserRole)
@@ -545,10 +558,10 @@ class LibraryPanel(QWidget):
         )
 
     def _selected_entry_id(self) -> int | None:
-        row = self.table.currentRow()
-        if row < 0:
+        rows = self.table.selectionModel().selectedRows()
+        if not rows:
             return None
-        item = self.table.item(row, 0)
+        item = self.table.item(rows[0].row(), 0)
         if item is None:
             return None
         value = item.data(Qt.ItemDataRole.UserRole)

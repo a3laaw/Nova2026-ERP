@@ -15,6 +15,16 @@ from nova_voice.library_picker import LibrarySaveDialog, LibrarySaveValues  # no
 
 qapp, window = native.qapp, native.window
 
+def select_row(table, row: int) -> None:
+    """تحديد صف برمجيًا يعمل مع جداول SingleSelection في Qt 6.10
+    (view.selectRow() يترك الاختيار فارغًا هنا؛ النقرة الحقيقية تعمل)."""
+    from PySide6.QtCore import QItemSelectionModel
+
+    table.selectionModel().setCurrentIndex(
+        table.model().index(row, 0),
+        QItemSelectionModel.ClearAndSelect | QItemSelectionModel.Rows,
+    )
+
 
 def fake_save_dialog(monkeypatch, *, accepted=True, title="درس العلوم", update=True, notes=""):
     class FakeDialog:
@@ -224,7 +234,7 @@ def test_save_dialog_update_choice_flows_into_result_values(tmp_path, qapp, monk
     dialog._choose_update()
     assert shown
     assert dialog.result_values().update_id is None
-    dialog.index_table.selectRow(0)
+    select_row(dialog.index_table, 0)
     dialog._choose_update()
     values = dialog.result_values()
     assert values.update_id == 1 and values.title == "نسخة محدثة"
@@ -299,11 +309,11 @@ def test_video_export_button_tracks_main_file_type(tmp_path, qapp):
         panel.table.item(row, 0).data(_Qt.ItemDataRole.UserRole)
         for row in range(panel.table.rowCount())
     ]
-    panel.table.selectRow(ids.index(1))
+    select_row(panel.table, ids.index(1))
     panel._update_action_buttons()
     assert panel.video_button.isEnabled() is True
     # Select the video entry → export disabled (it already is a video).
-    panel.table.selectRow(ids.index(2))
+    select_row(panel.table, ids.index(2))
     panel._update_action_buttons()
     assert panel.video_button.isEnabled() is False
     library.close()
@@ -325,7 +335,7 @@ def test_video_export_emits_for_html_entries_only(tmp_path, qapp, monkeypatch):
     panel = LibraryPanel(library)
     emitted = []
     panel.videoExportRequested.connect(emitted.append)
-    panel.table.selectRow(0)
+    select_row(panel.table, 0)
     panel.request_video_export()
     assert emitted == [1]
     library.close()
@@ -346,7 +356,7 @@ def test_video_export_non_html_shows_info(tmp_path, qapp, monkeypatch):
     panel = LibraryPanel(library)
     infos = []
     monkeypatch.setattr(QMessageBox, "information", lambda *a, **k: infos.append(a))
-    panel.table.selectRow(0)
+    select_row(panel.table, 0)
     panel.request_video_export()
     assert len(infos) == 1
     library.close()
@@ -434,7 +444,7 @@ def test_dialog_path_preview_shows_organized_destination(tmp_path, qapp):
     assert "2026-2027" in preview
     assert "دورة المياه" in preview
     # selecting the matching index row switches the preview to the update target
-    dialog.index_table.selectRow(0)
+    select_row(dialog.index_table, 0)
     dialog._update_buttons()
     assert "يستبدل" in dialog.path_preview.text()
     library.close()
@@ -484,7 +494,7 @@ def test_video_button_tooltip_explains_why_disabled(tmp_path, qapp):
         metadata=LibraryMetadata(subject="علوم"),
     )
     panel = LibraryPanel(library)
-    panel.table.selectRow(0)
+    select_row(panel.table, 0)
     panel._update_action_buttons()
     assert "HTML" in panel.video_button.toolTip()
     assert "إضافة ملف موجود" in panel.video_button.toolTip()
@@ -499,14 +509,17 @@ def test_library_location_picker_switches_and_resets(tmp_path, window, monkeypat
     default_root = window.lesson_library.organized_root
     assert window.library_location.text() == str(default_root)
     # The reset button is hidden while the default is in effect.
-    assert not window.library_location_reset.isVisibleTo(window)
+    # (isHidden(), not isVisibleTo(window): the button lives in the «مكتبة
+    # المنهج» tab, which is not the current tab here, so visibility relative
+    # to the window would always read False for ancestors-hidden layout.)
+    assert window.library_location_reset.isHidden()
     custom = tmp_path / "اختيارات-ويندوز"
     monkeypatch.setattr(QFileDialog, "getExistingDirectory", lambda *a, **k: str(custom))
     window._choose_library_root()
     assert window.lesson_library.organized_root == custom
     assert load_preferences(window.data_dir).library_root == str(custom)
     assert custom.is_dir() and (custom / ".nova-voice-writable").exists() is False
-    assert window.library_location_reset.isVisibleTo(window)
+    assert not window.library_location_reset.isHidden()
     # The new root is used for the next organized save preview.
     preview = LibrarySaveDialog(
         None,
