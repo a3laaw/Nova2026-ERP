@@ -20,14 +20,11 @@ def choose(picker, identifier):
     picker.features.setCurrentIndex(picker.features.findData(identifier))
 
 
-def test_guide_is_sixth_and_does_not_shift_existing_tabs_or_start_work(window):
-    assert [window.workspace_tabs.tabText(i) for i in range(6)] == [
+def test_guide_tab_does_not_shift_existing_tabs_or_start_work(window):
+    assert [window.workspace_tabs.tabText(i) for i in range(window.workspace_tabs.count())] == [
         "النص والأصوات",
-        "تلوين الأسطر والحساب",
-        "سبورة محفوظة",
-        "صوت فقط / HTML",
-        "MP4 متوافق",
         "استدلال",
+        "مكتبة المنهج",
     ]
     picker = window.inference_picker
     assert picker.source.toPlainText() == picker.output.toPlainText() == ""

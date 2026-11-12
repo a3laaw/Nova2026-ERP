@@ -27,7 +27,11 @@ def selected(window):
 
 def test_new_tab_does_not_generate_speech_or_discover_an_encoder_on_start(window):
     picker = window.video_picker
-    assert window.workspace_tabs.tabText(4) == "MP4 متوافق"
+    assert [window.workspace_tabs.tabText(i) for i in range(window.workspace_tabs.count())] == [
+        "النص والأصوات",
+        "استدلال",
+        "مكتبة المنهج",
+    ]
     assert picker.current() is None and not picker.review.isChecked()
     assert not picker.convert_button.isEnabled()
     assert window.worker is None and window.player.source().isEmpty()

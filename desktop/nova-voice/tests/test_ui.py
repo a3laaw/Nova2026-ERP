@@ -425,10 +425,8 @@ def test_combined_job_can_be_cancelled_and_reenables_both_generation_paths(windo
 
 
 def test_organized_workspace_keeps_main_generation_in_the_input_page(window):
-    assert [window.workspace_tabs.tabText(i) for i in range(5)] == [
+    assert [window.workspace_tabs.tabText(i) for i in range(3)] == [
         "النص والأصوات",
-        "تلوين الأسطر والحساب",
-        "MP4 متوافق",
         "استدلال",
         "مكتبة المنهج",
     ]
@@ -443,7 +441,7 @@ def test_organized_workspace_keeps_main_generation_in_the_input_page(window):
     assert window.workspace_tabs.widget(0).isAncestorOf(window.generate_button)
     assert window.workspace_tabs.widget(0).isAncestorOf(window.scenes_board_button)
     assert window.workspace_tabs.widget(0).isAncestorOf(window.preview_button)
-    assert window.workspace_tabs.widget(1).isAncestorOf(window.appearance_picker)
+    assert not window.workspace_tabs.isAncestorOf(window.appearance_picker)
     assert not window.workspace_tabs.isAncestorOf(window.cancel_button)
     assert not window.workspace_tabs.isAncestorOf(window.result_section)
 
@@ -532,7 +530,7 @@ def test_native_disclosures_keep_settings_and_editor_state_when_tabs_change(wind
     window.pause_spin.setValue(250)
     window.voice_tuning.set_expanded(False)
     window.editor.setPlainText("# Keep me\nHello.")
-    for index in (1, 2, 3, 4, 0):
+    for index in (1, 2, 0):
         window.workspace_tabs.setCurrentIndex(index)
     assert window.editor.toPlainText() == "# Keep me\nHello."
     assert window.speed_slider.value() == 115 and window.pause_spin.value() == 250
