@@ -338,7 +338,6 @@ class MainWindow(QMainWindow):
         self.guide_button.clicked.connect(self._open_guide)
         settings.addWidget(self.guide_button)
         columns.addWidget(settings_card, 4)
-        input_layout.addLayout(columns, 1)
         self.scene_section = Disclosure("مشاهد ذكية · اختياري")
         self.scene_section.toggle_button.hide()
         self.scene_picker = ScenePicker(
@@ -407,6 +406,9 @@ class MainWindow(QMainWindow):
         self.preview_button.clicked.connect(self.preview)
         preview_row.addWidget(self.preview_button)
         input_layout.addLayout(preview_row)
+        # الأزرار والمعاينة صارا أعلى الصفحة فعليًا (تحت التابات والهيدر وفوق
+        # منطقة المحرر/الأصوات) — كان الإضافة مؤجلة لكن الامتداد يحجز المكان.
+        input_layout.addLayout(columns, 1)
         input_layout.addWidget(self.lesson_section)
         input_layout.addWidget(self.scene_section)
         self.cancel_button = button("إلغاء العملية", "cancel")
