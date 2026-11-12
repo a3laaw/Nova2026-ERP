@@ -8,6 +8,16 @@ MAX_CHARACTERS = 100_000
 MAX_SCRIPT_BYTES = 2 * 1024 * 1024
 CHUNK_CHARACTERS = 480
 
+# Invisible direction/zero-width marks that Arabic copy-paste from web pages
+# routinely carries (BOM, ZWSP, RLM/LRM, bidi embeds and isolates). They carry
+# no spoken words, so they must never read as unassigned prose; otherwise a
+# fully tagged script is refused with a misleading "missing speaker tag"
+# error. U+200C (ZWNJ) and U+200D (ZWJ) are preserved: they are meaningful in
+# Persian and emoji, and stripping them would alter the text itself.
+_INVISIBLE = re.compile(
+    "[\u00ad\u200b\u200e\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff]"
+)
+
 
 class ScriptError(ValueError):
     """A user-correctable input error."""
@@ -20,7 +30,8 @@ class TextBlock:
 
 
 def validate_text(text: str) -> str:
-    text = text.replace("\r\n", "\n").replace("\r", "\n").strip()
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = _INVISIBLE.sub("", text).strip()
     if not text or not any(char.isalnum() for char in text):
         raise ScriptError("اكتب نصًا يحتوي على كلمات أو أرقام قبل توليد الصوت.")
     if len(text) > MAX_CHARACTERS:

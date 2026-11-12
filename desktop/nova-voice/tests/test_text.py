@@ -73,3 +73,37 @@ def test_rejects_binary_and_oversized_files(tmp_path):
     path.write_bytes(b"a" * (2 * 1024 * 1024 + 1))
     with pytest.raises(ScriptError, match="2"):
         read_script(path)
+
+
+@pytest.mark.parametrize(
+    "mark",
+    [
+        "\ufeff", "\u200b", "\u200e", "\u200f", "\u202a", "\u202c",
+        "\u202e", "\u2060", "\u2066", "\u2069", "\u00ad",
+    ],
+    ids=[
+        "bom", "zwsp", "lrm", "rlm", "lre", "pdf",
+        "rlo", "word_joiner", "lri", "pdi", "soft_hyphen",
+    ],
+)
+def test_invisible_direction_marks_are_stripped(mark):
+    from nova_voice.text import validate_text as _validate_text
+
+    assert _validate_text(mark + "مرحبًا بالعالم" + mark) == "مرحبًا بالعالم"
+    # mid-text invisible direction marks are not part of the words either
+    assert _validate_text("الدرس" + mark + " الأول") == "الدرس الأول"
+
+
+def test_invisible_marks_do_not_block_dialogue_markers():
+    from nova_voice.dialogue import parse_dialogue
+
+    script = "\ufeff[1]أهلًا![/1]\n\u200f[2]Hello![/2]\n"
+    turns = parse_dialogue(script)
+    assert [turn.speaker for turn in turns] == [1, 2]
+
+
+def test_meaningful_joiners_are_preserved():
+    from nova_voice.text import validate_text as _validate_text
+
+    assert "می‌شود" in _validate_text("کلمه می‌شود آزمون")  # ZWNJ kept
+    assert "👨‍👩‍👧" in _validate_text("عائلة 👨‍👩‍👧 اختبار")  # ZWJ kept
