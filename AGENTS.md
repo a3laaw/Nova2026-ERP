@@ -56,7 +56,9 @@
 ## 5. قبل أن تسلّم أي كود
 
 ```bash
-npm run typecheck          # أنواع
+npm run selftest           # اختبارات أدوات النقل (19 فحصاً، بلا شبكة) — `npm test` مرادف له
+npm run typecheck:gate     # ميزانية أخطاء الأنواع (202 حالياً): الزيادة مرفوضة، والنقصان مرحّب به
+npm run typecheck          # أنواع (التقرير الكامل؛ البوابة هي typecheck:gate)
 npm run lint               # ستايل
 npm run check:relations    # سلامة خريطة العلاقات (إلزامي عند أي تعديل بيانات)
 npm run docs:guide         # إعادة توليد الدليل المجمّع إن لمست docs/
@@ -68,6 +70,7 @@ npm run check:relations    # (بديل الكتابة) npm run check:relations:w
 - `npm run lint` حاليًا `next lint` بلا إعداد ESLint؛ لا تعتبره بوابة. إن أردته ثبّت `eslint` + `eslint-config-next`.
 - للنقل من المنصة المغلقة: **`docs/migration-runbook.md`** (`npm run db:counts` ثم `db:export` قبل أي محو).
 
+- `tsc` لم يكن يُشغَّل على هذا المستودع قط (و`ignoreBuildErrors: true`) — لا تضبط ميزانية الأنواع لأعلى إلا بسبب إزالة أخطاء فعلية.
 - أضف/حدّث اختبارات لأي منطق مالي أو قانوني (retention، السلّم المرضي، توازن القيد، نسبة الإنجاز).
 - اكتب في رسالة الـ commit أي فجوات من `docs/relations.json → gaps` أثّرت عليها أو أغلقتها.
 - **ممنوع** تعطيل فحص أو إضافة `ignoreBuildErrors` إضافي لتجاوز خطأ — الأصل أن يُصلح.

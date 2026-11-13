@@ -1,6 +1,14 @@
 
 # سجل تطوير مشروع NovaFlow ERP 🚀
 
+## [2.3.4] - أوّل تشغيل فعلي: اختبارات ذاتية + ميزانية أنواع + كشف أعطال صامتة
+- **`scripts/selftest.js`** (`npm run selftest` / `npm test`): 19 فحصاً بلا شبكة تغطّي منطق النقل — تحويل `Timestamp/GeoPoint/bytes/DocumentReference`، **توازن القيد بعد المرور بـ JSON**، `NaN/Infinity`، إسقاط `undefined`، المشي على 4 مستويات من المجموعات الفرعية مع المسارات والمعرّفات، تحليل الوسائط، حارس المشروع المحتضَر، والفشل الإرشادي بلا حساب خدمة. النتيجة: **19/19 ✅**.
+- **إصلاح عيبين قاتلين في `scripts/db-transfer.js` كشفهما الاختبار**: (1) `instanceof FS.Blob` كان يُسقط التصدير عند أول مستند — صنف `Blob` **غير موجود** في `firebase-admin@13`/`@google-cloud/firestore@7`، والقيم الثنائية صارت `Uint8Array`؛ (2) `undefined` كان يتحوّل `null` بصمت فيضيف حقولاً فارغة لم توجد أصلاً. وأُضيف: `Date → timestamp`، وتحذير عند صنف غير معروف بدل الصمت، و`parseArgs`/`needsLegacyOverride` معزولان للاختبار.
+- **`scripts/check-type-budget.js`** (`npm run typecheck:gate` + `typecheck:budget:write`): أول تشغيل لـ `tsc` في تاريخ المستودع = **202 خطأ أنواع** في 22 ملفاً (`TS1117=157` مفاتيح مكررة، `TS2339=23`…)؛ الميزانية في `docs/typecheck-budget.json` والزيادة تُكسر على CI.
+- **أعطال وقت تشغيل مؤكَّدة** (وثّقتها §10.1 في `docs/migration-runbook.md`): `transactionService.addStageRevision` و`clientService.getNextFileNumber` مستدعيتان وغير معرّفتين إطلاقاً · `visit.transactionName` بدل `transactionNumber` (زيارة ميدان تفقد ربطها) · `monthlyLeaveProvision`/`monthlyGratuityProvision` تُحسب ولا تنطبق على نوع `PayrollRecord` · `Equipment.name` و`LeaveRequest.departmentId` غير معرّفين على الأنواع · `variation-service` يستورد 3 أنواع غير مصدَّرة · **126 مفتاحاً مكرراً** في `language-context.tsx`.
+- **`package-lock.json` متزامن الآن** مع `package.json` (كان سيكسر `npm ci` في أي CI) — وCI صار يستخدم `npm ci` + `selftest` + `typecheck:gate`.
+- `AGENTS.md` §5: `npm run selftest` و`typecheck:gate` أصبحا جزءاً من فحوص ما قبل التسليم. `README.md` يشير إلى §10.
+
 ## [2.3.3] - تحرير المشروع من منصة التطوير (نقل + استقلالية)
 - **`src/firebase/config.ts`** صار يقرأ من `NEXT_PUBLIC_FIREBASE_*` في البيئة مع رجوع للقيم القديمة — تغيير المشروع صار تعديل `.env.local` لا تعديل كود. + `.env.example` يوثّق كل المتغيرات (بيانات Firebase + `GOOGLE_GENAI_API_KEY` + حساب الخدمة).
 - **`firebase.json` + `firestore.indexes.json`** لأول مرة في المستودع: نشر قواعد/فهارس من Git (`npm run deploy:rules|deploy:indexes|deploy:config`) وإميليتر محلي (`npm run emulator`) — والفهارس الآن فارغة عمداً حتى تُملأ من المشروع الجاري إغلاقه (`npm run db:indexes`).

@@ -35,15 +35,26 @@ for (const f of ['.env.local', '.env']) {
 const LEGACY_PROJECT = 'studio-2485061478-24bde';
 const DEFAULT_ROOTS = 'companies,global_users,company_requests';
 
-const argv = process.argv.slice(2);
-const cmd = argv[0];
-const has = (flag) => argv.includes('--' + flag);
-const opt = (name, dflt) => {
-  const hit = argv.find((a) => a.startsWith(`--${name}=`));
-  if (hit) return hit.slice(name.length + 3);
-  const i = argv.indexOf(`--${name}`);
-  return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : dflt;
-};
+/** تحليل وسائط السطر الأوامر — معزول ليكون قابلاً للاختبار (npm run selftest) */
+function parseArgs(argv) {
+  const args = argv.slice();
+  const cmd = args[0];
+  const has = (flag) => args.includes('--' + flag);
+  const opt = (name, dflt) => {
+    const hit = args.find((a) => a.startsWith(`--${name}=`));
+    if (hit) return hit.slice(name.length + 3);
+    const i = args.indexOf(`--${name}`);
+    return i >= 0 && args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : dflt;
+  };
+  return { cmd, has, opt };
+}
+
+/** هل ممنوع الاستيراد إلى مشروع المنصة المحتضَر؟ (شرط نقي قابل للاختبار) */
+function needsLegacyOverride(cmd, projectId, yes) {
+  return cmd === 'import' && projectId === LEGACY_PROJECT && !yes;
+}
+
+const { cmd, has, opt } = parseArgs(process.argv.slice(2));
 
 function loadAdmin() {
   let admin;
@@ -65,33 +76,66 @@ function loadAdmin() {
   return { admin, projectId: admin.apps[0].options.projectId };
 }
 
-/** محوّل أنواع Firestore ←→ JSON (يحافظ على Timestamp/GeoPoint/Blob/Reference) */
+/**
+ * محوّل أنواع Firestore ←→ JSON.
+ * ⚠️ ملاحظة مثبتة بالاختبار (npm run selftest): في firebase-admin v13 /
+ * @google-cloud/firestore v7 **لا يوجد صنف Blob إطلاقاً** — القيم الثنائية تُقرأ
+ * كـ Uint8Array. أي `instanceof FS.Blob` هنا كان سيسقط السكربت عند أول مستند.
+ * الأنواع المدعومة: Timestamp · Date · GeoPoint · bytes (Uint8Array/Buffer) ·
+ * DocumentReference · NaN/Infinity · الكائنات والمصفوفات المتداخلة.
+ */
+const UNKNOWN_TYPES = new Set();
+
 function makeCodecs(admin) {
-  const FS = admin.firestore;
+  const FS = admin.firestore || {};
+  const Timestamp = FS.Timestamp;
+  const GeoPoint = FS.GeoPoint;
+  const Blob = FS.Blob; // قد تكون undefined حسب الإصدار — لا نفترضها
+  const kindOf = (v) => (v && v.constructor && v.constructor.name) || '';
+  const isInstance = (v, C) => !!C && (v instanceof C || kindOf(v) === C.name);
+
   const serialize = (value) => {
-    if (value === null || value === undefined) return null;
-    if (value instanceof FS.Timestamp) return { '@type': 'timestamp', seconds: value.seconds, nanoseconds: value.nanoseconds };
-    if (value instanceof FS.GeoPoint) return { '@type': 'geopoint', latitude: value.latitude, longitude: value.longitude };
-    if (value instanceof FS.Blob) return { '@type': 'blob', base64: value.toBase64() };
-    if (value && value.firestore && typeof value.path === 'string') return { '@type': 'ref', path: value.path };
+    if (value === undefined) return undefined; // يُسقط المفتاح — Firestore يفرّق بين «غير موجود» و«null»
+    if (value === null) return null;
+    if (typeof value === 'number' && !Number.isFinite(value)) return { '@type': 'number', special: String(value) };
+    if (value instanceof Date) {
+      const ms = value.getTime();
+      return { '@type': 'timestamp', seconds: Math.floor(ms / 1000), nanoseconds: (ms % 1000) * 1e6 };
+    }
+    if (isInstance(value, Timestamp) || (kindOf(value) === 'Timestamp' && typeof value.seconds === 'number')) {
+      return { '@type': 'timestamp', seconds: value.seconds, nanoseconds: value.nanoseconds };
+    }
+    if (isInstance(value, GeoPoint) || kindOf(value) === 'GeoPoint') {
+      return { '@type': 'geopoint', latitude: value.latitude, longitude: value.longitude };
+    }
+    if (Blob && value instanceof Blob) return { '@type': 'blob', base64: value.toBase64() };
+    if (Buffer.isBuffer(value) || value instanceof Uint8Array) return { '@type': 'bytes', base64: Buffer.from(value).toString('base64') };
+    if (value && typeof value === 'object' && value.firestore && typeof value.path === 'string') return { '@type': 'ref', path: value.path };
     if (Array.isArray(value)) return value.map(serialize);
-    if (Buffer.isBuffer(value)) return { '@type': 'bytes', base64: value.toString('base64') };
     if (typeof value === 'object') {
+      const k = kindOf(value);
+      if (k && k !== 'Object') UNKNOWN_TYPES.add(k); // صنف غير معروف: نحتفظ بمحتواه ونُنبّه بدل الصمت
       const out = {};
-      for (const [k, v] of Object.entries(value)) { const s = serialize(v); if (s !== undefined) out[k] = s; }
+      for (const [key, v] of Object.entries(value)) { const sv = serialize(v); if (sv !== undefined) out[key] = sv; }
       return out;
     }
     return value;
   };
+
   const deserialize = (value) => {
     if (value === null || value === undefined) return null;
     if (Array.isArray(value)) return value.map(deserialize);
     if (typeof value === 'object' && value['@type']) {
       switch (value['@type']) {
-        case 'timestamp': return new FS.Timestamp(value.seconds, value.nanoseconds);
-        case 'geopoint': return new FS.GeoPoint(value.latitude, value.longitude);
-        case 'blob': return FS.Blob.fromBase64String(value.base64);
-        case 'bytes': return Buffer.from(value.base64, 'base64');
+        case 'number': return value.special === 'Infinity' ? Infinity : value.special === '-Infinity' ? -Infinity : NaN;
+        case 'timestamp':
+          if (!Timestamp) throw new Error('صنف Timestamp غير متوفر في firebase-admin المثبّت');
+          return new Timestamp(value.seconds, value.nanoseconds);
+        case 'geopoint':
+          if (!GeoPoint) throw new Error('صنف GeoPoint غير متوفر في firebase-admin المثبّت');
+          return new GeoPoint(value.latitude, value.longitude);
+        case 'blob': return Blob ? Blob.fromBase64String(value.base64) : Buffer.from(value.base64, 'base64');
+        case 'bytes': return Buffer.from(value.base64, 'base64'); // تُقبل كـ Uint8Array
         case 'ref': return admin.firestore().doc(value.path);
       }
     }
@@ -131,7 +175,7 @@ async function main() {
   const codecs = makeCodecs(admin);
   console.log(`🔥 المشروع: ${projectId}${projectId === LEGACY_PROJECT ? '  ⚠️ (مشروع المنصة القديم)' : ''}`);
 
-  if (cmd === 'import' && projectId === LEGACY_PROJECT && !has('yes')) {
+  if (needsLegacyOverride(cmd, projectId, has('yes'))) {
     console.error('🚫 ممنوع الاستيراد إلى مشروع المنصة القديم (قد يُحذف في مارس). حدّد FIREBASE_PROJECT_ID الجديد، أو أضف --yes إن كان مقصوداً.');
     process.exit(1);
   }
@@ -254,4 +298,8 @@ async function main() {
   }
 }
 
-main().catch((e) => { console.error('❌ فشل:', e.message); if (process.env.DEBUG) console.error(e.stack); process.exit(1); });
+module.exports = { parseArgs, needsLegacyOverride, makeCodecs, walkExport, UNKNOWN_TYPES, LEGACY_PROJECT, DEFAULT_ROOTS };
+
+if (require.main === module) {
+  main().catch((e) => { console.error('❌ فشل:', e.message); if (process.env.DEBUG) console.error(e.stack); process.exit(1); });
+}

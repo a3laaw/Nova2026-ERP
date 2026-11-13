@@ -27,10 +27,12 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - name: تثبيت الاعتماديات
-        run: npm install --no-audit --no-fund
-      - name: فحص الأنواع (tsc --noEmit)
-        run: npm run typecheck
+      - name: تثبيت الاعتماديات (بـ lock متزامن)
+        run: npm ci --no-audit --no-fund
+      - name: اختبارات أدوات النقل (بلا شبكة)
+        run: npm run selftest
+      - name: ميزانية أخطاء الأنواع (الزيادة تُكسر)
+        run: npm run typecheck:gate
       - name: بوابة العلاقات (docs/relations.json مقابل الكود)
         run: npm run check:relations
       - name: التحقق من دليل النظام المولّد (منع الانحراف)
@@ -38,6 +40,8 @@ jobs:
       - name: أدوات النقل والدليل صالحة للتنفيذ وملفات Firebase صالحة
         run: |
           node --check scripts/db-transfer.js
+          node --check scripts/selftest.js
+          node --check scripts/check-type-budget.js
           node --check scripts/build-guide.js
           node --check scripts/check-relations.js
           node -e "const fs=require('fs');JSON.parse(fs.readFileSync('firestore.indexes.json','utf8'));JSON.parse(fs.readFileSync('firebase.json','utf8'));console.log('✅ firebase.json + firestore.indexes.json صالحة')"
@@ -71,7 +75,7 @@ jobs:
           node-version: 20
           cache: npm
       - name: تثبيت الاعتماديات (فيها firebase-tools)
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: الإقلاع = تحقق آلي من firestore.rules و firestore.indexes.json
         run: |
           npx firebase emulators:exec --only firestore,auth --project demo-novaflow \
